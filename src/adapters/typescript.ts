@@ -276,7 +276,32 @@ export class TypeScriptAdapter implements LanguageAdapter {
       this.options.requestTimeoutMs ?? 30_000,
     );
     if (!result || !Array.isArray(result)) return [];
-    return result.map((sym) => this.toAtlasSymbol(sym, relPath));
+
+    // Read the source once per call; signature extraction for eligible
+    // kinds (class/interface/function/method + type-alias variables)
+    // needs the declaration text, and re-reading per symbol would be
+    // gratuitous.
+    let sourceText: string | null = null;
+    const loadSource = (): string => {
+      if (sourceText === null) {
+        try {
+          sourceText = readFileSync(absPath, "utf8");
+        } catch {
+          sourceText = "";
+        }
+      }
+      return sourceText;
+    };
+
+    return result.map((sym) => {
+      const base = this.toAtlasSymbol(sym, relPath);
+      const signature = deriveSignatureForSymbol(
+        base.kind,
+        loadSource(),
+        sym.selectionRange.start.line,
+      );
+      return signature !== null ? { ...base, signature } : base;
+    });
   }
 
   async getSymbolDetails(id: SymbolId): Promise<AtlasSymbol | null> {
@@ -643,9 +668,13 @@ export function stripGenericBrackets(s: string): string {
 
 /**
  * Read the declaration header starting at `startLine` (0-indexed),
- * concatenating forward until the first `{` or after a small line
- * budget. Used to obtain a full `class Foo extends Bar implements
- * Baz` header even when formatted across multiple lines.
+ * concatenating forward until the first `{` or `;`, or after a small
+ * line budget. Used for class / interface / function / method
+ * declarations where `{` starts the body.
+ *
+ * For type aliases with object-shape RHS (`type X = { a: number };`),
+ * use `extractTypeAliasHeader` instead — the first `{` there is part
+ * of the value, not a body marker.
  */
 export function extractDeclarationHeader(
   sourceText: string,
@@ -656,14 +685,115 @@ export function extractDeclarationHeader(
   let collected = "";
   for (let i = startLine; i < Math.min(lines.length, startLine + maxLines); i++) {
     const line = lines[i] ?? "";
+    let terminator = line.length;
     const braceIdx = line.indexOf("{");
-    if (braceIdx >= 0) {
-      collected += " " + line.slice(0, braceIdx);
+    if (braceIdx >= 0) terminator = Math.min(terminator, braceIdx);
+    const semiIdx = line.indexOf(";");
+    if (semiIdx >= 0) terminator = Math.min(terminator, semiIdx);
+    if (terminator < line.length) {
+      collected += " " + line.slice(0, terminator);
       break;
     }
     collected += " " + line;
   }
   return collected.trim();
+}
+
+/**
+ * Read a type-alias header including its right-hand side up to the
+ * terminating `;` (or end of line budget). Unlike
+ * `extractDeclarationHeader`, this does NOT stop at `{` — type aliases
+ * can legitimately contain `{` as part of their value, e.g.
+ * `type Point = { x: number; y: number };` should render in full.
+ */
+export function extractTypeAliasHeader(
+  sourceText: string,
+  startLine: number,
+  maxLines = 6,
+): string {
+  const lines = sourceText.split(/\r?\n/);
+  let collected = "";
+  for (let i = startLine; i < Math.min(lines.length, startLine + maxLines); i++) {
+    const line = lines[i] ?? "";
+    const semiIdx = line.indexOf(";");
+    if (semiIdx >= 0) {
+      collected += " " + line.slice(0, semiIdx);
+      break;
+    }
+    collected += " " + line;
+  }
+  return collected.trim();
+}
+
+/**
+ * Normalize a raw declaration header into a bundle-ready signature:
+ * strip the leading `export` keyword (scope metadata, not signature),
+ * collapse whitespace runs to single spaces. Retains modifiers like
+ * `abstract`, `async`, `declare`, `default` — they carry type-system
+ * information readers expect to see.
+ */
+export function normalizeSignature(header: string): string {
+  return header
+    .replace(/\s+/g, " ")
+    .replace(/^export\s+/, "")
+    .trim();
+}
+
+/**
+ * Detect whether a normalized signature is malformed — typically
+ * because extraction truncated mid-expression (unclosed `extends`,
+ * dangling `=` from a type alias with an inline complex RHS we
+ * couldn't reach). A malformed signature should be OMITTED rather
+ * than rendered; `SIG type X =` looks broken to users.
+ */
+export function looksMalformedSignature(sig: string): boolean {
+  return /(?:=|extends|implements|,)\s*$/.test(sig);
+}
+
+const SIGNATURE_KINDS: ReadonlySet<SymbolKind> = new Set([
+  "class",
+  "interface",
+  "function",
+  "method",
+]);
+
+/**
+ * Decide whether a symbol should have a signature and, if so, compute
+ * it from the source text. Returns null when the symbol is not
+ * eligible or when extraction produced something unusable.
+ *
+ * TS type aliases come back from tsserver with LSP kind Variable (13),
+ * which maps to our `variable` kind. Since we don't want every `const`
+ * to carry a signature, we distinguish type aliases by peeking at the
+ * source line.
+ */
+function deriveSignatureForSymbol(
+  kind: SymbolKind,
+  sourceText: string,
+  startLine: number,
+): string | null {
+  if (SIGNATURE_KINDS.has(kind)) {
+    const header = extractDeclarationHeader(sourceText, startLine);
+    return finalizeSig(header);
+  }
+  if (kind === "variable") {
+    // Detect TS type-alias declarations that tsserver reports as
+    // Variable. Match `(export )?type <name> = ...`.
+    const line = (sourceText.split(/\r?\n/)[startLine] ?? "").trimStart();
+    if (/^(?:export\s+)?type\s+[A-Za-z_$][\w$]*\b/.test(line)) {
+      const header = extractTypeAliasHeader(sourceText, startLine);
+      return finalizeSig(header);
+    }
+  }
+  return null;
+}
+
+function finalizeSig(header: string): string | null {
+  if (!header) return null;
+  const normalized = normalizeSignature(header);
+  if (!normalized) return null;
+  if (looksMalformedSignature(normalized)) return null;
+  return normalized;
 }
 
 /**

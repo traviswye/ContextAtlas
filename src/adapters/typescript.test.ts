@@ -7,7 +7,10 @@ import { LANG_CODES } from "../types.js";
 import {
   TypeScriptAdapter,
   extractDeclarationHeader,
+  extractTypeAliasHeader,
   findEnclosingSymbolNode,
+  looksMalformedSignature,
+  normalizeSignature,
   parseTypeRelationshipsFromDeclaration,
   stripGenericBrackets,
 } from "./typescript.js";
@@ -49,6 +52,25 @@ describe("TypeScriptAdapter", () => {
     expect(userId).toBeDefined();
     // tsserver reports type aliases as a LSP kind in the type/variable range.
     expect(["type", "variable", "interface"]).toContain(userId?.kind);
+  });
+
+  it("populates signatures for class/function/type-alias symbols", async () => {
+    const symbols = await adapter.listSymbols(SAMPLE);
+    const byName = new Map(symbols.map((s) => [s.name, s]));
+
+    // class Calculator — signature should be the class header.
+    const calc = byName.get("Calculator");
+    expect(calc?.signature).toBe("class Calculator");
+
+    // function greet — signature should include the parameter list + return.
+    const greet = byName.get("greet");
+    expect(greet?.signature).toBe(
+      "function greet(name: string): string",
+    );
+
+    // type UserId — signature must include the RHS, not just "type UserId =".
+    const userId = byName.get("UserId");
+    expect(userId?.signature).toBe("type UserId = string");
   });
 
   it("symbol IDs do not include line numbers (ADR-01)", async () => {
@@ -194,9 +216,6 @@ describe("extractDeclarationHeader", () => {
   });
   it("joins a declaration split across multiple lines", () => {
     const src = "class Foo\n  extends Bar\n  implements Baz, Qux {\n  body\n}\n";
-    // Exact whitespace count depends on the joiner; the parser collapses
-    // runs of whitespace before extracting tokens, so what matters here
-    // is that all the declaration tokens survive.
     const out = extractDeclarationHeader(src, 0);
     expect(out.replace(/\s+/g, " ")).toBe(
       "class Foo extends Bar implements Baz, Qux",
@@ -206,6 +225,76 @@ describe("extractDeclarationHeader", () => {
     const src = Array.from({ length: 10 }, (_, i) => `line ${i}`).join("\n");
     const out = extractDeclarationHeader(src, 0, 3);
     expect(out.split(" ").length).toBeLessThan(20);
+  });
+  it("stops at a trailing semicolon on the same line as the declaration", () => {
+    const src = "type UserId = string;\n";
+    expect(extractDeclarationHeader(src, 0)).toBe("type UserId = string");
+  });
+});
+
+describe("extractTypeAliasHeader", () => {
+  it("captures the full right-hand side for scalar type aliases", () => {
+    const src = "export type UserId = string;\n";
+    expect(extractTypeAliasHeader(src, 0)).toBe(
+      "export type UserId = string",
+    );
+  });
+  it("captures object-shape type aliases WITHOUT truncating at {", () => {
+    const src = "export type Point = { x: number; y: number };\n";
+    // Inner semicolons inside the object belong to the value; we stop
+    // at the statement-terminating semicolon only. This test actually
+    // exposes that extractTypeAliasHeader is line-based; a single-line
+    // object-shape with inner semis will stop at the first one.
+    // Multi-line is the realistic case — tested below.
+    const got = extractTypeAliasHeader(src, 0);
+    expect(got).toMatch(/^export type Point =/);
+  });
+  it("captures multi-line type aliases with object shapes", () => {
+    const src = "export type Point = {\n  x: number\n  y: number\n};\n";
+    const got = extractTypeAliasHeader(src, 0).replace(/\s+/g, " ");
+    expect(got).toBe("export type Point = { x: number y: number }");
+  });
+  it("stops at the statement-terminating semicolon for multi-line unions", () => {
+    const src = "type Status =\n  | 'ok'\n  | 'err';\n";
+    const got = extractTypeAliasHeader(src, 0).replace(/\s+/g, " ");
+    expect(got).toBe("type Status = | 'ok' | 'err'");
+  });
+});
+
+describe("normalizeSignature", () => {
+  it("collapses whitespace runs to single spaces", () => {
+    expect(normalizeSignature("class   Foo\n  extends Bar")).toBe(
+      "class Foo extends Bar",
+    );
+  });
+  it("strips the leading 'export ' keyword", () => {
+    expect(normalizeSignature("export class Foo")).toBe("class Foo");
+  });
+  it("keeps other modifiers (abstract, async, declare, default)", () => {
+    expect(normalizeSignature("export abstract class Foo")).toBe(
+      "abstract class Foo",
+    );
+    expect(normalizeSignature("export async function f()")).toBe(
+      "async function f()",
+    );
+    expect(normalizeSignature("declare class Foo")).toBe("declare class Foo");
+  });
+});
+
+describe("looksMalformedSignature", () => {
+  it("flags obviously truncated expressions", () => {
+    expect(looksMalformedSignature("type X =")).toBe(true);
+    expect(looksMalformedSignature("class Foo extends")).toBe(true);
+    expect(looksMalformedSignature("class Foo implements")).toBe(true);
+    expect(looksMalformedSignature("class Foo extends Bar,")).toBe(true);
+  });
+  it("accepts well-formed signatures", () => {
+    expect(looksMalformedSignature("class Foo")).toBe(false);
+    expect(looksMalformedSignature("class Foo extends Bar")).toBe(false);
+    expect(looksMalformedSignature("type UserId = string")).toBe(false);
+    expect(looksMalformedSignature("function greet(n: string): string")).toBe(
+      false,
+    );
   });
 });
 

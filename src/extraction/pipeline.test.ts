@@ -164,6 +164,10 @@ describe("runExtractionPipeline", () => {
           path: "src/processor.ts",
           line: 1,
           language: "typescript",
+          // Signatures are stamped at the adapter boundary (TypeScript
+          // adapter's listSymbols). Stubs mimic that by returning
+          // populated signatures, and the pipeline must persist them.
+          signature: "class OrderProcessor extends BaseProcessor<Order>",
         },
       ],
     });
@@ -201,11 +205,24 @@ describe("runExtractionPipeline", () => {
       "sym:ts:src/processor.ts:OrderProcessor",
     ]);
 
-    // atlas.json was written to disk.
+    // Signatures must flow through the pipeline into storage — without
+    // them, get_symbol_context renders SIG-less bundles for every symbol.
+    const storedSymbols = listAllSymbols(db);
+    const storedProcessor = storedSymbols.find(
+      (s) => s.name === "OrderProcessor",
+    );
+    expect(storedProcessor?.signature).toBe(
+      "class OrderProcessor extends BaseProcessor<Order>",
+    );
+
+    // atlas.json was written to disk with the signature included.
     const atlasPath = pathJoin(tmp, ".contextatlas", "atlas.json");
     const onDisk = readFileSync(atlasPath, "utf8");
     expect(onDisk).toContain("OrderProcessor");
     expect(onDisk).toContain("must be idempotent");
+    expect(onDisk).toContain(
+      '"signature": "class OrderProcessor extends BaseProcessor<Order>"',
+    );
   });
 
   it("no-op when all SHAs match the committed atlas baseline", async () => {
