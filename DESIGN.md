@@ -444,6 +444,13 @@ Key properties of atlas.json:
   changes require major version bumps and automatic migration.
 - **Fully loadable.** No streaming, no chunking for MVP. Even a large
   atlas loads in one pass.
+- **Optional fields use omit-when-empty.** `signature` on symbols and
+  `rationale` / `excerpt` on claims are omitted from the JSON when
+  their value is empty, `null`, or `undefined`. Importers treat missing
+  keys as absent. This convention is part of the round-trip invariant:
+  any new optional field added later MUST follow the same rule, and no
+  field may be added that requires preserving a distinction between
+  absent, `null`, and empty string — round-trip collapses those states.
 
 ### index.db — local derived cache
 
@@ -491,6 +498,34 @@ CREATE INDEX idx_symbols_name ON symbols(name);
 Many-to-many between claims and symbols — a single claim frequently
 references multiple symbols (e.g., "OrderProcessor and BaseProcessor
 must be idempotent"). Empirically confirmed during extraction testing.
+
+In addition to the three query tables above, the storage layer persists
+three artifact-metadata tables so that atlas.json round-trip through
+SQLite is lossless (ADR-06 requires this):
+
+```sql
+CREATE TABLE _meta (
+  key   TEXT PRIMARY KEY,
+  value TEXT NOT NULL
+);  -- internal schema version bookkeeping
+
+CREATE TABLE atlas_meta (
+  key   TEXT PRIMARY KEY,
+  value TEXT NOT NULL
+);  -- top-level atlas.json fields: version, generated_at, generator.*
+
+CREATE TABLE source_shas (
+  source_path TEXT PRIMARY KEY,
+  source_sha  TEXT NOT NULL
+);  -- SHA of each prose doc that fed extraction (ADRs, READMEs)
+```
+
+`source_shas` is deliberately a separate concept from the `file_sha`
+column on `symbols`: the former tracks prose documents consumed by the
+extraction pipeline (used for "has this ADR changed since last
+extraction?"); the latter tracks code files enumerated by the language
+adapter (used for "has this source file changed since last symbol
+listing?"). Distinct invalidation triggers, distinct storage.
 
 ### Sync model between artifacts
 

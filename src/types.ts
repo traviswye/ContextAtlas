@@ -73,6 +73,12 @@ export interface Symbol {
   line: number;
   signature?: string;
   language: LanguageCode;
+  /**
+   * SHA of the source file this symbol lives in. Optional on the adapter
+   * boundary (adapters don't compute SHAs), required at the storage
+   * boundary (indexer stamps SHA before insert).
+   */
+  fileSha?: string;
 }
 
 export interface Reference {
@@ -93,6 +99,8 @@ export interface Claim {
   id: number;
   source: string; // e.g. "ADR-07", "README"
   sourcePath: string;
+  /** SHA of the source document the claim was extracted from. */
+  sourceSha: string;
   severity: Severity;
   claim: string;
   rationale?: string;

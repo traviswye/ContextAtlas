@@ -1,0 +1,64 @@
+{
+  "version": "1.0",
+  "generated_at": "2026-04-21T14:32:00Z",
+  "generator": {
+    "contextatlas_version": "0.0.1",
+    "extraction_model": "claude-opus-4-7"
+  },
+  "source_shas": {
+    "docs/adr/ADR-01.md": "abc123",
+    "docs/adr/ADR-07.md": "def456"
+  },
+  "symbols": [
+    {
+      "id": "sym:ts:src/orders/base.ts:BaseProcessor",
+      "name": "BaseProcessor",
+      "kind": "class",
+      "path": "src/orders/base.ts",
+      "line": 10,
+      "file_sha": "aaa111"
+    },
+    {
+      "id": "sym:ts:src/orders/processor.ts:OrderProcessor",
+      "name": "OrderProcessor",
+      "kind": "class",
+      "path": "src/orders/processor.ts",
+      "line": 42,
+      "signature": "class OrderProcessor extends BaseProcessor<Order>",
+      "file_sha": "bbb222"
+    },
+    {
+      "id": "sym:ts:src/orders/queue.ts:OrderQueue",
+      "name": "OrderQueue",
+      "kind": "class",
+      "path": "src/orders/queue.ts",
+      "line": 5,
+      "file_sha": "ccc333"
+    }
+  ],
+  "claims": [
+    {
+      "source": "ADR-01",
+      "source_path": "docs/adr/ADR-01.md",
+      "source_sha": "abc123",
+      "severity": "context",
+      "claim": "orders module owns processing",
+      "symbol_ids": [
+        "sym:ts:src/orders/processor.ts:OrderProcessor"
+      ]
+    },
+    {
+      "source": "ADR-07",
+      "source_path": "docs/adr/ADR-07.md",
+      "source_sha": "def456",
+      "severity": "hard",
+      "claim": "must be idempotent",
+      "rationale": "enables safe retry on network failures",
+      "excerpt": "All order processing must be safely retryable.",
+      "symbol_ids": [
+        "sym:ts:src/orders/base.ts:BaseProcessor",
+        "sym:ts:src/orders/processor.ts:OrderProcessor"
+      ]
+    }
+  ]
+}
