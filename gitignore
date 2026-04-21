@@ -1,0 +1,49 @@
+# Dependencies
+node_modules/
+*.log
+
+# Build output
+dist/
+build/
+*.tsbuildinfo
+
+# TypeScript
+*.js.map
+*.d.ts.map
+
+# Testing
+coverage/
+.nyc_output/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# ContextAtlas local cache (keep atlas.json tracked)
+.contextatlas/index.db
+.contextatlas/index.db-*
+.contextatlas/*.db-journal
+.contextatlas/*.db-shm
+.contextatlas/*.db-wal
+
+# Test scratch
+test-results/
+test*-results.json
+*-test-output.json
+
+# Cloned benchmark repos (if cloned into the workspace)
+/benchmarks/repos/
+
+# Local configuration overrides
+.contextatlas.local.yml
