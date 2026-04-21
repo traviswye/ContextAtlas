@@ -47,3 +47,7 @@ test*-results.json
 
 # Local configuration overrides
 .contextatlas.local.yml
+
+# Claude Code local settings (user-specific permission allowlist).
+# Team-shared .claude/settings.json remains trackable.
+.claude/settings.local.json
