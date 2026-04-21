@@ -306,7 +306,7 @@ atlas:
   local_cache: .contextatlas/index.db    # gitignored SQLite cache
 ```
 
-Six sections required. No inheritance, no workspaces, no cross-repo refs.
+Seven sections required. No inheritance, no workspaces, no cross-repo refs.
 MVP-scoped deliberately. See ADR-06 for the atlas committed/local-cache
 split.
 

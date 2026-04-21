@@ -7,7 +7,7 @@
   "type": "module",
   "main": "./dist/index.js",
   "bin": {
-    "contextatlas": "./dist/cli.js"
+    "contextatlas": "./dist/index.js"
   },
   "scripts": {
     "build": "tsc",
