@@ -13,6 +13,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { extname, join as pathJoin, resolve as pathResolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { log } from "../mcp/logger.js";
 import {
@@ -25,6 +26,7 @@ import {
   type Symbol as AtlasSymbol,
   type SymbolId,
   type SymbolKind,
+  type TypeInfo,
 } from "../types.js";
 import {
   normalizePath,
@@ -63,6 +65,7 @@ interface LspDiagnostic {
   severity?: number;
   message: string;
 }
+
 
 // LSP SymbolKind → our SymbolKind. Values we don't care about collapse to "other".
 function mapSymbolKind(lspKind: number): SymbolKind {
@@ -327,6 +330,150 @@ export class TypeScriptAdapter implements LanguageAdapter {
     });
   }
 
+  async getTypeInfo(id: SymbolId): Promise<TypeInfo> {
+    const empty: TypeInfo = { extends: [], implements: [], usedByTypes: [] };
+    const parsed = parseSymbolId(id);
+    if (!parsed || !this.rootPath) return empty;
+
+    const absPath = this.toAbs(parsed.path);
+    await this.ensureOpen(absPath);
+
+    const symbols = await this.client.request<LspDocumentSymbol[] | null>(
+      "textDocument/documentSymbol",
+      { textDocument: { uri: toFileUri(absPath) } },
+      this.options.requestTimeoutMs ?? 30_000,
+    );
+    if (!symbols || !Array.isArray(symbols)) return empty;
+    const target = findSymbolByName(symbols, parsed.name);
+    if (!target) return empty;
+    const targetUri = toFileUri(absPath);
+
+    // Per-call caches: avoid re-reading the same file or re-requesting
+    // documentSymbol for candidates that share a source file.
+    const fileTextCache = new Map<string, string>();
+    const docSymbolCache = new Map<string, LspDocumentSymbol[]>();
+
+    const readText = (uri: string, abs: string): string => {
+      let t = fileTextCache.get(uri);
+      if (t === undefined) {
+        try {
+          t = readFileSync(abs, "utf8");
+        } catch {
+          t = "";
+        }
+        fileTextCache.set(uri, t);
+      }
+      return t;
+    };
+
+    const result: TypeInfo = { extends: [], implements: [], usedByTypes: [] };
+
+    // Forward direction: parse extends / implements from the declaration
+    // header in the source file. tsserver's textDocument/hover strips
+    // extends/implements from its response, so we read the source text
+    // directly — LSP locates the symbol precisely; the text scan is
+    // surgical (header line only, until `{` or end of ~5 lines).
+    try {
+      const sourceText = readText(targetUri, absPath);
+      const header = extractDeclarationHeader(
+        sourceText,
+        target.selectionRange.start.line,
+      );
+      const fwd = parseTypeRelationshipsFromDeclaration(header);
+      result.extends = fwd.extends;
+      result.implements = fwd.implements;
+    } catch (err) {
+      log.warn("ts-adapter: declaration-header read failed", {
+        symbol: id,
+        err: String(err),
+      });
+    }
+
+    // Inverse direction: textDocument/implementation. tsserver returns
+    // the transitive closure (grandchildren included), so we filter down
+    // to direct children by checking each candidate's own declaration
+    // for a reference to the target name.
+    try {
+      const impls = await this.client.request<LspLocation[] | null>(
+        "textDocument/implementation",
+        { textDocument: { uri: targetUri }, position: target.selectionRange.start },
+        this.options.requestTimeoutMs ?? 30_000,
+      );
+      if (impls && Array.isArray(impls)) {
+        const selfUri = normalizePath(targetUri);
+        const seen = new Set<string>();
+
+        for (const loc of impls) {
+          if (
+            normalizePath(loc.uri) === selfUri &&
+            loc.range.start.line === target.selectionRange.start.line
+          ) {
+            continue; // self
+          }
+
+          let candidateSymbols = docSymbolCache.get(loc.uri);
+          if (candidateSymbols === undefined) {
+            try {
+              const targetAbs = fileURLToPath(loc.uri);
+              await this.ensureOpen(targetAbs);
+              const resp = await this.client.request<
+                LspDocumentSymbol[] | null
+              >(
+                "textDocument/documentSymbol",
+                { textDocument: { uri: loc.uri } },
+                this.options.requestTimeoutMs ?? 30_000,
+              );
+              candidateSymbols =
+                resp && Array.isArray(resp) ? resp : [];
+            } catch {
+              candidateSymbols = [];
+            }
+            docSymbolCache.set(loc.uri, candidateSymbols);
+          }
+
+          const enclosing = findEnclosingSymbolNode(
+            candidateSymbols,
+            loc.range.start,
+          );
+          if (
+            !enclosing ||
+            enclosing.name === parsed.name ||
+            seen.has(enclosing.name)
+          ) {
+            continue;
+          }
+
+          // Direct-child filter: read the candidate's own declaration
+          // header and confirm it references the target name in extends
+          // or implements.
+          const candidateAbs = fileURLToPath(loc.uri);
+          const candidateText = readText(loc.uri, candidateAbs);
+          const candidateHeader = extractDeclarationHeader(
+            candidateText,
+            enclosing.selectionRange.start.line,
+          );
+          const candidateRel = parseTypeRelationshipsFromDeclaration(
+            candidateHeader,
+          );
+          if (
+            candidateRel.extends.includes(parsed.name) ||
+            candidateRel.implements.includes(parsed.name)
+          ) {
+            seen.add(enclosing.name);
+            result.usedByTypes.push(enclosing.name);
+          }
+        }
+      }
+    } catch (err) {
+      log.warn("ts-adapter: implementation failed during getTypeInfo", {
+        symbol: id,
+        err: String(err),
+      });
+    }
+
+    return result;
+  }
+
   async getDiagnostics(filePath: string): Promise<Diagnostic[]> {
     const { absPath } = this.resolveFile(filePath);
     await this.ensureOpen(absPath);
@@ -365,7 +512,11 @@ export class TypeScriptAdapter implements LanguageAdapter {
         "TypeScriptAdapter not initialized. Call initialize(rootPath) first.",
       );
     }
-    const absPath = pathResolve(filePath);
+    // Resolve against the adapter's root when the input is relative so
+    // callers (query layer, MCP handlers) can pass repo-relative paths
+    // they already have from symbol records without knowing the root.
+    // pathResolve is idempotent on absolute inputs.
+    const absPath = pathResolve(this.rootPath, filePath);
     const relPath = toRelativePath(absPath, this.rootPath);
     return { absPath, relPath };
   }
@@ -461,4 +612,129 @@ function findSymbolByName(
     }
   }
   return null;
+}
+
+// ---------------------------------------------------------------------------
+// Pure helpers for getTypeInfo — exported for direct unit testing.
+// ---------------------------------------------------------------------------
+
+/**
+ * Remove balanced `<...>` spans from a declaration header. Eliminates
+ * generic type arguments and constraints before extends / implements
+ * extraction, so `class Box<T extends Widget>` does NOT register
+ * `Widget` as a parent of `Box`.
+ */
+export function stripGenericBrackets(s: string): string {
+  let out = "";
+  let depth = 0;
+  for (const ch of s) {
+    if (ch === "<") {
+      depth++;
+      continue;
+    }
+    if (ch === ">" && depth > 0) {
+      depth--;
+      continue;
+    }
+    if (depth === 0) out += ch;
+  }
+  return out;
+}
+
+/**
+ * Read the declaration header starting at `startLine` (0-indexed),
+ * concatenating forward until the first `{` or after a small line
+ * budget. Used to obtain a full `class Foo extends Bar implements
+ * Baz` header even when formatted across multiple lines.
+ */
+export function extractDeclarationHeader(
+  sourceText: string,
+  startLine: number,
+  maxLines = 6,
+): string {
+  const lines = sourceText.split(/\r?\n/);
+  let collected = "";
+  for (let i = startLine; i < Math.min(lines.length, startLine + maxLines); i++) {
+    const line = lines[i] ?? "";
+    const braceIdx = line.indexOf("{");
+    if (braceIdx >= 0) {
+      collected += " " + line.slice(0, braceIdx);
+      break;
+    }
+    collected += " " + line;
+  }
+  return collected.trim();
+}
+
+/**
+ * Parse extends / implements tokens from a raw declaration header
+ * like `export abstract class Foo<T> extends Bar implements Baz, Qux`.
+ * Generic brackets are stripped first so constraints inside `<…>` do
+ * not leak into the parent list.
+ */
+export function parseTypeRelationshipsFromDeclaration(
+  declaration: string,
+): { extends: string[]; implements: string[] } {
+  const empty = { extends: [], implements: [] } as {
+    extends: string[];
+    implements: string[];
+  };
+  if (!declaration) return empty;
+
+  const oneLine = declaration.replace(/\s+/g, " ").trim();
+  if (!/\b(class|interface)\b/.test(oneLine)) return empty;
+
+  const stripped = stripGenericBrackets(oneLine);
+
+  const parseList = (text: string | undefined): string[] => {
+    if (!text) return [];
+    return text
+      .split(",")
+      .map((s) => s.trim())
+      .map((s) => s.split(".").pop() ?? s)
+      .map((s) => s.replace(/[{};,].*$/, "").trim())
+      .filter((s) => s.length > 0 && /^[A-Za-z_$][\w$]*$/.test(s));
+  };
+
+  const extMatch = /\bextends\s+([^{]+?)(?:\s+implements\b|\s*\{|\s*$)/.exec(
+    stripped,
+  );
+  const implMatch = /\bimplements\s+([^{]+?)(?:\s*\{|\s*$)/.exec(stripped);
+
+  return {
+    extends: parseList(extMatch?.[1]),
+    implements: parseList(implMatch?.[1]),
+  };
+}
+
+/**
+ * Walk a documentSymbol tree and return the deepest symbol whose range
+ * contains the given position. Returns null if no symbol contains it.
+ */
+export function findEnclosingSymbolNode(
+  symbols: LspDocumentSymbol[],
+  position: { line: number; character: number },
+): LspDocumentSymbol | null {
+  for (const sym of symbols) {
+    if (containsPosition(sym.range, position)) {
+      const childMatch =
+        sym.children && sym.children.length > 0
+          ? findEnclosingSymbolNode(sym.children, position)
+          : null;
+      return childMatch ?? sym;
+    }
+  }
+  return null;
+}
+
+function containsPosition(
+  range: LspRange,
+  pos: { line: number; character: number },
+): boolean {
+  if (pos.line < range.start.line || pos.line > range.end.line) return false;
+  if (pos.line === range.start.line && pos.character < range.start.character)
+    return false;
+  if (pos.line === range.end.line && pos.character > range.end.character)
+    return false;
+  return true;
 }

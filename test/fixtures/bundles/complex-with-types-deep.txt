@@ -1,0 +1,13 @@
+SYM BaseProcessor@src/orders/base.ts:10 class
+  SIG abstract class BaseProcessor<T>
+  INTENT ADR-07 hard "must be idempotent"
+    RATIONALE "applies to every concrete processor"
+    EXCERPT "All order processing must be safely retryable."
+  REFS 6 [orders:4 billing:2]
+    REF ref:ts:orders/processor.ts:42
+    REF ref:ts:orders/refund.ts:15
+    REF ref:ts:billing/charges.ts:88
+    ... +3 more
+  TYPES extends=[] implements=[Retryable, Auditable] used_by=[OrderProcessor, RefundProcessor]
+  TESTS src/orders/base.test.ts
+    TEST src/orders/base.test.ts

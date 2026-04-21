@@ -1,0 +1,6 @@
+SYM formatDate@src/utils/format.ts:5 function
+  SIG function formatDate(d: Date): string
+  REFS 3 [orders:2 admin:1]
+    TOP ref:ts:orders/processor.ts:12
+    TOP ref:ts:orders/queue.ts:33
+    TOP ref:ts:admin/panel.ts:50

@@ -1,0 +1,21 @@
+SYM OrderProcessor@src/orders/processor.ts:42 class
+  SIG class OrderProcessor extends BaseProcessor<Order>
+  INTENT ADR-07 hard "must be idempotent"
+    RATIONALE "enables safe retry on network failures"
+    EXCERPT "All order processing must be safely retryable."
+  INTENT ADR-11 hard "no synchronous I/O on the hot path"
+    RATIONALE "latency sensitivity; hot path must stay <10ms"
+    EXCERPT "Order path must never block on I/O."
+  REFS 50 [billing:22 admin:14 reports:10 tests:4]
+    REF ref:ts:billing/charges.ts:88
+    REF ref:ts:billing/refunds.ts:34
+    REF ref:ts:billing/subscriptions.ts:55
+    REF ref:ts:admin/orders.ts:12
+    REF ref:ts:admin/panel.ts:55
+    REF ref:ts:reports/monthly.ts:8
+    REF ref:ts:tests/integration.ts:1
+    ... +43 more
+  TESTS src/integration/orders.test.ts (+2)
+    TEST src/integration/orders.test.ts
+    TEST src/orders/flaky.test.ts
+    TEST src/orders/processor.test.ts

@@ -165,9 +165,33 @@ export interface LanguageAdapter {
   getSymbolDetails(id: SymbolId): Promise<Symbol | null>;
   findReferences(id: SymbolId): Promise<Reference[]>;
   getDiagnostics(filePath: string): Promise<Diagnostic[]>;
+  /**
+   * Return the type relationships for a symbol. See ADR-07 for the
+   * contract: direct children only on `usedByTypes`, generic constraints
+   * excluded from `extends`, empty arrays are valid returns.
+   */
+  getTypeInfo(id: SymbolId): Promise<TypeInfo>;
 
   initialize(rootPath: string): Promise<void>;
   shutdown(): Promise<void>;
+}
+
+/**
+ * Type relationships for a symbol (ADR-07).
+ *
+ * `extends` and `implements` describe the forward direction: what this
+ * symbol inherits from or implements. `usedByTypes` is the inverse
+ * lookup: which types extend or implement this symbol.
+ *
+ * All three are arrays of plain names (not symbol IDs) because they're
+ * rendered as-is in the compact bundle format. An ID-resolved variant
+ * could be added in a later major version if callers need it.
+ */
+export interface TypeInfo {
+  extends: string[];
+  implements: string[];
+  /** Direct children only; no transitive closure. */
+  usedByTypes: string[];
 }
 
 // ============================================================================

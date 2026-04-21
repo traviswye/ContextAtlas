@@ -1,0 +1,3 @@
+SYM OrderProcessor@src/orders/processor.ts:42 class
+  SIG class OrderProcessor extends BaseProcessor<Order>
+  INTENT hard:2 soft:0 context:0; top="must be idempotent" (ADR-07)
