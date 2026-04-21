@@ -435,6 +435,16 @@ ContextAtlas uses:
 - better-sqlite3 for the index store
 - @modelcontextprotocol/sdk for MCP server implementation
 
+## Benchmarks and Methodology
+
+Benchmarks and methodology live in a separate repository:
+[github.com/traviswye/ContextAtlas-benchmarks](https://github.com/traviswye/ContextAtlas-benchmarks).
+That repo contains the harness code, locked prompt sets, published
+measurement results, and the full methodology document (RUBRIC.md).
+Keeping the harness out of this repo means the benchmarks measure
+the published `contextatlas` package's actual behavior rather than
+an internal monorepo build.
+
 ## License
 
 All Rights Reserved during active development. See LICENSE.
