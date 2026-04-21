@@ -387,7 +387,7 @@ not a core change.
 
 **Benchmark assets (prepared):**
 - [x] 10 production-grade ADRs for benchmark targets (5 hono + 5 httpx)
-- [x] 5 self-ADRs for ContextAtlas's own architectural decisions
+- [x] 6 self-ADRs for ContextAtlas's own architectural decisions
 - [x] Extraction pipeline validated end-to-end on real ADRs
 - [x] Three benchmark repositories selected (hono, httpx, self)
 

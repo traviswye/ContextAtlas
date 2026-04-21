@@ -185,7 +185,7 @@ enforced?" returns symbols whose claims match the query.
 {
   "matches": [
     {
-      "symbol_id": "sym:ts:src/orders/processor.ts:42:OrderProcessor",
+      "symbol_id": "sym:ts:src/orders/processor.ts:OrderProcessor",
       "name": "OrderProcessor",
       "relevance": 0.94,
       "matched_intent": { "source": "ADR-07", "claim": "must be idempotent" },
@@ -240,16 +240,43 @@ bundle.
 ## Symbol ID Format
 
 ```
-sym:<lang>:<path>:<line>:<name>
+sym:<lang-short-code>:<path>:<n>
 ```
 
-Example: `sym:ts:src/orders/processor.ts:42:OrderProcessor`
+Example: `sym:ts:src/orders/processor.ts:OrderProcessor`
 
-Stable across commits as long as the (path, name) pair doesn't change.
+**Line numbers are not part of the ID.** They live as a field on the
+Symbol record (`line`). This keeps IDs stable across line moves, which
+in turn keeps atlas.json diffs reviewable. See ADR-01 for the full
+rationale.
+
+**Language short codes** come from the authoritative `LANG_CODES`
+constant in `src/types.ts`:
+
+| LanguageCode   | Short code |
+|----------------|------------|
+| `typescript`   | `ts`       |
+| `python`       | `py`       |
+
+Adding a language adapter adds an entry to `LANG_CODES`. Changing an
+existing short code is a breaking change requiring a major version bump.
+
+**Path normalization is required at every ingest boundary.** All paths
+(in symbol IDs, reference IDs, atlas.json, and the storage schema) use
+forward-slash separators regardless of OS. A single `normalizePath()`
+utility must be applied when reading from LSP, parsing config, importing
+atlas.json, or scanning file systems. Without this, the same file on
+different operating systems would produce different IDs, silently
+breaking team consistency.
+
+Stable across commits as long as the (path, name) pair does not change.
 When it does, incremental reindex catches it. Ambiguous cases (overloaded
-names in the same file) use the first declaration.
+names in the same file) currently collide — first declaration wins. A
+future major version may add a disambiguator.
 
-Reference IDs follow the same pattern with `ref:` prefix.
+Reference IDs follow the pattern `ref:<lang-short-code>:<path>:<line>`.
+Unlike Symbol IDs, Reference IDs include line because a reference *is*
+a location in a file.
 
 ## Config Schema
 
@@ -380,7 +407,7 @@ Schema:
   },
   "symbols": [
     {
-      "id": "sym:ts:src/orders/processor.ts:42:OrderProcessor",
+      "id": "sym:ts:src/orders/processor.ts:OrderProcessor",
       "name": "OrderProcessor",
       "kind": "class",
       "path": "src/orders/processor.ts",
@@ -398,7 +425,7 @@ Schema:
       "claim": "must be idempotent",
       "rationale": "...",
       "excerpt": "...",
-      "symbol_ids": ["sym:ts:src/orders/processor.ts:42:OrderProcessor"]
+      "symbol_ids": ["sym:ts:src/orders/processor.ts:OrderProcessor"]
     }
   ]
 }
@@ -429,7 +456,7 @@ SQLite schema:
 
 ```sql
 CREATE TABLE symbols (
-  id          TEXT PRIMARY KEY,    -- sym:lang:path:line:name
+  id          TEXT PRIMARY KEY,    -- sym:<lang-short-code>:<path>:<n>
   name        TEXT NOT NULL,
   kind        TEXT NOT NULL,
   path        TEXT NOT NULL,
@@ -537,8 +564,6 @@ the adapter interface is stable.
   export after reindex; see ADR-06)
 - Compact and JSON output formats
 - Per-repo config file
-- Query logging (lightweight — records query patterns for future
-  pre-computation; no caching layer yet)
 - Git integration (recent commits, co-change analysis for
   `impact_of_change`, hot/cold indicator)
 
@@ -548,8 +573,8 @@ the adapter interface is stable.
 - Monorepo workspace awareness
 - Embedding-based semantic search (`find_by_intent` uses text matching
   for MVP; embeddings reconsidered post-hackathon if benchmarks warrant)
-- Full hot-path pre-computation / query result caching
-  (logging is in; acting on the logs is v0.2)
+- Query logging and hot-path pre-computation (v0.2 — record query
+  patterns, then act on them)
 - Web UI or visualization
 - VS Code extension
 

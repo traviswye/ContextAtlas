@@ -22,18 +22,42 @@ These are decisions already made. Do not relitigate them.
   itself — those are supported as *target languages* via language adapters,
   not as implementation languages.
 - **Dependencies:** Minimize. Required: `@modelcontextprotocol/sdk`,
-  `@anthropic-ai/sdk`, `better-sqlite3`, `typescript-language-server`,
-  a YAML parser, a glob library. Do not add state management libraries,
-  ORMs, or HTTP frameworks.
+  `@anthropic-ai/sdk`, `better-sqlite3`, a YAML parser, a glob library.
+  Do not add state management libraries, ORMs, or HTTP frameworks.
+- **`typescript-language-server` placement:** User-provided, not a
+  bundled dependency. The TS adapter spawns it as a subprocess, but the
+  binary itself is expected to be on the user's PATH or pointed to via
+  config. This keeps the package lean and lets users choose their tsserver
+  version. If `package.json` currently lists it under `dependencies`,
+  move it to `peerDependencies` or document it as a runtime requirement
+  during step 2.
+- **LSP client strategy:** Raw JSON-RPC over stdio. No
+  `vscode-languageclient` / `vscode-jsonrpc` dependency. The LSP
+  subset we need (initialize, documentSymbol, references, diagnostics,
+  shutdown) is ~150 lines of framing and fits comfortably in
+  `src/adapters/lsp-client.ts` without pulling VS Code's client
+  machinery. Rationale: dependency minimization per the constraint
+  above, and cleaner control over subprocess lifecycle.
 - **Storage:** SQLite via `better-sqlite3`. Single file. No Postgres, no
   Redis, no external services.
 - **MCP SDK:** `@modelcontextprotocol/sdk`. Follow their patterns.
 - **Output format:** Compact text by default, JSON available via input
   parameter. Compact format is defined in DESIGN.md.
-- **Symbol ID format:** `sym:<lang>:<path>:<line>:<name>`. Locked. Do not
-  change without updating DESIGN.md and bumping the version.
+- **Symbol ID format:** `sym:<lang-short-code>:<path>:<name>` (see
+  ADR-01). Line numbers are NOT part of the ID — they live as a field
+  on the Symbol record. Locked; do not change without updating ADR-01,
+  DESIGN.md, and bumping the version.
 - **Extraction model:** `claude-opus-4-7` at default effort. Not extended
   thinking. See DESIGN.md section on extraction pipeline.
+- **Pre-drafted extraction prompt:** `src/extraction/prompt.ts` already
+  exists and is INTENTIONAL pre-work, not scratch code. It contains the
+  `EXTRACTION_PROMPT` constant validated pre-scaffolding on 12
+  production-grade documents (100% JSON parse success, 169 claims
+  extracted correctly across hono and httpx ADRs). Step 5 should import
+  from this file rather than duplicate the prompt. The prompt content,
+  severity taxonomy, and model choice are frozen per ADR-02; call
+  signatures, error handling, and output validation around it are
+  expected to evolve during implementation.
 
 ## MVP Scope — What to Build
 
@@ -62,15 +86,27 @@ earlier ones work end-to-end.
 
 **5. Extraction pipeline with atlas-aware startup.** Reads ADRs from the
    configured path, runs Opus 4.7 extraction per DESIGN.md stage 3,
-   resolves symbol candidates to LSP IDs, writes to SQLite. **Before
-   extraction, check for committed atlas.json and import if present**
-   (per DESIGN.md stage 0). Only extract files whose SHAs differ from
-   the committed baseline. After extraction, regenerate atlas.json if
-   `atlas.committed: true` in config.
+   resolves symbol candidates to LSP IDs, writes to SQLite. **Import the
+   `EXTRACTION_PROMPT` from `src/extraction/prompt.ts`** — it was
+   pre-drafted and validated on 12 production-grade documents. Do not
+   duplicate it inline. **Before extraction, check for committed
+   atlas.json and import if present** (per DESIGN.md stage 0). Only
+   extract files whose SHAs differ from the committed baseline. After
+   extraction, regenerate atlas.json if `atlas.committed: true` in
+   config.
 
 **6. `get_symbol_context` tool — the primitive.** End-to-end. Takes a
    symbol, returns a compact bundle. This is the load-bearing tool
    everything else composes over. Must be polished before moving on.
+
+   **Test-file identification convention:** Test files are identified
+   primarily via adapter-reported signals where available (e.g., tsserver's
+   `isTestFile` heuristics), falling back to filename patterns:
+   `*.test.ts`, `*.spec.ts`, `*.test.tsx` for TypeScript; `test_*.py`,
+   `*_test.py`, and anything under a `tests/` directory for Python. The
+   convention is not perfect — projects using non-standard test layouts
+   may need explicit config in a future version — but it's sufficient
+   for the benchmark targets and typical repos.
 
    **Day-4 scope gate:** By end of day 4, `get_symbol_context` must be
    working end-to-end on a real repo with real extraction output. If it
@@ -85,6 +121,20 @@ earlier ones work end-to-end.
    and wall-clock. Outputs a simple comparison table. Do not over-engineer
    — the harness is here to give you feedback on whether the primitive
    is actually delivering, not to produce the final benchmark numbers.
+
+   **Prerequisites that do not yet exist on disk:**
+   - `benchmarks/prompts/hono.md` and `benchmarks/prompts/httpx.md`
+     (need to be written — draft 5 prompts per repo minimum)
+   - `benchmarks/configs/hono.yml` and `benchmarks/configs/httpx.yml`
+     (need to be written — copy the default `.contextatlas.yml` and
+     point ADR path at `benchmarks/adrs/<repo>/`)
+   - Cloned benchmark repos (hono and httpx) somewhere the harness can
+     find them — either `benchmarks/repos/` (gitignored) or a
+     user-configurable path
+
+   Acknowledge during step 6 polish that these assets need creating;
+   don't leave it until step 7 starts. If they don't exist on day 4,
+   step 7 will slip.
 
    **Why this is step 7, not step 12:** Running the benchmark iteratively
    starting mid-week beats running it polished at the end. If day-4

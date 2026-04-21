@@ -12,15 +12,47 @@
 
 /**
  * Stable identifier for a symbol.
- * Format: sym:<lang>:<path>:<line>:<name>
- * Example: "sym:ts:src/orders/processor.ts:42:OrderProcessor"
+ * Format: sym:<lang-short-code>:<path>:<name>
+ * Example: "sym:ts:src/orders/processor.ts:OrderProcessor"
+ *
+ * Line numbers are NOT part of the ID. They live as a field on the Symbol
+ * record (`line`). This keeps IDs stable across cosmetic line moves so
+ * atlas.json diffs stay meaningful (see ADR-01).
+ *
+ * Paths in IDs use forward-slash separators regardless of OS.
+ * All path ingest goes through normalizePath() (see ADR-01).
  */
 export type SymbolId = string;
 
-/** Stable identifier for a reference. Format: "ref:<lang>:<path>:<line>". */
+/**
+ * Stable identifier for a reference site.
+ * Format: "ref:<lang-short-code>:<path>:<line>"
+ *
+ * Unlike Symbol IDs, Reference IDs DO include line — a reference is a
+ * location in a file, not an entity.
+ */
 export type ReferenceId = string;
 
 export type LanguageCode = "typescript" | "python";
+
+/**
+ * Authoritative mapping from LanguageCode (used in config and interfaces)
+ * to the short code used in symbol IDs.
+ *
+ * Per ADR-01, this is stable public API. Adding entries is additive;
+ * changing existing short codes is a breaking change requiring a major
+ * version bump.
+ */
+export const LANG_CODES: Record<LanguageCode, string> = {
+  typescript: "ts",
+  python: "py",
+} as const;
+
+/** Inverse mapping: short code → full LanguageCode. */
+export const LANG_CODES_INVERSE: Record<string, LanguageCode> = {
+  ts: "typescript",
+  py: "python",
+} as const;
 
 export type SymbolKind =
   | "class"
