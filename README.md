@@ -155,6 +155,16 @@ tools (which can't really be committed) and knowledge-graph tools
 npm install -g contextatlas
 ```
 
+**Runtime requirements:**
+
+- Node.js 20 or newer.
+- A TypeScript language server on your system. ContextAtlas declares
+  `typescript-language-server` as a **peer dependency** rather than a
+  direct one, so you control the version. Install it alongside
+  ContextAtlas (e.g. `npm i -D typescript-language-server typescript`).
+  Python projects additionally require Pyright on the PATH — configured
+  similarly in step 9 of development.
+
 Configure ContextAtlas as an MCP server in your Claude Code settings:
 
 ```json
