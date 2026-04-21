@@ -1,0 +1,21 @@
+version: 1
+languages:
+  - typescript
+  - python
+adrs:
+  path: docs/adr/
+  format: markdown-frontmatter
+  symbol_field: symbols
+docs:
+  include:
+    - README.md
+    - docs/**/*.md
+    - CONTRIBUTING.md
+git:
+  recent_commits: 10
+index:
+  model: claude-opus-4-7
+atlas:
+  committed: false
+  path: .atlas/atlas.json
+  local_cache: .atlas/cache.db

@@ -1,0 +1,274 @@
+import {
+  mkdirSync,
+  mkdtempSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
+import { tmpdir } from "node:os";
+import { join as pathJoin, resolve as pathResolve } from "node:path";
+
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+
+import { loadConfig } from "./parser.js";
+
+const FIXTURE_DIR = pathResolve("test/fixtures/config");
+const MINIMAL = pathJoin(FIXTURE_DIR, "minimal.yml");
+const FULL = pathJoin(FIXTURE_DIR, "full.yml");
+
+describe("loadConfig — happy paths", () => {
+  it("accepts a minimal config and fills in defaults", () => {
+    const cfg = loadConfig(FIXTURE_DIR, "minimal.yml");
+    expect(cfg).toEqual({
+      version: 1,
+      languages: ["typescript"],
+      adrs: { path: "docs/adr", format: "markdown-frontmatter" },
+      docs: { include: ["README.md", "docs/**/*.md", "CONTRIBUTING.md"] },
+      git: { recentCommits: 5 },
+      index: { model: "claude-opus-4-7" },
+      atlas: {
+        committed: true,
+        path: ".contextatlas/atlas.json",
+        localCache: ".contextatlas/index.db",
+      },
+    });
+  });
+
+  it("accepts a full config and honors every override", () => {
+    const cfg = loadConfig(FIXTURE_DIR, "full.yml");
+    expect(cfg).toEqual({
+      version: 1,
+      languages: ["typescript", "python"],
+      adrs: {
+        path: "docs/adr",
+        format: "markdown-frontmatter",
+        symbolField: "symbols",
+      },
+      docs: { include: ["README.md", "docs/**/*.md", "CONTRIBUTING.md"] },
+      git: { recentCommits: 10 },
+      index: { model: "claude-opus-4-7" },
+      atlas: {
+        committed: false,
+        path: ".atlas/atlas.json",
+        localCache: ".atlas/cache.db",
+      },
+    });
+  });
+});
+
+describe("loadConfig — error cases", () => {
+  let tmp: string;
+  beforeEach(() => {
+    tmp = mkdtempSync(pathJoin(tmpdir(), "contextatlas-cfg-"));
+  });
+  afterEach(() => {
+    rmSync(tmp, { recursive: true, force: true });
+  });
+
+  function writeCfg(contents: string, filename = ".contextatlas.yml"): string {
+    const p = pathJoin(tmp, filename);
+    writeFileSync(p, contents, "utf8");
+    return p;
+  }
+
+  it("missing config file — clear error with absolute path and remediation", () => {
+    const err = captureError(() => loadConfig(tmp));
+    expect(err.message).toMatch(/not found/);
+    expect(err.message).toContain(pathJoin(tmp, ".contextatlas.yml"));
+    expect(err.message).toMatch(/Create a \.contextatlas\.yml/);
+  });
+
+  it("every thrown error includes the resolved config path", () => {
+    const p = writeCfg("version: 1\nlanguages: bogus\nadrs: { path: x }");
+    const err = captureError(() => loadConfig(tmp));
+    expect(err.message).toContain(p);
+  });
+
+  it("malformed YAML — wraps with path and line/column", () => {
+    const p = writeCfg("version: 1\nlanguages: [typescript\nadrs:\n  path: x");
+    const err = captureError(() => loadConfig(tmp));
+    expect(err.message).toContain(p);
+    expect(err.message).toMatch(/Invalid YAML/);
+    expect(err.message).toMatch(/line \d+/);
+  });
+
+  it("non-mapping root — rejects scalars and arrays", () => {
+    writeCfg("just-a-string");
+    expect(() => loadConfig(tmp)).toThrow(/must be a YAML mapping/);
+
+    writeCfg("- one\n- two");
+    expect(() => loadConfig(tmp)).toThrow(/must be a YAML mapping/);
+  });
+
+  it("missing 'version' — names the field and suggests the fix", () => {
+    writeCfg("languages: [typescript]\nadrs: { path: docs/adr/ }");
+    expect(() => loadConfig(tmp)).toThrow(/version/);
+    expect(() => loadConfig(tmp)).toThrow(/Add 'version: 1'/);
+  });
+
+  it("unknown future version — actionable upgrade message", () => {
+    writeCfg("version: 2\nlanguages: [typescript]\nadrs: { path: x }");
+    expect(() => loadConfig(tmp)).toThrow(
+      /targets version 2 but this tool reads version 1/,
+    );
+  });
+
+  it("version as string — typed error, not silently coerced", () => {
+    writeCfg(
+      'version: "1"\nlanguages: [typescript]\nadrs: { path: docs/adr/ }',
+    );
+    expect(() => loadConfig(tmp)).toThrow(/expected integer 1/);
+  });
+
+  it("unknown top-level key — names it and lists valid keys", () => {
+    writeCfg(
+      "version: 1\nlanguages: [typescript]\nadrs: { path: x }\nbogus: 5",
+    );
+    const err = captureError(() => loadConfig(tmp));
+    expect(err.message).toMatch(/Unknown key 'bogus'/);
+    expect(err.message).toMatch(/Valid keys at this level/);
+    expect(err.message).toContain("adrs");
+  });
+
+  it("unknown nested key — names it with the dotted path", () => {
+    writeCfg(
+      "version: 1\nlanguages: [typescript]\nadrs:\n  path: x\n  bogus: 1",
+    );
+    expect(() => loadConfig(tmp)).toThrow(/Unknown key 'adrs\.bogus'/);
+  });
+
+  it("missing 'languages' — lists valid values as remediation", () => {
+    writeCfg("version: 1\nadrs: { path: x }");
+    expect(() => loadConfig(tmp)).toThrow(
+      /Missing required field 'languages'.*typescript, python/,
+    );
+  });
+
+  it("empty 'languages' — rejects with remediation", () => {
+    writeCfg("version: 1\nlanguages: []\nadrs: { path: x }");
+    expect(() => loadConfig(tmp)).toThrow(
+      /must not be empty.*typescript, python/,
+    );
+  });
+
+  it("unknown language — rejects with 'lowercase identifiers' hint", () => {
+    writeCfg(
+      "version: 1\nlanguages: [TypeScript]\nadrs: { path: docs/adr }",
+    );
+    expect(() => loadConfig(tmp)).toThrow(
+      /Unknown language 'TypeScript'.*lowercase language identifiers/,
+    );
+  });
+
+  it("missing 'adrs' — names the section", () => {
+    writeCfg("version: 1\nlanguages: [typescript]");
+    expect(() => loadConfig(tmp)).toThrow(
+      /Missing required section 'adrs'.*adrs\.path/,
+    );
+  });
+
+  it("adrs present but empty — demands adrs.path", () => {
+    writeCfg("version: 1\nlanguages: [typescript]\nadrs: {}");
+    expect(() => loadConfig(tmp)).toThrow(
+      /Missing required field 'adrs\.path'/,
+    );
+  });
+
+  it("wrong type for scalar field — clear message", () => {
+    writeCfg(
+      "version: 1\nlanguages: [typescript]\nadrs: { path: docs/adr }\n" +
+        "git: { recent_commits: -2 }",
+    );
+    expect(() => loadConfig(tmp)).toThrow(
+      /Invalid 'git\.recent_commits': expected non-negative integer/,
+    );
+  });
+
+  it("wrong type for boolean — does not silently coerce", () => {
+    writeCfg(
+      "version: 1\nlanguages: [typescript]\nadrs: { path: docs/adr }\n" +
+        "atlas: { committed: 'yes' }",
+    );
+    expect(() => loadConfig(tmp)).toThrow(
+      /Invalid 'atlas\.committed': expected boolean/,
+    );
+  });
+});
+
+describe("loadConfig — defaults + path normalization", () => {
+  let tmp: string;
+  beforeEach(() => {
+    tmp = mkdtempSync(pathJoin(tmpdir(), "contextatlas-cfg-"));
+  });
+  afterEach(() => {
+    rmSync(tmp, { recursive: true, force: true });
+  });
+
+  it("atlas section entirely missing — defaults applied", () => {
+    writeFileSync(
+      pathJoin(tmp, ".contextatlas.yml"),
+      "version: 1\nlanguages: [typescript]\nadrs: { path: docs/adr }",
+      "utf8",
+    );
+    const cfg = loadConfig(tmp);
+    expect(cfg.atlas).toEqual({
+      committed: true,
+      path: ".contextatlas/atlas.json",
+      localCache: ".contextatlas/index.db",
+    });
+  });
+
+  it("relative paths are normalized through normalizePath", () => {
+    writeFileSync(
+      pathJoin(tmp, ".contextatlas.yml"),
+      "version: 1\n" +
+        "languages: [typescript]\n" +
+        "adrs:\n  path: ./docs\\adr\\\n" +
+        "atlas:\n" +
+        "  path: .\\.contextatlas\\atlas.json\n" +
+        "  local_cache: .\\.contextatlas\\index.db\n",
+      "utf8",
+    );
+    const cfg = loadConfig(tmp);
+    expect(cfg.adrs.path).toBe("docs/adr");
+    expect(cfg.atlas.path).toBe(".contextatlas/atlas.json");
+    expect(cfg.atlas.localCache).toBe(".contextatlas/index.db");
+  });
+
+  it("resolves a symlink target transparently", () => {
+    const targetDir = pathJoin(tmp, "real");
+    const targetPath = pathJoin(targetDir, "config.yml");
+    const linkPath = pathJoin(tmp, ".contextatlas.yml");
+    mkdirSync(targetDir, { recursive: true });
+    writeFileSync(
+      targetPath,
+      "version: 1\nlanguages: [typescript]\nadrs: { path: docs/adr/ }\n",
+      "utf8",
+    );
+    try {
+      symlinkSync(targetPath, linkPath, "file");
+    } catch (err) {
+      const code = (err as NodeJS.ErrnoException).code;
+      if (code === "EPERM" || code === "ENOSYS") {
+        // Windows without Developer Mode can't create symlinks as a
+        // non-admin user. Skipping is preferable to failing — the
+        // symlink path is handled by the OS, not our code, so there
+        // is nothing we could verify differently anyway.
+        return;
+      }
+      throw err;
+    }
+    const cfg = loadConfig(tmp);
+    expect(cfg.languages).toEqual(["typescript"]);
+    expect(cfg.adrs.path).toBe("docs/adr");
+  });
+});
+
+function captureError(fn: () => unknown): Error {
+  try {
+    fn();
+  } catch (err) {
+    return err as Error;
+  }
+  throw new Error("expected function to throw but it returned normally");
+}
