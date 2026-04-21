@@ -18,12 +18,30 @@
  *     rationale, excerpt)
  *   - The severity taxonomy (hard / soft / context) and its wording
  *   - The "output ONLY the JSON object" instruction
- *   - The model choice (claude-opus-4-7 at default effort — see ADR-02
- *     and DESIGN.md extraction pipeline section)
+ *   - The model choice (claude-opus-4-7 — see below, ADR-02, and
+ *     DESIGN.md extraction pipeline section)
  *
  * See docs/adr/ADR-02-extraction-sole-api-caller.md for the architectural
  * constraint that this module is the only place allowed to call the
  * Anthropic API.
+ *
+ * Naming convention note:
+ *   The model's JSON output uses snake_case (symbol_candidates). The
+ *   rest of the codebase uses camelCase. The ExtractedClaim type below
+ *   intentionally mirrors the model's snake_case output — this is the
+ *   external boundary, treated the same way YAML config input is.
+ *   Do NOT "fix" the casing here; the extraction pipeline (step 5)
+ *   handles the conversion when transforming ExtractedClaim → Claim.
+ *
+ * Type relationship note:
+ *   ExtractedClaim (this file) is the raw shape the model returns.
+ *   Claim (src/types.ts) is the persisted record used everywhere else
+ *   in the codebase. The extraction pipeline transforms each
+ *   ExtractedClaim into a Claim by:
+ *     - Adding source metadata (source, sourcePath, sourceSha)
+ *     - Resolving symbol_candidates → symbolIds via the language adapters
+ *     - Preserving severity, claim, rationale, excerpt verbatim
+ *   These types are deliberately separate. Do not merge them.
  */
 
 export const EXTRACTION_PROMPT = `You are extracting architectural claims from a document.
@@ -59,6 +77,12 @@ Document:
  * Model string for extraction. Locked per ADR-02 and DESIGN.md.
  * Changing this requires updating both documents and a round of
  * re-validation on the benchmark ADR set.
+ *
+ * Extraction uses Opus 4.7 WITHOUT extended thinking — no `thinking`
+ * parameter should be passed to the API. Extraction is a structured
+ * output task where we want fast deterministic JSON, not chain-of-
+ * thought reasoning. The pre-scaffolding validation (100% JSON parse
+ * success across 12 documents) was done without extended thinking.
  */
 export const EXTRACTION_MODEL = "claude-opus-4-7";
 
@@ -73,6 +97,9 @@ export const EXTRACTION_MAX_TOKENS = 8000;
 /**
  * Shape of the expected JSON output from the model. Use this for
  * runtime validation when parsing model responses.
+ *
+ * Note: fields are snake_case because they mirror the model's JSON
+ * output directly. See the file-level naming convention note above.
  */
 export interface ExtractionResult {
   claims: ExtractedClaim[];
