@@ -136,17 +136,40 @@ function sortClaimsBySeverityThenSource(claims: Claim[]): Claim[] {
   });
 }
 
+/**
+ * Common root prefixes stripped when computing module bucket keys.
+ * Without this, src-rooted repos collapse every ref into a single
+ * `[src:N]` cluster — see Phase B dogfooding for the observed UX.
+ * A one-level strip is enough in practice; nested cases like
+ * `lib/src/foo/` are pathological and intentionally not optimized.
+ */
+const ROOT_PREFIXES: ReadonlySet<string> = new Set([
+  "src",
+  "lib",
+  "app",
+  "packages",
+  "source",
+]);
+
+export function moduleKeyForPath(path: string): string {
+  const parts = path.split("/");
+  if (parts.length > 1 && ROOT_PREFIXES.has(parts[0]!)) {
+    return parts[1] ?? parts[0]!;
+  }
+  return parts[0] ?? ".";
+}
+
 function summarizeReferences(
   refs: readonly Reference[],
   maxRefs: number,
   _depth: BundleDepth,
 ): NonNullable<SymbolContextBundle["refs"]> {
-  // Bucket by first-path-segment "module" — simple and stable across
-  // project shapes. `src/billing/x.ts` → `billing`; standalone files
-  // like `index.ts` end up in `.` which is acceptable for MVP.
+  // Bucket by module, stripping common root prefixes (`src`, `lib`,
+  // `packages`, etc.) so clusters reflect meaningful project
+  // sub-divisions rather than a single `[src:N]` blob.
   const buckets = new Map<string, Reference[]>();
   for (const r of refs) {
-    const seg = r.path.split("/")[0] ?? ".";
+    const seg = moduleKeyForPath(r.path);
     const arr = buckets.get(seg);
     if (arr) arr.push(r);
     else buckets.set(seg, [r]);

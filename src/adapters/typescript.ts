@@ -295,12 +295,15 @@ export class TypeScriptAdapter implements LanguageAdapter {
 
     return result.map((sym) => {
       const base = this.toAtlasSymbol(sym, relPath);
-      const signature = deriveSignatureForSymbol(
+      const { signature, kind } = deriveSignatureAndKind(
         base.kind,
         loadSource(),
         sym.selectionRange.start.line,
       );
-      return signature !== null ? { ...base, signature } : base;
+      if (kind === base.kind && signature === null) return base;
+      const enriched: AtlasSymbol = { ...base, kind };
+      if (signature !== null) enriched.signature = signature;
+      return enriched;
     });
   }
 
@@ -758,34 +761,32 @@ const SIGNATURE_KINDS: ReadonlySet<SymbolKind> = new Set([
 ]);
 
 /**
- * Decide whether a symbol should have a signature and, if so, compute
- * it from the source text. Returns null when the symbol is not
- * eligible or when extraction produced something unusable.
+ * Decide whether a symbol should have a signature and, if it's a TS
+ * type alias masquerading as kind=variable, remap the kind too.
  *
  * TS type aliases come back from tsserver with LSP kind Variable (13),
- * which maps to our `variable` kind. Since we don't want every `const`
- * to carry a signature, we distinguish type aliases by peeking at the
- * source line.
+ * so kind alone can't distinguish `type X = ...` from `const x = ...`.
+ * The source-line peek resolves both questions in one pass — we learn
+ * the real kind and the signature-extraction strategy from the same
+ * text inspection.
  */
-function deriveSignatureForSymbol(
+function deriveSignatureAndKind(
   kind: SymbolKind,
   sourceText: string,
   startLine: number,
-): string | null {
+): { signature: string | null; kind: SymbolKind } {
   if (SIGNATURE_KINDS.has(kind)) {
     const header = extractDeclarationHeader(sourceText, startLine);
-    return finalizeSig(header);
+    return { signature: finalizeSig(header), kind };
   }
   if (kind === "variable") {
-    // Detect TS type-alias declarations that tsserver reports as
-    // Variable. Match `(export )?type <name> = ...`.
     const line = (sourceText.split(/\r?\n/)[startLine] ?? "").trimStart();
     if (/^(?:export\s+)?type\s+[A-Za-z_$][\w$]*\b/.test(line)) {
       const header = extractTypeAliasHeader(sourceText, startLine);
-      return finalizeSig(header);
+      return { signature: finalizeSig(header), kind: "type" };
     }
   }
-  return null;
+  return { signature: null, kind };
 }
 
 function finalizeSig(header: string): string | null {

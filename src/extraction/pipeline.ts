@@ -52,7 +52,8 @@ import {
   walkSourceFiles,
   type ProseFile,
 } from "./file-walker.js";
-import { stripFrontmatter } from "./prompt.js";
+import { parseFrontmatterSymbols } from "./frontmatter.js";
+import { EXTRACTION_MODEL, stripFrontmatter } from "./prompt.js";
 import {
   buildSymbolInventory,
   resolveCandidates,
@@ -78,6 +79,14 @@ export interface ExtractionPipelineResult {
   claimsWritten: number;
   symbolsIndexed: number;
   unresolvedCandidates: number;
+  /**
+   * Frontmatter `symbols:` hints that didn't resolve to any symbol in
+   * the codebase. Aspirational misses — logged at debug, surfaced here
+   * as a summary stat for visibility. A non-zero value is not an error;
+   * it may indicate an ADR references code that was renamed or hasn't
+   * been written yet.
+   */
+  unresolvedFrontmatterHints: number;
   extractionErrors: Array<{ sourcePath: string; error: string }>;
   atlasExported: boolean;
   wallClockMs: number;
@@ -137,6 +146,7 @@ export async function runExtractionPipeline(
   // --- Stage 6: extract changed/added ---------------------------------
   let claimsWritten = 0;
   let unresolvedCandidates = 0;
+  let unresolvedFrontmatterHints = 0;
   let apiCalls = 0;
   const extractionErrors: Array<{ sourcePath: string; error: string }> = [];
 
@@ -166,6 +176,7 @@ export async function runExtractionPipeline(
       const outcome = writeClaimsForFile(db, file, extracted.claims, inventory);
       claimsWritten += outcome.claimsWritten;
       unresolvedCandidates += outcome.unresolved;
+      unresolvedFrontmatterHints += outcome.frontmatterHintsUnresolved;
       setSourceSha(db, file.relPath, file.sha);
     }
   }
@@ -190,17 +201,30 @@ export async function runExtractionPipeline(
 
   if (didModify) {
     const newGeneratedAt = new Date().toISOString();
-    db.prepare(
+    // Use EXTRACTION_MODEL (the model the extraction client actually
+    // called) rather than config.index.model (which is forward-compat
+    // config that today isn't consulted by the client). Atlas metadata
+    // should reflect what code did, not what config declared.
+    const extractionModel = EXTRACTION_MODEL;
+    const contextatlasVer = deps.contextatlasVersion ?? "0.0.0";
+
+    // Persist ALL three generator fields to atlas_meta, not just
+    // generated_at. Without this, exportAtlas would fall back to
+    // "unknown"/"0.0.0" on subsequent reads — which is exactly the
+    // bug dogfooding caught.
+    const setMeta = db.prepare(
       "INSERT INTO atlas_meta (key, value) VALUES (?, ?) " +
         "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
-    ).run("generated_at", newGeneratedAt);
+    );
+    setMeta.run("generated_at", newGeneratedAt);
+    setMeta.run("generator.extraction_model", extractionModel);
+    setMeta.run("generator.contextatlas_version", contextatlasVer);
 
     if (config.atlas.committed) {
       exportAtlasToFile(db, atlasAbsPath, {
         generatedAt: newGeneratedAt,
-        ...(deps.contextatlasVersion !== undefined
-          ? { contextatlasVersion: deps.contextatlasVersion }
-          : {}),
+        contextatlasVersion: contextatlasVer,
+        extractionModel,
       });
       atlasExported = true;
       log.info("pipeline: atlas.json written", { path: atlasAbsPath });
@@ -216,6 +240,7 @@ export async function runExtractionPipeline(
     claimsWritten,
     symbolsIndexed: inventory.allSymbols.length,
     unresolvedCandidates,
+    unresolvedFrontmatterHints,
     extractionErrors,
     atlasExported,
     wallClockMs: Date.now() - start,
@@ -268,7 +293,11 @@ function writeClaimsForFile(
     excerpt: string;
   }[],
   inventory: SymbolInventory,
-): { claimsWritten: number; unresolved: number } {
+): {
+  claimsWritten: number;
+  unresolved: number;
+  frontmatterHintsUnresolved: number;
+} {
   // Drop any claims already associated with this source path so
   // re-extraction is idempotent at file granularity.
   deleteClaimsBySourcePath(db, file.relPath);
@@ -276,12 +305,37 @@ function writeClaimsForFile(
   const rawContents = readFileSync(file.absPath, "utf8");
   const source = deriveSourceName(file.absPath, rawContents);
 
+  // Author-declared frontmatter symbols are merged into every claim's
+  // candidates as the authoritative leading entries (author intent ranks
+  // ahead of model inference). Unresolved ones are excluded from the
+  // merge so they don't inflate the claim-level unresolved count; they
+  // are tracked separately as a per-file summary stat.
+  const frontmatterSymbols = parseFrontmatterSymbols(rawContents, file.relPath);
+  const frontmatterResolvable: string[] = [];
+  let frontmatterHintsUnresolved = 0;
+  for (const fmSym of frontmatterSymbols) {
+    const matches = inventory.byName.get(fmSym);
+    if (matches && matches.length > 0) {
+      frontmatterResolvable.push(fmSym);
+    } else {
+      frontmatterHintsUnresolved++;
+      log.debug("pipeline: frontmatter symbol did not resolve", {
+        sourcePath: file.relPath,
+        symbol: fmSym,
+      });
+    }
+  }
+
   let claimsWritten = 0;
   let unresolved = 0;
   for (const ec of extracted) {
+    // Frontmatter first (author-declared authoritative intent), then
+    // model candidates (inferred). resolveCandidates dedupes within its
+    // result, so shared names don't double-resolve.
+    const merged = [...frontmatterResolvable, ...ec.symbol_candidates];
     const { symbolIds, unresolved: unres } = resolveCandidates(
       inventory,
-      ec.symbol_candidates,
+      merged,
     );
     unresolved += unres.length;
     const claim: NewClaim = {
@@ -297,7 +351,7 @@ function writeClaimsForFile(
     insertClaim(db, claim);
     claimsWritten++;
   }
-  return { claimsWritten, unresolved };
+  return { claimsWritten, unresolved, frontmatterHintsUnresolved };
 }
 
 /**

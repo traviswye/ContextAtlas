@@ -9,3 +9,5 @@ export function greet(name: string): string {
 }
 
 export type UserId = string;
+
+export const DEFAULT_GREETING = "Hello";

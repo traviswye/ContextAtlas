@@ -1,0 +1,25 @@
+# ContextAtlas self-index configuration.
+# ADRs live in docs/adr/; top-level prose docs are listed explicitly.
+# CLAUDE.md is intentionally excluded — it's instructions to Claude about
+# how to build this project, not architectural decisions about the product.
+version: 1
+
+languages:
+  - typescript
+
+adrs:
+  path: docs/adr/
+  format: markdown-frontmatter
+  symbol_field: symbols
+
+docs:
+  include:
+    - README.md
+    - DESIGN.md
+    - RUBRIC.md
+    - docs/**/*.md
+
+atlas:
+  committed: true
+  path: .contextatlas/atlas.json
+  local_cache: .contextatlas/index.db

@@ -133,7 +133,10 @@ describe("buildBundle", () => {
     });
   });
 
-  it("summarizes references with first-path-segment module buckets", async () => {
+  it("buckets src-rooted refs by the segment AFTER the root prefix", async () => {
+    // Every ref is under src/; prior to the Phase-B dogfooding fix this
+    // collapsed into a single `[src:3]` cluster with no cross-module
+    // signal. Now src/ is stripped and buckets reflect billing vs admin.
     const refs = [
       ref("src/billing/charges.ts", 10),
       ref("src/billing/refunds.ts", 20),
@@ -144,10 +147,26 @@ describe("buildBundle", () => {
       { symbol: sym(), depth: "standard", include: ["refs"], maxRefs: 50 },
     );
     expect(bundle.refs?.count).toBe(3);
-    const clusters = bundle.refs?.clusters ?? [];
-    // Clusters sorted by count desc; src has all 3, so single cluster.
-    expect(clusters[0]?.module).toBe("src");
-    expect(clusters[0]?.count).toBe(3);
+    const modules = bundle.refs?.clusters.map((c) => c.module) ?? [];
+    expect(modules.sort()).toEqual(["admin", "billing"]);
+    const billingCluster = bundle.refs?.clusters.find(
+      (c) => c.module === "billing",
+    );
+    expect(billingCluster?.count).toBe(2);
+  });
+
+  it("strips other common root prefixes (packages, lib, app, source)", async () => {
+    const refs = [
+      ref("packages/core/a.ts", 1),
+      ref("packages/core/b.ts", 2),
+      ref("packages/web/c.ts", 3),
+    ];
+    const bundle = await buildBundle(
+      { db, adapter: stubAdapter({ references: refs }) },
+      { symbol: sym(), depth: "standard", include: ["refs"], maxRefs: 50 },
+    );
+    const modules = bundle.refs?.clusters.map((c) => c.module).sort() ?? [];
+    expect(modules).toEqual(["core", "web"]);
   });
 
   it("buckets differ when refs span multiple top-level directories", async () => {
@@ -167,11 +186,13 @@ describe("buildBundle", () => {
   });
 
   it("respects maxRefs cap on topIds per cluster", async () => {
+    // All four refs share the `billing` module after src/ stripping;
+    // the cap-per-cluster is what we want to exercise here.
     const refs = [
-      ref("src/a.ts", 1),
-      ref("src/b.ts", 2),
-      ref("src/c.ts", 3),
-      ref("src/d.ts", 4),
+      ref("src/billing/a.ts", 1),
+      ref("src/billing/b.ts", 2),
+      ref("src/billing/c.ts", 3),
+      ref("src/billing/d.ts", 4),
     ];
     const bundle = await buildBundle(
       { db, adapter: stubAdapter({ references: refs }) },

@@ -411,6 +411,148 @@ describe("runExtractionPipeline", () => {
     expect(result.claimsWritten).toBe(1);
   });
 
+  it("merges frontmatter 'symbols:' hints into every claim from that source", async () => {
+    // ADR frontmatter declares Foo as governed; the model's claim
+    // doesn't mention Foo in symbol_candidates at all, yet the stored
+    // claim should still link to Foo via the frontmatter hint.
+    writeFileSync(
+      pathJoin(tmp, "docs", "adr", "ADR-99.md"),
+      "---\nid: ADR-99\nsymbols:\n  - Foo\n---\nSome architectural claim body.",
+    );
+    writeFileSync(pathJoin(tmp, "src", "x.ts"), "export class Foo {}");
+    const adapter = adapterForSrc({
+      "x.ts": [
+        {
+          id: "sym:ts:src/x.ts:Foo",
+          name: "Foo",
+          kind: "class",
+          path: "src/x.ts",
+          line: 1,
+          language: "typescript",
+        },
+      ],
+    });
+    const client = makeStubClient([
+      {
+        claims: [
+          makeClaim({
+            claim: "some architectural rule",
+            severity: "hard",
+            symbol_candidates: [], // model didn't pick up Foo
+          }),
+        ],
+      },
+    ]);
+    const result = await runExtractionPipeline({
+      repoRoot: tmp,
+      config: baseConfig(),
+      db,
+      anthropicClient: client,
+      adapters: new Map([["typescript", adapter]]),
+    });
+    expect(result.unresolvedFrontmatterHints).toBe(0);
+    const claims = listAllClaims(db);
+    expect(claims).toHaveLength(1);
+    expect(claims[0]?.symbolIds).toEqual(["sym:ts:src/x.ts:Foo"]);
+  });
+
+  it("counts frontmatter hints that don't resolve and still persists the claim", async () => {
+    writeFileSync(
+      pathJoin(tmp, "docs", "adr", "ADR-98.md"),
+      "---\nid: ADR-98\nsymbols:\n  - Ghost\n  - Real\n---\nBody.",
+    );
+    writeFileSync(pathJoin(tmp, "src", "x.ts"), "export class Real {}");
+    const adapter = adapterForSrc({
+      "x.ts": [
+        {
+          id: "sym:ts:src/x.ts:Real",
+          name: "Real",
+          kind: "class",
+          path: "src/x.ts",
+          line: 1,
+          language: "typescript",
+        },
+      ],
+    });
+    const client = makeStubClient([
+      {
+        claims: [
+          makeClaim({
+            claim: "some rule",
+            symbol_candidates: [], // model empty
+          }),
+        ],
+      },
+    ]);
+    const result = await runExtractionPipeline({
+      repoRoot: tmp,
+      config: baseConfig(),
+      db,
+      anthropicClient: client,
+      adapters: new Map([["typescript", adapter]]),
+    });
+    // Ghost doesn't exist in the codebase — counted as a frontmatter miss,
+    // but the claim still persists and links to Real.
+    expect(result.unresolvedFrontmatterHints).toBe(1);
+    const claims = listAllClaims(db);
+    expect(claims).toHaveLength(1);
+    expect(claims[0]?.symbolIds).toEqual(["sym:ts:src/x.ts:Real"]);
+  });
+
+  it("frontmatter symbols come BEFORE model candidates in the merged order", async () => {
+    writeFileSync(
+      pathJoin(tmp, "docs", "adr", "ADR-97.md"),
+      "---\nid: ADR-97\nsymbols:\n  - Authoritative\n---\nBody.",
+    );
+    writeFileSync(
+      pathJoin(tmp, "src", "x.ts"),
+      "export class Authoritative {}\nexport class Inferred {}",
+    );
+    const adapter = adapterForSrc({
+      "x.ts": [
+        {
+          id: "sym:ts:src/x.ts:Authoritative",
+          name: "Authoritative",
+          kind: "class",
+          path: "src/x.ts",
+          line: 1,
+          language: "typescript",
+        },
+        {
+          id: "sym:ts:src/x.ts:Inferred",
+          name: "Inferred",
+          kind: "class",
+          path: "src/x.ts",
+          line: 2,
+          language: "typescript",
+        },
+      ],
+    });
+    const client = makeStubClient([
+      {
+        claims: [
+          makeClaim({
+            claim: "x",
+            symbol_candidates: ["Inferred"], // model picked only Inferred
+          }),
+        ],
+      },
+    ]);
+    await runExtractionPipeline({
+      repoRoot: tmp,
+      config: baseConfig(),
+      db,
+      anthropicClient: client,
+      adapters: new Map([["typescript", adapter]]),
+    });
+    const claims = listAllClaims(db);
+    // Author-declared Authoritative comes first; model-inferred Inferred follows.
+    expect(claims[0]?.symbolIds).toEqual([
+      "sym:ts:src/x.ts:Authoritative",
+      "sym:ts:src/x.ts:Inferred",
+    ]);
+  });
+
   it("reports unresolved symbol candidates without failing", async () => {
     writeFileSync(pathJoin(tmp, "docs", "adr", "A.md"), "v1");
     const adapter = adapterForSrc({});

@@ -50,8 +50,20 @@ describe("TypeScriptAdapter", () => {
 
     const userId = byName.get("UserId");
     expect(userId).toBeDefined();
-    // tsserver reports type aliases as a LSP kind in the type/variable range.
-    expect(["type", "variable", "interface"]).toContain(userId?.kind);
+    // tsserver returns LSP kind Variable for type aliases, so our raw
+    // mapping would produce `variable`. The adapter remaps to `type`
+    // via a source-line peek that also powers signature extraction —
+    // see deriveSignatureAndKind. The assertion was initially tolerant
+    // (["type", "variable", "interface"]) during step-2 exploration;
+    // tightened to the committed design decision during step-6 dogfooding.
+    expect(userId?.kind).toBe("type");
+  });
+
+  it("does not remap regular consts to kind 'type'", async () => {
+    const symbols = await adapter.listSymbols(SAMPLE);
+    const constSym = symbols.find((s) => s.name === "DEFAULT_GREETING");
+    expect(constSym).toBeDefined();
+    expect(constSym?.kind).toBe("variable");
   });
 
   it("populates signatures for class/function/type-alias symbols", async () => {
