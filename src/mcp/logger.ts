@@ -7,9 +7,28 @@
  * cause the client to disconnect. Use this logger exclusively.
  */
 
-type LogLevel = "info" | "warn" | "error";
+type LogLevel = "debug" | "info" | "warn" | "error";
+
+/**
+ * Minimum level that's actually emitted. `debug` is noisy and off by
+ * default; enable by setting CONTEXTATLAS_LOG_LEVEL=debug. Everything
+ * else always prints. Keeping this as a runtime env check (not a
+ * compile-time config) so operators can turn it up without rebuilding.
+ */
+function currentMinLevel(): LogLevel {
+  const raw = process.env.CONTEXTATLAS_LOG_LEVEL?.toLowerCase();
+  return raw === "debug" ? "debug" : "info";
+}
+
+const LEVEL_ORDER: Record<LogLevel, number> = {
+  debug: 0,
+  info: 1,
+  warn: 2,
+  error: 3,
+};
 
 function write(level: LogLevel, message: string, meta?: unknown): void {
+  if (LEVEL_ORDER[level] < LEVEL_ORDER[currentMinLevel()]) return;
   const timestamp = new Date().toISOString();
   const prefix = `[${timestamp}] [${level}]`;
   const suffix = meta === undefined ? "" : ` ${JSON.stringify(meta)}`;
@@ -17,6 +36,9 @@ function write(level: LogLevel, message: string, meta?: unknown): void {
 }
 
 export const log = {
+  debug(message: string, meta?: unknown): void {
+    write("debug", message, meta);
+  },
   info(message: string, meta?: unknown): void {
     write("info", message, meta);
   },
