@@ -165,6 +165,25 @@ earlier ones work end-to-end.
 **12. Incremental reindex.** SHA-based change detection. Only re-extract
     changed files.
 
+    **Status: shipped.** Scope landed across three contributing
+    commits:
+    - Step 5 pipeline work established `diffShas` + stage-2
+      reclassification + stage-5 deletion cleanup as library behavior.
+    - [ADR-06](docs/adr/ADR-06-committed-atlas-artifact.md)'s atlas
+      round-trip (`source_shas` in atlas.json) persists the SHA
+      baseline so incrementality survives across runs and across
+      team members.
+    - [ADR-12](docs/adr/ADR-12-cli-subcommand-surface.md) (commit
+      cec53d0) made the capability user-invokable via
+      `contextatlas index`, with `--full` as the escape hatch for
+      forced rebuilds.
+
+    Validated in production on 2026-04-22: the `be04884` re-extraction
+    exercised all four classifications (9 unchanged / 1 changed /
+    4 added / 0 deleted) against real prose files; api_calls (5)
+    matched files_extracted (5), confirming unchanged files were
+    correctly skipped.
+
 **13. Expand the benchmark harness.** Grow from the ~5-prompt MVP harness
     (step 7) to the full 24-prompt set per repo. Add blind grading
     infrastructure. Polish the output table for the README.
@@ -188,10 +207,9 @@ substrate. Do not build them as separate parallel systems.
 If scope pressure forces cuts, in this order:
 1. Full benchmark expansion (#13) — MVP harness from step 7 is enough
    for the demo
-2. Incremental reindex (#12) — full reindex is acceptable for demo
-3. `impact_of_change` (#11)
-4. `find_by_intent` (#8)
-5. Python adapter (#9)
+2. `impact_of_change` (#11)
+3. `find_by_intent` (#8)
+4. Python adapter (#9)
 
 Protect the primitive (`get_symbol_context`), the extraction pipeline,
 and the MVP benchmark harness (step 7) at all costs. The benchmark
