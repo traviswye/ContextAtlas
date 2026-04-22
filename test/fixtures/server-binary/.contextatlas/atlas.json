@@ -1,0 +1,36 @@
+{
+  "version": "1.0",
+  "generated_at": "2026-04-21T00:00:00Z",
+  "generator": {
+    "contextatlas_version": "0.0.1",
+    "extraction_model": "claude-opus-4-7"
+  },
+  "source_shas": {
+    "docs/adr/ADR-SMOKE.md": "deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef"
+  },
+  "symbols": [
+    {
+      "id": "sym:ts:src/smoke.ts:SmokeTestSymbol",
+      "name": "SmokeTestSymbol",
+      "kind": "class",
+      "path": "src/smoke.ts",
+      "line": 1,
+      "signature": "class SmokeTestSymbol",
+      "file_sha": "feedfacefeedfacefeedfacefeedfacefeedfacefeedfacefeedfacefeedface"
+    }
+  ],
+  "claims": [
+    {
+      "source": "ADR-SMOKE",
+      "source_path": "docs/adr/ADR-SMOKE.md",
+      "source_sha": "deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
+      "severity": "hard",
+      "claim": "SmokeTestSymbol exists so the binary smoke test can validate end-to-end query serving",
+      "rationale": "Smoke test fixture — the claim's text is what the test asserts on",
+      "excerpt": "SmokeTestSymbol is the test canary.",
+      "symbol_ids": [
+        "sym:ts:src/smoke.ts:SmokeTestSymbol"
+      ]
+    }
+  ]
+}

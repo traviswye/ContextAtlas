@@ -1,0 +1,11 @@
+version: 1
+languages:
+  - typescript
+adrs:
+  path: docs/adr/
+docs:
+  include: []
+atlas:
+  committed: true
+  path: .contextatlas/atlas.json
+  local_cache: .contextatlas/index.db
