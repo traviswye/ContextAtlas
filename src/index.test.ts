@@ -406,3 +406,67 @@ describe("MCP server binary with source.root (ADR-08 runtime)", () => {
     expect(sourceMatch?.[1]?.trim()).toMatch(/[\\/]subsrc\s*$/);
   });
 });
+
+describe("MCP server binary with --config (ADR-08 runtime)", () => {
+  let configDir: string;
+  let client: Client;
+  let transport: TestSubprocessTransport;
+
+  beforeEach(async () => {
+    // Fixture with a non-default config filename. Mimics the
+    // benchmarks-repo case where configs/hono.yml and configs/httpx.yml
+    // coexist instead of a single .contextatlas.yml.
+    configDir = mkdtempSync(pathJoin(tmpdir(), "ca-smoke-cfgfile-"));
+    cpSync(FIXTURE_SRC, configDir, { recursive: true });
+
+    // Move the default .contextatlas.yml to a non-default filename.
+    // If the binary ignored --config and fell back to the default
+    // name, it would fail to find any config and crash.
+    const { renameSync } = await import("node:fs");
+    renameSync(
+      pathJoin(configDir, ".contextatlas.yml"),
+      pathJoin(configDir, "my-config.yml"),
+    );
+
+    transport = new TestSubprocessTransport(
+      process.execPath,
+      [DIST_ENTRY, "--config-root", configDir, "--config", "my-config.yml"],
+      configDir,
+    );
+    client = new Client(
+      { name: "smoke-test-client", version: "0.0.1" },
+      { capabilities: {} },
+    );
+    await client.connect(transport);
+  }, 30_000);
+
+  afterEach(async () => {
+    await client.close().catch(() => {});
+    rmWithRetry(configDir);
+  });
+
+  it("serves get_symbol_context from a config named other than .contextatlas.yml", async () => {
+    const result = await client.request(
+      {
+        method: "tools/call",
+        params: {
+          name: "get_symbol_context",
+          arguments: { symbol: "SmokeTestSymbol" },
+        },
+      },
+      CallToolResultSchema,
+    );
+    expect(result.isError).toBeFalsy();
+    const text = (result.content[0] as { text: string }).text;
+    expect(text).toMatch(/^SYM SmokeTestSymbol@/);
+  });
+
+  it("logs the resolved absolute config path including the non-default filename", async () => {
+    // Diagnostic canary: any run should be able to answer "which
+    // file loaded?" from the startup log, regardless of whether
+    // --config was passed.
+    await new Promise<void>((resolve) => setTimeout(resolve, 200));
+    const stderr = transport.stderrBuffer;
+    expect(stderr).toMatch(/Loaded config at .*[\\/]my-config\.yml\b/);
+  });
+});

@@ -2,32 +2,36 @@ import { describe, expect, it } from "vitest";
 
 import { parseArgs } from "./cli-args.js";
 
-describe("parseArgs", () => {
-  it("no args → configRoot is null (caller resolves to cwd)", () => {
-    expect(parseArgs([])).toEqual({ configRoot: null });
+describe("parseArgs — baseline and --config-root", () => {
+  it("no args → both knobs null (caller resolves to defaults)", () => {
+    expect(parseArgs([])).toEqual({ configRoot: null, configFile: null });
   });
 
   it("--config-root space form → extracts value verbatim", () => {
     expect(parseArgs(["--config-root", "/abs/path"])).toEqual({
       configRoot: "/abs/path",
+      configFile: null,
     });
   });
 
   it("--config-root equal form → extracts value verbatim", () => {
     expect(parseArgs(["--config-root=/abs/path"])).toEqual({
       configRoot: "/abs/path",
+      configFile: null,
     });
   });
 
   it("relative path value is passed through (caller resolves against cwd)", () => {
     expect(parseArgs(["--config-root", "./subdir"])).toEqual({
       configRoot: "./subdir",
+      configFile: null,
     });
   });
 
   it("Windows-style path value is passed through verbatim", () => {
     expect(parseArgs(["--config-root", "C:\\foo\\bar"])).toEqual({
       configRoot: "C:\\foo\\bar",
+      configFile: null,
     });
   });
 
@@ -49,7 +53,7 @@ describe("parseArgs", () => {
     );
   });
 
-  it("value that starts with -- is rejected as another flag", () => {
+  it("--config-root value starting with -- is rejected as another flag", () => {
     // Guards against `--config-root --some-other-flag` which would
     // silently consume the next flag as the config-root value.
     expect(() => parseArgs(["--config-root", "--other"])).toThrow(
@@ -70,13 +74,13 @@ describe("parseArgs", () => {
   it("duplicate --config-root rejects (no silent last-wins)", () => {
     expect(() =>
       parseArgs(["--config-root", "/a", "--config-root", "/b"]),
-    ).toThrow(/specified more than once/);
+    ).toThrow(/--config-root specified more than once/);
     expect(() =>
       parseArgs(["--config-root=/a", "--config-root=/b"]),
-    ).toThrow(/specified more than once/);
+    ).toThrow(/--config-root specified more than once/);
     expect(() =>
       parseArgs(["--config-root", "/a", "--config-root=/b"]),
-    ).toThrow(/specified more than once/);
+    ).toThrow(/--config-root specified more than once/);
   });
 
   it("usage hint is included in thrown errors", () => {
@@ -87,6 +91,91 @@ describe("parseArgs", () => {
       ["--config-root="],
       ["--bogus"],
       ["--config-root", "--other"],
+    ]) {
+      expect(() => parseArgs(bad)).toThrow(/Usage:/);
+    }
+  });
+});
+
+describe("parseArgs — --config flag", () => {
+  it("--config space form → extracts file value verbatim", () => {
+    expect(parseArgs(["--config", "foo.yml"])).toEqual({
+      configRoot: null,
+      configFile: "foo.yml",
+    });
+  });
+
+  it("--config equal form → extracts file value verbatim", () => {
+    expect(parseArgs(["--config=foo.yml"])).toEqual({
+      configRoot: null,
+      configFile: "foo.yml",
+    });
+  });
+
+  it("absolute --config value is passed through verbatim", () => {
+    // Absolute paths bypass configRoot via pathResolve's native
+    // semantics — the caller passes the value to loadConfig which
+    // handles the split correctly.
+    expect(parseArgs(["--config", "/abs/path/config.yml"])).toEqual({
+      configRoot: null,
+      configFile: "/abs/path/config.yml",
+    });
+  });
+
+  it("missing value after --config throws", () => {
+    expect(() => parseArgs(["--config"])).toThrow(
+      /requires a file path value but none was given/,
+    );
+  });
+
+  it("empty value after --config throws", () => {
+    expect(() => parseArgs(["--config", ""])).toThrow(
+      /requires a non-empty file path value/,
+    );
+  });
+
+  it("empty value in --config= form throws", () => {
+    expect(() => parseArgs(["--config="])).toThrow(
+      /requires a non-empty file path value/,
+    );
+  });
+
+  it("--config value starting with -- is rejected as another flag", () => {
+    expect(() => parseArgs(["--config", "--other"])).toThrow(
+      /non-empty file path value; got '--other'/,
+    );
+  });
+
+  it("duplicate --config rejects (no silent last-wins)", () => {
+    expect(() =>
+      parseArgs(["--config", "a.yml", "--config", "b.yml"]),
+    ).toThrow(/--config specified more than once/);
+    expect(() => parseArgs(["--config=a.yml", "--config=b.yml"])).toThrow(
+      /--config specified more than once/,
+    );
+    expect(() =>
+      parseArgs(["--config", "a.yml", "--config=b.yml"]),
+    ).toThrow(/--config specified more than once/);
+  });
+
+  it("combines cleanly with --config-root in either order", () => {
+    expect(
+      parseArgs(["--config-root", "/r", "--config", "cfg.yml"]),
+    ).toEqual({ configRoot: "/r", configFile: "cfg.yml" });
+    expect(
+      parseArgs(["--config", "cfg.yml", "--config-root", "/r"]),
+    ).toEqual({ configRoot: "/r", configFile: "cfg.yml" });
+    expect(
+      parseArgs(["--config-root=/r", "--config=cfg.yml"]),
+    ).toEqual({ configRoot: "/r", configFile: "cfg.yml" });
+  });
+
+  it("usage hint is included in --config thrown errors", () => {
+    for (const bad of [
+      ["--config"],
+      ["--config="],
+      ["--config", "--bogus"],
+      ["--config", "a.yml", "--config", "b.yml"],
     ]) {
       expect(() => parseArgs(bad)).toThrow(/Usage:/);
     }

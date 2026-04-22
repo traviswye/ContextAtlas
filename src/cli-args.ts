@@ -1,11 +1,22 @@
 /**
  * CLI argument parser for the MCP runtime binary.
  *
- * The binary accepts one flag: `--config-root <path>` (or the
- * `--config-root=<path>` equal-sign form). Unknown arguments and
- * malformed values throw with actionable error messages rather than
- * silently defaulting — a typo in the flag shouldn't quietly fall
- * back to `process.cwd()` and mask misconfigurations.
+ * Two flags accepted, both supporting the space-separated
+ * (`--flag value`) and equals-separated (`--flag=value`) forms:
+ *
+ *   --config-root <path>  Directory that acts as the resolution base
+ *                         for the config file and for the paths the
+ *                         config names (atlas.path, atlas.local_cache,
+ *                         source.root). Default: process.cwd().
+ *
+ *   --config <file>       Specific config file to load. When relative,
+ *                         resolved against --config-root. When absent,
+ *                         defaults to `<config-root>/.contextatlas.yml`.
+ *
+ * Unknown arguments and malformed values throw with actionable error
+ * messages rather than silently defaulting — a typo in either flag
+ * shouldn't quietly fall back to cwd/default-filename and mask
+ * misconfigurations.
  *
  * Extracted from `src/index.ts` so it's testable without triggering
  * `main()` as a side effect of importing.
@@ -18,19 +29,29 @@ export interface ParsedArgs {
    * not touch the filesystem or introduce cwd-dependent defaults.
    */
   configRoot: string | null;
+  /**
+   * Value of `--config` if passed; otherwise null. Callers pass this
+   * through to `loadConfig(root, configPath?)`, which resolves a
+   * relative value against the root and uses an absolute value as-is.
+   */
+  configFile: string | null;
 }
 
 const USAGE =
-  "Usage: contextatlas [--config-root <path>]  (see ADR-08 for when this is needed)";
+  "Usage: contextatlas [--config-root <path>] [--config <file>]  " +
+  "(see ADR-08 for when these are needed)";
 
 export function parseArgs(argv: readonly string[]): ParsedArgs {
   let configRoot: string | null = null;
+  let configFile: string | null = null;
   let i = 0;
   while (i < argv.length) {
     const arg = argv[i]!;
     if (arg === "--config-root") {
       if (configRoot !== null) {
-        throw new Error(`Flag --config-root specified more than once. ${USAGE}`);
+        throw new Error(
+          `Flag --config-root specified more than once. ${USAGE}`,
+        );
       }
       const value = argv[i + 1];
       if (value === undefined) {
@@ -49,7 +70,9 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
     }
     if (arg.startsWith("--config-root=")) {
       if (configRoot !== null) {
-        throw new Error(`Flag --config-root specified more than once. ${USAGE}`);
+        throw new Error(
+          `Flag --config-root specified more than once. ${USAGE}`,
+        );
       }
       const value = arg.slice("--config-root=".length);
       if (value === "") {
@@ -61,7 +84,44 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
       i += 1;
       continue;
     }
+    if (arg === "--config") {
+      if (configFile !== null) {
+        throw new Error(
+          `Flag --config specified more than once. ${USAGE}`,
+        );
+      }
+      const value = argv[i + 1];
+      if (value === undefined) {
+        throw new Error(
+          `Flag --config requires a file path value but none was given. ${USAGE}`,
+        );
+      }
+      if (value === "" || value.startsWith("--")) {
+        throw new Error(
+          `Flag --config requires a non-empty file path value; got '${value}'. ${USAGE}`,
+        );
+      }
+      configFile = value;
+      i += 2;
+      continue;
+    }
+    if (arg.startsWith("--config=")) {
+      if (configFile !== null) {
+        throw new Error(
+          `Flag --config specified more than once. ${USAGE}`,
+        );
+      }
+      const value = arg.slice("--config=".length);
+      if (value === "") {
+        throw new Error(
+          `Flag --config= requires a non-empty file path value. ${USAGE}`,
+        );
+      }
+      configFile = value;
+      i += 1;
+      continue;
+    }
     throw new Error(`Unknown argument '${arg}'. ${USAGE}`);
   }
-  return { configRoot };
+  return { configRoot, configFile };
 }

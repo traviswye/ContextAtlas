@@ -8,10 +8,12 @@
  * for the JSON-RPC protocol stream.
  *
  * CLI:
- *   contextatlas                     # common case: config at cwd
- *   contextatlas --config-root <dir> # benchmarks-style: config elsewhere
+ *   contextatlas                                    # common case: .contextatlas.yml at cwd
+ *   contextatlas --config-root <dir>                # benchmarks-style: config lives elsewhere
+ *   contextatlas --config-root <dir> --config <file> # pick one of many configs in <dir>
+ *   contextatlas --config <file>                    # same as above but configRoot = cwd
  *
- * See ADR-08 for the config-root vs source-root architectural story.
+ * See ADR-08 for the config-root / config-file / source-root story.
  */
 
 import { existsSync, mkdirSync, readFileSync } from "node:fs";
@@ -44,7 +46,9 @@ export async function main(): Promise<void> {
 
   // Parse CLI args. Flag parsing errors surface via main().catch → log +
   // exit 1, same path as a malformed config.
-  const { configRoot: configRootArg } = parseArgs(process.argv.slice(2));
+  const { configRoot: configRootArg, configFile: configFileArg } = parseArgs(
+    process.argv.slice(2),
+  );
   const configRoot = configRootArg
     ? pathResolve(configRootArg)
     : process.cwd();
@@ -53,10 +57,21 @@ export async function main(): Promise<void> {
   log.info(`MCP protocol version: ${LATEST_PROTOCOL_VERSION}`);
   log.info(`Config root: ${configRoot}`);
 
-  // 1. Load config from configRoot (not cwd — they're the same in the
-  //    common case, but diverge when --config-root is passed).
-  const config = loadConfig(configRoot);
-  log.info(`Loaded config for languages=${config.languages.join(",")}`);
+  // 1. Load config. When --config is passed, loadConfig resolves it
+  //    against configRoot (relative) or uses it as-is (absolute),
+  //    matching the library's existing loadConfig(root, configPath?)
+  //    semantics. The resolved absolute path is logged unconditionally
+  //    so "which config loaded?" is always answerable from the log.
+  const config = configFileArg
+    ? loadConfig(configRoot, configFileArg)
+    : loadConfig(configRoot);
+  const resolvedConfigPath = pathResolve(
+    configRoot,
+    configFileArg ?? ".contextatlas.yml",
+  );
+  log.info(
+    `Loaded config at ${resolvedConfigPath} (languages: ${config.languages.join(", ")})`,
+  );
 
   // 2. Derive source root from config's optional source.root, falling
   //    back to configRoot for the common single-root case. This is the

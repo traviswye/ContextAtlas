@@ -104,11 +104,25 @@ Resolution order at runtime startup:
 4. Atlas + local cache resolve against `configRoot`.
 5. Adapters initialize against `sourceRoot`.
 
-The benchmarks-repo CA integration uses both knobs:
-`--config-root /path/to/benchmarks-repo` at spawn time, and
-`source: { root: repos/hono/ }` in the committed benchmarks config,
-so MCP queries serve the cloned-hono atlas while config and
-committed atlas live alongside the benchmarks harness.
+Alongside `--config-root`, the binary accepts `--config <file>`
+(or `--config=<file>`) to select a config file whose name differs
+from the default `.contextatlas.yml`. The value resolves against
+`configRoot` when relative, enabling invocations like
+`--config-root /path/to/benchmarks --config configs/hono.yml` that
+pick one of many configs stored inside a single benchmarks-style
+repo. When `--config` is absent, the binary still looks for
+`<configRoot>/.contextatlas.yml` as before. Absolute values of
+`--config` bypass `configRoot` for file location but do not change
+how paths inside that config resolve — `atlas.path` and
+`source.root` remain relative to `configRoot`.
+
+The benchmarks-repo CA integration uses all three knobs:
+`--config-root /path/to/benchmarks-repo` + `--config configs/hono.yml`
+at spawn time, and `source: { root: repos/hono/ }` inside the
+selected config, so MCP queries serve the cloned-hono atlas while
+config and committed atlas live alongside the benchmarks harness
+and the harness can swap which target repo is served by changing
+only the `--config` value.
 
 Unlike extraction-side `configRoot`, the runtime `source.root` is
 declared in the config file rather than passed as a function
