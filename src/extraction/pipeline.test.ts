@@ -262,6 +262,44 @@ describe("runExtractionPipeline", () => {
     db2.close();
   });
 
+  it("skipShaDiff forces full re-extract even when SHAs match baseline (ADR-12 --full)", async () => {
+    writeFileSync(pathJoin(tmp, "docs", "adr", "A.md"), "v1");
+    writeFileSync(pathJoin(tmp, "docs", "adr", "B.md"), "v1");
+    const adapter = adapterForSrc({});
+    const client1 = makeStubClient([
+      { claims: [makeClaim({ claim: "A1" })] },
+      { claims: [makeClaim({ claim: "B1" })] },
+    ]);
+    await runExtractionPipeline({
+      repoRoot: tmp,
+      config: baseConfig(),
+      db,
+      anthropicClient: client1,
+      adapters: new Map([["typescript", adapter]]),
+    });
+
+    // Second run on fresh DB, same disk state. Without skipShaDiff
+    // this is a no-op (all SHAs match baseline). With skipShaDiff,
+    // both files re-extract. Exercises `contextatlas index --full`.
+    const db2 = openDatabase(":memory:");
+    const client2 = makeStubClient([
+      { claims: [makeClaim({ claim: "A2" })] },
+      { claims: [makeClaim({ claim: "B2" })] },
+    ]);
+    const result = await runExtractionPipeline({
+      repoRoot: tmp,
+      config: baseConfig(),
+      db: db2,
+      anthropicClient: client2,
+      adapters: new Map([["typescript", adapter]]),
+      skipShaDiff: true,
+    });
+    expect(result.filesExtracted).toBe(2);
+    expect(result.filesUnchanged).toBe(0);
+    expect(result.apiCalls).toBe(2);
+    db2.close();
+  });
+
   it("re-extracts only the changed file", async () => {
     writeFileSync(pathJoin(tmp, "docs", "adr", "A.md"), "v1");
     writeFileSync(pathJoin(tmp, "docs", "adr", "B.md"), "v1");

@@ -1,21 +1,29 @@
 #!/usr/bin/env node
 /**
- * ContextAtlas MCP Server — entry point.
+ * ContextAtlas binary — entry point.
  *
- * Boots the server with real runtime context (config, storage, adapters),
- * wires the stdio transport, and hands control to the MCP event loop.
- * All logging goes to stderr (see src/mcp/logger.ts) — stdout is reserved
- * for the JSON-RPC protocol stream.
+ * Per ADR-12, the binary supports two modes:
+ *
+ *   - **Default (no subcommand):** start the MCP server over stdio.
+ *     This path is a hard external contract — MCP clients spawn the
+ *     binary with no args and expect stdio JSON-RPC. All logging goes
+ *     to stderr (see src/mcp/logger.ts); stdout is reserved for the
+ *     JSON-RPC protocol stream.
+ *   - **`index` subcommand:** run the extraction pipeline and exit.
+ *     Produces `key=value` (or `--json`) summary on stdout.
  *
  * CLI:
- *   contextatlas                                    # common case: .contextatlas.yml at cwd
+ *   contextatlas                                    # MCP server over stdio
  *   contextatlas --config-root <dir>                # benchmarks-style: config lives elsewhere
  *   contextatlas --config-root <dir> --config <file> # pick one of many configs in <dir>
  *   contextatlas --config <file>                    # same as above but configRoot = cwd
  *   contextatlas --check                            # staleness probe; exits without starting MCP
+ *   contextatlas index                              # run extraction pipeline
+ *   contextatlas index --full                       # force full re-extract
+ *   contextatlas index --json                       # JSON summary instead of key=value
  *
- * See ADR-08 for the config-root / config-file / source-root story and
- * ADR-11 for the --check staleness contract.
+ * See ADR-08 for --config-root / --config / source-root, ADR-11 for
+ * --check staleness semantics, and ADR-12 for the subcommand surface.
  */
 
 import { existsSync, mkdirSync, readFileSync } from "node:fs";
@@ -28,6 +36,7 @@ import { LATEST_PROTOCOL_VERSION } from "@modelcontextprotocol/sdk/types.js";
 import { createAdapter } from "./adapters/registry.js";
 import { parseArgs } from "./cli-args.js";
 import { loadConfig } from "./config/parser.js";
+import { runIndexSubcommand } from "./extraction/cli-runner.js";
 import { log } from "./mcp/logger.js";
 import { createServer } from "./mcp/server.js";
 import { TOOLS } from "./mcp/schemas.js";
@@ -49,14 +58,33 @@ export async function main(): Promise<void> {
 
   // Parse CLI args. Flag parsing errors surface via main().catch → log +
   // exit 1, same path as a malformed config.
+  const parsed = parseArgs(process.argv.slice(2));
   const {
+    subcommand,
     configRoot: configRootArg,
     configFile: configFileArg,
     check,
-  } = parseArgs(process.argv.slice(2));
+  } = parsed;
   const configRoot = configRootArg
     ? pathResolve(configRootArg)
     : process.cwd();
+
+  // ADR-12 dispatch: the `index` subcommand runs the extraction
+  // pipeline and exits. It does not load MCP-server-specific code
+  // paths, does not start the stdio transport, and has its own
+  // exit-code contract. Dispatch runs before config load so
+  // subcommand-specific config-error semantics stay owned by
+  // subcommand code.
+  if (subcommand === "index") {
+    const result = await runIndexSubcommand({
+      configRoot,
+      configFile: configFileArg,
+      full: parsed.full,
+      json: parsed.json,
+      contextatlasVersion: version,
+    });
+    process.exit(result.exitCode);
+  }
 
   log.info(`ContextAtlas v${version} starting`);
   log.info(`MCP protocol version: ${LATEST_PROTOCOL_VERSION}`);

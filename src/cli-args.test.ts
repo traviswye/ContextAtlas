@@ -1,45 +1,52 @@
 import { describe, expect, it } from "vitest";
 
-import { parseArgs } from "./cli-args.js";
+import { parseArgs, type ParsedArgs } from "./cli-args.js";
+
+/**
+ * Baseline shape: what every "no flags set" result looks like. Tests
+ * that exercise one flag / subcommand spread this and override the
+ * field under test, which reads cleaner and survives future fields
+ * added to ParsedArgs (one spot to update).
+ */
+const EMPTY: ParsedArgs = {
+  subcommand: "mcp",
+  configRoot: null,
+  configFile: null,
+  check: false,
+  full: false,
+  json: false,
+};
 
 describe("parseArgs — baseline and --config-root", () => {
-  it("no args → both knobs null (caller resolves to defaults)", () => {
-    expect(parseArgs([])).toEqual({
-      configRoot: null,
-      configFile: null,
-      check: false,
-    });
+  it("no args → every knob at default", () => {
+    expect(parseArgs([])).toEqual(EMPTY);
   });
 
   it("--config-root space form → extracts value verbatim", () => {
     expect(parseArgs(["--config-root", "/abs/path"])).toEqual({
+      ...EMPTY,
       configRoot: "/abs/path",
-      configFile: null,
-      check: false,
     });
   });
 
   it("--config-root equal form → extracts value verbatim", () => {
     expect(parseArgs(["--config-root=/abs/path"])).toEqual({
+      ...EMPTY,
       configRoot: "/abs/path",
-      configFile: null,
-      check: false,
     });
   });
 
   it("relative path value is passed through (caller resolves against cwd)", () => {
     expect(parseArgs(["--config-root", "./subdir"])).toEqual({
+      ...EMPTY,
       configRoot: "./subdir",
-      configFile: null,
-      check: false,
     });
   });
 
   it("Windows-style path value is passed through verbatim", () => {
     expect(parseArgs(["--config-root", "C:\\foo\\bar"])).toEqual({
+      ...EMPTY,
       configRoot: "C:\\foo\\bar",
-      configFile: null,
-      check: false,
     });
   });
 
@@ -73,9 +80,12 @@ describe("parseArgs — baseline and --config-root", () => {
     expect(() => parseArgs(["--bogus"])).toThrow(/Unknown argument '--bogus'/);
   });
 
-  it("positional argument rejects as unknown", () => {
+  it("unknown positional rejects as unknown subcommand", () => {
+    // Pre-ADR-12 this rejected as "Unknown argument". Post-ADR-12,
+    // positionals are evaluated against the subcommand table first —
+    // so "positional" gets the subcommand-shaped error message.
     expect(() => parseArgs(["positional"])).toThrow(
-      /Unknown argument 'positional'/,
+      /Unknown subcommand 'positional'/,
     );
   });
 
@@ -108,17 +118,15 @@ describe("parseArgs — baseline and --config-root", () => {
 describe("parseArgs — --config flag", () => {
   it("--config space form → extracts file value verbatim", () => {
     expect(parseArgs(["--config", "foo.yml"])).toEqual({
-      configRoot: null,
+      ...EMPTY,
       configFile: "foo.yml",
-      check: false,
     });
   });
 
   it("--config equal form → extracts file value verbatim", () => {
     expect(parseArgs(["--config=foo.yml"])).toEqual({
-      configRoot: null,
+      ...EMPTY,
       configFile: "foo.yml",
-      check: false,
     });
   });
 
@@ -127,9 +135,8 @@ describe("parseArgs — --config flag", () => {
     // semantics — the caller passes the value to loadConfig which
     // handles the split correctly.
     expect(parseArgs(["--config", "/abs/path/config.yml"])).toEqual({
-      configRoot: null,
+      ...EMPTY,
       configFile: "/abs/path/config.yml",
-      check: false,
     });
   });
 
@@ -172,13 +179,13 @@ describe("parseArgs — --config flag", () => {
   it("combines cleanly with --config-root in either order", () => {
     expect(
       parseArgs(["--config-root", "/r", "--config", "cfg.yml"]),
-    ).toEqual({ configRoot: "/r", configFile: "cfg.yml", check: false });
+    ).toEqual({ ...EMPTY, configRoot: "/r", configFile: "cfg.yml" });
     expect(
       parseArgs(["--config", "cfg.yml", "--config-root", "/r"]),
-    ).toEqual({ configRoot: "/r", configFile: "cfg.yml", check: false });
+    ).toEqual({ ...EMPTY, configRoot: "/r", configFile: "cfg.yml" });
     expect(
       parseArgs(["--config-root=/r", "--config=cfg.yml"]),
-    ).toEqual({ configRoot: "/r", configFile: "cfg.yml", check: false });
+    ).toEqual({ ...EMPTY, configRoot: "/r", configFile: "cfg.yml" });
   });
 
   it("usage hint is included in --config thrown errors", () => {
@@ -196,8 +203,7 @@ describe("parseArgs — --config flag", () => {
 describe("parseArgs — --check flag (ADR-11)", () => {
   it("--check sets the boolean flag", () => {
     expect(parseArgs(["--check"])).toEqual({
-      configRoot: null,
-      configFile: null,
+      ...EMPTY,
       check: true,
     });
   });
@@ -205,15 +211,135 @@ describe("parseArgs — --check flag (ADR-11)", () => {
   it("--check composes with --config-root and --config", () => {
     expect(
       parseArgs(["--config-root", "/r", "--config", "c.yml", "--check"]),
-    ).toEqual({ configRoot: "/r", configFile: "c.yml", check: true });
-    expect(
-      parseArgs(["--check", "--config-root=/r"]),
-    ).toEqual({ configRoot: "/r", configFile: null, check: true });
+    ).toEqual({
+      ...EMPTY,
+      configRoot: "/r",
+      configFile: "c.yml",
+      check: true,
+    });
+    expect(parseArgs(["--check", "--config-root=/r"])).toEqual({
+      ...EMPTY,
+      configRoot: "/r",
+      check: true,
+    });
   });
 
   it("duplicate --check rejects", () => {
     expect(() => parseArgs(["--check", "--check"])).toThrow(
       /--check specified more than once/,
+    );
+  });
+});
+
+describe("parseArgs — `index` subcommand (ADR-12)", () => {
+  it("bare `index` dispatches to the index subcommand", () => {
+    expect(parseArgs(["index"])).toEqual({
+      ...EMPTY,
+      subcommand: "index",
+    });
+  });
+
+  it("`index --full` sets the full flag", () => {
+    expect(parseArgs(["index", "--full"])).toEqual({
+      ...EMPTY,
+      subcommand: "index",
+      full: true,
+    });
+  });
+
+  it("`index --json` sets the json flag", () => {
+    expect(parseArgs(["index", "--json"])).toEqual({
+      ...EMPTY,
+      subcommand: "index",
+      json: true,
+    });
+  });
+
+  it("`index --full --json` combines cleanly", () => {
+    expect(parseArgs(["index", "--full", "--json"])).toEqual({
+      ...EMPTY,
+      subcommand: "index",
+      full: true,
+      json: true,
+    });
+  });
+
+  it("subcommand accepts flags on either side (before and after)", () => {
+    // Per ADR-12 Implementation invariants: "Subcommand parsing
+    // precedes flag parsing. ... flags may appear on either side of
+    // the subcommand name."
+    const beforeShape = parseArgs(["--config-root", "/r", "index", "--full"]);
+    const afterShape = parseArgs(["index", "--full", "--config-root", "/r"]);
+    expect(beforeShape).toEqual(afterShape);
+    expect(beforeShape).toEqual({
+      ...EMPTY,
+      subcommand: "index",
+      configRoot: "/r",
+      full: true,
+    });
+  });
+
+  it("duplicate subcommand rejects (no silent last-wins)", () => {
+    expect(() => parseArgs(["index", "index"])).toThrow(
+      /Only one subcommand is allowed/,
+    );
+  });
+
+  it("duplicate --full rejects", () => {
+    expect(() => parseArgs(["index", "--full", "--full"])).toThrow(
+      /--full specified more than once/,
+    );
+  });
+
+  it("duplicate --json rejects", () => {
+    expect(() => parseArgs(["index", "--json", "--json"])).toThrow(
+      /--json specified more than once/,
+    );
+  });
+
+  it("--check combined with `index` rejects (ADR-12 flag/subcommand rule)", () => {
+    expect(() => parseArgs(["index", "--check"])).toThrow(
+      /--check cannot be combined with subcommand 'index'/,
+    );
+    expect(() => parseArgs(["--check", "index"])).toThrow(
+      /--check cannot be combined with subcommand 'index'/,
+    );
+  });
+
+  it("--full outside `index` rejects", () => {
+    expect(() => parseArgs(["--full"])).toThrow(
+      /--full is only accepted with the 'index' subcommand/,
+    );
+  });
+
+  it("--json outside `index` rejects", () => {
+    expect(() => parseArgs(["--json"])).toThrow(
+      /--json is only accepted with the 'index' subcommand/,
+    );
+  });
+});
+
+describe("parseArgs — unknown subcommand 'did you mean?' suggestions (ADR-12)", () => {
+  // Per ADR-12 Implementation invariants + execution note: "reindex"
+  // specifically gets the suggestion because ADR-11 shipped with
+  // --reindex vernacular and muscle memory reaches for it.
+  it.each([
+    ["reindex", "index"],
+    ["extract", "index"],
+    ["refresh", "index"],
+    ["build", "index"],
+    ["init", "index"],
+  ])("'%s' suggests '%s'", (typo, suggestion) => {
+    expect(() => parseArgs([typo])).toThrow(
+      new RegExp(
+        `Unknown subcommand '${typo}'\\. Did you mean '${suggestion}'\\?`,
+      ),
+    );
+  });
+
+  it("unknown subcommand with no close match lists known subcommands", () => {
+    expect(() => parseArgs(["xyzzy"])).toThrow(
+      /Unknown subcommand 'xyzzy'\. Known subcommands: index/,
     );
   });
 });

@@ -1,36 +1,64 @@
 /**
- * CLI argument parser for the MCP runtime binary.
+ * CLI argument parser for the contextatlas binary.
  *
- * Three flags accepted, both value-taking flags supporting the
- * space-separated (`--flag value`) and equals-separated (`--flag=value`)
- * forms:
+ * Two modes: subcommand-dispatched operations and the no-subcommand
+ * default that starts the MCP server over stdio. The distinction
+ * lives in {@link ParsedArgs.subcommand}.
  *
- *   --config-root <path>  Directory that acts as the resolution base
- *                         for the config file and for the paths the
- *                         config names (atlas.path, atlas.local_cache,
- *                         source.root). Default: process.cwd().
+ * Per ADR-12: flags compose, subcommands partition. Subcommand parsing
+ * runs before flag parsing — the first non-flag positional argument
+ * is inspected against the known subcommand table. Flags may appear on
+ * either side of the subcommand name, so both
+ * `contextatlas --config-root /x index` and
+ * `contextatlas index --config-root /x` parse the same way.
  *
- *   --config <file>       Specific config file to load. When relative,
- *                         resolved against --config-root. When absent,
- *                         defaults to `<config-root>/.contextatlas.yml`.
+ * Flags (all accepted by default subcommand; `index` filters per
+ * ADR-12's spec):
  *
- *   --check               (ADR-11) Boolean-valued. When present, the
- *                         binary loads the committed atlas, compares
- *                         its `extracted_at_sha` against current git
- *                         HEAD, and exits with a status code indicating
- *                         staleness. No MCP server starts. See
- *                         src/index.ts for the exit-code contract.
+ *   --config-root <path>  (ADR-08) Directory that acts as the
+ *                         resolution base for the config file and for
+ *                         the paths the config names (atlas.path,
+ *                         atlas.local_cache, source.root).
+ *                         Default: process.cwd().
  *
- * Unknown arguments and malformed values throw with actionable error
- * messages rather than silently defaulting — a typo in either flag
- * shouldn't quietly fall back to cwd/default-filename and mask
- * misconfigurations.
+ *   --config <file>       (ADR-08) Specific config file to load. When
+ *                         relative, resolved against --config-root.
+ *                         When absent, defaults to
+ *                         `<config-root>/.contextatlas.yml`.
+ *
+ *   --check               (ADR-11) Boolean flag on the default
+ *                         (no-subcommand) invocation. Produces a
+ *                         staleness probe and exits. Rejected when
+ *                         combined with any subcommand — see ADR-12.
+ *
+ *   --full                (ADR-12) Accepted only with `index`. Bypass
+ *                         SHA-diff gating and re-extract every prose
+ *                         file regardless of staleness.
+ *
+ *   --json                (ADR-12) Accepted only with `index`. Emit
+ *                         the completion summary as a JSON object on
+ *                         stdout instead of the default `key=value`
+ *                         lines.
+ *
+ * Unknown arguments throw with actionable errors. Unknown
+ * subcommand names get the "did you mean?" suggestion treatment when
+ * they're close to a real name (prominently "reindex" → "index", per
+ * ADR-12's note about muscle memory from ADR-11's pre-amendment text).
  *
  * Extracted from `src/index.ts` so it's testable without triggering
  * `main()` as a side effect of importing.
  */
 
+export type Subcommand = "mcp" | "index";
+
 export interface ParsedArgs {
+  /**
+   * Which operation the user invoked. `"mcp"` is the no-subcommand
+   * default — the binary starts the MCP server on stdio. Named
+   * subcommands (v0.1: just `"index"`) short-circuit into their own
+   * code paths before MCP setup runs.
+   */
+  subcommand: Subcommand;
   /**
    * Value of `--config-root` if passed; otherwise null. Callers
    * resolve null to `process.cwd()` themselves — this module does
@@ -46,21 +74,82 @@ export interface ParsedArgs {
   /**
    * True when `--check` was passed. Signals the caller to short-circuit
    * into staleness-detection mode rather than start the MCP server.
+   * Rejected when combined with any subcommand — see ADR-12.
    */
   check: boolean;
+  /**
+   * True when `--full` was passed alongside `index`. Bypasses SHA-diff
+   * gating in the extraction pipeline. Rejected on any non-`index`
+   * invocation. Per ADR-12.
+   */
+  full: boolean;
+  /**
+   * True when `--json` was passed alongside `index`. Switches the
+   * completion summary from `key=value` lines to a single JSON
+   * object. Rejected on any non-`index` invocation. Per ADR-12.
+   */
+  json: boolean;
 }
 
 const USAGE =
-  "Usage: contextatlas [--config-root <path>] [--config <file>] [--check]  " +
-  "(see ADR-08 + ADR-11 for when these are needed)";
+  "Usage: contextatlas [index] [--config-root <path>] [--config <file>] " +
+  "[--check] [--full] [--json]  (see ADR-08, ADR-11, ADR-12)";
+
+const KNOWN_SUBCOMMANDS: readonly Subcommand[] = ["index"];
+
+/**
+ * Common mistakes mapped to the right subcommand name. Kept small and
+ * explicit rather than using a fuzzy-match library — the surface is
+ * tiny in v0.1 and a handful of common slips cover it. The ADR-11
+ * pre-amendment text used `--reindex`, so muscle memory will reach
+ * for it; that specific case gets the suggestion treatment.
+ */
+const SUBCOMMAND_SUGGESTIONS: Record<string, Subcommand> = {
+  reindex: "index",
+  extract: "index",
+  refresh: "index",
+  build: "index",
+  init: "index",
+};
 
 export function parseArgs(argv: readonly string[]): ParsedArgs {
   let configRoot: string | null = null;
   let configFile: string | null = null;
   let check = false;
+  let full = false;
+  let json = false;
+  let subcommand: Subcommand = "mcp";
+  let subcommandSeen = false;
+
   let i = 0;
   while (i < argv.length) {
     const arg = argv[i]!;
+
+    // Subcommand detection — any non-flag positional that matches the
+    // known table. The first one wins; a second one throws.
+    if (!arg.startsWith("-")) {
+      if (subcommandSeen) {
+        throw new Error(
+          `Unexpected positional argument '${arg}'. Only one subcommand is allowed. ${USAGE}`,
+        );
+      }
+      if ((KNOWN_SUBCOMMANDS as readonly string[]).includes(arg)) {
+        subcommand = arg as Subcommand;
+        subcommandSeen = true;
+        i += 1;
+        continue;
+      }
+      const suggestion = SUBCOMMAND_SUGGESTIONS[arg];
+      if (suggestion) {
+        throw new Error(
+          `Unknown subcommand '${arg}'. Did you mean '${suggestion}'? ${USAGE}`,
+        );
+      }
+      throw new Error(
+        `Unknown subcommand '${arg}'. Known subcommands: ${KNOWN_SUBCOMMANDS.join(", ")}. ${USAGE}`,
+      );
+    }
+
     if (arg === "--config-root") {
       if (configRoot !== null) {
         throw new Error(
@@ -143,7 +232,43 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
       i += 1;
       continue;
     }
+    if (arg === "--full") {
+      if (full) {
+        throw new Error(`Flag --full specified more than once. ${USAGE}`);
+      }
+      full = true;
+      i += 1;
+      continue;
+    }
+    if (arg === "--json") {
+      if (json) {
+        throw new Error(`Flag --json specified more than once. ${USAGE}`);
+      }
+      json = true;
+      i += 1;
+      continue;
+    }
     throw new Error(`Unknown argument '${arg}'. ${USAGE}`);
   }
-  return { configRoot, configFile, check };
+
+  // ADR-12 flag-vs-subcommand compatibility rules.
+  if (check && subcommand !== "mcp") {
+    throw new Error(
+      `Flag --check cannot be combined with subcommand '${subcommand}'. ` +
+        "The --check staleness probe is a standalone operation. " +
+        "Run 'contextatlas --check' or 'contextatlas index' separately.",
+    );
+  }
+  if (full && subcommand !== "index") {
+    throw new Error(
+      `Flag --full is only accepted with the 'index' subcommand. ${USAGE}`,
+    );
+  }
+  if (json && subcommand !== "index") {
+    throw new Error(
+      `Flag --json is only accepted with the 'index' subcommand. ${USAGE}`,
+    );
+  }
+
+  return { subcommand, configRoot, configFile, check, full, json };
 }

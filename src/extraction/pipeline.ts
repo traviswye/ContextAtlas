@@ -105,6 +105,14 @@ export interface ExtractionPipelineDeps {
    * branch).
    */
   gitBinary?: string;
+  /**
+   * When true, bypass SHA-diff gating and re-extract every prose
+   * file regardless of whether its content matches the committed
+   * baseline. Used by `contextatlas index --full` (ADR-12) for
+   * rebuild cases — prompt changes, model changes, suspected
+   * extraction quality issues. Default: false.
+   */
+  skipShaDiff?: boolean;
 }
 
 export interface ExtractionPipelineResult {
@@ -168,13 +176,25 @@ export async function runExtractionPipeline(
   log.info("pipeline: discovered prose files", { count: proseFiles.length });
 
   // --- Stage 2: SHA diff -----------------------------------------------
-  const diff = diffShas(proseFiles, committedShas);
+  // `skipShaDiff` (from `contextatlas index --full`, ADR-12) rewrites
+  // every prose file into `changed` so the extraction phase treats
+  // them all as dirty — the ShaDiff record is retained for the
+  // `files_unchanged=0` summary line rather than being faked.
+  const diff = deps.skipShaDiff
+    ? {
+        unchanged: [],
+        changed: proseFiles.filter((f) => committedShas[f.relPath] !== undefined),
+        added: proseFiles.filter((f) => committedShas[f.relPath] === undefined),
+        deleted: [] as string[],
+      }
+    : diffShas(proseFiles, committedShas);
   const filesToExtract = [...diff.changed, ...diff.added];
   log.info("pipeline: extraction plan", {
     unchanged: diff.unchanged.length,
     changed: diff.changed.length,
     added: diff.added.length,
     deleted: diff.deleted.length,
+    fullRebuild: deps.skipShaDiff === true,
   });
 
   // --- Stage 3: walk source + build symbol inventory -------------------
