@@ -104,28 +104,55 @@ export function diffShas(
 // Prose walk (ADRs + doc globs)
 // ---------------------------------------------------------------------------
 
+/**
+ * Walk prose files (ADRs + doc globs). Paths in returned records are
+ * stored relative to the most useful base:
+ *   - If the prose file resolves UNDER `sourceRoot`: relative to
+ *     `sourceRoot` (backward compat with all existing atlases).
+ *   - If it resolves OUTSIDE `sourceRoot`: relative to the bucket's
+ *     natural base — the ADR directory for ADR-bucket files,
+ *     `configRoot` for docs-bucket files.
+ *
+ * `configRoot` is the resolution base for `adrs.path` and
+ * `docs.include` glob patterns — i.e. where `.contextatlas.yml`
+ * lives. Defaults to `sourceRoot`, preserving the common case where
+ * config sits in the source root. See ADR-08 for the external-ADRs
+ * architecture that motivated the separation.
+ */
 export function walkProseFiles(
-  repoRoot: string,
+  sourceRoot: string,
   config: Pick<ContextAtlasConfig, "adrs" | "docs">,
+  configRoot?: string,
 ): ProseFile[] {
-  const absRoot = pathResolve(repoRoot);
+  const absSourceRoot = pathResolve(sourceRoot);
+  const absConfigRoot =
+    configRoot !== undefined ? pathResolve(configRoot) : absSourceRoot;
   const out: ProseFile[] = [];
   const seen = new Set<string>();
 
-  // ADR bucket first — wins on overlap with docs.
-  const adrAbsDir = pathResolve(absRoot, config.adrs.path);
+  // ADR bucket first — wins on overlap with docs. Resolved against
+  // configRoot so external-ADR setups (adrs.path starting with /, or
+  // traversing ../) work per ADR-08.
+  const adrAbsDir = pathResolve(absConfigRoot, config.adrs.path);
   for (const absPath of listMarkdownRecursive(adrAbsDir)) {
     if (seen.has(absPath)) continue;
     seen.add(absPath);
-    out.push(makeProseFile(absPath, absRoot, "adr"));
+    out.push({
+      absPath,
+      relPath: proseRelPath(absPath, absSourceRoot, adrAbsDir),
+      sha: computeFileSha(absPath),
+      bucket: "adr",
+    });
   }
 
-  // Then docs globs. `glob` supports `.github/...` via dot: true, but we
-  // keep the default hidden-file behavior — users opt in by listing
-  // them in `include` explicitly (glob matches them via literal path).
+  // Docs globs — evaluated relative to configRoot (not sourceRoot) so
+  // that a config living outside the source root still resolves
+  // README.md and similar to files next to itself rather than files
+  // inside the cloned source. Common case (configRoot === sourceRoot)
+  // is unchanged.
   for (const pattern of config.docs.include) {
     const matches = globSync(pattern, {
-      cwd: absRoot,
+      cwd: absConfigRoot,
       absolute: true,
       nodir: true,
       dot: true,
@@ -133,7 +160,12 @@ export function walkProseFiles(
     for (const absPath of matches) {
       if (seen.has(absPath)) continue;
       seen.add(absPath);
-      out.push(makeProseFile(absPath, absRoot, "doc"));
+      out.push({
+        absPath,
+        relPath: proseRelPath(absPath, absSourceRoot, absConfigRoot),
+        sha: computeFileSha(absPath),
+        bucket: "doc",
+      });
     }
   }
 
@@ -141,6 +173,43 @@ export function walkProseFiles(
   // don't churn purely because the filesystem returned a different walk.
   out.sort((a, b) => (a.relPath < b.relPath ? -1 : a.relPath > b.relPath ? 1 : 0));
   return out;
+}
+
+/**
+ * Compute the stored relPath for a prose file (ADR or doc).
+ *
+ * Scoped-relaxation helper: keeps `toRelativePath`'s strict
+ * under-root enforcement for source files (ADR-01 security
+ * invariant) while letting prose files live outside the source
+ * root when explicitly configured to (ADR-08).
+ *
+ * - File path resolves UNDER `sourceRoot` → return relative to
+ *   `sourceRoot`. Backward-compat with existing atlases.
+ * - File path resolves OUTSIDE `sourceRoot` → return relative to
+ *   `fallbackBase`. The bucket-appropriate base (ADR dir for
+ *   ADR-bucket files, configRoot for docs-bucket files).
+ *
+ * Not exported from `src/utils/paths.ts` — this is file-walker-local
+ * so the weakening doesn't accidentally apply to any future
+ * source-file code path.
+ */
+function proseRelPath(
+  absProsePath: string,
+  absSourceRoot: string,
+  absFallbackBase: string,
+): string {
+  const normalizedProse = normalizePath(absProsePath);
+  const normalizedSourceRoot = normalizePath(absSourceRoot);
+  const sourceRootWithSep = normalizedSourceRoot.endsWith("/")
+    ? normalizedSourceRoot
+    : normalizedSourceRoot + "/";
+  if (
+    normalizedProse === normalizedSourceRoot ||
+    normalizedProse.startsWith(sourceRootWithSep)
+  ) {
+    return toRelativePath(normalizedProse, normalizedSourceRoot);
+  }
+  return toRelativePath(normalizedProse, normalizePath(absFallbackBase));
 }
 
 function listMarkdownRecursive(dir: string): string[] {
@@ -167,19 +236,6 @@ function listMarkdownRecursive(dir: string): string[] {
     }
   }
   return out;
-}
-
-function makeProseFile(
-  absPath: string,
-  absRoot: string,
-  bucket: ProseBucket,
-): ProseFile {
-  return {
-    absPath,
-    relPath: toRelativePath(normalizePath(absPath), normalizePath(absRoot)),
-    sha: computeFileSha(absPath),
-    bucket,
-  };
 }
 
 // ---------------------------------------------------------------------------

@@ -577,4 +577,105 @@ describe("runExtractionPipeline", () => {
     const claims = listAllClaims(db);
     expect(claims[0]?.symbolIds).toEqual([]);
   });
+
+  it("supports external ADR root with configRoot separate from repoRoot (ADR-08)", async () => {
+    // Three-location fixture mirroring the benchmarks-repo architecture:
+    //   tmp/benchmarks-root/
+    //     .contextatlas.yml     ← config
+    //     adrs/
+    //       ADR-EXT.md          ← external ADR
+    //   tmp/source-root/
+    //     example.ts            ← source code (separate tree)
+    //
+    // The pipeline is invoked with repoRoot=source-root, configRoot=
+    // benchmarks-root. Pre-ADR-08 this would crash in walkProseFiles
+    // with "path not under root"; now it works end-to-end.
+    const benchmarksRoot = pathJoin(tmp, "benchmarks-root");
+    const adrDir = pathJoin(benchmarksRoot, "adrs");
+    const sourceRoot = pathJoin(tmp, "source-root");
+    mkdirSync(adrDir, { recursive: true });
+    mkdirSync(sourceRoot, { recursive: true });
+    mkdirSync(pathJoin(benchmarksRoot, ".contextatlas"), { recursive: true });
+    writeFileSync(
+      pathJoin(adrDir, "ADR-EXT.md"),
+      "---\nid: ADR-EXT\n---\n\nExtPoint must be stable across releases.\n",
+    );
+    writeFileSync(
+      pathJoin(sourceRoot, "example.ts"),
+      "export class ExtPoint {}\n",
+    );
+
+    const adapter = makeStubAdapter("typescript", [".ts"], (absPath) =>
+      absPath.endsWith("example.ts")
+        ? [
+            {
+              id: "sym:ts:example.ts:ExtPoint",
+              name: "ExtPoint",
+              kind: "class",
+              path: "example.ts",
+              line: 1,
+              language: "typescript",
+            },
+          ]
+        : [],
+    );
+    const client = makeStubClient([
+      {
+        claims: [
+          makeClaim({
+            claim: "ExtPoint must be stable across releases",
+            severity: "hard",
+            symbol_candidates: ["ExtPoint"],
+          }),
+        ],
+      },
+    ]);
+
+    const config: ContextAtlasConfig = {
+      version: 1,
+      languages: ["typescript"],
+      adrs: { path: "adrs", format: "markdown-frontmatter" },
+      docs: { include: [] },
+      git: { recentCommits: 5 },
+      index: { model: "claude-opus-4-7" },
+      atlas: {
+        committed: true,
+        path: ".contextatlas/atlas.json",
+        localCache: ".contextatlas/index.db",
+      },
+    };
+
+    const result = await runExtractionPipeline({
+      repoRoot: sourceRoot,
+      configRoot: benchmarksRoot,
+      config,
+      db,
+      anthropicClient: client,
+      adapters: new Map([["typescript", adapter]]),
+    });
+
+    // Claim persisted, linked to the source-tree symbol.
+    expect(result.filesExtracted).toBe(1);
+    expect(result.claimsWritten).toBe(1);
+    const claims = listAllClaims(db);
+    expect(claims).toHaveLength(1);
+    // source_path is relative to the ADR dir (outside-source-root
+    // branch of proseRelPath), matching ADR-08's stated rule.
+    expect(claims[0]?.sourcePath).toBe("ADR-EXT.md");
+    expect(claims[0]?.source).toBe("ADR-EXT");
+    expect(claims[0]?.symbolIds).toEqual(["sym:ts:example.ts:ExtPoint"]);
+
+    // atlas.json was written in the config's home, not the source
+    // tree — matching the "atlas.path resolves against configRoot"
+    // behavior the pipeline now enforces.
+    const atlasInBenchmarks = pathJoin(
+      benchmarksRoot,
+      ".contextatlas",
+      "atlas.json",
+    );
+    expect(() => readFileSync(atlasInBenchmarks, "utf8")).not.toThrow();
+    const atlasText = readFileSync(atlasInBenchmarks, "utf8");
+    expect(atlasText).toContain("ExtPoint");
+    expect(atlasText).toContain("ADR-EXT.md");
+  });
 });

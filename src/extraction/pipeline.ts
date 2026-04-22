@@ -61,7 +61,23 @@ import {
 } from "./resolver.js";
 
 export interface ExtractionPipelineDeps {
+  /**
+   * Source code root. Passed to the language adapter's `initialize`.
+   * `walkSourceFiles` indexes from here. Source files must stay under
+   * this root — ADR-01's security/ID-stability invariant.
+   */
   repoRoot: string;
+  /**
+   * Directory containing `.contextatlas.yml`. Resolution base for
+   * `adrs.path` and `docs.include` glob patterns. Defaults to
+   * `repoRoot`, preserving current behavior when config lives
+   * alongside source (the common case).
+   *
+   * Diverges from `repoRoot` in setups where config + ADRs live
+   * separately from source — e.g., a benchmarks project whose ADRs
+   * describe a cloned external source tree. See ADR-08.
+   */
+  configRoot?: string;
   config: ContextAtlasConfig;
   db: DatabaseInstance;
   anthropicClient: ExtractionClient;
@@ -98,10 +114,16 @@ export async function runExtractionPipeline(
 ): Promise<ExtractionPipelineResult> {
   const start = Date.now();
   const { repoRoot, config, db, anthropicClient, adapters } = deps;
+  const configRoot = deps.configRoot ?? repoRoot;
   const batchSize = deps.batchSize ?? 3;
 
   // --- Stage 0: atlas-aware startup ------------------------------------
-  const atlasAbsPath = pathResolve(repoRoot, config.atlas.path);
+  // atlas.path is a config-file-relative path (it names where the
+  // committed team artifact lives alongside other config-owned
+  // files), so it resolves against configRoot, not repoRoot. In the
+  // common case these are identical; in the external-ADRs setup
+  // (ADR-08) the committed atlas belongs with the config.
+  const atlasAbsPath = pathResolve(configRoot, config.atlas.path);
   if (existsSync(atlasAbsPath)) {
     log.info("pipeline: importing committed atlas.json", { path: atlasAbsPath });
     importAtlasFile(db, atlasAbsPath);
@@ -110,7 +132,10 @@ export async function runExtractionPipeline(
   const committedShas = listSourceShas(db);
 
   // --- Stage 1: walk prose files ---------------------------------------
-  const proseFiles = walkProseFiles(repoRoot, config);
+  // Pass both roots so prose files outside repoRoot (external ADRs per
+  // ADR-08) resolve correctly. When configRoot === repoRoot, behavior
+  // is identical to the single-root case.
+  const proseFiles = walkProseFiles(repoRoot, config, configRoot);
   log.info("pipeline: discovered prose files", { count: proseFiles.length });
 
   // --- Stage 2: SHA diff -----------------------------------------------

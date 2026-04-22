@@ -123,6 +123,86 @@ describe("walkProseFiles", () => {
     expect(files.map((f) => f.relPath)).toEqual(["README.md"]);
   });
 
+  it("ADRs under sourceRoot keep source-root-relative paths (backward compat)", () => {
+    // Backward-compat canary: when ADRs live inside sourceRoot, their
+    // stored relPath is relative to sourceRoot exactly as before the
+    // ADR-08 change.
+    const files = walkProseFiles(tmp, {
+      adrs: { path: "docs/adr", format: "markdown-frontmatter" },
+      docs: { include: [] },
+    });
+    const adrs = files.filter((f) => f.bucket === "adr");
+    for (const f of adrs) {
+      expect(f.relPath.startsWith("docs/adr/")).toBe(true);
+      expect(f.relPath).not.toMatch(/^\.\./);
+    }
+  });
+
+  it("ADRs outside sourceRoot via traversal are stored relative to the ADR directory (ADR-08)", () => {
+    // Sibling layout: `project/` is the sourceRoot; ADRs live in
+    // `external-adrs/` (outside sourceRoot). The stored relPath
+    // takes the fallback branch and is relative to the ADR dir.
+    const projectRoot = pathJoin(tmp, "project");
+    const externalAdrs = pathJoin(tmp, "external-adrs");
+    mkdirSync(projectRoot, { recursive: true });
+    mkdirSync(externalAdrs, { recursive: true });
+    writeFileSync(pathJoin(externalAdrs, "ADR-EXT-01.md"), "external body 1");
+    writeFileSync(pathJoin(externalAdrs, "ADR-EXT-02.md"), "external body 2");
+
+    const files = walkProseFiles(projectRoot, {
+      adrs: { path: "../external-adrs", format: "markdown-frontmatter" },
+      docs: { include: [] },
+    });
+    const adrPaths = files.map((f) => f.relPath).sort();
+    expect(adrPaths).toEqual(["ADR-EXT-01.md", "ADR-EXT-02.md"]);
+    for (const f of files) {
+      expect(f.bucket).toBe("adr");
+      expect(f.sha).toMatch(/^[a-f0-9]{64}$/);
+    }
+  });
+
+  it("configRoot separates config-file resolution from source root (ADR-08)", () => {
+    // Three-location layout mirroring the benchmarks-repo architecture:
+    //   tmp/cfg-home/         ← configRoot (where .contextatlas.yml lives)
+    //   tmp/cfg-home/adrs/    ← ADRs (inside configRoot, outside sourceRoot)
+    //   tmp/source/           ← sourceRoot (where code lives)
+    const cfgHome = pathJoin(tmp, "cfg-home");
+    const adrDir = pathJoin(cfgHome, "adrs");
+    const source = pathJoin(tmp, "source");
+    mkdirSync(adrDir, { recursive: true });
+    mkdirSync(source, { recursive: true });
+    writeFileSync(pathJoin(adrDir, "ADR-X.md"), "body X");
+
+    const files = walkProseFiles(
+      source,
+      {
+        adrs: { path: "adrs", format: "markdown-frontmatter" },
+        docs: { include: [] },
+      },
+      cfgHome, // configRoot explicit; different from sourceRoot
+    );
+    // adrs.path "adrs" resolves against configRoot (not sourceRoot),
+    // finding the ADR at cfg-home/adrs/ADR-X.md. Since that's outside
+    // sourceRoot, the stored relPath uses the fallback base (the ADR dir).
+    expect(files.map((f) => f.relPath)).toEqual(["ADR-X.md"]);
+    expect(files[0]?.bucket).toBe("adr");
+  });
+
+  it("absolute adrs.path that happens to be inside sourceRoot uses source-root-relative form", () => {
+    // Edge case: absolute path, but it still lives inside sourceRoot.
+    // proseRelPath takes the source-root branch (not the fallback
+    // branch), preserving backward-compat output when layout allows.
+    const externalAdrs = pathJoin(tmp, "abs-external");
+    mkdirSync(externalAdrs, { recursive: true });
+    writeFileSync(pathJoin(externalAdrs, "ADR-ABS.md"), "abs body");
+
+    const files = walkProseFiles(tmp, {
+      adrs: { path: externalAdrs, format: "markdown-frontmatter" },
+      docs: { include: [] },
+    });
+    expect(files.map((f) => f.relPath)).toEqual(["abs-external/ADR-ABS.md"]);
+  });
+
   it("computes SHA for each file and returns paths in deterministic order", () => {
     const files = walkProseFiles(tmp, {
       adrs: { path: "docs/adr", format: "markdown-frontmatter" },
