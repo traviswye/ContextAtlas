@@ -258,6 +258,76 @@ describe("MCP server binary smoke test", () => {
     const text = (result.content[0] as { text: string }).text;
     expect(text).toMatch(/ERR not_found/);
   });
+
+  it("find_by_intent returns a ranked MATCHES list from the fixture atlas (ADR-09)", async () => {
+    // The fixture's atlas.json contains one claim:
+    //   "SmokeTestSymbol exists so the binary smoke test can validate
+    //    end-to-end query serving"
+    // A query for "binary smoke" hits both tokens in that claim.
+    // This is the canary that the v2 FTS5 migration runs correctly
+    // when atlas.json imports into a fresh cache, and that the
+    // find_by_intent handler is wired end-to-end.
+    const result = await client.request(
+      {
+        method: "tools/call",
+        params: {
+          name: "find_by_intent",
+          arguments: { query: "binary smoke" },
+        },
+      },
+      CallToolResultSchema,
+    );
+    expect(result.isError).toBeFalsy();
+    const text = (result.content[0] as { text: string }).text;
+    expect(text).toMatch(/^MATCHES 1 \[query="binary smoke"\]/);
+    expect(text).toMatch(/SYM sym:ts:src\/smoke\.ts:SmokeTestSymbol/);
+    expect(text).toMatch(/INTENT ADR-SMOKE hard/);
+  });
+
+  it("find_by_intent returns MATCHES 0 for a query that has no hits", async () => {
+    const result = await client.request(
+      {
+        method: "tools/call",
+        params: {
+          name: "find_by_intent",
+          arguments: { query: "totally unrelated phrase xyz" },
+        },
+      },
+      CallToolResultSchema,
+    );
+    expect(result.isError).toBeFalsy();
+    const text = (result.content[0] as { text: string }).text;
+    expect(text).toMatch(/^MATCHES 0 /);
+  });
+
+  it("find_by_intent JSON format round-trips through the binary end-to-end (ADR-09)", async () => {
+    // Binary smoke coverage for format: "json" — ensures the
+    // handler's format-dispatch code path is exercised by a real
+    // subprocess call, not just InMemoryTransport tests.
+    const result = await client.request(
+      {
+        method: "tools/call",
+        params: {
+          name: "find_by_intent",
+          arguments: { query: "binary smoke", format: "json" },
+        },
+      },
+      CallToolResultSchema,
+    );
+    expect(result.isError).toBeFalsy();
+    const text = (result.content[0] as { text: string }).text;
+    const parsed = JSON.parse(text) as {
+      matches: Array<{
+        symbolId: string;
+        name: string;
+        matchedIntent: { source: string; severity: string };
+      }>;
+    };
+    expect(parsed.matches).toHaveLength(1);
+    expect(parsed.matches[0]?.name).toBe("SmokeTestSymbol");
+    expect(parsed.matches[0]?.matchedIntent.source).toBe("ADR-SMOKE");
+    expect(parsed.matches[0]?.matchedIntent.severity).toBe("hard");
+  });
 });
 
 // ---------------------------------------------------------------------------

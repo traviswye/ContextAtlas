@@ -380,20 +380,25 @@ not a core change.
 ## What's Implemented Today
 
 **MVP tools (all three in scope):**
-- [ ] `get_symbol_context` — the primitive (full signal fusion)
-- [ ] `find_by_intent` — thin composite, SQL text match against claims
+- [x] `get_symbol_context` — the primitive (full signal fusion minus
+  git, which lands in step 10)
+- [x] `find_by_intent` — thin composite, FTS5 + BM25 ranking over
+  the claims table (ADR-09)
 - [ ] `impact_of_change` — thin composite, primitive + git co-change
+  (step 11)
 
 **Infrastructure:**
-- [ ] Core MCP server skeleton
-- [ ] TypeScript language adapter (via `typescript-language-server`)
-- [ ] Python language adapter (via Pyright)
-- [ ] Opus 4.7 index-time extraction pipeline (validated: 100% parse
+- [x] Core MCP server skeleton
+- [x] TypeScript language adapter (via `typescript-language-server`)
+- [ ] Python language adapter (via Pyright) (step 9)
+- [x] Opus 4.7 index-time extraction pipeline (validated: 100% parse
   success across 12 production-grade documents tested)
-- [ ] SQLite storage with SHA-based incremental reindex
-- [ ] Git integration (recent commits, co-change analysis)
-- [ ] Compact output format (default) + JSON format (opt-in)
-- [ ] Benchmark harness
+- [x] SQLite storage with SHA-based incremental reindex
+- [ ] Git integration (recent commits, co-change analysis) (step 10)
+- [x] Compact output format (default) + JSON format (opt-in)
+- [x] Benchmark harness (in the separate
+  [ContextAtlas-benchmarks](https://github.com/traviswye/ContextAtlas-benchmarks)
+  repo; see the linked Benchmarks and Methodology section below)
 
 **Benchmark assets (prepared):**
 - [x] 10 production-grade ADRs for benchmark targets (5 hono + 5 httpx)

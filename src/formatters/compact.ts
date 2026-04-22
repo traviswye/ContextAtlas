@@ -10,6 +10,7 @@
  * test/fixtures/bundles/ for the canonical golden examples.
  */
 
+import type { FindByIntentMatch } from "../queries/find-by-intent.js";
 import type {
   BundleDepth,
   Claim,
@@ -196,6 +197,35 @@ function renderDiagnostics(
 
 function quote(text: string): string {
   return `"${text.replace(/"/g, '\\"')}"`;
+}
+
+/**
+ * Compact-format renderer for `find_by_intent` results (ADR-09).
+ * Uses the same `SYM` / `SIG` / `INTENT` vocabulary as the primitive
+ * bundle so LLMs parsing `get_symbol_context` output read this
+ * without re-learning conventions.
+ *
+ * Zero-matches renders as a single header line with no body — same
+ * "omit empty sections" rule as `renderCompact`.
+ */
+export function renderMatchesCompact(
+  matches: readonly FindByIntentMatch[],
+  query: string,
+): string {
+  const header = `MATCHES ${matches.length} [query=${quote(query)}]`;
+  const lines: string[] = [header];
+  for (const m of matches) {
+    lines.push(
+      `${INDENT}SYM ${m.symbolId} ${m.path}:${m.line} ${m.kind}`,
+    );
+    if (m.signature) {
+      lines.push(`${INDENT2}SIG ${m.signature}`);
+    }
+    lines.push(
+      `${INDENT2}INTENT ${m.matchedIntent.source} ${m.matchedIntent.severity} ${quote(m.matchedIntent.claim)}`,
+    );
+  }
+  return lines.join("\n") + "\n";
 }
 
 function formatNameList(

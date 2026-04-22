@@ -11,7 +11,7 @@ import {
 import type { DatabaseInstance } from "../storage/db.js";
 import type { LanguageAdapter, LanguageCode } from "../types.js";
 
-import { handleFindByIntent } from "./handlers/find-by-intent.js";
+import { createFindByIntentHandler } from "./handlers/find-by-intent.js";
 import { createGetSymbolContextHandler } from "./handlers/get-symbol-context.js";
 import { handleImpactOfChange } from "./handlers/impact-of-change.js";
 import { TOOL_NAMES, TOOLS, type ToolName } from "./schemas.js";
@@ -45,7 +45,9 @@ export function createServer(options: CreateServerOptions): Server {
     [TOOL_NAMES.getSymbolContext]: options.context
       ? createGetSymbolContextHandler(options.context)
       : serverNotInitializedHandler(TOOL_NAMES.getSymbolContext),
-    [TOOL_NAMES.findByIntent]: handleFindByIntent,
+    [TOOL_NAMES.findByIntent]: options.context
+      ? createFindByIntentHandler({ db: options.context.db })
+      : serverNotInitializedHandler(TOOL_NAMES.findByIntent),
     [TOOL_NAMES.impactOfChange]: handleImpactOfChange,
   };
 

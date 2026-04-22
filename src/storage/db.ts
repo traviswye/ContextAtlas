@@ -72,6 +72,47 @@ const MIGRATIONS: Migration[] = [
       `);
     },
   },
+  {
+    // ADR-09: FTS5 index over the claims table for find_by_intent.
+    // External-content virtual table (content='claims', content_rowid='id')
+    // keeps atlas.json round-trip lossless — the FTS index is derived
+    // from the base claims table, not stored independently.
+    version: 2,
+    apply(db) {
+      db.exec(`
+        CREATE VIRTUAL TABLE claims_fts USING fts5(
+          claim,
+          rationale,
+          excerpt,
+          content='claims',
+          content_rowid='id'
+        );
+
+        -- Triggers keep the FTS index in sync with the claims table.
+        -- insertClaim, deleteClaimsBySourcePath, and importAtlas all
+        -- operate on claims; FTS follows automatically.
+        CREATE TRIGGER claims_fts_ai AFTER INSERT ON claims BEGIN
+          INSERT INTO claims_fts(rowid, claim, rationale, excerpt)
+          VALUES (new.id, new.claim, new.rationale, new.excerpt);
+        END;
+        CREATE TRIGGER claims_fts_ad AFTER DELETE ON claims BEGIN
+          INSERT INTO claims_fts(claims_fts, rowid, claim, rationale, excerpt)
+          VALUES('delete', old.id, old.claim, old.rationale, old.excerpt);
+        END;
+        CREATE TRIGGER claims_fts_au AFTER UPDATE ON claims BEGIN
+          INSERT INTO claims_fts(claims_fts, rowid, claim, rationale, excerpt)
+          VALUES('delete', old.id, old.claim, old.rationale, old.excerpt);
+          INSERT INTO claims_fts(rowid, claim, rationale, excerpt)
+          VALUES (new.id, new.claim, new.rationale, new.excerpt);
+        END;
+
+        -- Backfill FTS from any existing claims (migrating an existing
+        -- v1 DB with data). No-op on a fresh DB.
+        INSERT INTO claims_fts(rowid, claim, rationale, excerpt)
+        SELECT id, claim, rationale, excerpt FROM claims;
+      `);
+    },
+  },
 ];
 
 export const LATEST_SCHEMA_VERSION = MIGRATIONS.reduce(

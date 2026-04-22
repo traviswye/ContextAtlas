@@ -88,8 +88,18 @@ const findByIntentTool: Tool = {
       limit: {
         type: "integer",
         minimum: 1,
+        maximum: 50,
         default: 5,
-        description: "Maximum number of matching symbols to return.",
+        description:
+          "Maximum number of matching symbols to return (hard cap 50).",
+      },
+      format: {
+        type: "string",
+        enum: ["compact", "json"],
+        default: "compact",
+        description:
+          "Output format. 'compact' uses the same SYM/SIG/INTENT " +
+          "vocabulary as get_symbol_context; 'json' is structured.",
       },
     },
     required: ["query"],

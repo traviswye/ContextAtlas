@@ -32,10 +32,48 @@ describe("openDatabase", () => {
         "atlas_meta",
         "claim_symbols",
         "claims",
+        "claims_fts",
         "source_shas",
         "symbols",
       ]),
     );
+    db.close();
+  });
+
+  it("claims_fts virtual table stays in sync with claims via triggers (ADR-09)", () => {
+    const db = openDatabase(":memory:");
+    // Insert a claim directly into the base table and confirm the
+    // FTS shadow sees it. This proves the v2 migration's triggers
+    // fire and that find_by_intent's upstream state will be correct
+    // for any code path that uses the storage layer's normal inserts.
+    db.prepare(
+      "INSERT INTO claims (source, source_path, source_sha, severity, claim, rationale, excerpt) " +
+        "VALUES ('T', 't.md', 's', 'hard', 'payment idempotency matters', 'r', 'e')",
+    ).run();
+
+    const ftsCount = (
+      db
+        .prepare("SELECT COUNT(*) AS n FROM claims_fts")
+        .get() as { n: number }
+    ).n;
+    expect(ftsCount).toBe(1);
+
+    // MATCH round-trips the stored text.
+    const hit = db
+      .prepare(
+        "SELECT rowid FROM claims_fts WHERE claims_fts MATCH 'payment' ",
+      )
+      .all() as { rowid: number }[];
+    expect(hit).toHaveLength(1);
+
+    // Deleting the base row cascades to FTS via the AD trigger.
+    db.prepare("DELETE FROM claims WHERE id = ?").run(hit[0]!.rowid);
+    const afterDelete = (
+      db
+        .prepare("SELECT COUNT(*) AS n FROM claims_fts")
+        .get() as { n: number }
+    ).n;
+    expect(afterDelete).toBe(0);
     db.close();
   });
 
