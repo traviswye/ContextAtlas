@@ -299,9 +299,8 @@ workflow. Four shapes teams can compose:
 - **Pre-push hook.** Cheaper than pre-commit; batches extraction
   to push boundaries. Accepts that intermediate commits in a
   push carry a stale atlas.
-- **Manual.** Run `contextatlas --reindex` (or the equivalent
-  script entry) when a human notices the atlas is behind.
-  Lowest friction, highest drift risk.
+- **Manual.** Run `contextatlas index` when a human notices
+  the atlas is behind. Lowest friction, highest drift risk.
 
 DESIGN.md will carry worked examples for each shape; the ADR
 stays neutral on which teams should adopt.
@@ -429,6 +428,8 @@ they're the expensive stages.
   be a separate ADR with its own extraction path.
 - **Query-time `git log` calls.** Hard boundary. If a query
   needs fresh git data, the user re-runs extraction.
-- **Forced re-indexing on staleness.** `--check` exits non-zero;
-  `--check --force-reindex` is not a v0.1 flag. Teams decide
-  whether staleness is blocking in their own workflow.
+- **Forced re-indexing on staleness.** `--check` exits non-zero
+  when stale; no flag chains the check with auto-extraction in
+  v0.1. Teams decide whether staleness is blocking in their own
+  workflow by scripting `--check` + `contextatlas index`
+  themselves.
