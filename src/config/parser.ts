@@ -39,6 +39,7 @@ const TOP_LEVEL_KEYS = [
   "git",
   "index",
   "atlas",
+  "source",
 ] as const;
 const TOP_LEVEL_KEY_SET = new Set<string>(TOP_LEVEL_KEYS);
 
@@ -133,8 +134,19 @@ function validate(
   const git = validateGit(parsed.git, configPath);
   const index = validateIndex(parsed.index, configPath);
   const atlas = validateAtlas(parsed.atlas, configPath);
+  const source = validateSource(parsed.source, configPath);
 
-  return { version: 1, languages, adrs, docs, git, index, atlas };
+  const out: ContextAtlasConfig = {
+    version: 1,
+    languages,
+    adrs,
+    docs,
+    git,
+    index,
+    atlas,
+  };
+  if (source !== undefined) out.source = source;
+  return out;
 }
 
 function validateLanguages(
@@ -380,6 +392,44 @@ function validateAtlas(
     path: normalizePath(path),
     localCache: normalizePath(localCache),
   };
+}
+
+/**
+ * Validate the optional `source` block (ADR-08 runtime extension).
+ *
+ * When present, `source.root` names the directory where language
+ * adapters should initialize — useful when the config file lives
+ * apart from the source code it describes (e.g., benchmark
+ * methodology projects). Intentionally strict about unknown sub-keys
+ * per ADR-05; extension points are added by adding known keys, not
+ * by tolerating typos.
+ *
+ * Note: we validate that root is a non-empty string, but do NOT
+ * check that the directory exists. That's an I/O concern the
+ * parser doesn't couple to; the adapter init path surfaces the
+ * not-found case with a field-aware error message.
+ */
+function validateSource(
+  raw: unknown,
+  configPath: string,
+): ContextAtlasConfig["source"] | undefined {
+  if (raw === undefined) return undefined;
+  if (!isObject(raw)) {
+    throw cfgError(
+      configPath,
+      `Invalid 'source': expected object with 'root' field, got ${describeType(raw)}.`,
+    );
+  }
+  rejectUnknownKeys(raw, new Set(["root"]), "source.", configPath);
+  const root = raw.root;
+  if (typeof root !== "string" || root.length === 0) {
+    throw cfgError(
+      configPath,
+      "Missing or invalid 'source.root': expected non-empty string naming " +
+        "a path (relative to config file, or absolute).",
+    );
+  }
+  return { root: normalizePath(root) };
 }
 
 // ---------------------------------------------------------------------------

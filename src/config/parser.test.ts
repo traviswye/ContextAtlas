@@ -264,6 +264,95 @@ describe("loadConfig — defaults + path normalization", () => {
   });
 });
 
+describe("loadConfig — source block (ADR-08 runtime)", () => {
+  let tmp: string;
+  beforeEach(() => {
+    tmp = mkdtempSync(pathJoin(tmpdir(), "contextatlas-cfg-src-"));
+  });
+  afterEach(() => {
+    rmSync(tmp, { recursive: true, force: true });
+  });
+
+  function writeCfg(contents: string): void {
+    writeFileSync(pathJoin(tmp, ".contextatlas.yml"), contents, "utf8");
+  }
+
+  it("source block absent → cfg.source is undefined (backward compat)", () => {
+    writeCfg(
+      "version: 1\nlanguages: [typescript]\nadrs: { path: docs/adr/ }",
+    );
+    const cfg = loadConfig(tmp);
+    expect(cfg.source).toBeUndefined();
+  });
+
+  it("source block with root → parsed and normalized", () => {
+    writeCfg(
+      "version: 1\nlanguages: [typescript]\nadrs: { path: docs/adr/ }\n" +
+        "source:\n  root: repos/hono/",
+    );
+    const cfg = loadConfig(tmp);
+    expect(cfg.source).toEqual({ root: "repos/hono" });
+  });
+
+  it("source.root with backslashes → normalized to forward slashes", () => {
+    writeCfg(
+      "version: 1\nlanguages: [typescript]\nadrs: { path: docs/adr/ }\n" +
+        "source:\n  root: repos\\\\hono\\\\",
+    );
+    const cfg = loadConfig(tmp);
+    expect(cfg.source?.root).toBe("repos/hono");
+  });
+
+  it("source block with no root → clear error naming the field", () => {
+    writeCfg(
+      "version: 1\nlanguages: [typescript]\nadrs: { path: x }\nsource: {}",
+    );
+    expect(() => loadConfig(tmp)).toThrow(
+      /Missing or invalid 'source\.root': expected non-empty string/,
+    );
+  });
+
+  it("source.root empty string → rejected", () => {
+    writeCfg(
+      "version: 1\nlanguages: [typescript]\nadrs: { path: x }\n" +
+        "source:\n  root: ''",
+    );
+    expect(() => loadConfig(tmp)).toThrow(
+      /Missing or invalid 'source\.root'/,
+    );
+  });
+
+  it("source.root wrong type → rejected", () => {
+    writeCfg(
+      "version: 1\nlanguages: [typescript]\nadrs: { path: x }\n" +
+        "source:\n  root: 42",
+    );
+    expect(() => loadConfig(tmp)).toThrow(
+      /Missing or invalid 'source\.root'/,
+    );
+  });
+
+  it("source with unknown sub-key → rejected (strict per ADR-05)", () => {
+    writeCfg(
+      "version: 1\nlanguages: [typescript]\nadrs: { path: x }\n" +
+        "source:\n  root: repos/hono\n  mode: fast",
+    );
+    expect(() => loadConfig(tmp)).toThrow(
+      /Unknown key 'source\.mode'.*Valid keys at this level: root/,
+    );
+  });
+
+  it("source as non-object → rejected with actionable type error", () => {
+    writeCfg(
+      "version: 1\nlanguages: [typescript]\nadrs: { path: x }\n" +
+        "source: just-a-string",
+    );
+    expect(() => loadConfig(tmp)).toThrow(
+      /Invalid 'source': expected object with 'root' field/,
+    );
+  });
+});
+
 function captureError(fn: () => unknown): Error {
   try {
     fn();

@@ -8,6 +8,8 @@ symbols:
   - runExtractionPipeline
   - ExtractionPipelineDeps
   - ContextAtlasConfig
+  - parseArgs
+  - main
 ---
 
 # ADR-08: External ADR roots — adrs.path may resolve outside the source root
@@ -74,6 +76,48 @@ await runExtractionPipeline({
 Source-file walking continues to use `repoRoot`. The source-
 under-source-root invariant from ADR-01 stays intact. Only prose
 file walking (ADRs + docs) is affected by `configRoot`.
+
+### Runtime coverage
+
+The MCP runtime binary (`src/index.ts`) accepts the same axis
+separation via a `--config-root <path>` CLI flag and an optional
+`source: { root }` config block. Without them, the binary uses
+`process.cwd()` for everything and behavior is bit-for-bit identical
+to the pre-ADR-08 shape.
+
+- `--config-root <path>` (or `--config-root=<path>`) names where
+  `.contextatlas.yml` lives. Resolves atlas.path and
+  atlas.local_cache against this. Defaults to `process.cwd()`.
+  Unknown flags and missing/empty values reject with actionable
+  errors; there's no silent fallback to cwd on typos.
+- `config.source.root` (when present, relative to configRoot or
+  absolute) tells the adapter where source code lives. When absent,
+  adapter initializes against configRoot, matching today's
+  single-root flow.
+
+Resolution order at runtime startup:
+
+1. `configRoot` = `--config-root` value if passed, else `process.cwd()`.
+2. Load config from `configRoot/.contextatlas.yml`.
+3. `sourceRoot` = `pathResolve(configRoot, config.source.root)` if
+   `source.root` is set, else `configRoot`.
+4. Atlas + local cache resolve against `configRoot`.
+5. Adapters initialize against `sourceRoot`.
+
+The benchmarks-repo CA integration uses both knobs:
+`--config-root /path/to/benchmarks-repo` at spawn time, and
+`source: { root: repos/hono/ }` in the committed benchmarks config,
+so MCP queries serve the cloned-hono atlas while config and
+committed atlas live alongside the benchmarks harness.
+
+Unlike extraction-side `configRoot`, the runtime `source.root` is
+declared in the config file rather than passed as a function
+argument. Extraction pipeline callers (scripts, harnesses) are
+already custom code and happily pass `configRoot` as a parameter.
+The runtime binary is spawned by MCP clients which pass only CLI
+args and env — the config file is the natural place for it. A user
+pinning source location to a specific tree should encode that in
+the config, not rely on spawn-time conventions.
 
 ### Stored path rule
 

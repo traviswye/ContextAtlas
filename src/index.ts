@@ -6,6 +6,12 @@
  * wires the stdio transport, and hands control to the MCP event loop.
  * All logging goes to stderr (see src/mcp/logger.ts) — stdout is reserved
  * for the JSON-RPC protocol stream.
+ *
+ * CLI:
+ *   contextatlas                     # common case: config at cwd
+ *   contextatlas --config-root <dir> # benchmarks-style: config elsewhere
+ *
+ * See ADR-08 for the config-root vs source-root architectural story.
  */
 
 import { existsSync, mkdirSync, readFileSync } from "node:fs";
@@ -16,6 +22,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { LATEST_PROTOCOL_VERSION } from "@modelcontextprotocol/sdk/types.js";
 
 import { createAdapter } from "./adapters/registry.js";
+import { parseArgs } from "./cli-args.js";
 import { loadConfig } from "./config/parser.js";
 import { log } from "./mcp/logger.js";
 import { createServer } from "./mcp/server.js";
@@ -34,31 +41,42 @@ function readPackageVersion(): string {
 
 export async function main(): Promise<void> {
   const version = readPackageVersion();
-  const repoRoot = process.cwd();
+
+  // Parse CLI args. Flag parsing errors surface via main().catch → log +
+  // exit 1, same path as a malformed config.
+  const { configRoot: configRootArg } = parseArgs(process.argv.slice(2));
+  const configRoot = configRootArg
+    ? pathResolve(configRootArg)
+    : process.cwd();
 
   log.info(`ContextAtlas v${version} starting`);
   log.info(`MCP protocol version: ${LATEST_PROTOCOL_VERSION}`);
-  log.info(`Repo root: ${repoRoot}`);
+  log.info(`Config root: ${configRoot}`);
 
-  // 1. Load config. Propagates an actionable error from loadConfig
-  //    (names the absolute path, suggests creating .contextatlas.yml).
-  const config = loadConfig(repoRoot);
+  // 1. Load config from configRoot (not cwd — they're the same in the
+  //    common case, but diverge when --config-root is passed).
+  const config = loadConfig(configRoot);
   log.info(`Loaded config for languages=${config.languages.join(",")}`);
 
-  // 2. Open the local cache DB. Ensure the parent directory exists
-  //    (openDatabase does not create parents).
-  const cachePath = pathResolve(repoRoot, config.atlas.localCache);
+  // 2. Derive source root from config's optional source.root, falling
+  //    back to configRoot for the common single-root case. This is the
+  //    ADR-08 runtime extension: config lives at configRoot, source
+  //    lives at sourceRoot, adapters initialize against sourceRoot.
+  const sourceRoot = config.source?.root
+    ? pathResolve(configRoot, config.source.root)
+    : configRoot;
+  log.info(`Source root: ${sourceRoot}`);
+
+  // 3. Open the local cache DB. atlas.local_cache is resolved against
+  //    configRoot — it lives with the committed atlas, not with source.
+  const cachePath = pathResolve(configRoot, config.atlas.localCache);
   mkdirSync(dirname(cachePath), { recursive: true });
   const db = openDatabase(cachePath);
   log.info(`Opened local cache at ${cachePath}`);
 
-  // 3. If the cache is empty AND a committed atlas.json exists at the
-  //    configured path, import it — the "new contributor clone" flow
-  //    from ADR-06. If cache already has data, use it. If neither
-  //    exists, warn but start anyway so the user sees `ERR not_found`
-  //    on queries rather than a crash — and so Claude Code still
-  //    discovers the tools via tools/list.
-  const atlasPath = pathResolve(repoRoot, config.atlas.path);
+  // 4. Import committed atlas.json into fresh cache if present.
+  //    atlas.path resolves against configRoot same as local_cache.
+  const atlasPath = pathResolve(configRoot, config.atlas.path);
   const symbolCount = (
     db.prepare("SELECT COUNT(*) AS n FROM symbols").get() as { n: number }
   ).n;
@@ -78,18 +96,37 @@ export async function main(): Promise<void> {
     log.info(`Using existing local cache (${symbolCount} symbols)`);
   }
 
-  // 4. Initialize every declared adapter. Any failure is fatal —
-  //    silent partial-adapter operation would produce confusing
-  //    "symbol not found" results for languages the user declared.
+  // 5. Initialize every declared adapter against sourceRoot. Any
+  //    failure is fatal. When config.source.root drove the resolution,
+  //    surface that field in the error so users know where to look.
   const adapters = new Map<LanguageCode, LanguageAdapter>();
   for (const lang of config.languages) {
     const adapter = createAdapter(lang);
-    await adapter.initialize(repoRoot);
+    try {
+      await adapter.initialize(sourceRoot);
+    } catch (err) {
+      if (config.source?.root !== undefined) {
+        log.error(
+          `Adapter initialization failed: source.root resolved to '${sourceRoot}' ` +
+            `(from config.source.root='${config.source.root}' relative to configRoot ` +
+            `'${configRoot}'). Check that the path exists.`,
+          { err: String(err) },
+        );
+      } else {
+        log.error(
+          `Adapter initialization failed at '${sourceRoot}'. ` +
+            "This is the configRoot (no config.source.root set); either run the " +
+            "binary from the source directory or set source.root in your config.",
+          { err: String(err) },
+        );
+      }
+      throw err;
+    }
     adapters.set(lang, adapter);
-    log.info(`Initialized ${lang} adapter`);
+    log.info(`Initialized ${lang} adapter at ${sourceRoot}`);
   }
 
-  // 5. Construct the server WITH context.
+  // 6. Construct the server WITH context.
   const server = createServer({
     name: "ContextAtlas",
     version,
@@ -103,7 +140,7 @@ export async function main(): Promise<void> {
 
   log.info("Server ready — awaiting MCP client connection on stdio");
 
-  // 6. Shutdown closes the server, adapters, and DB cleanly.
+  // 7. Shutdown closes the server, adapters, and DB cleanly.
   const shutdown = (signal: string): void => {
     log.info(`Received ${signal}, shutting down`);
     (async () => {

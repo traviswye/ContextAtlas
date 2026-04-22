@@ -220,4 +220,14 @@ export interface ContextAtlasConfig {
     path: string;        // committed artifact location
     localCache: string;  // gitignored SQLite cache location
   };
+  /**
+   * Optional source-code location (ADR-08 runtime extension).
+   * When present, `source.root` is the path (resolved against the
+   * config file's directory) where language adapters should
+   * initialize. When absent, adapters initialize against the config
+   * file's directory, matching the single-root common case.
+   */
+  source?: {
+    root: string;
+  };
 }

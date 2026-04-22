@@ -49,6 +49,13 @@ const DIST_ENTRY = pathResolve("dist/index.js");
 class TestSubprocessTransport implements Transport {
   private child: ChildProcess | null = null;
   private buffer = "";
+  /**
+   * Captured stderr across the subprocess's lifetime. Tests that need
+   * to assert on log output (adapter init path, etc.) read this after
+   * the subprocess exits or after any log line they care about has
+   * definitely flushed.
+   */
+  stderrBuffer = "";
   onmessage?: (m: JSONRPCMessage) => void;
   onclose?: () => void;
   onerror?: (err: Error) => void;
@@ -66,9 +73,8 @@ class TestSubprocessTransport implements Transport {
     });
     this.child = child;
     child.stdout?.on("data", (chunk: Buffer) => this.handleData(chunk));
-    child.stderr?.on("data", () => {
-      // Discard server logs during tests. Uncomment for debugging:
-      // process.stderr.write(chunk);
+    child.stderr?.on("data", (chunk: Buffer) => {
+      this.stderrBuffer += chunk.toString("utf8");
     });
     child.on("exit", () => this.onclose?.());
     child.on("error", (err) => this.onerror?.(err));
@@ -251,5 +257,152 @@ describe("MCP server binary smoke test", () => {
     expect(result.isError).toBe(true);
     const text = (result.content[0] as { text: string }).text;
     expect(text).toMatch(/ERR not_found/);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// ADR-08 runtime: --config-root flag + optional source.root config field.
+// ---------------------------------------------------------------------------
+
+describe("MCP server binary with --config-root (ADR-08 runtime)", () => {
+  let configDir: string;
+  let runDir: string;
+  let client: Client;
+  let transport: TestSubprocessTransport;
+
+  beforeEach(async () => {
+    // Two separate tmp dirs: the binary runs in `runDir` as cwd, and
+    // reads config from `configDir` via --config-root. Proves the
+    // flag actually threads through rather than silently defaulting
+    // to cwd (which has no config).
+    configDir = mkdtempSync(pathJoin(tmpdir(), "ca-smoke-cfg-"));
+    runDir = mkdtempSync(pathJoin(tmpdir(), "ca-smoke-run-"));
+    cpSync(FIXTURE_SRC, configDir, { recursive: true });
+
+    transport = new TestSubprocessTransport(
+      process.execPath,
+      [DIST_ENTRY, "--config-root", configDir],
+      runDir,
+    );
+    client = new Client(
+      { name: "smoke-test-client", version: "0.0.1" },
+      { capabilities: {} },
+    );
+    await client.connect(transport);
+  }, 30_000);
+
+  afterEach(async () => {
+    await client.close().catch(() => {});
+    rmWithRetry(configDir);
+    rmWithRetry(runDir);
+  });
+
+  it("serves get_symbol_context from atlas at --config-root (not cwd)", async () => {
+    // runDir (the binary's cwd) has NO .contextatlas.yml. If
+    // --config-root is being ignored and the binary falls back to
+    // cwd, loadConfig would throw and the connect() in beforeEach
+    // would fail. We're here, so the flag took effect.
+    const result = await client.request(
+      {
+        method: "tools/call",
+        params: {
+          name: "get_symbol_context",
+          arguments: { symbol: "SmokeTestSymbol" },
+        },
+      },
+      CallToolResultSchema,
+    );
+    expect(result.isError).toBeFalsy();
+    const text = (result.content[0] as { text: string }).text;
+    expect(text).toMatch(/^SYM SmokeTestSymbol@/);
+  });
+
+  it("logs configRoot and sourceRoot in startup lines (uses configRoot as source fallback)", async () => {
+    // With no `source` block in the fixture, sourceRoot falls back to
+    // configRoot. Both should appear in the startup log.
+    //
+    // Stderr accumulates async; give the server a brief moment beyond
+    // connect() to flush its startup log lines.
+    await new Promise<void>((resolve) => setTimeout(resolve, 200));
+    const stderr = transport.stderrBuffer;
+    expect(stderr).toMatch(new RegExp(`Config root: .*`));
+    expect(stderr).toMatch(new RegExp(`Source root: .*`));
+    // And the adapter init log includes the actual path the adapter
+    // was initialized against. Matches refinement 3 — proves plumbing
+    // reached the adapter, not just parsed config.
+    expect(stderr).toMatch(/Initialized typescript adapter at /);
+  });
+});
+
+describe("MCP server binary with source.root (ADR-08 runtime)", () => {
+  let configDir: string;
+  let client: Client;
+  let transport: TestSubprocessTransport;
+
+  beforeEach(async () => {
+    // Fixture layout for this test:
+    //   configDir/
+    //     .contextatlas.yml       ← config with source: { root: "subsrc" }
+    //     subsrc/                 ← empty src dir; adapter inits here
+    //     .contextatlas/
+    //       atlas.json            ← hand-crafted, reused from main fixture
+    configDir = mkdtempSync(pathJoin(tmpdir(), "ca-smoke-src-"));
+    cpSync(FIXTURE_SRC, configDir, { recursive: true });
+
+    // Rewrite the fixture config to include the source block.
+    const cfgYml = [
+      "version: 1",
+      "languages:",
+      "  - typescript",
+      "adrs:",
+      "  path: docs/adr/",
+      "docs:",
+      "  include: []",
+      "atlas:",
+      "  committed: true",
+      "  path: .contextatlas/atlas.json",
+      "  local_cache: .contextatlas/index.db",
+      "source:",
+      "  root: subsrc",
+      "",
+    ].join("\n");
+    const { writeFileSync, mkdirSync } = await import("node:fs");
+    writeFileSync(pathJoin(configDir, ".contextatlas.yml"), cfgYml, "utf8");
+    mkdirSync(pathJoin(configDir, "subsrc"), { recursive: true });
+
+    transport = new TestSubprocessTransport(
+      process.execPath,
+      [DIST_ENTRY, "--config-root", configDir],
+      configDir,
+    );
+    client = new Client(
+      { name: "smoke-test-client", version: "0.0.1" },
+      { capabilities: {} },
+    );
+    await client.connect(transport);
+  }, 30_000);
+
+  afterEach(async () => {
+    await client.close().catch(() => {});
+    rmWithRetry(configDir);
+  });
+
+  it("initializes adapter against source.root (subsrc), not configRoot", async () => {
+    // Stderr assertion is the canary: proves source.root threaded
+    // through to adapter.initialize, not silently ignored. The path
+    // logged is the absolute form; we match on the trailing segment.
+    await new Promise<void>((resolve) => setTimeout(resolve, 300));
+    const stderr = transport.stderrBuffer;
+    expect(stderr).toMatch(
+      /Initialized typescript adapter at .*[\\/]subsrc\b/,
+    );
+    // Also assert Source root log line distinguishes from Config
+    // root — they should be different paths in this scenario.
+    const configMatch = /Config root: (.*)/.exec(stderr);
+    const sourceMatch = /Source root: (.*)/.exec(stderr);
+    expect(configMatch).not.toBeNull();
+    expect(sourceMatch).not.toBeNull();
+    expect(sourceMatch?.[1]?.trim()).not.toBe(configMatch?.[1]?.trim());
+    expect(sourceMatch?.[1]?.trim()).toMatch(/[\\/]subsrc\s*$/);
   });
 });
