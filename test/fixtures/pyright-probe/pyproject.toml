@@ -1,0 +1,5 @@
+[tool.pyright]
+include = ["."]
+pythonVersion = "3.12"
+reportMissingImports = "error"
+reportMissingTypeStubs = "none"
