@@ -17,6 +17,10 @@
  * explicit `generatedAt`). This exporter does not know which case it's
  * in — it correctly handles both by accepting an override and falling
  * back to the stored value.
+ *
+ * Atlas v1.1 adds `extracted_at_sha` and `git_commits` per ADR-11. The
+ * exporter emits v1.1 unconditionally; the new optional fields are
+ * omitted when no git data was collected (non-git source trees).
  */
 
 import { writeFileSync } from "node:fs";
@@ -26,12 +30,16 @@ import {
   listSourceShas,
 } from "./claims.js";
 import type { DatabaseInstance } from "./db.js";
+import { listAllGitCommits } from "./git.js";
 import { listAllSymbols } from "./symbols.js";
 import {
   ATLAS_VERSION,
+  SUPPORTED_ATLAS_VERSIONS,
   type AtlasClaimEntry,
   type AtlasFileV1,
+  type AtlasGitCommit,
   type AtlasSymbolEntry,
+  type AtlasVersion,
 } from "./types.js";
 import { ATLAS_META_KEYS } from "./atlas-importer.js";
 
@@ -45,6 +53,21 @@ export interface ExportAtlasOptions {
   /** Override the generator info. Falls back to stored values. */
   contextatlasVersion?: string;
   extractionModel?: string;
+  /**
+   * Override the git HEAD SHA captured at extraction time. Defaults to
+   * the value stored in `atlas_meta` during the extraction run. Pass
+   * `null` to explicitly omit the field (e.g., non-git source tree).
+   */
+  extractedAtSha?: string | null;
+  /**
+   * Override the atlas version to emit. Defaults to the version stored
+   * in `atlas_meta` (preserving round-trip for imported atlases),
+   * falling back to the current {@link ATLAS_VERSION} for databases
+   * with no version meta set. Pipeline's stage 7 writes
+   * ATLAS_VERSION into meta after a real extraction run so upgraded
+   * atlases export at the new version.
+   */
+  version?: AtlasVersion;
 }
 
 /**
@@ -70,6 +93,15 @@ export function exportAtlas(
       options.extractionModel ??
       meta["generator.extraction_model"] ??
       "unknown";
+    const version = resolveVersion(options.version, meta["version"]);
+
+    // extracted_at_sha is optional. An explicit `null` override forces
+    // omission; `undefined` falls back to the stored meta value (which
+    // itself may be absent for v1.0-imported or non-git atlases).
+    const extractedAtShaResolved =
+      options.extractedAtSha === null
+        ? undefined
+        : (options.extractedAtSha ?? meta["extracted_at_sha"] ?? undefined);
 
     const sourceShas = sortObjectKeys(listSourceShas(db));
 
@@ -145,11 +177,29 @@ export function exportAtlas(
         return compareStrings(a.claim, b.claim);
       });
 
-    // Top-level canonical key order: version, generated_at, generator,
-    // source_shas, symbols, claims.
+    // git_commits — canonical order is date DESC then sha ASC, which
+    // listAllGitCommits already returns. `files` per commit is already
+    // sorted ascending by the storage layer. Omit entirely when empty
+    // so v1.0-style atlases (no git data) still round-trip cleanly
+    // at the wire level.
+    const storedGitCommits = listAllGitCommits(db);
+    const gitCommits: AtlasGitCommit[] = storedGitCommits.map((c) => ({
+      sha: c.sha,
+      date: c.date,
+      message: c.message,
+      author_email: c.authorEmail,
+      files: c.files,
+    }));
+
+    // Top-level canonical key order: version, generated_at,
+    // extracted_at_sha (when present), generator, source_shas,
+    // symbols, claims, git_commits (when present).
     const atlas: AtlasFileV1 = {
-      version: ATLAS_VERSION,
+      version,
       generated_at: generatedAt,
+      ...(extractedAtShaResolved !== undefined
+        ? { extracted_at_sha: extractedAtShaResolved }
+        : {}),
       generator: {
         contextatlas_version: contextatlasVersion,
         extraction_model: extractionModel,
@@ -157,6 +207,7 @@ export function exportAtlas(
       source_shas: sourceShas,
       symbols,
       claims,
+      ...(gitCommits.length > 0 ? { git_commits: gitCommits } : {}),
     };
     return atlas;
   });
@@ -218,4 +269,18 @@ function compareStrings(a: string, b: string): number {
 
 function hasValue(v: string | undefined | null): v is string {
   return typeof v === "string" && v.length > 0;
+}
+
+function resolveVersion(
+  override: AtlasVersion | undefined,
+  stored: string | undefined,
+): AtlasVersion {
+  if (override !== undefined) return override;
+  if (
+    stored !== undefined &&
+    (SUPPORTED_ATLAS_VERSIONS as readonly string[]).includes(stored)
+  ) {
+    return stored as AtlasVersion;
+  }
+  return ATLAS_VERSION;
 }

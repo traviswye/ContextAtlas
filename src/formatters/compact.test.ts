@@ -3,9 +3,10 @@ import { resolve as pathResolve } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
+import type { ImpactBundle } from "../queries/impact-of-change.js";
 import type { Claim, Reference, SymbolContextBundle } from "../types.js";
 
-import { renderCompact } from "./compact.js";
+import { renderCompact, renderImpactCompact } from "./compact.js";
 
 const GOLDEN_DIR = pathResolve("test/fixtures/bundles");
 const UPDATE = process.env.UPDATE_GOLDENS === "1";
@@ -334,5 +335,126 @@ describe("renderCompact — structural invariants", () => {
     };
     const out = renderCompact(bundle, { depth: "deep", maxRefs: 50 });
     expect(out).toMatch(/\.\.\. \+48 more/);
+  });
+
+  it("GIT block renders at every depth; per-commit COMMIT lines at standard+", () => {
+    const bundle: SymbolContextBundle = {
+      ...minimal,
+      git: {
+        lastTouched: "2026-04-20T10:00:00Z",
+        lastTouchedAuthor: "alice@example.com",
+        recentCommits: [
+          {
+            sha: "a".repeat(40),
+            date: "2026-04-20T10:00:00Z",
+            message: "fix: retry",
+            authorEmail: "alice@example.com",
+          },
+          {
+            sha: "b".repeat(40),
+            date: "2026-04-19T10:00:00Z",
+            message: "refactor",
+            authorEmail: "bob@example.com",
+          },
+        ],
+        hot: true,
+        commitCount: 7,
+        hotThreshold: 5,
+      },
+    };
+
+    const summary = renderCompact(bundle, { depth: "summary", maxRefs: 50 });
+    expect(summary).toMatch(/GIT last=2026-04-20T10:00:00Z by alice@example\.com hot \(7≥5 commits\)/);
+    // Summary depth: no per-commit lines.
+    expect(summary).not.toMatch(/COMMIT /);
+
+    const standard = renderCompact(bundle, { depth: "standard", maxRefs: 50 });
+    expect(standard).toMatch(/COMMIT aaaaaaa 2026-04-20 "fix: retry"/);
+    expect(standard).toMatch(/COMMIT bbbbbbb 2026-04-19 "refactor"/);
+  });
+
+  it("renderImpactCompact produces IMPACT header, GIT_COCHANGE, RISK_SIGNALS in order", () => {
+    const bundle: SymbolContextBundle = {
+      version: "1.0",
+      symbol: {
+        id: "sym:ts:src/x.ts:X",
+        name: "X",
+        kind: "class",
+        path: "src/x.ts",
+        line: 1,
+        language: "typescript",
+      },
+    };
+    const impact: ImpactBundle = {
+      bundle,
+      coChange: [
+        { filePath: "src/y.ts", coCommitCount: 9 },
+        { filePath: "src/z.ts", coCommitCount: 3 },
+      ],
+      riskSignals: {
+        hot: false,
+        commitCount: 2,
+        hotThreshold: 5,
+        testFiles: 1,
+        diagnostics: 0,
+        hardClaims: 2,
+        softClaims: 1,
+        contextClaims: 0,
+      },
+    };
+    const out = renderImpactCompact(impact);
+    const lines = out.split("\n");
+    expect(lines[0]).toBe("IMPACT sym:ts:src/x.ts:X");
+    expect(out).toMatch(/GIT_COCHANGE \(top 2\)/);
+    expect(out).toMatch(/src\/y\.ts\s+9 commits/);
+    expect(out).toMatch(/RISK_SIGNALS/);
+    expect(out).toMatch(/hot: no \(2<5 commits\)/);
+    expect(out).toMatch(/intent_density: 2 hard \/ 1 soft \/ 0 context/);
+  });
+
+  it("renderImpactCompact omits GIT_COCHANGE when empty but keeps RISK_SIGNALS", () => {
+    const impact: ImpactBundle = {
+      bundle: {
+        version: "1.0",
+        symbol: {
+          id: "sym:ts:src/x.ts:X",
+          name: "X",
+          kind: "class",
+          path: "src/x.ts",
+          line: 1,
+          language: "typescript",
+        },
+      },
+      coChange: [],
+      riskSignals: {
+        hot: false,
+        commitCount: 0,
+        hotThreshold: 5,
+        testFiles: 0,
+        diagnostics: 0,
+        hardClaims: 0,
+        softClaims: 0,
+        contextClaims: 0,
+      },
+    };
+    const out = renderImpactCompact(impact);
+    expect(out).not.toMatch(/GIT_COCHANGE/);
+    expect(out).toMatch(/RISK_SIGNALS/);
+  });
+
+  it("GIT block cold rendering shows 'cold' with count<threshold", () => {
+    const bundle: SymbolContextBundle = {
+      ...minimal,
+      git: {
+        lastTouched: "2026-04-20T10:00:00Z",
+        lastTouchedAuthor: "alice@example.com",
+        recentCommits: [],
+        hot: false,
+        commitCount: 2,
+        hotThreshold: 5,
+      },
+    };
+    const out = renderCompact(bundle, { depth: "standard", maxRefs: 50 });
+    expect(out).toMatch(/GIT last=.* cold \(2<5 commits\)/);
   });
 });

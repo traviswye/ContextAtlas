@@ -8,6 +8,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { insertClaims } from "../storage/claims.js";
 import { openDatabase } from "../storage/db.js";
+import { replaceGitCommits } from "../storage/git.js";
 import { upsertSymbols } from "../storage/symbols.js";
 import type {
   Diagnostic,
@@ -93,6 +94,10 @@ describe("MCP server skeleton", () => {
       toolName: TOOL_NAMES.findByIntent,
       args: { query: "dummy" },
     },
+    {
+      toolName: TOOL_NAMES.impactOfChange,
+      args: { symbol: "Dummy" },
+    },
   ])(
     "$toolName without runtime context reports 'not initialized'",
     async ({ toolName, args }) => {
@@ -107,24 +112,6 @@ describe("MCP server skeleton", () => {
       ).rejects.toThrow(/initialized with storage/);
     },
   );
-
-  it("impact_of_change returns 'not yet implemented' (step 11)", async () => {
-    // Remaining placeholder until step 11 lands. find_by_intent
-    // graduated from placeholder to real handler with ADR-09 / step 8;
-    // get_symbol_context earlier at step 6.
-    await expect(
-      client.request(
-        {
-          method: "tools/call",
-          params: {
-            name: TOOL_NAMES.impactOfChange,
-            arguments: { symbol: "Dummy" },
-          },
-        },
-        CallToolResultSchema,
-      ),
-    ).rejects.toThrow(/not yet implemented/);
-  });
 
   it("unknown tool name returns MethodNotFound-shaped error", async () => {
     await expect(
@@ -220,6 +207,7 @@ describe("MCP server with runtime context — get_symbol_context", () => {
       context: {
         db,
         adapters: new Map([["typescript", adapter]]),
+        gitRecentCommits: 5,
       },
     });
     client = new Client(
@@ -554,5 +542,144 @@ describe("MCP server with runtime context — find_by_intent", () => {
         CallToolResultSchema,
       ),
     ).rejects.toThrow(/positive integer/);
+  });
+});
+
+describe("MCP server with runtime context — impact_of_change (ADR-11)", () => {
+  let client: Client;
+  let server: ReturnType<typeof createServer>;
+  let db: ReturnType<typeof openDatabase>;
+
+  beforeEach(async () => {
+    db = openDatabase(":memory:");
+    const symbol: AtlasSymbol = {
+      id: "sym:ts:src/orders/processor.ts:OrderProcessor",
+      name: "OrderProcessor",
+      kind: "class",
+      path: "src/orders/processor.ts",
+      line: 42,
+      signature: "class OrderProcessor",
+      language: "typescript",
+      fileSha: "abc",
+    };
+    upsertSymbols(db, [symbol]);
+    insertClaims(db, [
+      {
+        source: "ADR-07",
+        sourcePath: "docs/adr/ADR-07.md",
+        sourceSha: "s",
+        severity: "hard",
+        claim: "must be idempotent",
+        symbolIds: [symbol.id],
+      },
+    ]);
+    replaceGitCommits(db, [
+      {
+        sha: "a".repeat(40),
+        date: "2026-04-20T10:00:00Z",
+        message: "fix: retry",
+        authorEmail: "alice@example.com",
+        files: ["src/orders/processor.ts", "src/orders/queue.ts"],
+      },
+      {
+        sha: "b".repeat(40),
+        date: "2026-04-19T10:00:00Z",
+        message: "refactor",
+        authorEmail: "bob@example.com",
+        files: ["src/orders/processor.ts", "src/orders/queue.ts"],
+      },
+    ]);
+    server = createServer({
+      name: "ContextAtlas",
+      version: "0.0.1-test",
+      context: {
+        db,
+        adapters: new Map([["typescript", stubAdapter({})]]),
+        gitRecentCommits: 2,
+      },
+    });
+    client = new Client(
+      { name: "test-client", version: "0.0.1" },
+      { capabilities: {} },
+    );
+    const [clientTransport, serverTransport] =
+      InMemoryTransport.createLinkedPair();
+    await Promise.all([
+      server.connect(serverTransport),
+      client.connect(clientTransport),
+    ]);
+  });
+
+  afterEach(async () => {
+    await client.close();
+    await server.close();
+    db.close();
+  });
+
+  it("returns an IMPACT bundle with GIT_COCHANGE and RISK_SIGNALS", async () => {
+    const result = await client.request(
+      {
+        method: "tools/call",
+        params: {
+          name: TOOL_NAMES.impactOfChange,
+          arguments: {
+            symbol: "sym:ts:src/orders/processor.ts:OrderProcessor",
+          },
+        },
+      },
+      CallToolResultSchema,
+    );
+    expect(result.isError).toBeFalsy();
+    const text = (result.content[0] as { text: string }).text;
+    expect(text).toMatch(
+      /^IMPACT sym:ts:src\/orders\/processor\.ts:OrderProcessor/,
+    );
+    expect(text).toMatch(/GIT_COCHANGE \(top 1\)/);
+    expect(text).toMatch(/src\/orders\/queue\.ts\s+2 commits/);
+    expect(text).toMatch(/RISK_SIGNALS/);
+    expect(text).toMatch(/hot: yes \(2≥2 commits\)/);
+    expect(text).toMatch(/intent_density: 1 hard/);
+  });
+
+  it("returns JSON format when requested", async () => {
+    const result = await client.request(
+      {
+        method: "tools/call",
+        params: {
+          name: TOOL_NAMES.impactOfChange,
+          arguments: {
+            symbol: "OrderProcessor",
+            format: "json",
+          },
+        },
+      },
+      CallToolResultSchema,
+    );
+    const text = (result.content[0] as { text: string }).text;
+    const parsed = JSON.parse(text) as {
+      bundle: { symbol: { name: string } };
+      coChange: Array<{ filePath: string }>;
+      riskSignals: { hot: boolean };
+    };
+    expect(parsed.bundle.symbol.name).toBe("OrderProcessor");
+    expect(parsed.coChange[0]?.filePath).toBe("src/orders/queue.ts");
+    expect(parsed.riskSignals.hot).toBe(true);
+  });
+
+  it("returns ERR not_found for an unknown symbol", async () => {
+    const result = await client.request(
+      {
+        method: "tools/call",
+        params: {
+          name: TOOL_NAMES.impactOfChange,
+          arguments: { symbol: "NoSuchThing" },
+        },
+      },
+      CallToolResultSchema,
+    );
+    expect(result.isError).toBe(true);
+    expect((result.content[0] as { text: string }).text).toMatch(
+      /ERR not_found/,
+    );
   });
 });

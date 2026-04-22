@@ -34,6 +34,11 @@ import type {
 export interface HandlerDeps {
   db: DatabaseInstance;
   adapters: ReadonlyMap<LanguageCode, LanguageAdapter>;
+  /**
+   * Hotness threshold + recent-commits cap (ADR-11). Mirrors
+   * `config.git.recentCommits`. Passed through to `buildBundle`.
+   */
+  gitRecentCommits: number;
 }
 
 export function createGetSymbolContextHandler(
@@ -76,6 +81,7 @@ export function createGetSymbolContextHandler(
         depth: args.depth,
         include: args.include,
         maxRefs: args.maxRefs,
+        gitRecentCommits: deps.gitRecentCommits,
       },
     );
 

@@ -6,10 +6,16 @@
  * failure is worse than empty). Existing rows in the target tables are
  * cleared before the new data is written, so importing twice produces
  * the same final state regardless of starting state.
+ *
+ * Supports atlas versions 1.0 and 1.1 (ADR-11). v1.0 atlases have no
+ * git block; they load into empty git tables without complaint. v1.1
+ * atlases populate git_commits + git_file_commits from the embedded
+ * commit list.
  */
 
 import { readFileSync } from "node:fs";
 
+import type { GitCommit } from "../extraction/git-extractor.js";
 import { LANG_CODES_INVERSE, type Symbol as AtlasSymbol } from "../types.js";
 
 import {
@@ -20,14 +26,21 @@ import {
   type NewClaim,
 } from "./claims.js";
 import type { DatabaseInstance } from "./db.js";
+import { clearGitCommits, replaceGitCommits } from "./git.js";
 import { clearSymbols, upsertSymbols } from "./symbols.js";
-import type { AtlasFileV1 } from "./types.js";
+import {
+  SUPPORTED_ATLAS_VERSIONS,
+  type AtlasFileV1,
+  type AtlasVersion,
+} from "./types.js";
 
 export const ATLAS_META_KEYS = {
   version: "version",
   generatedAt: "generated_at",
   generatorContextatlasVersion: "generator.contextatlas_version",
   generatorExtractionModel: "generator.extraction_model",
+  /** ADR-11 — git HEAD SHA at extraction time. Stored even when null-absent. */
+  extractedAtSha: "extracted_at_sha",
 } as const;
 
 /**
@@ -57,6 +70,7 @@ export function importAtlas(db: DatabaseInstance, atlas: AtlasFileV1): void {
     clearClaims(db);
     clearSymbols(db);
     clearSourceShas(db);
+    clearGitCommits(db);
     db.exec("DELETE FROM atlas_meta;");
 
     // atlas_meta header
@@ -73,6 +87,9 @@ export function importAtlas(db: DatabaseInstance, atlas: AtlasFileV1): void {
       ATLAS_META_KEYS.generatorExtractionModel,
       atlas.generator.extraction_model,
     );
+    if (atlas.extracted_at_sha !== undefined) {
+      setMeta.run(ATLAS_META_KEYS.extractedAtSha, atlas.extracted_at_sha);
+    }
 
     // source_shas
     for (const [path, sha] of Object.entries(atlas.source_shas)) {
@@ -104,6 +121,18 @@ export function importAtlas(db: DatabaseInstance, atlas: AtlasFileV1): void {
       symbolIds: entry.symbol_ids,
     }));
     insertClaims(db, claims);
+
+    // git_commits — v1.1 only. Derive git_file_commits on the fly.
+    if (atlas.git_commits && atlas.git_commits.length > 0) {
+      const commits: GitCommit[] = atlas.git_commits.map((gc) => ({
+        sha: gc.sha,
+        date: gc.date,
+        message: gc.message,
+        authorEmail: gc.author_email,
+        files: gc.files,
+      }));
+      replaceGitCommits(db, commits);
+    }
   });
   tx();
 }
@@ -112,10 +141,11 @@ function validateAtlas(atlas: AtlasFileV1): void {
   if (!atlas || typeof atlas !== "object") {
     throw new Error("importAtlas: atlas must be a non-null object.");
   }
-  if (atlas.version !== "1.0") {
+  if (!isSupportedVersion(atlas.version)) {
     throw new Error(
       `importAtlas: unsupported atlas version '${atlas.version}'. ` +
-        "This release reads v1.0 only; re-generate the atlas or upgrade.",
+        `This release reads ${SUPPORTED_ATLAS_VERSIONS.join(", ")}; ` +
+        "re-generate the atlas or upgrade.",
     );
   }
   if (!atlas.generator?.contextatlas_version) {
@@ -129,6 +159,21 @@ function validateAtlas(atlas: AtlasFileV1): void {
       "importAtlas: symbols and claims must be arrays in atlas.json.",
     );
   }
+  if (
+    atlas.git_commits !== undefined &&
+    !Array.isArray(atlas.git_commits)
+  ) {
+    throw new Error(
+      "importAtlas: git_commits must be an array when present.",
+    );
+  }
+}
+
+function isSupportedVersion(v: unknown): v is AtlasVersion {
+  return (
+    typeof v === "string" &&
+    (SUPPORTED_ATLAS_VERSIONS as readonly string[]).includes(v)
+  );
 }
 
 function inferLanguageFromId(

@@ -2,9 +2,8 @@
  * Bundle builder for get_symbol_context.
  *
  * Accepts a resolved SymbolId plus options and assembles the fused
- * bundle by pulling from: storage (intent), the adapter (refs, types,
- * diagnostics), and a test-file classifier (tests bucket). Git is
- * deliberately out of scope until step 10.
+ * bundle by pulling from: storage (intent + git), the adapter (refs,
+ * types, diagnostics), and a test-file classifier (tests bucket).
  *
  * Returns the `SymbolContextBundle` shape from src/types.ts; compact
  * rendering happens downstream in src/formatters/compact.ts.
@@ -13,6 +12,10 @@
 import { log } from "../mcp/logger.js";
 import { listClaimsForSymbol } from "../storage/claims.js";
 import type { DatabaseInstance } from "../storage/db.js";
+import {
+  countCommitsForFile,
+  listCommitsForFile,
+} from "../storage/git.js";
 import type {
   BundleDepth,
   BundleSignal,
@@ -37,12 +40,14 @@ export const ALL_SIGNALS: readonly BundleSignal[] = [
 
 /**
  * Default set applied when the caller does not pass `include`.
- * Every signal except git, which is wired in step 10. Matches the
- * primitive's "return everything in one call" philosophy.
+ * All five signals. ADR-11 wires git into the default set: with the
+ * index-time git extractor populated, the primitive's "return
+ * everything in one call" philosophy finally covers every axis.
  */
 export const DEFAULT_SIGNALS: readonly BundleSignal[] = [
   "refs",
   "intent",
+  "git",
   "types",
   "tests",
 ];
@@ -57,7 +62,23 @@ export interface BuildBundleOptions {
   depth: BundleDepth;
   include: readonly BundleSignal[];
   maxRefs: number;
+  /**
+   * Threshold for the `hot` flag + `recentCommits` cap. Mirrors
+   * `config.git.recentCommits` — same knob, same meaning (ADR-11).
+   * Optional so existing callers that never include the "git" signal
+   * don't have to thread a value through. Defaults to
+   * {@link DEFAULT_GIT_BUNDLE_RECENT} when absent.
+   */
+  gitRecentCommits?: number;
 }
+
+/**
+ * Fallback used when the caller omits `gitRecentCommits`. Matches
+ * `DEFAULT_GIT_RECENT_COMMITS` in config/defaults.ts — same knob, same
+ * meaning — kept as its own constant to avoid an import cycle between
+ * query and config layers.
+ */
+export const DEFAULT_GIT_BUNDLE_RECENT = 5;
 
 export async function buildBundle(
   deps: BuildBundleDeps,
@@ -65,6 +86,8 @@ export async function buildBundle(
 ): Promise<SymbolContextBundle> {
   const { db, adapter } = deps;
   const { symbol, depth, include, maxRefs } = options;
+  const gitRecentCommits =
+    options.gitRecentCommits ?? DEFAULT_GIT_BUNDLE_RECENT;
   const signalSet = new Set<BundleSignal>(include);
 
   const bundle: SymbolContextBundle = {
@@ -110,14 +133,19 @@ export async function buildBundle(
     }
   }
 
+  // Git — populated from index-time SQLite tables (ADR-11).
+  if (signalSet.has("git")) {
+    const gitBlock = buildGitBlock(db, symbol.path, gitRecentCommits);
+    if (gitBlock) {
+      bundle.git = gitBlock;
+    }
+  }
+
   // Diagnostics — always included when present, per user decision.
   const diagnostics = await safeGetDiagnostics(adapter, symbol.path);
   if (diagnostics.length > 0) {
     bundle.diagnostics = diagnostics;
   }
-
-  // Git is skipped for step 6; lands in step 10. Signal key silently
-  // passes through without populating.
 
   return bundle;
 }
@@ -200,6 +228,39 @@ function hasAnyTypeInfo(ti: TypeInfo): boolean {
     ti.implements.length > 0 ||
     ti.usedByTypes.length > 0
   );
+}
+
+/**
+ * Build the git block for a symbol's file. Returns undefined when the
+ * file has no git history in the stored window — bundle consumers omit
+ * the section rather than render an empty stub, matching the
+ * primitive's "omit empty sections" rule.
+ */
+function buildGitBlock(
+  db: DatabaseInstance,
+  filePath: string,
+  gitRecentCommits: number,
+): NonNullable<SymbolContextBundle["git"]> | undefined {
+  const commitCount = countCommitsForFile(db, filePath);
+  if (commitCount === 0) return undefined;
+
+  const recent = listCommitsForFile(db, filePath, gitRecentCommits);
+  const top = recent[0];
+  if (!top) return undefined;
+
+  return {
+    lastTouched: top.date,
+    lastTouchedAuthor: top.authorEmail,
+    recentCommits: recent.map((c) => ({
+      sha: c.sha,
+      date: c.date,
+      message: c.message,
+      authorEmail: c.authorEmail,
+    })),
+    hot: commitCount >= gitRecentCommits,
+    commitCount,
+    hotThreshold: gitRecentCommits,
+  };
 }
 
 async function safeFindReferences(

@@ -12,8 +12,10 @@
  *   contextatlas --config-root <dir>                # benchmarks-style: config lives elsewhere
  *   contextatlas --config-root <dir> --config <file> # pick one of many configs in <dir>
  *   contextatlas --config <file>                    # same as above but configRoot = cwd
+ *   contextatlas --check                            # staleness probe; exits without starting MCP
  *
- * See ADR-08 for the config-root / config-file / source-root story.
+ * See ADR-08 for the config-root / config-file / source-root story and
+ * ADR-11 for the --check staleness contract.
  */
 
 import { existsSync, mkdirSync, readFileSync } from "node:fs";
@@ -29,6 +31,7 @@ import { loadConfig } from "./config/parser.js";
 import { log } from "./mcp/logger.js";
 import { createServer } from "./mcp/server.js";
 import { TOOLS } from "./mcp/schemas.js";
+import { checkStaleness, exitCodeFor } from "./staleness.js";
 import { importAtlasFile } from "./storage/atlas-importer.js";
 import { openDatabase } from "./storage/db.js";
 import type { LanguageAdapter, LanguageCode } from "./types.js";
@@ -46,9 +49,11 @@ export async function main(): Promise<void> {
 
   // Parse CLI args. Flag parsing errors surface via main().catch → log +
   // exit 1, same path as a malformed config.
-  const { configRoot: configRootArg, configFile: configFileArg } = parseArgs(
-    process.argv.slice(2),
-  );
+  const {
+    configRoot: configRootArg,
+    configFile: configFileArg,
+    check,
+  } = parseArgs(process.argv.slice(2));
   const configRoot = configRootArg
     ? pathResolve(configRootArg)
     : process.cwd();
@@ -81,6 +86,23 @@ export async function main(): Promise<void> {
     ? pathResolve(configRoot, config.source.root)
     : configRoot;
   log.info(`Source root: ${sourceRoot}`);
+
+  // 2b. --check short-circuit (ADR-11). Performs atlas-vs-HEAD SHA
+  //     comparison, writes a human-readable message to stderr, and
+  //     exits with the documented status code (0 current, 1 stale,
+  //     2 unknown) without starting adapters or the MCP server.
+  if (check) {
+    const atlasPath = pathResolve(configRoot, config.atlas.path);
+    const report = checkStaleness({ atlasPath, repoRoot: sourceRoot });
+    log.info(`staleness: ${report.status}`, {
+      atlasSha: report.atlasSha,
+      currentSha: report.currentSha,
+    });
+    // Staleness message goes to stderr via logger so stdout stays
+    // clean for any future machine-readable flag (e.g. --check --json).
+    log.info(report.message);
+    process.exit(exitCodeFor(report.status));
+  }
 
   // 3. Open the local cache DB. atlas.local_cache is resolved against
   //    configRoot — it lives with the committed atlas, not with source.
@@ -141,11 +163,17 @@ export async function main(): Promise<void> {
     log.info(`Initialized ${lang} adapter at ${sourceRoot}`);
   }
 
-  // 6. Construct the server WITH context.
+  // 6. Construct the server WITH context. gitRecentCommits comes from
+  //    config — same knob used during extraction for the "recent N" and
+  //    hotness threshold (ADR-11).
   const server = createServer({
     name: "ContextAtlas",
     version,
-    context: { db, adapters },
+    context: {
+      db,
+      adapters,
+      gitRecentCommits: config.git.recentCommits,
+    },
   });
 
   log.info(`Registered tools: ${TOOLS.map((t) => t.name).join(", ")}`);

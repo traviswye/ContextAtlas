@@ -53,12 +53,19 @@ import {
   type ProseFile,
 } from "./file-walker.js";
 import { parseFrontmatterSymbols } from "./frontmatter.js";
+import {
+  DEFAULT_COMMIT_LIMIT,
+  extractGitSignal,
+} from "./git-extractor.js";
 import { EXTRACTION_MODEL, stripFrontmatter } from "./prompt.js";
 import {
   buildSymbolInventory,
   resolveCandidates,
   type SymbolInventory,
 } from "./resolver.js";
+import { replaceGitCommits } from "../storage/git.js";
+import { ATLAS_META_KEYS } from "../storage/atlas-importer.js";
+import { ATLAS_VERSION } from "../storage/types.js";
 
 export interface ExtractionPipelineDeps {
   /**
@@ -86,6 +93,18 @@ export interface ExtractionPipelineDeps {
   batchSize?: number;
   /** Provided by caller when a real run should bump generated_at. */
   contextatlasVersion?: string;
+  /**
+   * Override the git `log` window. Defaults to the ADR-11 constant.
+   * Primarily a test knob — production runs take the default.
+   */
+  gitCommitLimit?: number;
+  /**
+   * Override the git binary path. Defaults to `"git"` on PATH. Test
+   * harnesses that want to avoid spawning the real binary pass a
+   * script path or a non-existent path (triggering the "no git"
+   * branch).
+   */
+  gitBinary?: string;
 }
 
 export interface ExtractionPipelineResult {
@@ -107,6 +126,16 @@ export interface ExtractionPipelineResult {
   atlasExported: boolean;
   wallClockMs: number;
   apiCalls: number;
+  /**
+   * Number of git commits captured during the run (ADR-11). Zero when
+   * the repo is not a git working tree.
+   */
+  gitCommitsIndexed: number;
+  /**
+   * HEAD SHA at extraction time, or null when the repo is not a git
+   * tree. Echoes what lands in `atlas.extracted_at_sha`.
+   */
+  extractedAtSha: string | null;
 }
 
 export async function runExtractionPipeline(
@@ -161,6 +190,31 @@ export async function runExtractionPipeline(
 
   // --- Stage 4: upsert symbols ----------------------------------------
   upsertSymbols(db, inventory.allSymbols);
+
+  // --- Stage 4b: git signal (ADR-11) -----------------------------------
+  // Full re-extract every run. `git log` is subprocess-fast, so the
+  // cost differential vs incremental merge is negligible while the
+  // correctness benefit (no rewritten-history edge cases) is real.
+  // Capture the previously-stored SHA BEFORE the replace so stage 7
+  // can decide whether git state changed (which triggers atlas re-export
+  // even when prose didn't move).
+  const priorHeadShaRow = db
+    .prepare("SELECT value FROM atlas_meta WHERE key = ?")
+    .get(ATLAS_META_KEYS.extractedAtSha) as { value: string } | undefined;
+  const priorHeadSha = priorHeadShaRow?.value ?? null;
+
+  const gitResult = extractGitSignal({
+    repoRoot,
+    commitLimit: deps.gitCommitLimit ?? DEFAULT_COMMIT_LIMIT,
+    ...(deps.gitBinary !== undefined ? { gitBinary: deps.gitBinary } : {}),
+  });
+  replaceGitCommits(db, gitResult.commits);
+  log.info("pipeline: git phase complete", {
+    headSha: gitResult.headSha,
+    commits: gitResult.commits.length,
+  });
+
+  const gitChanged = gitResult.headSha !== priorHeadSha;
 
   // --- Stage 5: handle deletions --------------------------------------
   for (const deletedPath of diff.deleted) {
@@ -220,8 +274,11 @@ export async function runExtractionPipeline(
   }
 
   // --- Stage 7: update atlas_meta + export ----------------------------
+  // Git state advancing counts as a modification: the committed atlas
+  // carries `extracted_at_sha` + `git_commits`, so a new HEAD SHA means
+  // the atlas is out of date even if no prose/source changed.
   const didModify =
-    filesToExtract.length > 0 || diff.deleted.length > 0;
+    filesToExtract.length > 0 || diff.deleted.length > 0 || gitChanged;
   let atlasExported = false;
 
   if (didModify) {
@@ -233,23 +290,34 @@ export async function runExtractionPipeline(
     const extractionModel = EXTRACTION_MODEL;
     const contextatlasVer = deps.contextatlasVersion ?? "0.0.0";
 
-    // Persist ALL three generator fields to atlas_meta, not just
-    // generated_at. Without this, exportAtlas would fall back to
-    // "unknown"/"0.0.0" on subsequent reads — which is exactly the
-    // bug dogfooding caught.
+    // Persist ALL generator + staleness fields to atlas_meta. Without
+    // this, exportAtlas would fall back to "unknown"/"0.0.0"/missing —
+    // which is exactly the bug dogfooding caught for v1.0.
     const setMeta = db.prepare(
       "INSERT INTO atlas_meta (key, value) VALUES (?, ?) " +
         "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
     );
-    setMeta.run("generated_at", newGeneratedAt);
-    setMeta.run("generator.extraction_model", extractionModel);
-    setMeta.run("generator.contextatlas_version", contextatlasVer);
+    setMeta.run(ATLAS_META_KEYS.version, ATLAS_VERSION);
+    setMeta.run(ATLAS_META_KEYS.generatedAt, newGeneratedAt);
+    setMeta.run(ATLAS_META_KEYS.generatorExtractionModel, extractionModel);
+    setMeta.run(
+      ATLAS_META_KEYS.generatorContextatlasVersion,
+      contextatlasVer,
+    );
+    if (gitResult.headSha !== null) {
+      setMeta.run(ATLAS_META_KEYS.extractedAtSha, gitResult.headSha);
+    } else {
+      db.prepare("DELETE FROM atlas_meta WHERE key = ?").run(
+        ATLAS_META_KEYS.extractedAtSha,
+      );
+    }
 
     if (config.atlas.committed) {
       exportAtlasToFile(db, atlasAbsPath, {
         generatedAt: newGeneratedAt,
         contextatlasVersion: contextatlasVer,
         extractionModel,
+        extractedAtSha: gitResult.headSha ?? null,
       });
       atlasExported = true;
       log.info("pipeline: atlas.json written", { path: atlasAbsPath });
@@ -270,6 +338,8 @@ export async function runExtractionPipeline(
     atlasExported,
     wallClockMs: Date.now() - start,
     apiCalls,
+    gitCommitsIndexed: gitResult.commits.length,
+    extractedAtSha: gitResult.headSha,
   };
 }
 

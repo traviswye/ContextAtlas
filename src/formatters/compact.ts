@@ -11,6 +11,7 @@
  */
 
 import type { FindByIntentMatch } from "../queries/find-by-intent.js";
+import type { ImpactBundle } from "../queries/impact-of-change.js";
 import type {
   BundleDepth,
   Claim,
@@ -59,6 +60,13 @@ export function renderCompact(
   // Tests
   if (bundle.tests && bundle.tests.files.length > 0 && options.depth !== "summary") {
     renderTests(lines, bundle.tests, options.depth);
+  }
+
+  // Git — always shown when present (ADR-11). The header line carries
+  // last-touched and hot-summary at every depth; per-commit lines
+  // render at standard+.
+  if (bundle.git) {
+    renderGit(lines, bundle.git, options.depth);
   }
 
   // Diagnostics — always shown when present
@@ -191,6 +199,30 @@ function renderDiagnostics(
   }
 }
 
+function renderGit(
+  lines: string[],
+  git: NonNullable<SymbolContextBundle["git"]>,
+  depth: BundleDepth,
+): void {
+  const hotFragment = git.hot
+    ? `hot (${git.commitCount}≥${git.hotThreshold} commits)`
+    : `cold (${git.commitCount}<${git.hotThreshold} commits)`;
+  lines.push(
+    `${INDENT}GIT last=${git.lastTouched} by ${git.lastTouchedAuthor} ${hotFragment}`,
+  );
+  if (depth === "summary") return;
+  // Summary depth stops at the header. Standard / deep render the
+  // per-commit list. Recent commit count is already bounded at
+  // bundle-build time by config.git.recentCommits.
+  for (const c of git.recentCommits) {
+    const shortSha = c.sha.slice(0, 7);
+    const shortDate = c.date.slice(0, 10);
+    lines.push(
+      `${INDENT2}COMMIT ${shortSha} ${shortDate} ${quote(c.message)}`,
+    );
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -226,6 +258,50 @@ export function renderMatchesCompact(
     );
   }
   return lines.join("\n") + "\n";
+}
+
+/**
+ * Compact-format renderer for `impact_of_change` results (ADR-11).
+ *
+ * Header IMPACT line, then a primitive bundle in place (at depth
+ * "deep"), then GIT_COCHANGE and RISK_SIGNALS blocks. The layout is
+ * specified in ADR-11's "Response shape" section — changes require
+ * an ADR amendment.
+ */
+export function renderImpactCompact(impact: ImpactBundle): string {
+  const { bundle, coChange, riskSignals } = impact;
+  const lines: string[] = [];
+  lines.push(`IMPACT ${bundle.symbol.id}`);
+  if (coChange.length > 0) {
+    lines.push(`${INDENT}GIT_COCHANGE (top ${coChange.length})`);
+    const maxWidth = Math.max(
+      ...coChange.map((c) => c.filePath.length),
+    );
+    for (const c of coChange) {
+      const padded = c.filePath.padEnd(maxWidth);
+      lines.push(`${INDENT2}${padded}  ${c.coCommitCount} commits`);
+    }
+  }
+  lines.push(`${INDENT}RISK_SIGNALS`);
+  const hotFrag = riskSignals.hot
+    ? `yes (${riskSignals.commitCount}≥${riskSignals.hotThreshold} commits)`
+    : `no (${riskSignals.commitCount}<${riskSignals.hotThreshold} commits)`;
+  lines.push(`${INDENT2}hot: ${hotFrag}`);
+  lines.push(
+    `${INDENT2}test_coverage: ${riskSignals.testFiles} test file(s) referenced`,
+  );
+  lines.push(`${INDENT2}diagnostics: ${riskSignals.diagnostics}`);
+  lines.push(
+    `${INDENT2}intent_density: ${riskSignals.hardClaims} hard / ` +
+      `${riskSignals.softClaims} soft / ${riskSignals.contextClaims} context`,
+  );
+  // Primitive bundle rendered afterwards at deep depth so callers see
+  // the full context alongside the blast-radius signals.
+  const primitive = renderCompact(bundle, {
+    depth: "deep",
+    maxRefs: bundle.refs?.count ?? 0,
+  });
+  return lines.join("\n") + "\n" + primitive;
 }
 
 function formatNameList(

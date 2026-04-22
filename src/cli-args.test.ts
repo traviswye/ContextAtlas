@@ -4,13 +4,18 @@ import { parseArgs } from "./cli-args.js";
 
 describe("parseArgs — baseline and --config-root", () => {
   it("no args → both knobs null (caller resolves to defaults)", () => {
-    expect(parseArgs([])).toEqual({ configRoot: null, configFile: null });
+    expect(parseArgs([])).toEqual({
+      configRoot: null,
+      configFile: null,
+      check: false,
+    });
   });
 
   it("--config-root space form → extracts value verbatim", () => {
     expect(parseArgs(["--config-root", "/abs/path"])).toEqual({
       configRoot: "/abs/path",
       configFile: null,
+      check: false,
     });
   });
 
@@ -18,6 +23,7 @@ describe("parseArgs — baseline and --config-root", () => {
     expect(parseArgs(["--config-root=/abs/path"])).toEqual({
       configRoot: "/abs/path",
       configFile: null,
+      check: false,
     });
   });
 
@@ -25,6 +31,7 @@ describe("parseArgs — baseline and --config-root", () => {
     expect(parseArgs(["--config-root", "./subdir"])).toEqual({
       configRoot: "./subdir",
       configFile: null,
+      check: false,
     });
   });
 
@@ -32,6 +39,7 @@ describe("parseArgs — baseline and --config-root", () => {
     expect(parseArgs(["--config-root", "C:\\foo\\bar"])).toEqual({
       configRoot: "C:\\foo\\bar",
       configFile: null,
+      check: false,
     });
   });
 
@@ -102,6 +110,7 @@ describe("parseArgs — --config flag", () => {
     expect(parseArgs(["--config", "foo.yml"])).toEqual({
       configRoot: null,
       configFile: "foo.yml",
+      check: false,
     });
   });
 
@@ -109,6 +118,7 @@ describe("parseArgs — --config flag", () => {
     expect(parseArgs(["--config=foo.yml"])).toEqual({
       configRoot: null,
       configFile: "foo.yml",
+      check: false,
     });
   });
 
@@ -119,6 +129,7 @@ describe("parseArgs — --config flag", () => {
     expect(parseArgs(["--config", "/abs/path/config.yml"])).toEqual({
       configRoot: null,
       configFile: "/abs/path/config.yml",
+      check: false,
     });
   });
 
@@ -161,13 +172,13 @@ describe("parseArgs — --config flag", () => {
   it("combines cleanly with --config-root in either order", () => {
     expect(
       parseArgs(["--config-root", "/r", "--config", "cfg.yml"]),
-    ).toEqual({ configRoot: "/r", configFile: "cfg.yml" });
+    ).toEqual({ configRoot: "/r", configFile: "cfg.yml", check: false });
     expect(
       parseArgs(["--config", "cfg.yml", "--config-root", "/r"]),
-    ).toEqual({ configRoot: "/r", configFile: "cfg.yml" });
+    ).toEqual({ configRoot: "/r", configFile: "cfg.yml", check: false });
     expect(
       parseArgs(["--config-root=/r", "--config=cfg.yml"]),
-    ).toEqual({ configRoot: "/r", configFile: "cfg.yml" });
+    ).toEqual({ configRoot: "/r", configFile: "cfg.yml", check: false });
   });
 
   it("usage hint is included in --config thrown errors", () => {
@@ -179,5 +190,30 @@ describe("parseArgs — --config flag", () => {
     ]) {
       expect(() => parseArgs(bad)).toThrow(/Usage:/);
     }
+  });
+});
+
+describe("parseArgs — --check flag (ADR-11)", () => {
+  it("--check sets the boolean flag", () => {
+    expect(parseArgs(["--check"])).toEqual({
+      configRoot: null,
+      configFile: null,
+      check: true,
+    });
+  });
+
+  it("--check composes with --config-root and --config", () => {
+    expect(
+      parseArgs(["--config-root", "/r", "--config", "c.yml", "--check"]),
+    ).toEqual({ configRoot: "/r", configFile: "c.yml", check: true });
+    expect(
+      parseArgs(["--check", "--config-root=/r"]),
+    ).toEqual({ configRoot: "/r", configFile: null, check: true });
+  });
+
+  it("duplicate --check rejects", () => {
+    expect(() => parseArgs(["--check", "--check"])).toThrow(
+      /--check specified more than once/,
+    );
   });
 });

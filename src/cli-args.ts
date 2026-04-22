@@ -1,8 +1,9 @@
 /**
  * CLI argument parser for the MCP runtime binary.
  *
- * Two flags accepted, both supporting the space-separated
- * (`--flag value`) and equals-separated (`--flag=value`) forms:
+ * Three flags accepted, both value-taking flags supporting the
+ * space-separated (`--flag value`) and equals-separated (`--flag=value`)
+ * forms:
  *
  *   --config-root <path>  Directory that acts as the resolution base
  *                         for the config file and for the paths the
@@ -12,6 +13,13 @@
  *   --config <file>       Specific config file to load. When relative,
  *                         resolved against --config-root. When absent,
  *                         defaults to `<config-root>/.contextatlas.yml`.
+ *
+ *   --check               (ADR-11) Boolean-valued. When present, the
+ *                         binary loads the committed atlas, compares
+ *                         its `extracted_at_sha` against current git
+ *                         HEAD, and exits with a status code indicating
+ *                         staleness. No MCP server starts. See
+ *                         src/index.ts for the exit-code contract.
  *
  * Unknown arguments and malformed values throw with actionable error
  * messages rather than silently defaulting — a typo in either flag
@@ -35,15 +43,21 @@ export interface ParsedArgs {
    * relative value against the root and uses an absolute value as-is.
    */
   configFile: string | null;
+  /**
+   * True when `--check` was passed. Signals the caller to short-circuit
+   * into staleness-detection mode rather than start the MCP server.
+   */
+  check: boolean;
 }
 
 const USAGE =
-  "Usage: contextatlas [--config-root <path>] [--config <file>]  " +
-  "(see ADR-08 for when these are needed)";
+  "Usage: contextatlas [--config-root <path>] [--config <file>] [--check]  " +
+  "(see ADR-08 + ADR-11 for when these are needed)";
 
 export function parseArgs(argv: readonly string[]): ParsedArgs {
   let configRoot: string | null = null;
   let configFile: string | null = null;
+  let check = false;
   let i = 0;
   while (i < argv.length) {
     const arg = argv[i]!;
@@ -121,7 +135,15 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
       i += 1;
       continue;
     }
+    if (arg === "--check") {
+      if (check) {
+        throw new Error(`Flag --check specified more than once. ${USAGE}`);
+      }
+      check = true;
+      i += 1;
+      continue;
+    }
     throw new Error(`Unknown argument '${arg}'. ${USAGE}`);
   }
-  return { configRoot, configFile };
+  return { configRoot, configFile, check };
 }

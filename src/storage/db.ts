@@ -113,6 +113,36 @@ const MIGRATIONS: Migration[] = [
       `);
     },
   },
+  {
+    // ADR-11: git signal tables. `git_commits` stores one row per commit
+    // (plus author/date/subject). `git_file_commits` is the file-pivoted
+    // index, derived on import from each commit's embedded `files` array.
+    // Co-change is computed on-the-fly via self-join on git_file_commits;
+    // a pre-computed cache is deliberately post-MVP.
+    version: 3,
+    apply(db) {
+      db.exec(`
+        CREATE TABLE git_commits (
+          sha           TEXT PRIMARY KEY,
+          date          TEXT NOT NULL,
+          message       TEXT NOT NULL,
+          author_email  TEXT NOT NULL
+        );
+
+        CREATE TABLE git_file_commits (
+          file_path     TEXT NOT NULL,
+          commit_sha    TEXT NOT NULL,
+          PRIMARY KEY (file_path, commit_sha),
+          FOREIGN KEY (commit_sha) REFERENCES git_commits(sha)
+        );
+
+        CREATE INDEX idx_git_file_commits_file
+          ON git_file_commits(file_path);
+        CREATE INDEX idx_git_file_commits_sha
+          ON git_file_commits(commit_sha);
+      `);
+    },
+  },
 ];
 
 export const LATEST_SCHEMA_VERSION = MIGRATIONS.reduce(

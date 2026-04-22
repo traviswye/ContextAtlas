@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { insertClaims } from "../storage/claims.js";
 import { type DatabaseInstance, openDatabase } from "../storage/db.js";
+import { replaceGitCommits } from "../storage/git.js";
 import { upsertSymbols } from "../storage/symbols.js";
 import type {
   Diagnostic,
@@ -290,6 +291,91 @@ describe("buildBundle", () => {
       { symbol: sym(), depth: "deep", include: ["types"], maxRefs: 50 },
     );
     expect(bundle.types).toBeUndefined();
+  });
+
+  it("populates git block from index-time commits (ADR-11)", async () => {
+    replaceGitCommits(db, [
+      {
+        sha: "a".repeat(40),
+        date: "2026-04-20T10:00:00Z",
+        message: "fix: retry",
+        authorEmail: "alice@example.com",
+        files: ["src/a.ts"],
+      },
+      {
+        sha: "b".repeat(40),
+        date: "2026-04-19T10:00:00Z",
+        message: "refactor",
+        authorEmail: "bob@example.com",
+        files: ["src/a.ts"],
+      },
+      {
+        sha: "c".repeat(40),
+        date: "2026-04-18T10:00:00Z",
+        message: "docs",
+        authorEmail: "alice@example.com",
+        files: ["src/a.ts"],
+      },
+    ]);
+    const bundle = await buildBundle(
+      { db, adapter: stubAdapter({}) },
+      {
+        symbol: sym(),
+        depth: "standard",
+        include: ["git"],
+        maxRefs: 50,
+        gitRecentCommits: 2,
+      },
+    );
+    expect(bundle.git).toBeDefined();
+    expect(bundle.git?.commitCount).toBe(3);
+    expect(bundle.git?.hot).toBe(true); // 3 >= threshold=2
+    expect(bundle.git?.hotThreshold).toBe(2);
+    expect(bundle.git?.lastTouched).toBe("2026-04-20T10:00:00Z");
+    expect(bundle.git?.lastTouchedAuthor).toBe("alice@example.com");
+    // recentCommits capped at gitRecentCommits; newest-first
+    expect(bundle.git?.recentCommits).toHaveLength(2);
+    expect(bundle.git?.recentCommits[0]?.authorEmail).toBe(
+      "alice@example.com",
+    );
+  });
+
+  it("git block omitted when the file has no git history", async () => {
+    const bundle = await buildBundle(
+      { db, adapter: stubAdapter({}) },
+      {
+        symbol: sym(),
+        depth: "standard",
+        include: ["git"],
+        maxRefs: 50,
+        gitRecentCommits: 5,
+      },
+    );
+    expect(bundle.git).toBeUndefined();
+  });
+
+  it("git block marks cold when commit count is below threshold", async () => {
+    replaceGitCommits(db, [
+      {
+        sha: "a".repeat(40),
+        date: "2026-04-20T10:00:00Z",
+        message: "fix",
+        authorEmail: "alice@example.com",
+        files: ["src/a.ts"],
+      },
+    ]);
+    const bundle = await buildBundle(
+      { db, adapter: stubAdapter({}) },
+      {
+        symbol: sym(),
+        depth: "standard",
+        include: ["git"],
+        maxRefs: 50,
+        gitRecentCommits: 5,
+      },
+    );
+    expect(bundle.git?.hot).toBe(false);
+    expect(bundle.git?.commitCount).toBe(1);
   });
 
   it("empty intent case renders cleanly (no INTENT section, other signals intact)", async () => {

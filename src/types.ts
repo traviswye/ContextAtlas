@@ -134,9 +134,26 @@ export interface SymbolContextBundle {
     usedByTypes?: string[];
   };
   git?: {
+    /** ISO-8601 date of the most recent commit that touched the symbol's file. */
     lastTouched: string;
-    recentCommits: Array<{ sha: string; date: string; message: string }>;
+    /** Author email of that most recent commit. */
+    lastTouchedAuthor: string;
+    /**
+     * Recent commits on the symbol's file, newest-first. Size is
+     * bounded by `config.git.recentCommits`.
+     */
+    recentCommits: Array<{
+      sha: string;
+      date: string;
+      message: string;
+      authorEmail: string;
+    }>;
+    /** True when `commitCount >= config.git.recentCommits` (ADR-11). */
     hot: boolean;
+    /** Total commits in the stored window that touched the symbol's file. */
+    commitCount: number;
+    /** Threshold used to decide `hot` — surfaced so renderers can explain it. */
+    hotThreshold: number;
   };
   tests?: {
     files: string[];
