@@ -10,7 +10,7 @@
  * case-normalized drive letters.
  */
 
-import { readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { extname, join as pathJoin, resolve as pathResolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -269,6 +269,7 @@ export class TypeScriptAdapter implements LanguageAdapter {
 
   async listSymbols(filePath: string): Promise<AtlasSymbol[]> {
     const { absPath, relPath } = this.resolveFile(filePath);
+    if (!existsSync(absPath)) return [];
     await this.ensureOpen(absPath);
     const result = await this.client.request<LspDocumentSymbol[] | null>(
       "textDocument/documentSymbol",
@@ -322,6 +323,7 @@ export class TypeScriptAdapter implements LanguageAdapter {
     const parsed = parseSymbolId(id);
     if (!parsed || !this.rootPath) return [];
     const absPath = this.toAbs(parsed.path);
+    if (!existsSync(absPath)) return [];
     await this.ensureOpen(absPath);
 
     const symbols = await this.client.request<LspDocumentSymbol[] | null>(
@@ -364,6 +366,7 @@ export class TypeScriptAdapter implements LanguageAdapter {
     if (!parsed || !this.rootPath) return empty;
 
     const absPath = this.toAbs(parsed.path);
+    if (!existsSync(absPath)) return empty;
     await this.ensureOpen(absPath);
 
     const symbols = await this.client.request<LspDocumentSymbol[] | null>(
@@ -504,6 +507,7 @@ export class TypeScriptAdapter implements LanguageAdapter {
 
   async getDiagnostics(filePath: string): Promise<Diagnostic[]> {
     const { absPath } = this.resolveFile(filePath);
+    if (!existsSync(absPath)) return [];
     await this.ensureOpen(absPath);
     const uriKey = normalizePath(toFileUri(absPath));
 

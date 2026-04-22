@@ -9,6 +9,7 @@
 
 import type { LanguageAdapter, LanguageCode } from "../types.js";
 
+import { PyrightAdapter } from "./pyright.js";
 import { TypeScriptAdapter } from "./typescript.js";
 
 export function createAdapter(language: LanguageCode): LanguageAdapter {
@@ -16,9 +17,7 @@ export function createAdapter(language: LanguageCode): LanguageAdapter {
     case "typescript":
       return new TypeScriptAdapter();
     case "python":
-      throw new Error(
-        "Python adapter not yet implemented. Lands in step 9 of the build plan.",
-      );
+      return new PyrightAdapter();
     default: {
       const exhaustive: never = language;
       throw new Error(`Unknown language code: ${String(exhaustive)}`);

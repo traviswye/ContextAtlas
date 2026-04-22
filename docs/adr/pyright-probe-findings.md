@@ -2,14 +2,14 @@
 
 Raw behavior capture from Pyright 1.1.409 against a diverse
 Python fixture. Produced by `scripts/pyright-probe.ts` on
-2026-04-22T19:55:45.949Z.
+2026-04-22T20:38:35.645Z.
 
 Purpose: ground ADR-13's LSP primitive mappings in observed behavior.
 
 ## Boot
 
 - Pyright entry: `C:\CodeWork\contextatlas\node_modules\pyright\langserver.index.js`
-- Fixture: `C:\CodeWork\contextatlas\test\fixtures\pyright-probe`
+- Fixture: `C:\CodeWork\contextatlas\test\fixtures\python`
 - .py files: 4
   - `broken.py`
   - `consumer.py`
@@ -1646,7 +1646,7 @@ position: line 75, char 6
 ```json
 [
   {
-    "uri": "file:///c%3A/CodeWork/contextatlas/test/fixtures/pyright-probe/consumer.py",
+    "uri": "file:///c%3A/CodeWork/contextatlas/test/fixtures/python/consumer.py",
     "range": {
       "start": {
         "line": 6,
@@ -1659,7 +1659,7 @@ position: line 75, char 6
     }
   },
   {
-    "uri": "file:///c%3A/CodeWork/contextatlas/test/fixtures/pyright-probe/consumer.py",
+    "uri": "file:///c%3A/CodeWork/contextatlas/test/fixtures/python/consumer.py",
     "range": {
       "start": {
         "line": 10,
@@ -1672,7 +1672,7 @@ position: line 75, char 6
     }
   },
   {
-    "uri": "file:///c%3A/CodeWork/contextatlas/test/fixtures/pyright-probe/sample.py",
+    "uri": "file:///c%3A/CodeWork/contextatlas/test/fixtures/python/sample.py",
     "range": {
       "start": {
         "line": 116,
@@ -1692,7 +1692,7 @@ position: line 75, char 6
 ```json
 [
   {
-    "uri": "file:///c%3A/CodeWork/contextatlas/test/fixtures/pyright-probe/consumer.py",
+    "uri": "file:///c%3A/CodeWork/contextatlas/test/fixtures/python/consumer.py",
     "range": {
       "start": {
         "line": 6,
@@ -1705,7 +1705,7 @@ position: line 75, char 6
     }
   },
   {
-    "uri": "file:///c%3A/CodeWork/contextatlas/test/fixtures/pyright-probe/consumer.py",
+    "uri": "file:///c%3A/CodeWork/contextatlas/test/fixtures/python/consumer.py",
     "range": {
       "start": {
         "line": 17,
@@ -1725,7 +1725,7 @@ position: line 75, char 6
 ```json
 [
   {
-    "uri": "file:///c%3A/CodeWork/contextatlas/test/fixtures/pyright-probe/consumer.py",
+    "uri": "file:///c%3A/CodeWork/contextatlas/test/fixtures/python/consumer.py",
     "range": {
       "start": {
         "line": 6,
@@ -1738,7 +1738,7 @@ position: line 75, char 6
     }
   },
   {
-    "uri": "file:///c%3A/CodeWork/contextatlas/test/fixtures/pyright-probe/consumer.py",
+    "uri": "file:///c%3A/CodeWork/contextatlas/test/fixtures/python/consumer.py",
     "range": {
       "start": {
         "line": 20,
@@ -1825,7 +1825,7 @@ For completeness: capture what typeDefinition returns on a few targets so ADR-13
 ```json
 [
   {
-    "uri": "file:///c%3A/CodeWork/contextatlas/test/fixtures/pyright-probe/sample.py",
+    "uri": "file:///c%3A/CodeWork/contextatlas/test/fixtures/python/sample.py",
     "range": {
       "start": {
         "line": 103,

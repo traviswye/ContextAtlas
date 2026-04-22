@@ -27,7 +27,7 @@ import {
 import { LspClient } from "../src/adapters/lsp-client.js";
 import { toFileUri, normalizePath } from "../src/utils/paths.js";
 
-const FIXTURE = pathResolve("test/fixtures/pyright-probe");
+const FIXTURE = pathResolve("test/fixtures/python");
 const OUTPUT = pathResolve("docs/adr/pyright-probe-findings.md");
 const PYRIGHT_ENTRY = pathResolve(
   "node_modules/pyright/langserver.index.js",
