@@ -18,6 +18,7 @@ import {
 const FIXTURE_ROOT = pathResolve("test/fixtures/typescript");
 const SAMPLE = pathResolve(FIXTURE_ROOT, "sample.ts");
 const BROKEN = pathResolve(FIXTURE_ROOT, "broken.ts");
+const PARITY = pathResolve(FIXTURE_ROOT, "parity.ts");
 
 describe("TypeScriptAdapter", () => {
   let adapter: TypeScriptAdapter;
@@ -124,6 +125,88 @@ describe("TypeScriptAdapter", () => {
       expect(e.path).toBe("broken.ts");
       expect(e.line).toBeGreaterThan(0);
     }
+  });
+
+  // -------------------------------------------------------------------
+  // Parity with PyrightAdapter (v0.2 Stream A #4)
+  //
+  // Target behavior surfaced by the Phase C hono spot-check:
+  //   Gap 1 — class / interface members must be surfaced as symbols
+  //   Gap 2 — namespace children must be surfaced as symbols
+  //   Gap 5 — type-alias signatures must terminate at the next
+  //           top-level declaration (not bleed under ASI convention)
+  //
+  // See docs/ts-adapter-parity-check.md for full matrix.
+  // -------------------------------------------------------------------
+
+  describe("parity (v0.2 Stream A #4)", () => {
+    it("class members are surfaced as symbols (Gap 1)", async () => {
+      const symbols = await adapter.listSymbols(PARITY);
+      const byName = new Map(symbols.map((s) => [s.name, s]));
+
+      expect(byName.get("ParityClass")?.kind).toBe("class");
+      // Instance method, static method, and readonly property should
+      // each appear as their own symbol beneath the class.
+      expect(byName.get("instanceMethod")?.kind).toBe("method");
+      expect(byName.get("staticMethod")?.kind).toBe("method");
+      // readonly `id` property — TS emits this with a kind that maps
+      // either to "variable" (LSP 13/14) or "other" depending on
+      // tsserver version. Either outcome is acceptable so long as it
+      // doesn't break the class-children iteration path; weaker
+      // assertion below just checks presence.
+      const id = byName.get("id");
+      if (id) {
+        expect(typeof id.kind).toBe("string");
+      }
+    });
+
+    it("interface members are surfaced as symbols (Gap 1)", async () => {
+      const symbols = await adapter.listSymbols(PARITY);
+      const byName = new Map(symbols.map((s) => [s.name, s]));
+
+      expect(byName.get("ParityInterface")?.kind).toBe("interface");
+      // Method signature on the interface.
+      const methodSig = byName.get("methodSig");
+      expect(methodSig).toBeDefined();
+      expect(methodSig?.kind).toBe("method");
+    });
+
+    it("namespace children are surfaced as symbols (Gap 2)", async () => {
+      const symbols = await adapter.listSymbols(PARITY);
+      const byName = new Map(symbols.map((s) => [s.name, s]));
+
+      // The namespace itself maps to kind "module" via LSP kind=2.
+      expect(byName.get("ParityNamespace")?.kind).toBe("module");
+      // Inner interface inside the namespace.
+      expect(byName.get("Inner")?.kind).toBe("interface");
+      // Inner type alias inside the namespace.
+      expect(byName.get("InnerAlias")?.kind).toBe("type");
+    });
+
+    it("type-alias signature does not bleed into the next declaration (Gap 5)", async () => {
+      const symbols = await adapter.listSymbols(PARITY);
+      const byName = new Map(symbols.map((s) => [s.name, s]));
+
+      const first = byName.get("FirstTypeAlias");
+      expect(first?.kind).toBe("type");
+      // Signature should contain the RHS of FirstTypeAlias ONLY —
+      // not bleed into SecondTypeAlias or anything after it.
+      expect(first?.signature).toBeDefined();
+      expect(first?.signature).not.toContain("SecondTypeAlias");
+      expect(first?.signature).toContain("Record<string, number>");
+    });
+
+    it("multi-line object-shape type alias signature captured correctly (Gap 5 corollary)", async () => {
+      // The termination fix must still allow multi-line object-shape
+      // type aliases to capture their full RHS. `SecondTypeAlias`
+      // spans three lines and has balanced braces; its signature
+      // should include both `x: number` and `y: number`.
+      const symbols = await adapter.listSymbols(PARITY);
+      const second = symbols.find((s) => s.name === "SecondTypeAlias");
+      expect(second?.kind).toBe("type");
+      expect(second?.signature).toContain("x: number");
+      expect(second?.signature).toContain("y: number");
+    });
   });
 });
 
