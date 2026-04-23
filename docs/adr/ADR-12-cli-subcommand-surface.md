@@ -218,9 +218,41 @@ the no-atlas-yet case of indexing.
   atlas_exported=true|false
   wall_clock_ms=N
   api_calls=N
+  input_tokens=N          # v0.2 amendment — see Cost visibility below
+  output_tokens=N         # v0.2 amendment
+  cost_usd=N.NNNN         # v0.2 amendment (4-decimal formatting)
   ```
   Parseable by CI scripts without regex gymnastics. `key=value` lines are stable across releases; new keys may be added, existing keys never renamed. (One-way migrations principle again.)
-- stdout (`--json`): a single JSON object with the same fields as the `key=value` output, plus any nested structures that don't flatten cleanly (e.g. `extraction_errors: [...]` when non-empty). Same stability contract: new fields may appear, existing fields never rename. Exit codes are unchanged between default and `--json` output.
+- stdout (`--json`): a single JSON object with the same fields as the `key=value` output, plus any nested structures that don't flatten cleanly (e.g. `extraction_errors: [...]` when non-empty). Same stability contract: new fields may appear, existing fields never rename. Exit codes are unchanged between default and `--json` output. In `--json`, `cost_usd` is emitted as a number (not a string), truncated to four decimals.
+
+### Cost visibility (v0.2 amendment — 2026-04-23)
+
+Three new summary fields were added as an additive extension of the
+stdout contract. These codify behavior added in v0.2 Stream A #2 and
+sit under the pre-existing "new keys may be added, existing keys
+never renamed" guarantee — no breakage for consumers pinned on the
+v0.1 subset.
+
+- `input_tokens` — cumulative `input_tokens` across successful
+  Anthropic API calls during the run.
+- `output_tokens` — cumulative `output_tokens`.
+- `cost_usd` — computed cost under Opus 4.7 pricing ($15/M input,
+  $75/M output; constants in `src/extraction/pricing.ts`). Formatted
+  to four decimal places in `key=value` output so sub-cent
+  development iterations remain informative (`cost_usd=0.0053`
+  rather than `0.00`). In `--json`, `cost_usd` is a number truncated
+  to four decimals. Failed-retry token usage is not captured —
+  visibility is limited to responses we actually received.
+- `extraction.budget_warn_usd` (YAML config, optional) / `--budget-warn <usd>`
+  (CLI flag, optional, overrides config) specifies a threshold
+  ceiling. When cumulative `cost_usd` exceeds it during a run, a
+  single warning is logged to stderr (`[warn] extraction: budget
+  warning — ...`) and no further warnings fire for the remainder of
+  the run. This is advisory, not a hard cap: the run continues and
+  the exit code is unaffected. The semantic is intentionally loose
+  — a hard cap is a distinct feature (not scoped for v0.2) and
+  carries different UX requirements (when to abort, how to handle
+  partial state).
 
 **Side effects:**
 - Writes `atlas.json` when `atlas.committed: true` and changes occurred
