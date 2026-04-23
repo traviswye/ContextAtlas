@@ -247,4 +247,16 @@ export interface ContextAtlasConfig {
   source?: {
     root: string;
   };
+  /**
+   * Optional extraction-pipeline knobs (v0.2 Stream A #2).
+   *
+   * `budgetWarnUsd`: when the cumulative API cost during an
+   * extraction run exceeds this threshold, a single warning is
+   * logged to stderr. Not a hard cap — the run continues. Absent
+   * means no budget check. CLI flag `--budget-warn` overrides this
+   * value at invocation time.
+   */
+  extraction?: {
+    budgetWarnUsd: number;
+  };
 }

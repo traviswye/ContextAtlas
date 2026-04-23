@@ -720,3 +720,173 @@ describe("runExtractionPipeline", () => {
     expect(atlasText).toContain("ADR-EXT.md");
   });
 });
+
+// ---------------------------------------------------------------------------
+// Budget warning (v0.2 Stream A #2)
+//
+// Default stub usage is 100 input + 50 output tokens per call. Under
+// Opus 4.7 pricing ($15/M input + $75/M output), that's
+// (100/1e6 * 15) + (50/1e6 * 75) = 0.0015 + 0.00375 = $0.00525 per call.
+// Tests pick thresholds relative to that unit cost.
+// ---------------------------------------------------------------------------
+
+import { vi } from "vitest";
+
+function captureWarnings(): {
+  lines: string[];
+  restore: () => void;
+} {
+  const lines: string[] = [];
+  const spy = vi
+    .spyOn(process.stderr, "write")
+    .mockImplementation((chunk: unknown): boolean => {
+      const text = typeof chunk === "string" ? chunk : String(chunk);
+      if (text.includes("[warn]")) lines.push(text);
+      return true;
+    });
+  return { lines, restore: () => spy.mockRestore() };
+}
+
+describe("runExtractionPipeline — budget warning", () => {
+  let tmp: string;
+  let db: DatabaseInstance;
+
+  beforeEach(() => {
+    tmp = mkdtempSync(pathJoin(tmpdir(), "ca-pipeline-budget-"));
+    mkdirSync(pathJoin(tmp, "docs", "adr"), { recursive: true });
+    mkdirSync(pathJoin(tmp, "src"), { recursive: true });
+    mkdirSync(pathJoin(tmp, ".contextatlas"), { recursive: true });
+    db = openDatabase(":memory:");
+  });
+
+  afterEach(() => {
+    db.close();
+    rmSync(tmp, { recursive: true, force: true });
+  });
+
+  function writeAdrs(n: number): void {
+    for (let i = 1; i <= n; i++) {
+      writeFileSync(
+        pathJoin(tmp, "docs", "adr", `ADR-${String(i).padStart(2, "0")}.md`),
+        `---\nid: ADR-${i}\n---\nbody\n`,
+      );
+    }
+  }
+
+  it("no warning fires when budgetWarnUsd is undefined", async () => {
+    writeAdrs(3);
+    const warnings = captureWarnings();
+    const adapter = makeStubAdapter("typescript", [".ts"], () => []);
+    const client = makeStubClient([
+      { claims: [] },
+      { claims: [] },
+      { claims: [] },
+    ]);
+    await runExtractionPipeline({
+      repoRoot: tmp,
+      config: baseConfig(),
+      db,
+      anthropicClient: client,
+      adapters: new Map([["typescript", adapter]]),
+    });
+    warnings.restore();
+    const budgetWarnings = warnings.lines.filter((l) =>
+      l.includes("budget warning"),
+    );
+    expect(budgetWarnings).toHaveLength(0);
+  });
+
+  it("no warning fires when cumulative cost stays under threshold", async () => {
+    writeAdrs(2);
+    // 2 calls * $0.00525 = $0.0105 cumulative, threshold $1.00 → no warning.
+    const warnings = captureWarnings();
+    const adapter = makeStubAdapter("typescript", [".ts"], () => []);
+    const client = makeStubClient([{ claims: [] }, { claims: [] }]);
+    await runExtractionPipeline({
+      repoRoot: tmp,
+      config: baseConfig(),
+      db,
+      anthropicClient: client,
+      adapters: new Map([["typescript", adapter]]),
+      budgetWarnUsd: 1.0,
+    });
+    warnings.restore();
+    const budgetWarnings = warnings.lines.filter((l) =>
+      l.includes("budget warning"),
+    );
+    expect(budgetWarnings).toHaveLength(0);
+  });
+
+  it("fires exactly one warning when cumulative cost exceeds threshold", async () => {
+    writeAdrs(3);
+    // 3 calls * $0.00525 = $0.01575. Threshold $0.005 is crossed on
+    // first batch (batchSize default 3 → all three fire before the
+    // post-batch check). Warning should fire once.
+    const warnings = captureWarnings();
+    const adapter = makeStubAdapter("typescript", [".ts"], () => []);
+    const client = makeStubClient([
+      { claims: [] },
+      { claims: [] },
+      { claims: [] },
+    ]);
+    await runExtractionPipeline({
+      repoRoot: tmp,
+      config: baseConfig(),
+      db,
+      anthropicClient: client,
+      adapters: new Map([["typescript", adapter]]),
+      budgetWarnUsd: 0.005,
+    });
+    warnings.restore();
+    const budgetWarnings = warnings.lines.filter((l) =>
+      l.includes("budget warning"),
+    );
+    expect(budgetWarnings).toHaveLength(1);
+    expect(budgetWarnings[0]).toContain("cumulativeCostUsd");
+    expect(budgetWarnings[0]).toContain('"budgetUsd":0.005');
+  });
+
+  it("fires exactly one warning across many batches even when all exceed", async () => {
+    // 6 files → 2 batches (batchSize 3). Threshold crossed after
+    // first batch; second batch is way past. Still exactly one warning.
+    writeAdrs(6);
+    const warnings = captureWarnings();
+    const adapter = makeStubAdapter("typescript", [".ts"], () => []);
+    const client = makeStubClient(
+      Array.from({ length: 6 }, () => ({ claims: [] })),
+    );
+    await runExtractionPipeline({
+      repoRoot: tmp,
+      config: baseConfig(),
+      db,
+      anthropicClient: client,
+      adapters: new Map([["typescript", adapter]]),
+      budgetWarnUsd: 0.001, // far below cost of one call
+    });
+    warnings.restore();
+    const budgetWarnings = warnings.lines.filter((l) =>
+      l.includes("budget warning"),
+    );
+    expect(budgetWarnings).toHaveLength(1);
+  });
+
+  it("threshold of zero fires on first batch (warn-on-any-cost)", async () => {
+    writeAdrs(1);
+    const warnings = captureWarnings();
+    const adapter = makeStubAdapter("typescript", [".ts"], () => []);
+    const client = makeStubClient([{ claims: [] }]);
+    await runExtractionPipeline({
+      repoRoot: tmp,
+      config: baseConfig(),
+      db,
+      anthropicClient: client,
+      adapters: new Map([["typescript", adapter]]),
+      budgetWarnUsd: 0,
+    });
+    warnings.restore();
+    const budgetWarnings = warnings.lines.filter((l) =>
+      l.includes("budget warning"),
+    );
+    expect(budgetWarnings).toHaveLength(1);
+  });
+});

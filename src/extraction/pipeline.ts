@@ -119,6 +119,13 @@ export interface ExtractionPipelineDeps {
    * extraction quality issues. Default: false.
    */
   skipShaDiff?: boolean;
+  /**
+   * Optional USD ceiling. When set and cumulative extraction cost
+   * exceeds this value during a run, a single warning is logged to
+   * stderr and no further warnings fire for the rest of the run.
+   * Not a hard cap — the run continues regardless. v0.2 Stream A #2.
+   */
+  budgetWarnUsd?: number;
 }
 
 export interface ExtractionPipelineResult {
@@ -270,6 +277,7 @@ export async function runExtractionPipeline(
   let unresolvedFrontmatterHints = 0;
   let apiCalls = 0;
   let totalUsage: UsageInfo = ZERO_USAGE;
+  let budgetWarningFired = false;
   const extractionErrors: Array<{ sourcePath: string; error: string }> = [];
 
   for (let i = 0; i < filesToExtract.length; i += batchSize) {
@@ -309,6 +317,26 @@ export async function runExtractionPipeline(
       unresolvedCandidates += outcome.unresolved;
       unresolvedFrontmatterHints += outcome.frontmatterHintsUnresolved;
       setSourceSha(db, file.relPath, file.sha);
+    }
+
+    // Fire the budget warning at most once per run, after each batch.
+    // Threshold comparison uses raw USD (full precision), independent
+    // of the summary's display formatting.
+    if (
+      deps.budgetWarnUsd !== undefined &&
+      !budgetWarningFired
+    ) {
+      const cumulativeCostUsd = computeCostUsd(totalUsage);
+      if (cumulativeCostUsd > deps.budgetWarnUsd) {
+        log.warn(
+          "extraction: budget warning — cumulative cost exceeds configured budget. Run continues.",
+          {
+            cumulativeCostUsd: Number(cumulativeCostUsd.toFixed(4)),
+            budgetUsd: deps.budgetWarnUsd,
+          },
+        );
+        budgetWarningFired = true;
+      }
     }
   }
 

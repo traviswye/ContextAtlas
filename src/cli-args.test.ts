@@ -15,6 +15,7 @@ const EMPTY: ParsedArgs = {
   check: false,
   full: false,
   json: false,
+  budgetWarn: null,
 };
 
 describe("parseArgs — baseline and --config-root", () => {
@@ -341,5 +342,98 @@ describe("parseArgs — unknown subcommand 'did you mean?' suggestions (ADR-12)"
     expect(() => parseArgs(["xyzzy"])).toThrow(
       /Unknown subcommand 'xyzzy'\. Known subcommands: index/,
     );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// --budget-warn (v0.2 Stream A #2)
+// ---------------------------------------------------------------------------
+
+describe("parseArgs — --budget-warn", () => {
+  it("space form captures numeric value", () => {
+    expect(parseArgs(["index", "--budget-warn", "5.25"])).toEqual({
+      ...EMPTY,
+      subcommand: "index",
+      budgetWarn: 5.25,
+    });
+  });
+
+  it("equals form captures numeric value", () => {
+    expect(parseArgs(["index", "--budget-warn=10"])).toEqual({
+      ...EMPTY,
+      subcommand: "index",
+      budgetWarn: 10,
+    });
+  });
+
+  it("accepts zero (warn-on-any-cost semantic)", () => {
+    expect(parseArgs(["index", "--budget-warn", "0"])).toEqual({
+      ...EMPTY,
+      subcommand: "index",
+      budgetWarn: 0,
+    });
+  });
+
+  it("rejects negative values", () => {
+    expect(() => parseArgs(["index", "--budget-warn", "-1"])).toThrow(
+      /--budget-warn requires a non-negative number/,
+    );
+  });
+
+  it("rejects non-numeric values", () => {
+    expect(() => parseArgs(["index", "--budget-warn", "cheap"])).toThrow(
+      /--budget-warn requires a non-negative number/,
+    );
+  });
+
+  it("rejects double specification", () => {
+    expect(() =>
+      parseArgs(["index", "--budget-warn", "1", "--budget-warn", "2"]),
+    ).toThrow(/--budget-warn specified more than once/);
+  });
+
+  it("requires value after flag (no value given)", () => {
+    expect(() => parseArgs(["index", "--budget-warn"])).toThrow(
+      /--budget-warn requires a USD value but none was given/,
+    );
+  });
+
+  it("rejects empty string after equals", () => {
+    expect(() => parseArgs(["index", "--budget-warn="])).toThrow(
+      /--budget-warn= requires a non-empty USD value/,
+    );
+  });
+
+  it("rejected on non-index subcommand (default/mcp)", () => {
+    expect(() => parseArgs(["--budget-warn", "5"])).toThrow(
+      /--budget-warn is only accepted with the 'index' subcommand/,
+    );
+  });
+
+  it("composes with other index flags", () => {
+    expect(
+      parseArgs([
+        "index",
+        "--full",
+        "--json",
+        "--budget-warn",
+        "3.5",
+        "--config-root",
+        "/x",
+      ]),
+    ).toEqual({
+      ...EMPTY,
+      subcommand: "index",
+      full: true,
+      json: true,
+      configRoot: "/x",
+      budgetWarn: 3.5,
+    });
+  });
+
+  it("flag-before-subcommand ordering parses identically to flag-after", () => {
+    const before = parseArgs(["--budget-warn", "2", "index"]);
+    const after = parseArgs(["index", "--budget-warn", "2"]);
+    expect(before).toEqual(after);
   });
 });

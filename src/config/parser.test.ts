@@ -351,6 +351,82 @@ describe("loadConfig — source block (ADR-08 runtime)", () => {
       /Invalid 'source': expected object with 'root' field/,
     );
   });
+
+  // ---------------------------------------------------------------
+  // extraction section (v0.2 Stream A #2)
+  // ---------------------------------------------------------------
+
+  it("extraction.budget_warn_usd as number → parses to camelCase field", () => {
+    writeCfg(
+      "version: 1\nlanguages: [typescript]\nadrs: { path: docs/adr/ }\n" +
+        "extraction:\n  budget_warn_usd: 5.25\n",
+    );
+    const cfg = loadConfig(tmp);
+    expect(cfg.extraction).toEqual({ budgetWarnUsd: 5.25 });
+  });
+
+  it("extraction section absent → cfg.extraction is undefined", () => {
+    writeCfg(
+      "version: 1\nlanguages: [typescript]\nadrs: { path: docs/adr/ }\n",
+    );
+    const cfg = loadConfig(tmp);
+    expect(cfg.extraction).toBeUndefined();
+  });
+
+  it("extraction section empty → cfg.extraction is undefined (no zombie record)", () => {
+    writeCfg(
+      "version: 1\nlanguages: [typescript]\nadrs: { path: docs/adr/ }\n" +
+        "extraction: {}\n",
+    );
+    const cfg = loadConfig(tmp);
+    expect(cfg.extraction).toBeUndefined();
+  });
+
+  it("extraction.budget_warn_usd zero → accepted (warn-on-any-cost)", () => {
+    writeCfg(
+      "version: 1\nlanguages: [typescript]\nadrs: { path: docs/adr/ }\n" +
+        "extraction:\n  budget_warn_usd: 0\n",
+    );
+    expect(loadConfig(tmp).extraction).toEqual({ budgetWarnUsd: 0 });
+  });
+
+  it("extraction.budget_warn_usd negative → rejected", () => {
+    writeCfg(
+      "version: 1\nlanguages: [typescript]\nadrs: { path: docs/adr/ }\n" +
+        "extraction:\n  budget_warn_usd: -1\n",
+    );
+    expect(() => loadConfig(tmp)).toThrow(
+      /Invalid 'extraction\.budget_warn_usd': expected non-negative number/,
+    );
+  });
+
+  it("extraction.budget_warn_usd as string → rejected", () => {
+    writeCfg(
+      "version: 1\nlanguages: [typescript]\nadrs: { path: docs/adr/ }\n" +
+        "extraction:\n  budget_warn_usd: five\n",
+    );
+    expect(() => loadConfig(tmp)).toThrow(
+      /Invalid 'extraction\.budget_warn_usd'/,
+    );
+  });
+
+  it("unknown key under extraction → rejected with actionable error", () => {
+    writeCfg(
+      "version: 1\nlanguages: [typescript]\nadrs: { path: docs/adr/ }\n" +
+        "extraction:\n  bogus: 1\n",
+    );
+    expect(() => loadConfig(tmp)).toThrow(
+      /Unknown key 'extraction\.bogus'.*Valid keys at this level: budget_warn_usd/,
+    );
+  });
+
+  it("extraction as non-object → rejected with type error", () => {
+    writeCfg(
+      "version: 1\nlanguages: [typescript]\nadrs: { path: docs/adr/ }\n" +
+        "extraction: just-a-string\n",
+    );
+    expect(() => loadConfig(tmp)).toThrow(/Invalid 'extraction'/);
+  });
 });
 
 function captureError(fn: () => unknown): Error {

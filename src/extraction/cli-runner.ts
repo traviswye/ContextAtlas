@@ -39,6 +39,13 @@ export interface IndexCliOptions {
   json: boolean;
   contextatlasVersion: string;
   /**
+   * `--budget-warn <usd>` CLI flag value. When non-null, overrides
+   * `config.extraction.budget_warn_usd`. When null, config value (if
+   * present) takes effect. When both absent, no budget check runs.
+   * v0.2 Stream A #2.
+   */
+  budgetWarnOverride?: number | null;
+  /**
    * Test seam — inject a fake ExtractionClient instead of constructing
    * a real one backed by the Anthropic SDK. When provided, API-key
    * discovery is skipped.
@@ -142,6 +149,16 @@ export async function runIndexSubcommand(
     // ---------------------------------------------------------------
     // Pipeline phase — errors map to exit code 1.
     // ---------------------------------------------------------------
+    // Budget-warning precedence: CLI override wins silently when set
+    // (conventional CLI > config behavior). Null override falls
+    // through to the config value; absent config leaves the pipeline
+    // check disabled.
+    const budgetWarnUsd =
+      options.budgetWarnOverride !== null &&
+      options.budgetWarnOverride !== undefined
+        ? options.budgetWarnOverride
+        : config.extraction?.budgetWarnUsd;
+
     let pipelineResult: ExtractionPipelineResult;
     try {
       pipelineResult = await runExtractionPipeline({
@@ -156,6 +173,7 @@ export async function runIndexSubcommand(
         // by ignoring the SHA baseline. The pipeline respects the
         // `full` flag via the `skipShaDiff` option added below.
         ...(options.full ? { skipShaDiff: true } : {}),
+        ...(budgetWarnUsd !== undefined ? { budgetWarnUsd } : {}),
       });
     } catch (err) {
       log.error("index: extraction pipeline threw", { err: String(err) });

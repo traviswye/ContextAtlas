@@ -7,7 +7,7 @@ import {
 import { tmpdir } from "node:os";
 import { join as pathJoin } from "node:path";
 
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { ExtractionClient } from "./anthropic-client.js";
 import { runIndexSubcommand } from "./cli-runner.js";
@@ -320,5 +320,183 @@ describe("runIndexSubcommand (ADR-12)", () => {
     expect(text).toMatch(/input_tokens=0/);
     expect(text).toMatch(/output_tokens=0/);
     expect(text).toMatch(/cost_usd=0\.0000/);
+  });
+
+  // ---------------------------------------------------------------
+  // Budget-warning precedence (v0.2 Stream A #2)
+  // ---------------------------------------------------------------
+
+  function captureWarnings(): {
+    lines: string[];
+    restore: () => void;
+  } {
+    const lines: string[] = [];
+    const spy = vi
+      .spyOn(process.stderr, "write")
+      .mockImplementation((chunk: unknown): boolean => {
+        const text = typeof chunk === "string" ? chunk : String(chunk);
+        if (text.includes("[warn]")) lines.push(text);
+        return true;
+      });
+    return { lines, restore: () => spy.mockRestore() };
+  }
+
+  function writeAdrsHelper(count: number): void {
+    for (let i = 1; i <= count; i++) {
+      writeFileSync(
+        pathJoin(tmp, "docs", "adr", `ADR-${i}.md`),
+        `---\nid: ADR-${i}\n---\nbody ${i}\n`,
+      );
+    }
+  }
+
+  it("config-only budget: warning fires when config value exceeded", async () => {
+    writeFileSync(
+      pathJoin(tmp, ".contextatlas.yml"),
+      [
+        "version: 1",
+        "languages: [typescript]",
+        "adrs: { path: docs/adr/, format: markdown-frontmatter }",
+        "docs: { include: [] }",
+        "atlas: { committed: true, path: .contextatlas/atlas.json, " +
+          "local_cache: .contextatlas/index.db }",
+        "extraction: { budget_warn_usd: 0.001 }",
+        "",
+      ].join("\n"),
+    );
+    writeAdrsHelper(1);
+    const warnings = captureWarnings();
+    const stdout = captureStdout();
+    const result = await runIndexSubcommand({
+      configRoot: tmp,
+      configFile: null,
+      full: false,
+      json: false,
+      contextatlasVersion: "0.0.1-test",
+      clientOverride: stubClient(async () => ({ claims: [] })),
+      writeStdout: stdout.writer,
+    });
+    warnings.restore();
+    expect(result.exitCode).toBe(0);
+    const budgetWarnings = warnings.lines.filter((l) =>
+      l.includes("budget warning"),
+    );
+    expect(budgetWarnings).toHaveLength(1);
+  });
+
+  it("flag-only budget: --budget-warn override fires warning without config", async () => {
+    writeAdrsHelper(1);
+    const warnings = captureWarnings();
+    const stdout = captureStdout();
+    const result = await runIndexSubcommand({
+      configRoot: tmp,
+      configFile: null,
+      full: false,
+      json: false,
+      budgetWarnOverride: 0.001,
+      contextatlasVersion: "0.0.1-test",
+      clientOverride: stubClient(async () => ({ claims: [] })),
+      writeStdout: stdout.writer,
+    });
+    warnings.restore();
+    expect(result.exitCode).toBe(0);
+    const budgetWarnings = warnings.lines.filter((l) =>
+      l.includes("budget warning"),
+    );
+    expect(budgetWarnings).toHaveLength(1);
+  });
+
+  it("CLI override wins over config (CLI lower than config → fires on lower)", async () => {
+    // Config: $100 (would not fire). CLI: $0.001 (fires). CLI wins.
+    writeFileSync(
+      pathJoin(tmp, ".contextatlas.yml"),
+      [
+        "version: 1",
+        "languages: [typescript]",
+        "adrs: { path: docs/adr/, format: markdown-frontmatter }",
+        "docs: { include: [] }",
+        "atlas: { committed: true, path: .contextatlas/atlas.json, " +
+          "local_cache: .contextatlas/index.db }",
+        "extraction: { budget_warn_usd: 100.0 }",
+        "",
+      ].join("\n"),
+    );
+    writeAdrsHelper(1);
+    const warnings = captureWarnings();
+    const stdout = captureStdout();
+    const result = await runIndexSubcommand({
+      configRoot: tmp,
+      configFile: null,
+      full: false,
+      json: false,
+      budgetWarnOverride: 0.001,
+      contextatlasVersion: "0.0.1-test",
+      clientOverride: stubClient(async () => ({ claims: [] })),
+      writeStdout: stdout.writer,
+    });
+    warnings.restore();
+    expect(result.exitCode).toBe(0);
+    const budgetWarnings = warnings.lines.filter((l) =>
+      l.includes("budget warning"),
+    );
+    expect(budgetWarnings).toHaveLength(1);
+  });
+
+  it("CLI override wins over config (CLI higher than config → suppresses config warning)", async () => {
+    // Config: $0.001 (would fire). CLI: $100 (would not fire). CLI wins
+    // → no warning despite config having a low threshold.
+    writeFileSync(
+      pathJoin(tmp, ".contextatlas.yml"),
+      [
+        "version: 1",
+        "languages: [typescript]",
+        "adrs: { path: docs/adr/, format: markdown-frontmatter }",
+        "docs: { include: [] }",
+        "atlas: { committed: true, path: .contextatlas/atlas.json, " +
+          "local_cache: .contextatlas/index.db }",
+        "extraction: { budget_warn_usd: 0.001 }",
+        "",
+      ].join("\n"),
+    );
+    writeAdrsHelper(1);
+    const warnings = captureWarnings();
+    const stdout = captureStdout();
+    const result = await runIndexSubcommand({
+      configRoot: tmp,
+      configFile: null,
+      full: false,
+      json: false,
+      budgetWarnOverride: 100.0,
+      contextatlasVersion: "0.0.1-test",
+      clientOverride: stubClient(async () => ({ claims: [] })),
+      writeStdout: stdout.writer,
+    });
+    warnings.restore();
+    expect(result.exitCode).toBe(0);
+    const budgetWarnings = warnings.lines.filter((l) =>
+      l.includes("budget warning"),
+    );
+    expect(budgetWarnings).toHaveLength(0);
+  });
+
+  it("no config, no flag → no warning regardless of cost", async () => {
+    writeAdrsHelper(1);
+    const warnings = captureWarnings();
+    const stdout = captureStdout();
+    const result = await runIndexSubcommand({
+      configRoot: tmp,
+      configFile: null,
+      full: false,
+      json: false,
+      contextatlasVersion: "0.0.1-test",
+      clientOverride: stubClient(async () => ({ claims: [] })),
+      writeStdout: stdout.writer,
+    });
+    warnings.restore();
+    expect(result.exitCode).toBe(0);
+    const budgetWarnings = warnings.lines.filter((l) =>
+      l.includes("budget warning"),
+    );
+    expect(budgetWarnings).toHaveLength(0);
   });
 });

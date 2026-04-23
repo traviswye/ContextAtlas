@@ -40,6 +40,14 @@
  *                         stdout instead of the default `key=value`
  *                         lines.
  *
+ *   --budget-warn <usd>   (v0.2 Stream A #2) Accepted only with `index`.
+ *                         When the cumulative extraction API cost
+ *                         exceeds this threshold during a run, a
+ *                         single warning is logged to stderr. Not a
+ *                         hard cap — run continues. Overrides
+ *                         `extraction.budget_warn_usd` from the config
+ *                         file when both are specified.
+ *
  * Unknown arguments throw with actionable errors. Unknown
  * subcommand names get the "did you mean?" suggestion treatment when
  * they're close to a real name (prominently "reindex" → "index", per
@@ -89,11 +97,19 @@ export interface ParsedArgs {
    * object. Rejected on any non-`index` invocation. Per ADR-12.
    */
   json: boolean;
+  /**
+   * Value of `--budget-warn <usd>` if passed; otherwise null. When
+   * present, overrides `extraction.budget_warn_usd` from the config
+   * file. Non-negative finite number. Rejected on any non-`index`
+   * invocation. Per v0.2 Stream A #2.
+   */
+  budgetWarn: number | null;
 }
 
 const USAGE =
   "Usage: contextatlas [index] [--config-root <path>] [--config <file>] " +
-  "[--check] [--full] [--json]  (see ADR-08, ADR-11, ADR-12)";
+  "[--check] [--full] [--json] [--budget-warn <usd>]  " +
+  "(see ADR-08, ADR-11, ADR-12)";
 
 const KNOWN_SUBCOMMANDS: readonly Subcommand[] = ["index"];
 
@@ -118,6 +134,7 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
   let check = false;
   let full = false;
   let json = false;
+  let budgetWarn: number | null = null;
   let subcommand: Subcommand = "mcp";
   let subcommandSeen = false;
 
@@ -248,6 +265,43 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
       i += 1;
       continue;
     }
+    if (arg === "--budget-warn") {
+      if (budgetWarn !== null) {
+        throw new Error(
+          `Flag --budget-warn specified more than once. ${USAGE}`,
+        );
+      }
+      const value = argv[i + 1];
+      if (value === undefined) {
+        throw new Error(
+          `Flag --budget-warn requires a USD value but none was given. ${USAGE}`,
+        );
+      }
+      if (value === "" || value.startsWith("--")) {
+        throw new Error(
+          `Flag --budget-warn requires a non-empty USD value; got '${value}'. ${USAGE}`,
+        );
+      }
+      budgetWarn = parseBudgetWarn(value);
+      i += 2;
+      continue;
+    }
+    if (arg.startsWith("--budget-warn=")) {
+      if (budgetWarn !== null) {
+        throw new Error(
+          `Flag --budget-warn specified more than once. ${USAGE}`,
+        );
+      }
+      const value = arg.slice("--budget-warn=".length);
+      if (value === "") {
+        throw new Error(
+          `Flag --budget-warn= requires a non-empty USD value. ${USAGE}`,
+        );
+      }
+      budgetWarn = parseBudgetWarn(value);
+      i += 1;
+      continue;
+    }
     throw new Error(`Unknown argument '${arg}'. ${USAGE}`);
   }
 
@@ -269,6 +323,29 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
       `Flag --json is only accepted with the 'index' subcommand. ${USAGE}`,
     );
   }
+  if (budgetWarn !== null && subcommand !== "index") {
+    throw new Error(
+      `Flag --budget-warn is only accepted with the 'index' subcommand. ${USAGE}`,
+    );
+  }
 
-  return { subcommand, configRoot, configFile, check, full, json };
+  return {
+    subcommand,
+    configRoot,
+    configFile,
+    check,
+    full,
+    json,
+    budgetWarn,
+  };
+}
+
+function parseBudgetWarn(raw: string): number {
+  const n = Number(raw);
+  if (!Number.isFinite(n) || n < 0) {
+    throw new Error(
+      `Flag --budget-warn requires a non-negative number (USD); got '${raw}'. ${USAGE}`,
+    );
+  }
+  return n;
 }

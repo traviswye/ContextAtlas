@@ -40,6 +40,7 @@ const TOP_LEVEL_KEYS = [
   "index",
   "atlas",
   "source",
+  "extraction",
 ] as const;
 const TOP_LEVEL_KEY_SET = new Set<string>(TOP_LEVEL_KEYS);
 
@@ -135,6 +136,7 @@ function validate(
   const index = validateIndex(parsed.index, configPath);
   const atlas = validateAtlas(parsed.atlas, configPath);
   const source = validateSource(parsed.source, configPath);
+  const extraction = validateExtraction(parsed.extraction, configPath);
 
   const out: ContextAtlasConfig = {
     version: 1,
@@ -146,6 +148,7 @@ function validate(
     atlas,
   };
   if (source !== undefined) out.source = source;
+  if (extraction !== undefined) out.extraction = extraction;
   return out;
 }
 
@@ -430,6 +433,38 @@ function validateSource(
     );
   }
   return { root: normalizePath(root) };
+}
+
+function validateExtraction(
+  raw: unknown,
+  configPath: string,
+): ContextAtlasConfig["extraction"] | undefined {
+  if (raw === undefined) return undefined;
+  if (!isObject(raw)) {
+    throw cfgError(
+      configPath,
+      `Invalid 'extraction': expected object, got ${describeType(raw)}.`,
+    );
+  }
+  rejectUnknownKeys(
+    raw,
+    new Set(["budget_warn_usd"]),
+    "extraction.",
+    configPath,
+  );
+  const budget = raw.budget_warn_usd;
+  if (budget === undefined) {
+    // Section present but empty — treat as if section were absent.
+    // No point in landing an extraction record with no fields set.
+    return undefined;
+  }
+  if (typeof budget !== "number" || !Number.isFinite(budget) || budget < 0) {
+    throw cfgError(
+      configPath,
+      `Invalid 'extraction.budget_warn_usd': expected non-negative number (USD), got ${describeType(budget)}.`,
+    );
+  }
+  return { budgetWarnUsd: budget };
 }
 
 // ---------------------------------------------------------------------------

@@ -81,6 +81,7 @@ export async function main(): Promise<void> {
       configFile: configFileArg,
       full: parsed.full,
       json: parsed.json,
+      budgetWarnOverride: parsed.budgetWarn,
       contextatlasVersion: version,
     });
     process.exit(result.exitCode);
