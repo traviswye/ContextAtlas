@@ -147,8 +147,10 @@ tools (which can't really be committed) and knowledge-graph tools
 
 ## Installation
 
-> **Status:** Development preview. Installation instructions will be
-> finalized post-hackathon.
+> **Status:** v0.1 shipped with Phase 5 benchmark validation; v0.2 in
+> progress (see [ROADMAP.md](ROADMAP.md) and
+> [v0.2-SCOPE.md](v0.2-SCOPE.md)). Installation instructions will
+> be finalized post-v0.2.
 
 ```bash
 # Placeholder
@@ -379,39 +381,52 @@ not a core change.
 
 ## What's Implemented Today
 
-**MVP tools (all three in scope):**
-- [x] `get_symbol_context` — the primitive (full signal fusion minus
-  git, which lands in step 10)
+**Tools (all three shipped in v0.1):**
+- [x] `get_symbol_context` — the primitive, full four-signal fusion
+  (LSP + ADR claims + git + tests)
 - [x] `find_by_intent` — thin composite, FTS5 + BM25 ranking over
   the claims table (ADR-09)
-- [ ] `impact_of_change` — thin composite, primitive + git co-change
-  (step 11)
+- [x] `impact_of_change` — thin composite, primitive + git co-change
+  + test-impact data
 
-**Infrastructure:**
+**Infrastructure (shipped in v0.1):**
 - [x] Core MCP server skeleton
 - [x] TypeScript language adapter (via `typescript-language-server`)
-- [ ] Python language adapter (via Pyright) (step 9)
+- [x] Python language adapter (via Pyright, ADR-13)
+- [x] Adapter conformance test suite (identical behavioral contract
+  across both adapters)
 - [x] Opus 4.7 index-time extraction pipeline (validated: 100% parse
   success across 12 production-grade documents tested)
 - [x] SQLite storage with SHA-based incremental reindex
-- [ ] Git integration (recent commits, co-change analysis) (step 10)
+- [x] Git integration (recent commits, co-change, hot-path signals)
 - [x] Compact output format (default) + JSON format (opt-in)
 - [x] Benchmark harness (in the separate
   [ContextAtlas-benchmarks](https://github.com/traviswye/ContextAtlas-benchmarks)
   repo; see the linked Benchmarks and Methodology section below)
 
-**Benchmark assets (prepared):**
-- [x] 10 production-grade ADRs for benchmark targets (5 hono + 5 httpx)
-- [x] 6 self-ADRs for ContextAtlas's own architectural decisions
+**Benchmark assets:**
+- [x] Production-grade ADRs for benchmark targets (5 hono + 5 httpx)
+- [x] Self-ADRs for ContextAtlas's own architectural decisions
 - [x] Extraction pipeline validated end-to-end on real ADRs
-- [x] Three benchmark repositories selected (hono, httpx, self)
+- [x] Three benchmark repositories (hono, httpx, self)
+- [x] Phase 5 reference run (hono) — 50–71% tool-call reduction on
+  architectural win-bucket prompts; full synthesis in benchmarks repo
 
-**Out of scope for MVP (v0.2+):**
-- [ ] Embedding-based ranking for `find_by_intent`
-- [ ] Hot-path pre-computation / query result caching
-- [ ] Additional language adapters (Java, Go, .NET, Rust)
-- [ ] Web dashboard for index inspection
-- [ ] VS Code extension
+**v0.2 in progress:** Adapter quality polish (Stream A) + Go adapter
+via `gopls` with cobra benchmark target + cross-repo httpx reference
+run (Stream B). See [`v0.2-SCOPE.md`](v0.2-SCOPE.md) for stream-level
+scope.
+
+**Deferred to future versions (see [ROADMAP.md](ROADMAP.md) for specifics):**
+- Claim source enrichment: docstrings, READMEs (v0.3)
+- External dogfood trial (v0.3)
+- Semantic embedding layer for `find_by_intent` (v0.4, evidence-gated)
+- Task-shaped bundle queries: `why_does_this_fail`, `onboard_to_feature`,
+  `audit_change` (v0.5)
+- Hot-path caching, claim capture from agent sessions (v0.6+)
+- Additional language adapters beyond Go — Rust, C#, Java (by demand)
+- Web dashboard for index inspection (out of roadmap)
+- VS Code extension (out of roadmap)
 
 ## Contributing
 
