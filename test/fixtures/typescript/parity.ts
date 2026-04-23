@@ -68,19 +68,26 @@ export type SecondTypeAlias = {
 }
 
 // ---------------------------------------------------------------------
-// Gap 3 surface (investigation time-boxed): complex class signature
-// with generic parameters spanning multiple lines. Exists in the
-// fixture so the Gap 3 investigation has a concrete shape to probe.
+// Gap 3 surface: complex class signature with generic parameters
+// spanning multiple lines, including a default value that contains
+// `{}` (mirrors `class Hono<E, S extends Schema = {}, ...>` in hono-
+// base.ts). Signature extractor must distinguish `{` inside generic
+// defaults from `{` opening the class body.
 // ---------------------------------------------------------------------
+
+export type GenericSchema = Record<string, unknown>
 
 export class GenericHost<
   T extends ParityInterface,
+  S extends GenericSchema = {},
   U = string,
 > {
   stored: T;
+  schema: S;
 
-  constructor(value: T) {
+  constructor(value: T, schema: S) {
     this.stored = value;
+    this.schema = schema;
   }
 }
 

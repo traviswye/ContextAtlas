@@ -208,6 +208,24 @@ describe("TypeScriptAdapter", () => {
       expect(second?.signature).toContain("x: number");
       expect(second?.signature).toContain("y: number");
     });
+
+    it("complex generic class signature with '= {}' default (Gap 3)", async () => {
+      // Mirror of hono's `class Hono<..., S extends Schema = {}, ...>`.
+      // Without generic-depth tracking the signature extractor stopped
+      // at the `{` inside the generic default, producing a truncated
+      // signature that looksMalformedSignature then rejected — so the
+      // class ended up with no signature at all.
+      const symbols = await adapter.listSymbols(PARITY);
+      const host = symbols.find((s) => s.name === "GenericHost");
+      expect(host?.kind).toBe("class");
+      expect(host?.signature).toBeDefined();
+      // All three type parameter names should appear in the signature.
+      expect(host?.signature).toContain("T extends ParityInterface");
+      expect(host?.signature).toContain("S extends GenericSchema");
+      expect(host?.signature).toContain("U = string");
+      // Must NOT be truncated mid-generic.
+      expect(host?.signature).not.toMatch(/=\s*$/);
+    });
   });
 });
 

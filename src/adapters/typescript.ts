@@ -716,14 +716,27 @@ export function extractDeclarationHeader(
 ): string {
   const lines = sourceText.split(/\r?\n/);
   let collected = "";
+  // Track nesting inside generic bracket pairs `<...>`. `{` and `;`
+  // are only treated as terminators at genericDepth 0 — otherwise a
+  // generic default like `S extends Schema = {}` (hono-base.ts) would
+  // prematurely end the declaration header before the class body's
+  // `{`. v0.2 Step 4 Gap 3.
+  let genericDepth = 0;
   for (let i = startLine; i < Math.min(lines.length, startLine + maxLines); i++) {
     const line = lines[i] ?? "";
-    let terminator = line.length;
-    const braceIdx = line.indexOf("{");
-    if (braceIdx >= 0) terminator = Math.min(terminator, braceIdx);
-    const semiIdx = line.indexOf(";");
-    if (semiIdx >= 0) terminator = Math.min(terminator, semiIdx);
-    if (terminator < line.length) {
+    let terminator = -1;
+    for (let j = 0; j < line.length; j++) {
+      const ch = line[j];
+      if (ch === "<") {
+        genericDepth++;
+      } else if (ch === ">") {
+        if (genericDepth > 0) genericDepth--;
+      } else if (genericDepth === 0 && (ch === "{" || ch === ";")) {
+        terminator = j;
+        break;
+      }
+    }
+    if (terminator >= 0) {
       collected += " " + line.slice(0, terminator);
       break;
     }
