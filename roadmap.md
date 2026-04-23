@@ -68,7 +68,7 @@ v0.6+ (enrichment backlog)              — orthogonal; each graduates to its ow
 
 Practical implication: v0.2 slippage doesn't block v0.3+. v0.4 gates on v0.3 delivering enough text to make embedding worthwhile. v0.5 can ship without v0.4 if benchmark evidence doesn't justify the semantic layer.
 
-### v0.1 — Serving architecture with hand-authored intent [IN PROGRESS]
+### v0.1 — Serving architecture with hand-authored intent [SHIPPED]
 
 **Delivers:**
 - Layer 1 (TypeScript via tsserver)
@@ -84,34 +84,41 @@ Practical implication: v0.2 slippage doesn't block v0.3+. v0.4 gates on v0.3 del
 - Multi-layer fusion (symbols + ADRs + git) composes correctly through thin-composite tools
 - The benchmark methodology (pre-registered prompts, single-run reference, bucket-based expected outcomes) is sound
 
-**Scope boundaries:**
-- Single language adapter (TypeScript). Python deferred to v0.2.
+**Scope boundaries (as designed):**
+- Originally scoped single-language (TypeScript). Python adapter via Pyright landed late in v0.1 under [ADR-13](docs/adr/ADR-13-python-adapter-pyright.md) — validates the ADR-03 plugin interface ahead of v0.2.
 - Intent claims come from ADRs only. Docstring / README / PR description extraction is v0.3.
 - Task-shaped bundle queries beyond `impact_of_change` are v0.5.
 - No semantic similarity. BM25 over claim text only.
 
-**Status:** Steps 1-8, 10, 11 shipped. Steps 9 (Python adapter), 13 (full benchmark expansion) pending. MVP benchmark reference run pending main-repo atlas re-extraction.
+**Status:** Shipped. All MVP steps (1–12) complete; step 13 (full benchmark expansion with blind grading) moved post-v0.2 per [`v0.2-SCOPE.md`](v0.2-SCOPE.md). Phase 5 reference run completed on hono at benchmarks commit `be65a96`.
 
-> _Numeric success criteria for v0.1 will be retrofit after the MVP benchmark reference run produces real data. Setting thresholds pre-data would be false precision._
+**Empirical validation (Phase 5 reference run):**
+- **50–71% tool-call reduction** on architectural win-bucket prompts (h1 18→9 calls, h2 11→5, h4 21→6)
+- **7.3× efficiency gain** on h4-validator-typeflow showcase ($2.95 alpha → $0.52 CA at equivalent answer depth)
+- Efficiency thesis empirically supported; tie/trick buckets behave as RUBRIC predicted (CA over-engineers on non-architectural prompts, by design)
+- Quality-axis measurement deferred to step 13 (single execution post-v0.3 per v0.2-SCOPE.md)
+- Full synthesis: [`../ContextAtlas-benchmarks/research/phase-5-reference-run.md`](../ContextAtlas-benchmarks/research/phase-5-reference-run.md)
 
 ---
 
-### v0.2 — Language adapter breadth [PLANNED]
+### v0.2 — Language adapter breadth + cross-repo validation [IN PROGRESS]
 
 **Delivers:**
-- Python adapter via Pyright (proves ADR-03's plugin interface with a second implementation)
-- Potentially additional adapters (Go, Rust, C# — scoped based on portfolio / dogfood needs)
-- Adapter conformance test suite (both adapters pass the same behavioral tests)
-- Benchmark extension to Python codebase (httpx prompts already pre-registered)
+- **Stream A — Adapter quality polish.** PyrightAdapter kind-mapping refinements, cost tracking in extraction pipeline, unresolved-candidate diagnostics, TypeScriptAdapter parity check, Claude Code CLI MCP disclaimer investigation.
+- **Stream B — Third language adapter + cross-repo benchmark.** Go adapter via `gopls` + conformance suite; cobra as benchmark target (probe-phase fallback to gin); **httpx reference run** — first cross-repo validation of the Phase 5 methodology.
+
+Python adapter and conformance test suite shipped in v0.1 (commits 701dba3 → 6f8d8ae); v0.2 builds on that foundation. Full scope: [`v0.2-SCOPE.md`](v0.2-SCOPE.md).
 
 **Validates:**
-- ADR-03's LanguageAdapter abstraction holds across fundamentally different LSP implementations
-- The pipeline's language-agnostic layers (extraction, resolution, atlas) work identically across adapters
-- Benchmark methodology generalizes beyond TypeScript
+- ADR-03's LanguageAdapter abstraction holds across three distinct LSP implementations (tsserver, Pyright, gopls)
+- Phase 5 methodology replicates cross-repo (httpx) and cross-language (Go/cobra)
+- "Works across languages and repos, not just authors' hand-picked TypeScript sample" — v0.2's core thesis
 
 **Scope boundaries:**
 - No new MCP tools. Existing three tools gain language coverage.
-- No new signal sources. v0.2 is breadth, not depth.
+- No new signal sources (Stream C — docstring / README mining — moved to v0.3).
+- No external-user trial (Stream D — moved to v0.3 alongside Stream C).
+- h5-class TS-compiler-space gap not addressed (v0.4+ per [`v0.2-SCOPE.md`](v0.2-SCOPE.md) §Beyond v0.2 scope).
 
 ---
 
