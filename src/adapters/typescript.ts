@@ -738,6 +738,13 @@ export function extractDeclarationHeader(
  * `extractDeclarationHeader`, this does NOT stop at `{` — type aliases
  * can legitimately contain `{` as part of their value, e.g.
  * `type Point = { x: number; y: number };` should render in full.
+ *
+ * Under ASI convention (no trailing `;`), termination also fires when
+ * a subsequent line starts a new top-level declaration — see
+ * `looksLikeNewTopLevelDeclaration`. Without this guard, the header
+ * would scan past the end of the alias into the next `export type`,
+ * `const`, etc., producing a signature that contains multiple
+ * declarations. See v0.2 Step 4 Gap 5.
  */
 export function extractTypeAliasHeader(
   sourceText: string,
@@ -748,6 +755,12 @@ export function extractTypeAliasHeader(
   let collected = "";
   for (let i = startLine; i < Math.min(lines.length, startLine + maxLines); i++) {
     const line = lines[i] ?? "";
+    // If a subsequent line (not the first) starts a new top-level
+    // declaration, the previous lines were the complete type alias
+    // — stop before consuming this one.
+    if (i > startLine && looksLikeNewTopLevelDeclaration(line)) {
+      break;
+    }
     const semiIdx = line.indexOf(";");
     if (semiIdx >= 0) {
       collected += " " + line.slice(0, semiIdx);
@@ -756,6 +769,23 @@ export function extractTypeAliasHeader(
     collected += " " + line;
   }
   return collected.trim();
+}
+
+/**
+ * True when a line looks like the start of a new top-level TypeScript
+ * declaration (optional `export` prefix, then a declaration keyword).
+ * Anchored at column 0 (no leading whitespace) to distinguish top-level
+ * declarations from content inside a multi-line type-alias body where
+ * continuation lines are indented.
+ *
+ * Used by `extractTypeAliasHeader` to terminate under ASI convention
+ * when the preceding lines were the complete alias and the current
+ * line is already a different symbol's declaration.
+ */
+export function looksLikeNewTopLevelDeclaration(line: string): boolean {
+  return /^(?:export\s+)?(?:const|let|var|type|function|class|interface|enum|namespace|module|declare|async|abstract)\s+/.test(
+    line,
+  );
 }
 
 /**

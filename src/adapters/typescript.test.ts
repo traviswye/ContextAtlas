@@ -9,6 +9,7 @@ import {
   extractDeclarationHeader,
   extractTypeAliasHeader,
   findEnclosingSymbolNode,
+  looksLikeNewTopLevelDeclaration,
   looksMalformedSignature,
   normalizeSignature,
   parseTypeRelationshipsFromDeclaration,
@@ -353,6 +354,78 @@ describe("extractTypeAliasHeader", () => {
     const src = "type Status =\n  | 'ok'\n  | 'err';\n";
     const got = extractTypeAliasHeader(src, 0).replace(/\s+/g, " ");
     expect(got).toBe("type Status = | 'ok' | 'err'");
+  });
+
+  // Gap 5 (v0.2 Stream A #4): ASI convention — no trailing `;` on a
+  // scalar type alias that's followed by another declaration on the
+  // next line. Must terminate before the following declaration.
+  it("ASI convention: stops before the next declaration when no trailing ';'", () => {
+    const src =
+      "export type FirstTypeAlias = Record<string, number>\n\nexport type SecondTypeAlias = {\n  x: number\n};\n";
+    const got = extractTypeAliasHeader(src, 0).replace(/\s+/g, " ");
+    expect(got).toBe("export type FirstTypeAlias = Record<string, number>");
+    expect(got).not.toContain("SecondTypeAlias");
+  });
+
+  it("ASI convention: stops before non-exported next declaration too", () => {
+    const src = "type FirstTypeAlias = number\ntype SecondTypeAlias = string;\n";
+    const got = extractTypeAliasHeader(src, 0).replace(/\s+/g, " ");
+    expect(got).toBe("type FirstTypeAlias = number");
+  });
+
+  it("ASI convention: stops before const/function/class boundaries", () => {
+    const src1 = "type X = number\nconst y = 1;\n";
+    expect(extractTypeAliasHeader(src1, 0).replace(/\s+/g, " ")).toBe(
+      "type X = number",
+    );
+    const src2 = "type X = number\nfunction y() {}\n";
+    expect(extractTypeAliasHeader(src2, 0).replace(/\s+/g, " ")).toBe(
+      "type X = number",
+    );
+    const src3 = "type X = number\nclass Y {}\n";
+    expect(extractTypeAliasHeader(src3, 0).replace(/\s+/g, " ")).toBe(
+      "type X = number",
+    );
+  });
+});
+
+describe("looksLikeNewTopLevelDeclaration", () => {
+  it.each([
+    "const x = 1",
+    "let y = 2",
+    "var z = 3",
+    "export const a = 1",
+    "export type T = string",
+    "type T = string",
+    "function foo() {}",
+    "export function bar() {}",
+    "class Foo {}",
+    "export class Bar {}",
+    "interface Baz {}",
+    "export interface Qux {}",
+    "enum E { A }",
+    "export enum F { B }",
+    "namespace N {}",
+    "export namespace M {}",
+    "declare module 'foo' {}",
+    "async function afn() {}",
+    "abstract class AC {}",
+  ])("recognizes '%s' as top-level declaration", (line) => {
+    expect(looksLikeNewTopLevelDeclaration(line)).toBe(true);
+  });
+
+  it.each([
+    "  indented continuation line",
+    "  x: number",
+    "}",
+    "| 'variant'",
+    "& SomeType",
+    "return x",
+    "if (foo) { ... }",
+    "// comment",
+    "",
+  ])("rejects '%s' (not a top-level declaration)", (line) => {
+    expect(looksLikeNewTopLevelDeclaration(line)).toBe(false);
   });
 });
 
