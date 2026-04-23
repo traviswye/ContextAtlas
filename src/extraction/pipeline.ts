@@ -128,6 +128,29 @@ export interface ExtractionPipelineDeps {
   budgetWarnUsd?: number;
 }
 
+/**
+ * Per-file breakdown of unresolved symbol candidates and frontmatter
+ * hints, accumulated during Stage 6 of the pipeline. Surfaces via the
+ * `--verbose` flag on `contextatlas index` (v0.2 Stream A #3). Empty
+ * cases are *not* pushed onto `ExtractionPipelineResult.unresolvedDetails`;
+ * the array contains only files that had ≥1 unresolved token.
+ */
+export interface UnresolvedClaimDetail {
+  /** Full claim text. Truncation for display is the caller's concern. */
+  claim: string;
+  severity: "hard" | "soft" | "context";
+  /** Candidate names that did not resolve to any symbol. */
+  unresolved: string[];
+}
+
+export interface FileUnresolvedDetail {
+  sourcePath: string;
+  /** Frontmatter `symbols:` hints that did not resolve. */
+  frontmatterUnresolved: string[];
+  /** Per-claim unresolved candidates, in claim order. */
+  claimUnresolved: UnresolvedClaimDetail[];
+}
+
 export interface ExtractionPipelineResult {
   filesExtracted: number;
   filesUnchanged: number;
@@ -173,6 +196,14 @@ export interface ExtractionPipelineResult {
    * tree. Echoes what lands in `atlas.extracted_at_sha`.
    */
   extractedAtSha: string | null;
+  /**
+   * Per-file detail of unresolved tokens — frontmatter `symbols:` hints
+   * plus per-claim unresolved candidates. Only files with ≥1 unresolved
+   * appear. Surfaces via `--verbose` on `contextatlas index` (v0.2
+   * Stream A #3). Default summary output does not use this; callers
+   * that want per-token detail format it themselves.
+   */
+  unresolvedDetails: FileUnresolvedDetail[];
 }
 
 export async function runExtractionPipeline(
@@ -278,6 +309,7 @@ export async function runExtractionPipeline(
   let apiCalls = 0;
   let totalUsage: UsageInfo = ZERO_USAGE;
   let budgetWarningFired = false;
+  const unresolvedDetails: FileUnresolvedDetail[] = [];
   const extractionErrors: Array<{ sourcePath: string; error: string }> = [];
 
   for (let i = 0; i < filesToExtract.length; i += batchSize) {
@@ -316,6 +348,7 @@ export async function runExtractionPipeline(
       claimsWritten += outcome.claimsWritten;
       unresolvedCandidates += outcome.unresolved;
       unresolvedFrontmatterHints += outcome.frontmatterHintsUnresolved;
+      if (outcome.detail) unresolvedDetails.push(outcome.detail);
       setSourceSha(db, file.relPath, file.sha);
     }
 
@@ -423,6 +456,7 @@ export async function runExtractionPipeline(
     costUsd: computeCostUsd(totalUsage),
     gitCommitsIndexed: gitResult.commits.length,
     extractedAtSha: gitResult.headSha,
+    unresolvedDetails,
   };
 }
 
@@ -475,6 +509,12 @@ function writeClaimsForFile(
   claimsWritten: number;
   unresolved: number;
   frontmatterHintsUnresolved: number;
+  /**
+   * Per-file unresolved-token detail. Null when this file had zero
+   * unresolved tokens of either kind — keeps the pipeline's
+   * `unresolvedDetails` array tight (only files that matter).
+   */
+  detail: FileUnresolvedDetail | null;
 } {
   // Drop any claims already associated with this source path so
   // re-extraction is idempotent at file granularity.
@@ -490,13 +530,13 @@ function writeClaimsForFile(
   // are tracked separately as a per-file summary stat.
   const frontmatterSymbols = parseFrontmatterSymbols(rawContents, file.relPath);
   const frontmatterResolvable: string[] = [];
-  let frontmatterHintsUnresolved = 0;
+  const frontmatterUnresolvedNames: string[] = [];
   for (const fmSym of frontmatterSymbols) {
     const matches = inventory.byName.get(fmSym);
     if (matches && matches.length > 0) {
       frontmatterResolvable.push(fmSym);
     } else {
-      frontmatterHintsUnresolved++;
+      frontmatterUnresolvedNames.push(fmSym);
       log.debug("pipeline: frontmatter symbol did not resolve", {
         sourcePath: file.relPath,
         symbol: fmSym,
@@ -506,6 +546,7 @@ function writeClaimsForFile(
 
   let claimsWritten = 0;
   let unresolved = 0;
+  const claimUnresolved: UnresolvedClaimDetail[] = [];
   for (const ec of extracted) {
     // Frontmatter first (author-declared authoritative intent), then
     // model candidates (inferred). resolveCandidates dedupes within its
@@ -516,6 +557,13 @@ function writeClaimsForFile(
       merged,
     );
     unresolved += unres.length;
+    if (unres.length > 0) {
+      claimUnresolved.push({
+        claim: ec.claim,
+        severity: ec.severity,
+        unresolved: unres,
+      });
+    }
     const claim: NewClaim = {
       source,
       sourcePath: file.relPath,
@@ -529,7 +577,22 @@ function writeClaimsForFile(
     insertClaim(db, claim);
     claimsWritten++;
   }
-  return { claimsWritten, unresolved, frontmatterHintsUnresolved };
+
+  const detail: FileUnresolvedDetail | null =
+    frontmatterUnresolvedNames.length > 0 || claimUnresolved.length > 0
+      ? {
+          sourcePath: file.relPath,
+          frontmatterUnresolved: frontmatterUnresolvedNames,
+          claimUnresolved,
+        }
+      : null;
+
+  return {
+    claimsWritten,
+    unresolved,
+    frontmatterHintsUnresolved: frontmatterUnresolvedNames.length,
+    detail,
+  };
 }
 
 /**

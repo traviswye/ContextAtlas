@@ -48,6 +48,14 @@
  *                         `extraction.budget_warn_usd` from the config
  *                         file when both are specified.
  *
+ *   --verbose             (v0.2 Stream A #3) Accepted only with `index`.
+ *                         Emits per-file unresolved-token detail to
+ *                         stderr at the end of the run (grouped by
+ *                         source file, with claim text and frontmatter-
+ *                         vs-claim origin). Default stdout summary
+ *                         unchanged; verbose affects the diagnostic
+ *                         channel only.
+ *
  * Unknown arguments throw with actionable errors. Unknown
  * subcommand names get the "did you mean?" suggestion treatment when
  * they're close to a real name (prominently "reindex" → "index", per
@@ -104,11 +112,17 @@ export interface ParsedArgs {
    * invocation. Per v0.2 Stream A #2.
    */
   budgetWarn: number | null;
+  /**
+   * True when `--verbose` was passed alongside `index`. Emits
+   * per-file unresolved-token detail on stderr. Rejected on any
+   * non-`index` invocation. Per v0.2 Stream A #3.
+   */
+  verbose: boolean;
 }
 
 const USAGE =
   "Usage: contextatlas [index] [--config-root <path>] [--config <file>] " +
-  "[--check] [--full] [--json] [--budget-warn <usd>]  " +
+  "[--check] [--full] [--json] [--budget-warn <usd>] [--verbose]  " +
   "(see ADR-08, ADR-11, ADR-12)";
 
 const KNOWN_SUBCOMMANDS: readonly Subcommand[] = ["index"];
@@ -135,6 +149,7 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
   let full = false;
   let json = false;
   let budgetWarn: number | null = null;
+  let verbose = false;
   let subcommand: Subcommand = "mcp";
   let subcommandSeen = false;
 
@@ -302,6 +317,14 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
       i += 1;
       continue;
     }
+    if (arg === "--verbose") {
+      if (verbose) {
+        throw new Error(`Flag --verbose specified more than once. ${USAGE}`);
+      }
+      verbose = true;
+      i += 1;
+      continue;
+    }
     throw new Error(`Unknown argument '${arg}'. ${USAGE}`);
   }
 
@@ -328,6 +351,11 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
       `Flag --budget-warn is only accepted with the 'index' subcommand. ${USAGE}`,
     );
   }
+  if (verbose && subcommand !== "index") {
+    throw new Error(
+      `Flag --verbose is only accepted with the 'index' subcommand. ${USAGE}`,
+    );
+  }
 
   return {
     subcommand,
@@ -337,6 +365,7 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
     full,
     json,
     budgetWarn,
+    verbose,
   };
 }
 

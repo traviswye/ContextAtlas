@@ -16,6 +16,7 @@ const EMPTY: ParsedArgs = {
   full: false,
   json: false,
   budgetWarn: null,
+  verbose: false,
 };
 
 describe("parseArgs — baseline and --config-root", () => {
@@ -434,6 +435,58 @@ describe("parseArgs — --budget-warn", () => {
   it("flag-before-subcommand ordering parses identically to flag-after", () => {
     const before = parseArgs(["--budget-warn", "2", "index"]);
     const after = parseArgs(["index", "--budget-warn", "2"]);
+    expect(before).toEqual(after);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// --verbose (v0.2 Stream A #3)
+// ---------------------------------------------------------------------------
+
+describe("parseArgs — --verbose", () => {
+  it("--verbose sets the verbose flag with index subcommand", () => {
+    expect(parseArgs(["index", "--verbose"])).toEqual({
+      ...EMPTY,
+      subcommand: "index",
+      verbose: true,
+    });
+  });
+
+  it("duplicate --verbose rejects", () => {
+    expect(() => parseArgs(["index", "--verbose", "--verbose"])).toThrow(
+      /--verbose specified more than once/,
+    );
+  });
+
+  it("rejected on non-index subcommand (default/mcp)", () => {
+    expect(() => parseArgs(["--verbose"])).toThrow(
+      /--verbose is only accepted with the 'index' subcommand/,
+    );
+  });
+
+  it("composes with other index flags", () => {
+    expect(
+      parseArgs([
+        "index",
+        "--verbose",
+        "--full",
+        "--json",
+        "--budget-warn",
+        "2",
+      ]),
+    ).toEqual({
+      ...EMPTY,
+      subcommand: "index",
+      verbose: true,
+      full: true,
+      json: true,
+      budgetWarn: 2,
+    });
+  });
+
+  it("flag-before-subcommand ordering parses identically to flag-after", () => {
+    const before = parseArgs(["--verbose", "index"]);
+    const after = parseArgs(["index", "--verbose"]);
     expect(before).toEqual(after);
   });
 });

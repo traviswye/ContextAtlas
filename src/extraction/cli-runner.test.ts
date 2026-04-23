@@ -499,4 +499,158 @@ describe("runIndexSubcommand (ADR-12)", () => {
     );
     expect(budgetWarnings).toHaveLength(0);
   });
+
+  // ---------------------------------------------------------------
+  // --verbose unresolved-token detail (v0.2 Stream A #3)
+  // ---------------------------------------------------------------
+
+  function captureStderr() {
+    const chunks: string[] = [];
+    return {
+      chunks,
+      writer: (c: string) => {
+        chunks.push(c);
+      },
+      joined: () => chunks.join(""),
+    };
+  }
+
+  it("--verbose emits nothing when there are no unresolved tokens", async () => {
+    writeFileSync(
+      pathJoin(tmp, "docs", "adr", "ADR-01.md"),
+      "---\nid: ADR-01\n---\nbody\n",
+    );
+    const stderr = captureStderr();
+    const stdout = captureStdout();
+    const result = await runIndexSubcommand({
+      configRoot: tmp,
+      configFile: null,
+      full: false,
+      json: false,
+      verbose: true,
+      contextatlasVersion: "0.0.1-test",
+      clientOverride: stubClient(async () => ({ claims: [] })),
+      writeStdout: stdout.writer,
+      writeStderr: stderr.writer,
+    });
+    expect(result.exitCode).toBe(0);
+    // Summary still on stdout.
+    expect(stdout.joined()).toMatch(/files_extracted=1/);
+    // Verbose block silent on zero-unresolved.
+    expect(stderr.joined()).not.toMatch(/unresolved symbol candidates/);
+  });
+
+  it("--verbose emits per-file block when unresolved claim candidates exist", async () => {
+    writeFileSync(
+      pathJoin(tmp, "docs", "adr", "ADR-07.md"),
+      "---\nid: ADR-07\n---\nbody\n",
+    );
+    const stderr = captureStderr();
+    const stdout = captureStdout();
+    const result = await runIndexSubcommand({
+      configRoot: tmp,
+      configFile: null,
+      full: false,
+      json: false,
+      verbose: true,
+      contextatlasVersion: "0.0.1-test",
+      clientOverride: stubClient(async () => ({
+        claims: [
+          {
+            // "Ghost" — not a real symbol in the empty src/ dir.
+            symbol_candidates: ["Ghost", "AlsoGhost"],
+            claim: "must be idempotent",
+            severity: "hard",
+            rationale: "per spec",
+            excerpt: "must be idempotent",
+          },
+        ],
+      })),
+      writeStdout: stdout.writer,
+      writeStderr: stderr.writer,
+    });
+    expect(result.exitCode).toBe(0);
+    const err = stderr.joined();
+    // Header + file grouping + claim line shape.
+    expect(err).toMatch(
+      /\[info\] unresolved symbol candidates \(--verbose\): 2 tokens across 1 files/,
+    );
+    expect(err).toMatch(/docs[\\/]adr[\\/]ADR-07\.md/);
+    expect(err).toMatch(
+      /\[claim: "must be idempotent" \(hard\)\] Ghost, AlsoGhost/,
+    );
+  });
+
+  it("--verbose truncates claim text at 60 chars with '...' marker", async () => {
+    writeFileSync(
+      pathJoin(tmp, "docs", "adr", "ADR-01.md"),
+      "---\nid: ADR-01\n---\nbody\n",
+    );
+    const longClaim =
+      "this is an extremely long claim text that deliberately exceeds sixty characters to exercise truncation";
+    const stderr = captureStderr();
+    const stdout = captureStdout();
+    await runIndexSubcommand({
+      configRoot: tmp,
+      configFile: null,
+      full: false,
+      json: false,
+      verbose: true,
+      contextatlasVersion: "0.0.1-test",
+      clientOverride: stubClient(async () => ({
+        claims: [
+          {
+            symbol_candidates: ["Ghost"],
+            claim: longClaim,
+            severity: "soft",
+            rationale: "r",
+            excerpt: "e",
+          },
+        ],
+      })),
+      writeStdout: stdout.writer,
+      writeStderr: stderr.writer,
+    });
+    const err = stderr.joined();
+    // Truncation marker appears, full text does not.
+    expect(err).toMatch(/\.\.\./);
+    expect(err).not.toContain(longClaim);
+    // Bracketed claim label is ≤ 60 chars between the quotes.
+    const m = /\[claim: "([^"]+)" \(soft\)\]/.exec(err);
+    expect(m).not.toBeNull();
+    expect(m![1]!.length).toBeLessThanOrEqual(60);
+  });
+
+  it("no --verbose flag → no verbose block on stderr even with unresolved tokens", async () => {
+    writeFileSync(
+      pathJoin(tmp, "docs", "adr", "ADR-01.md"),
+      "---\nid: ADR-01\n---\nbody\n",
+    );
+    const stderr = captureStderr();
+    const stdout = captureStdout();
+    await runIndexSubcommand({
+      configRoot: tmp,
+      configFile: null,
+      full: false,
+      json: false,
+      // verbose NOT set
+      contextatlasVersion: "0.0.1-test",
+      clientOverride: stubClient(async () => ({
+        claims: [
+          {
+            symbol_candidates: ["Ghost"],
+            claim: "x",
+            severity: "soft",
+            rationale: "r",
+            excerpt: "e",
+          },
+        ],
+      })),
+      writeStdout: stdout.writer,
+      writeStderr: stderr.writer,
+    });
+    expect(stderr.joined()).not.toMatch(/unresolved symbol candidates/);
+    // Default summary still reports count.
+    expect(stdout.joined()).toMatch(/unresolved_candidates=1/);
+  });
 });

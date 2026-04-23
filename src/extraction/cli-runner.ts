@@ -30,6 +30,7 @@ import {
   runExtractionPipeline,
   type ExtractionClient,
   type ExtractionPipelineResult,
+  type FileUnresolvedDetail,
 } from "./pipeline.js";
 
 export interface IndexCliOptions {
@@ -37,6 +38,13 @@ export interface IndexCliOptions {
   configFile: string | null;
   full: boolean;
   json: boolean;
+  /**
+   * `--verbose` CLI flag. When true, the run emits per-file
+   * unresolved-token detail to stderr at completion (grouped by
+   * source file, with claim text + frontmatter-vs-claim origin).
+   * Does not affect stdout summary. v0.2 Stream A #3.
+   */
+  verbose?: boolean;
   contextatlasVersion: string;
   /**
    * `--budget-warn <usd>` CLI flag value. When non-null, overrides
@@ -61,6 +69,12 @@ export interface IndexCliOptions {
    * `process.stdout.write`.
    */
   writeStdout?: (chunk: string) => void;
+  /**
+   * Test seam — where verbose diagnostic output goes. Defaults to
+   * `process.stderr.write`. Separate from `writeStdout` so tests
+   * can assert on the two channels independently.
+   */
+  writeStderr?: (chunk: string) => void;
 }
 
 /**
@@ -87,6 +101,8 @@ export async function runIndexSubcommand(
   const readEnv = options.readEnv ?? ((name) => process.env[name]);
   const writeStdout =
     options.writeStdout ?? ((chunk) => process.stdout.write(chunk));
+  const writeStderr =
+    options.writeStderr ?? ((chunk) => process.stderr.write(chunk));
 
   // ---------------------------------------------------------------
   // Setup phase — all errors here map to exit code 2.
@@ -180,6 +196,9 @@ export async function runIndexSubcommand(
       return { exitCode: 1 };
     }
 
+    if (options.verbose) {
+      printVerboseUnresolved(pipelineResult.unresolvedDetails, writeStderr);
+    }
     printSummary(pipelineResult, options.json, writeStdout);
     return { exitCode: 0, pipelineResult };
   } finally {
@@ -198,6 +217,57 @@ async function shutdownAll(
       log.warn("index: adapter shutdown error", { lang, err: String(err) });
     }
   }
+}
+
+/**
+ * Claim-text display limit for verbose mode. Claims longer than this
+ * are truncated with "..." so each line stays readable. 60 is a
+ * pragmatic compromise: long enough to disambiguate most claims in a
+ * single file, short enough that the line doesn't wrap in common
+ * terminals.
+ */
+const VERBOSE_CLAIM_TRUNCATE = 60;
+
+function truncateClaim(text: string): string {
+  if (text.length <= VERBOSE_CLAIM_TRUNCATE) return text;
+  return text.slice(0, VERBOSE_CLAIM_TRUNCATE - 3) + "...";
+}
+
+/**
+ * Format per-file unresolved-token detail to stderr. Silent when there
+ * are zero unresolved tokens across all files (Unix philosophy —
+ * successful operations produce no noise on the diagnostic channel).
+ */
+function printVerboseUnresolved(
+  details: readonly FileUnresolvedDetail[],
+  writeStderr: (chunk: string) => void,
+): void {
+  if (details.length === 0) return;
+
+  let totalTokens = 0;
+  for (const d of details) {
+    totalTokens += d.frontmatterUnresolved.length;
+    for (const c of d.claimUnresolved) totalTokens += c.unresolved.length;
+  }
+
+  const lines: string[] = [];
+  lines.push(
+    `[info] unresolved symbol candidates (--verbose): ${totalTokens} tokens across ${details.length} files`,
+  );
+  for (const d of details) {
+    lines.push(`  ${d.sourcePath}`);
+    if (d.frontmatterUnresolved.length > 0) {
+      lines.push(
+        `    [frontmatter] ${d.frontmatterUnresolved.join(", ")}`,
+      );
+    }
+    for (const c of d.claimUnresolved) {
+      lines.push(
+        `    [claim: "${truncateClaim(c.claim)}" (${c.severity})] ${c.unresolved.join(", ")}`,
+      );
+    }
+  }
+  writeStderr(lines.join("\n") + "\n");
 }
 
 function printSummary(
