@@ -2,8 +2,8 @@
 
 **Status:** Active execution plan for v0.2. See `## Revision history`
 (bottom of document) for material scope/plan changes during execution.
-**Last revised:** 2026-04-23 — Step 2 shipped (cost tracking + budget
-warning). Step 1 also shipped 2026-04-23 as verification. See
+**Last revised:** 2026-04-23 — Step 3 shipped (`--verbose` unresolved-
+token diagnostics). Steps 1 and 2 also shipped 2026-04-23. See
 `## Progress log`.
 
 **What this document is:** The execution-level plan for v0.2 — step
@@ -567,6 +567,60 @@ measurement.
 - Notable decisions: [if any surfaced during execution]
 - Ship-criteria verification: [each criterion with evidence]
 ```
+
+### Step 3 shipped — 2026-04-23 (commits 9cd982f, 893a53b)
+- Scope: `--verbose` flag on `contextatlas index` that lists
+  specific unresolved tokens with source-claim attribution
+  (Stream A #3), replacing v0.1's count-only reporting.
+- Outcome: Two commits. (A) `9cd982f` adds the
+  `FileUnresolvedDetail` + `UnresolvedClaimDetail` types,
+  threads per-file detail through `writeClaimsForFile` →
+  `ExtractionPipelineResult.unresolvedDetails`, adds the
+  `--verbose` boolean flag on `index`, wires `printVerboseUnresolved`
+  in cli-runner to emit a grouped-by-file block to stderr. (B)
+  `893a53b` amends ADR-12 with a "Verbose diagnostics (v0.2
+  amendment)" section documenting the flag + output format + the
+  stderr-channel decision.
+- Notable decisions:
+  - Output channel: stderr (follows `npm --verbose` / `git --verbose`
+    convention). Keeps stdout summary pinned to ADR-12's stable
+    contract.
+  - Grouped by source file (not per-token lines). Debug ergonomics
+    win — users ask "what's wrong with this ADR?" not "where does
+    this token appear?" Still greppable for either question.
+  - Claim text truncated at 60 characters with "..." marker. Keeps
+    terminal lines readable. If ambiguity surfaces (two claims in
+    same file with near-identical truncated text), revisit.
+  - Frontmatter unresolveds included alongside claim-candidate
+    unresolveds. Same ADR-to-symbol drift class; separating would
+    force chasing the same bug through two output formats.
+  - Zero-unresolved case silent on stderr. Default summary's
+    `unresolved_candidates=0` already confirms success; a
+    "no unresolved candidates" cheerleader line would be noise.
+  - Default summary line unchanged. No speculative `unresolved_files=N`
+    field — add only if evidence shows users want it.
+  - JSON stdout unchanged. `--verbose` and `--json` orthogonal.
+    Surfacing unresolved detail in JSON is an additive-schema question
+    worth deferring until CI consumers ask for it.
+  - Commits split: implementation + documentation, matching Step 2's
+    pattern. Two commits, not three — scope was contained.
+- Ship-criteria verification:
+  - `--verbose` flag accepted by `contextatlas index`: passes via
+    cli-args.test.ts "--verbose sets the verbose flag with index
+    subcommand" + 4 other flag tests.
+  - Output lists specific unresolved token strings (not just
+    counts): passes via cli-runner.test.ts "--verbose emits per-file
+    block when unresolved claim candidates exist" — asserts
+    `Ghost, AlsoGhost` tokens appear in output, not just a count.
+  - Each unresolved token attributed to its source claim: same test
+    asserts `[claim: "must be idempotent" (hard)] Ghost, AlsoGhost`
+    structure — claim excerpt + severity attribution.
+  - Output format documented: ADR-12 amendment `893a53b` under
+    "Verbose diagnostics (v0.2 amendment)".
+  - Tests cover flag against a fixture with known-unresolved
+    candidates: 4 cli-runner tests (zero-case silence, populated
+    block, truncation, flag-off silence).
+- Tests: 546 passing repo-wide (was 537 at Step 2 close; +9 new).
 
 ### Step 2 shipped — 2026-04-23 (commits d4c7fc2, 56fd33c, 9b51751)
 - Scope: Cost tracking in extraction pipeline (Stream A #2) — surface
