@@ -2,9 +2,9 @@
 
 **Status:** Active execution plan for v0.2. See `## Revision history`
 (bottom of document) for material scope/plan changes during execution.
-**Last revised:** 2026-04-23 — Step 3 shipped (`--verbose` unresolved-
-token diagnostics). Steps 1 and 2 also shipped 2026-04-23. See
-`## Progress log`.
+**Last revised:** 2026-04-23 — Step 4 rescoped pre-implementation
+(5-gap TS-parity finding + Steps 4b/4c added). See
+`## Revision history`. Steps 1, 2, 3 shipped 2026-04-23.
 
 **What this document is:** The execution-level plan for v0.2 — step
 order, per-step ship criteria, dependencies, and progress tracking.
@@ -90,8 +90,13 @@ investigation (step 7) is parallelizable with the Go track.
                                   │         │
                                   │         ↓
                                   │   [6] httpx reference run
+                                  │
+                                  ├─→ [4b] Re-extract hono atlas
                                   │         │
-                                  │         ↓ (independent of Go track)
+                                  │         ↓
+                                  │   [4c] Phase 5 spot-check (h4 cells)
+                                  │         │ ↘
+                                  │         ↓   (explicit check-in gate)
                                   │
                                   └─→ [8] Go LSP probe + ADR
                                             │
@@ -112,11 +117,15 @@ investigation (step 7) is parallelizable with the Go track.
 
 Steps 1–3 parallelizable; step 4 depends on step 1 (refined
 PyrightAdapter informs TS comparison baseline). Step 5 gates on
-steps 1–3. Step 7 can start any time Stream A work is in flight.
-Step 8 is parallelizable with step 4 (probe is read-only; cannot
-destabilize Stream A) — practical earliest start is after steps
-1–3. Steps 9–11 sequential within the Go track; step 9 gates on
-Stream A complete. Step 12 gates on everything.
+steps 1–3. Steps 4b/4c added post-Phase-C-findings (2026-04-23
+revision) — 4b gates on step 4, 4c gates on 4b and imposes an
+**explicit check-in gate** before v0.2 continues to step 5 (4c's
+outcome may trigger pause if Phase 5's thesis doesn't replicate on
+the refined atlas). Step 7 can start any time Stream A work is in
+flight. Step 8 is parallelizable with step 4 (probe is read-only;
+cannot destabilize Stream A) — practical earliest start is after
+steps 1–3. Steps 9–11 sequential within the Go track; step 9 gates
+on Stream A complete. Step 12 gates on everything.
 
 ---
 
@@ -217,32 +226,129 @@ unresolved-token visibility).
 
 ### Step 4 — TypeScriptAdapter parity check
 
-**Scope.** Systematic pass running the Python-adapter dogfood query
-set against the TypeScript adapter via the hono atlas. Identify and
-fix any Python-only affordances missing in TS. Per
-[v0.2-SCOPE.md Stream A #4](v0.2-SCOPE.md).
+*Reframed 2026-04-23; see `## Revision history`.*
+
+**Scope.** Mirror Python's integration-test coverage density on the
+TS side. Close the three confirmed gaps (Gap 1 class members, Gap 2
+namespace children, Gap 5 type-alias signature bleed) surfaced by
+the Phase C hono spot-check, plus a time-boxed Gap 3 (complex class
+signature) investigation. Per
+[v0.2-SCOPE.md Stream A #4](v0.2-SCOPE.md) and
+[`docs/ts-adapter-parity-check.md`](docs/ts-adapter-parity-check.md).
 
 **Ship criteria.**
-- [ ] Full Python-adapter dogfood query set executed against hono
-  atlas; results archived.
-- [ ] Parity gaps documented (each gap: what's present in Pyright,
-  absent in tsserver, or vice versa).
-- [ ] For each gap: either fix landed OR explicit deferral note
-  with version annotation.
-- [ ] Conformance suite extended with any new parity tests
-  surfaced by the pass.
-- [ ] No regression in either PyrightAdapter or TypeScriptAdapter
-  test suite.
+- [ ] Parity matrix doc committed at
+  `docs/ts-adapter-parity-check.md` with Phase C findings filled in.
+- [ ] `test/fixtures/typescript/parity.ts` fixture committed.
+- [ ] TS parity integration tests added to
+  `src/adapters/typescript.test.ts` covering Gaps 1, 2, 5 behaviors.
+- [ ] Gap 1 (class members): top-level `listSymbols` iterates
+  `sym.children` for kind=5 (Class) and kind=11 (Interface);
+  children that map to kind `"other"` are filtered. Test coverage:
+  class with methods, interface with members, both return children.
+- [ ] Gap 2 (namespace children): same children-iteration extended
+  to kind=2 (Module/Namespace). Test coverage: namespace with
+  interfaces inside returns those interfaces.
+- [ ] Gap 5 (type-alias signature bleed): `extractTypeAliasHeader`
+  terminates on a new top-level-declaration boundary when the
+  previous lines look complete. Test coverage: ASI-style type-alias
+  followed by another declaration produces signature bounded at
+  the first type alias.
+- [ ] Gap 3 (complex class signature): investigation time-boxed to
+  ≤ ½ day. Fix if ≤ 30 LOC, defer to v0.3 with rationale otherwise.
+- [ ] Gap 4 (arrow-function signature): explicit deferral note at
+  `docs/ts-adapter-parity-check.md` with v0.3 annotation.
+- [ ] Conformance suite continues passing unchanged.
+- [ ] No regression in either adapter's test suite.
 
 **Key decisions.**
-- Scope of any identified gap's fix: v0.2 Stream A vs defer to
-  v0.3+. Defer decision driven by fix size + benchmark evidence of
-  impact.
+- Filter children whose mapped kind is `"other"` — matches Python's
+  policy. Keeps children-iteration from surfacing property fields,
+  constructors, and other LSP-kind noise.
+- Gap 3 fix-or-defer decision gated on observed complexity during
+  investigation. Default lean: defer unless the bug is a small
+  terminating-condition issue.
 
 **Depends on.** Step 1 (PyrightAdapter refined — stable comparison
 baseline).
-**Unblocks.** Nothing directly; closes Stream A adapter track.
-**References.** ADR-03, v0.2-SCOPE.md Stream A #4.
+**Unblocks.** Step 4b.
+**References.** ADR-03, v0.2-SCOPE.md Stream A #4,
+`docs/ts-adapter-parity-check.md`.
+
+---
+
+### Step 4b — Re-extract hono atlas against refined TypeScriptAdapter
+
+*Added 2026-04-23 during Step 4 rescope; see `## Revision history`.*
+
+**Scope.** Run `contextatlas index --full` on hono against the
+Step-4-refined TypeScriptAdapter. Produces the hono atlas that
+Step 4c's spot-check measures against. Mirrors Step 5's pattern
+for httpx.
+
+**Ship criteria.**
+- [ ] hono atlas re-extracted with refined TypeScriptAdapter (Step
+  4 shipped).
+- [ ] Atlas committed to benchmarks repo at `atlases/hono/` with
+  provenance note (contextatlas commit SHA + hono pinned commit
+  SHA).
+- [ ] Atlas diff against v0.1 hono atlas reviewed; changes align
+  with Step 4 refinements (class methods surface, namespace
+  children surface, type-alias signatures no longer bleed).
+  Unexplained changes investigated before proceeding.
+- [ ] Cost-tracking output captured (uses Step 2 capability).
+- [ ] Symbol count delta documented (expect significant increase —
+  Hono class's ~50+ methods now surface; JSX namespace's
+  interfaces now surface).
+
+**Key decisions.** None expected.
+
+**Depends on.** Step 4.
+**Unblocks.** Step 4c.
+**References.** ADR-06, `docs/ts-adapter-parity-check.md`.
+
+---
+
+### Step 4c — Phase 5 spot-check on refined hono atlas
+
+*Added 2026-04-23 during Step 4 rescope; see `## Revision history`.*
+
+**Scope.** Re-run two Phase 5 cells (h4-alpha, h4-ca) against the
+Step-4b-refined hono atlas. Verify the 7.3× efficiency delta
+persists. Tiny cost (~$0.35, ~5 min). Determines whether Phase 5
+analysis stands with a footnote or needs revision.
+
+**Ship criteria.**
+- [ ] h4-alpha cell re-run against refined atlas; result artifact
+  committed in benchmarks repo alongside (not replacing) the
+  original Phase 5 h4-alpha trace.
+- [ ] h4-ca cell re-run against refined atlas; result artifact
+  committed alongside original.
+- [ ] Comparison table (original vs refined) documented in
+  benchmarks repo.
+- [ ] Outcome decision landed: either footnote appended to
+  `research/phase-5-reference-run.md` (expected case) OR revision
+  of that document (unexpected case, triggers pause).
+
+**Key decisions.**
+- **Expected outcome (interpretation A in revision history):** 7.3×
+  delta persists at similar or slightly smaller magnitude (e.g.,
+  6–8×). Phase 5 analysis stands with an adapter-gap footnote that
+  includes the directional-asymmetry framing — the gap most
+  plausibly affected modest-win cells more than showcase cells, so
+  any measurement shift understates modest wins rather than
+  overstates showcase wins.
+- **Unexpected outcome:** delta pattern reverses or collapses (e.g.,
+  h4-ca no longer materially faster than h4-alpha). **Pause v0.2
+  execution.** Rewrite `research/phase-5-reference-run.md`. Discuss
+  v0.1-claim implications before proceeding.
+- Regardless of outcome: pause for explicit check-in before
+  proceeding to Step 5.
+
+**Depends on.** Step 4b.
+**Unblocks.** Step 5 (via explicit check-in — not automatic).
+**References.** `../ContextAtlas-benchmarks/research/phase-5-reference-run.md`,
+`docs/ts-adapter-parity-check.md`.
 
 ---
 
@@ -727,6 +833,96 @@ affect v0.2-SCOPE.md OR downstream steps' ship criteria land here.*
 ### YYYY-MM-DD (commit SHA): Step N revised — reason.
 Downstream impact: [affected steps].
 ```
+
+### 2026-04-23 (Step 4 rescope pre-implementation): TS-parity check reframed, scope expanded, Steps 4b/4c added.
+
+Step 4 was scoped as ~1 day of parity polish, referencing a
+"Python-adapter dogfood query set" as if it were a discrete
+committed artifact. Survey revealed no such set exists — Python
+integration-test coverage density (from httpx dogfood work during
+v0.1) is the de facto parity baseline. Step 4's real deliverable is
+mirroring that density on the TS side. Step plan reworked to
+reflect the reframing.
+
+A Phase C hono spot-check (3 files: `jsx/base.ts`, `hono-base.ts`,
+`http-exception.ts`) surfaced **5 material gaps** in the TS adapter:
+
+1. **Class members not surfaced** (HIGH). TS `listSymbols` iterates
+   only top-level symbols; Python adapter iterates `sym.children`
+   for kind=5. `Hono` class's ~50+ methods invisible to ContextAtlas.
+2. **Namespace children not surfaced** (MEDIUM). `export namespace
+   JSX { interface Element { ... } }` — inner interfaces dropped.
+3. **Complex class signatures not populated** (MEDIUM). Signature
+   extractor fails on generic + multi-line class headers like
+   `class Hono<E, S, BasePath>`.
+4. **Arrow-function exports have no signature** (LOW-MEDIUM).
+   `export const fn = () => ...` resolves to `kind=variable` with
+   empty signature.
+5. **Type-alias signature bleeds into next symbol** (BUG).
+   `extractTypeAliasHeader` terminates only on `;`; hono's ASI
+   convention means it scans into the following declaration.
+
+**Scope decisions:**
+- Fix in v0.2 Step 4: Gaps 1, 2, 5 (HIGH + MEDIUM + BUG severity).
+  Calibrated fix sizes: ~25 LOC, ~3 LOC, ~15 LOC respectively.
+- Defer to v0.3: Gap 4 (arrow-function sig — quality-of-bundle, not
+  correctness; common pattern, but deferrable).
+- Investigate-then-decide: Gap 3 (complex class sig — fix if ≤30
+  LOC, defer otherwise).
+
+**Step plan additions — Steps 4b and 4c added:**
+- **Step 4b** — Re-extract hono atlas in benchmarks repo against
+  the Step-4-refined TypeScriptAdapter. Mirrors Step 5's pattern for
+  httpx. The Phase 5 hono atlas was extracted with Gap 1 present,
+  so the v0.2-refined adapter produces a materially different atlas.
+- **Step 4c** — Phase 5 spot-check on h4-alpha and h4-ca cells
+  against the refined atlas. Verify the 7.3× efficiency delta
+  persists. ~$0.35, ~5 min.
+
+**Interpretation framing for 4c outcome:**
+
+Gap 1 (class-members-missing) was present during v0.1 extraction, so
+Phase 5 benchmark measured against an incomplete hono atlas. Two
+possible readings:
+
+- **(A) Thesis holds.** Phase 5 efficiency came from
+  exploration-avoidance via ADR-surfaced intent, not bundle
+  comprehensiveness. h4's 7.3× gain was ADR-04 framing; h4-alpha
+  burned 21 calls on type-inference chains, not method enumeration,
+  so method-surface gap wouldn't have helped alpha faster. Expected.
+- **(B) Findings overstated.** Some prompts succeeded trivially on
+  incomplete data; real deltas smaller.
+
+The gap was directionally *asymmetric* — most plausibly affected
+cells with *modest* CA wins (h2, h3) where richer bundles would have
+improved CA results. The *showcase* wins (h4) derived from ADR-surfaced
+intent, not class enumeration, so shouldn't have been inflated.
+Findings may be mildly *understated* on modest-win cells rather than
+overstated on showcase cells. Interpretation (A) + asymmetry
+reasoning make a thesis-reversing outcome unlikely, but this is
+post-hoc and must be verified empirically.
+
+**Commitments:**
+- **Expected 4c outcome:** efficiency delta persists at similar or
+  slightly smaller magnitude. Phase 5 analysis stands with an
+  adapter-gap footnote added to
+  `../ContextAtlas-benchmarks/research/phase-5-reference-run.md`
+  including the directional-asymmetry framing so future readers
+  understand why modest numerical shifts don't invalidate the thesis.
+- **Unexpected 4c outcome (pattern reverses):** v0.2 execution
+  pauses. The Phase 5 synthesis gets revised, not footnoted. Broader
+  discussion on what this means for v0.1 claims precedes any v0.2
+  continuation.
+- After Step 4c ships, execution pauses for explicit check-in
+  regardless of outcome, before proceeding to Step 5.
+
+**Downstream impact on Step 5:** no change in scope — Step 5 already
+re-extracts httpx against the refined Python adapter. Step 4b is
+the hono analog. Step 4c is unique to the hono situation because
+the existing Phase 5 artifact uses the pre-refinement atlas; no
+equivalent Phase 5 artifact exists for httpx to spot-check against.
+
+Reference: [`docs/ts-adapter-parity-check.md`](docs/ts-adapter-parity-check.md).
 
 ### 2026-04-23 (commit bcf032f): Step 1 shipped as verification, not surgery.
 Step 1 was scoped as ~1-2 days of adapter modification (fix three
