@@ -1,8 +1,13 @@
 # ContextAtlas: Design Document
 
-**Status:** Draft v0.1
-**Last Updated:** [date]
-**Scope:** MVP architecture for hackathon submission
+**Status:** v0.1 shipped (Phase 5 validated); v0.2 in progress.
+Architectural reference, not a scope document — v0.2 scope lives in
+[`v0.2-SCOPE.md`](v0.2-SCOPE.md); version-arc context in
+[`ROADMAP.md`](ROADMAP.md).
+**Last Updated:** 2026-04-23
+**Scope:** Core architecture. Most sections apply across versions;
+adapter lineup and scope-gate lists are refreshed as versions
+advance.
 
 ---
 
@@ -578,12 +583,15 @@ interface LanguageAdapter {
 }
 ```
 
-**MVP adapters:** TypeScript (via typescript-language-server) and Python
-(via Pyright).
+**Shipped in v0.1:** TypeScript (via typescript-language-server) and
+Python (via Pyright, ADR-13).
 
-**Post-MVP:** .NET (OmniSharp), Go (gopls), Java (Eclipse JDT LS), Rust
-(rust-analyzer). Each is a separate contributor-friendly surface because
-the adapter interface is stable.
+**v0.2 in progress:** Go (via `gopls`), per Stream B of
+[`v0.2-SCOPE.md`](v0.2-SCOPE.md).
+
+**Future (by demand):** .NET (OmniSharp), Java (Eclipse JDT LS), Rust
+(rust-analyzer). Each is a separate contributor-friendly surface
+because the adapter interface is stable.
 
 ## Scope Gates (MVP)
 
@@ -608,13 +616,14 @@ the adapter interface is stable.
 - Monorepo workspace awareness
 - Embedding-based semantic search (`find_by_intent` uses text matching
   for MVP; embeddings reconsidered post-hackathon if benchmarks warrant)
-- Query logging and hot-path pre-computation (v0.2 — record query
-  patterns, then act on them)
+- Query logging and hot-path pre-computation (v0.6+ per ROADMAP —
+  record query patterns, then act on them)
 - Web UI or visualization
 - VS Code extension
 
 **Deliberately deferred:**
-- Java, Go, .NET, Rust adapters (v2 priority — see roadmap)
+- Adapters beyond v0.2's Go addition: Rust, .NET, Java (v0.3+ by
+  demand — see [ROADMAP.md](ROADMAP.md))
 - Non-markdown intent formats (RST, asciidoc, etc.)
 - Graph clustering and architectural visualization
 
@@ -721,6 +730,7 @@ v2 concern.
 
 ## Versioning
 
-This document is v0.1 (draft). Material changes to the tool interface,
-storage schema, or config schema will bump the minor version and be
-documented in a CHANGELOG.
+This document tracks the shipped architecture; v0.1 shipped, v0.2 in
+progress. Material changes to the tool interface, storage schema, or
+config schema will bump the minor version and be documented in a
+CHANGELOG.
