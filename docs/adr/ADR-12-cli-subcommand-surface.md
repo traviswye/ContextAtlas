@@ -174,6 +174,8 @@ not an oversight.
 - `--config <file>` / `--config=<file>` — same semantics as ADR-08
 - `--full` — bypass SHA-diff gating; re-extract every prose file regardless of staleness
 - `--json` — emit the completion summary as a single JSON object on stdout instead of the default `key=value` lines. Same fields, machine-friendly shape, consistent with the `format: "compact" | "json"` pattern `get_symbol_context` and `find_by_intent` already use for their MCP responses.
+- `--budget-warn <usd>` — v0.2 amendment; see Cost visibility below.
+- `--verbose` — v0.2 amendment; see Verbose diagnostics below.
 
 **Not accepted by `index`:**
 - `--check` — flag belongs to the no-subcommand mode (staleness probe); passing it alongside `index` is rejected with an actionable error
@@ -253,6 +255,51 @@ v0.1 subset.
   — a hard cap is a distinct feature (not scoped for v0.2) and
   carries different UX requirements (when to abort, how to handle
   partial state).
+
+### Verbose diagnostics (v0.2 amendment — 2026-04-23)
+
+The `--verbose` flag on `index` emits per-file unresolved-token
+detail to stderr at the end of a run. Default summary's counts
+(`unresolved_candidates=N`, `unresolved_frontmatter_hints=N`) are
+preserved unchanged; verbose adds the *specific tokens* behind
+those counts, grouped by source file, with claim-text context for
+each.
+
+**Channel:** stderr. Follows `npm --verbose` / `git --verbose` /
+`curl -v` convention — verbose amplifies the diagnostic channel,
+not the summary channel. stdout stays pinned to the stable
+ADR-12 `key=value` (or `--json`) contract. `--verbose` and
+`--json` are orthogonal; combining them emits JSON summary on
+stdout plus verbose detail on stderr.
+
+**Format:**
+
+```
+[info] unresolved symbol candidates (--verbose): N tokens across M files
+  docs/adr/ADR-07.md
+    [frontmatter] Validator, Controller
+    [claim: "must be idempotent" (hard)] Ghost, AlsoGhost
+  docs/adr/ADR-04.md
+    [claim: "validates input" (soft)] Validator.run
+```
+
+Grouped by source file (matches the authoring unit — debugging
+ADR-to-symbol drift is file-centric). Claim text is truncated at
+60 characters with a `...` marker to keep lines readable.
+
+**Zero-unresolved case:** silent. No stderr emission when every
+token resolves. The default summary's `unresolved_candidates=0`
+already confirms success; a "no unresolved candidates" cheerleader
+line would add noise without adding signal.
+
+**Not yet supported** (explicitly out of scope for v0.2):
+- Surfacing unresolved detail in the `--json` stdout body. If CI
+  consumers need it, the `key=value`/JSON contract accommodates
+  additive fields under the existing stability guarantee; revisit
+  when evidence warrants.
+- "Did you mean?" suggestions for unresolved tokens (nearest-neighbor
+  symbol lookup). Useful but v0.3+; belongs with the broader
+  claim-source-enrichment work.
 
 **Side effects:**
 - Writes `atlas.json` when `atlas.committed: true` and changes occurred
