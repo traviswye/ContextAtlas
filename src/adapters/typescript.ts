@@ -294,7 +294,11 @@ export class TypeScriptAdapter implements LanguageAdapter {
       return sourceText;
     };
 
-    return result.map((sym) => {
+    // Shared enrichment path: base → deriveSignatureAndKind → enriched.
+    // Used for both top-level symbols and container-children (classes,
+    // interfaces, namespaces) so both get identical kind-remap and
+    // signature-extraction treatment.
+    const toEnrichedAtlasSymbol = (sym: LspDocumentSymbol): AtlasSymbol => {
       const base = this.toAtlasSymbol(sym, relPath);
       const { signature, kind } = deriveSignatureAndKind(
         base.kind,
@@ -305,7 +309,29 @@ export class TypeScriptAdapter implements LanguageAdapter {
       const enriched: AtlasSymbol = { ...base, kind };
       if (signature !== null) enriched.signature = signature;
       return enriched;
-    });
+    };
+
+    // Collect top-level symbols, then one level of container children
+    // (v0.2 Stream A #4, Gaps 1 + 2). Container kinds match
+    // PyrightAdapter's policy at pyright.ts:347 — one level deep,
+    // parameters / instance-vars / property fields dropped via the
+    // "other" kind filter. Values: 2 = Module/Namespace, 5 = Class,
+    // 11 = Interface per LSP SymbolKind.
+    const CONTAINER_KINDS = new Set<number>([2, 5, 11]);
+    const out: AtlasSymbol[] = [];
+    for (const sym of result) {
+      out.push(toEnrichedAtlasSymbol(sym));
+      if (CONTAINER_KINDS.has(sym.kind) && sym.children) {
+        for (const child of sym.children) {
+          // Filter children whose LSP kind maps to "other" (property
+          // fields, constructors, etc.). Matches Python's explicit-
+          // kind policy.
+          if (mapSymbolKind(child.kind) === "other") continue;
+          out.push(toEnrichedAtlasSymbol(child));
+        }
+      }
+    }
+    return out;
   }
 
   async getSymbolDetails(id: SymbolId): Promise<AtlasSymbol | null> {
