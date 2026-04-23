@@ -59,136 +59,25 @@ These are decisions already made. Do not relitigate them.
   signatures, error handling, and output validation around it are
   expected to evolve during implementation.
 
-## MVP Scope — What to Build
+## Current Version
 
-Build in this order. Do not build items further down the list until the
-earlier ones work end-to-end.
+- **Current:** v0.2 in progress. Scope anchor: [`v0.2-SCOPE.md`](v0.2-SCOPE.md).
+- **Execution plan:** `STEP-PLAN-V0.2.md` (lands during v0.2 planning Step 4).
+- **Strategic arc:** [`ROADMAP.md`](ROADMAP.md) covers v0.1 → v1.0.
+- **v0.2 thesis:** ContextAtlas works across languages and repos, not
+  just hand-picked TypeScript. Stream A = adapter quality polish,
+  Stream B = Go adapter (cobra, with gin fallback) + httpx reference
+  run for cross-repo validation. See `v0.2-SCOPE.md` for the full
+  stream-level scope, sequencing, and rescope conditions.
 
-**1. MCP server skeleton.** Accepts connection, registers tools, responds
-   to pings. Empty tool handlers are fine for this stage.
+When working on v0.2 tasks, check `v0.2-SCOPE.md` for the stream
+you're in. When making architectural decisions, check ADRs first.
 
-**2. TypeScript language adapter.** Wraps `typescript-language-server`.
-   Implements the `LanguageAdapter` interface from DESIGN.md.
-   `listSymbols`, `getSymbolDetails`, `findReferences`, `getDiagnostics`
-   must all work on a test TS file.
+v0.1 shipped with Phase 5 empirical validation (50–71% tool-call
+reduction on architectural win-bucket prompts). Historical MVP
+build-plan details live in git history, not this file.
 
-**3. SQLite storage layer + atlas.json sync.** Schema defined in
-   DESIGN.md. Migration runner, connection management, CRUD helpers for
-   symbols and claims. **Also required at this step:** AtlasImporter
-   (loads atlas.json → SQLite) and AtlasExporter (dumps SQLite →
-   atlas.json with deterministic ordering). These are load-bearing for
-   the team-artifact model per ADR-06 — do not treat them as
-   afterthoughts.
-
-**4. Config file parsing.** `.contextatlas.yml` reader. Validates the
-   schema documented in DESIGN.md, including the `atlas` section with
-   `committed`, `path`, and `local_cache` fields.
-
-**5. Extraction pipeline with atlas-aware startup.** Reads ADRs from the
-   configured path, runs Opus 4.7 extraction per DESIGN.md stage 3,
-   resolves symbol candidates to LSP IDs, writes to SQLite. **Import the
-   `EXTRACTION_PROMPT` from `src/extraction/prompt.ts`** — it was
-   pre-drafted and validated on 12 production-grade documents. Do not
-   duplicate it inline. **Before extraction, check for committed
-   atlas.json and import if present** (per DESIGN.md stage 0). Only
-   extract files whose SHAs differ from the committed baseline. After
-   extraction, regenerate atlas.json if `atlas.committed: true` in
-   config.
-
-**6. `get_symbol_context` tool — the primitive.** End-to-end. Takes a
-   symbol, returns a compact bundle. This is the load-bearing tool
-   everything else composes over. Must be polished before moving on.
-
-   **Test-file identification convention:** Test files are identified
-   primarily via adapter-reported signals where available (e.g., tsserver's
-   `isTestFile` heuristics), falling back to filename patterns:
-   `*.test.ts`, `*.spec.ts`, `*.test.tsx` for TypeScript; `test_*.py`,
-   `*_test.py`, and anything under a `tests/` directory for Python. The
-   convention is not perfect — projects using non-standard test layouts
-   may need explicit config in a future version — but it's sufficient
-   for the benchmark targets and typical repos.
-
-   **Day-4 scope gate:** By end of day 4, `get_symbol_context` must be
-   working end-to-end on a real repo with real extraction output. If it
-   is not solid at this point, stop and polish it. Do not proceed to
-   the composite tools (steps 8 or 11) with a shaky primitive. Shipping
-   one polished tool beats shipping three half-working tools.
-
-**7. Benchmark harness — minimum viable form.** Before building more
-   tools, build the measurement infrastructure. Runs a small fixed
-   prompt set (start with ~5 prompts, not the full 24) against both
-   baseline Claude Code and ContextAtlas. Records tool calls, tokens,
-   and wall-clock. Outputs a simple comparison table. Do not over-engineer
-   — the harness is here to give you feedback on whether the primitive
-   is actually delivering, not to produce the final benchmark numbers.
-
-   **Prerequisites that do not yet exist on disk:**
-   - `benchmarks/prompts/hono.md` and `benchmarks/prompts/httpx.md`
-     (need to be written — draft 5 prompts per repo minimum)
-   - `benchmarks/configs/hono.yml` and `benchmarks/configs/httpx.yml`
-     (need to be written — copy the default `.contextatlas.yml` and
-     point ADR path at `benchmarks/adrs/<repo>/`)
-   - Cloned benchmark repos (hono and httpx) somewhere the harness can
-     find them — either `benchmarks/repos/` (gitignored) or a
-     user-configurable path
-
-   Acknowledge during step 6 polish that these assets need creating;
-   don't leave it until step 7 starts. If they don't exist on day 4,
-   step 7 will slip.
-
-   **Why this is step 7, not step 12:** Running the benchmark iteratively
-   starting mid-week beats running it polished at the end. If day-4
-   numbers show bundles bloating tokens, you adjust the format. If they
-   show the intent layer not firing on the right queries, you tune
-   severity filtering. If baseline Claude is already fine on some
-   bucket, you focus energy elsewhere. Running the benchmark only at
-   the end removes the ability to course-correct.
-
-**8. `find_by_intent` tool — thin composite.** SQL text matching
-   (`LIKE` or FTS5) against the `claims` table, returning linked
-   symbols. No embeddings, no vector search, no fancy ranking. Simple
-   relevance ordering: exact phrase match > word overlap > nothing.
-   This is a one-day addition built on top of step 6's primitive.
-
-**9. Python adapter via Pyright.** Same interface as the TypeScript
-   adapter. Should work without refactoring the core.
-
-**10. Git integration.** Recent commits touching a symbol, hot/cold
-    indicator. Feeds into the primitive's `git` signal and is used by
-    step 11.
-
-**11. `impact_of_change` tool — thin composite.** Calls the primitive
-    internally, adds git co-change data ("files that historically change
-    together with this one") and test-impact data ("tests that reference
-    this symbol"). Format as a blast-radius bundle. One-day addition.
-
-**12. Incremental reindex.** SHA-based change detection. Only re-extract
-    changed files.
-
-    **Status: shipped.** Scope landed across three contributing
-    commits:
-    - Step 5 pipeline work established `diffShas` + stage-2
-      reclassification + stage-5 deletion cleanup as library behavior.
-    - [ADR-06](docs/adr/ADR-06-committed-atlas-artifact.md)'s atlas
-      round-trip (`source_shas` in atlas.json) persists the SHA
-      baseline so incrementality survives across runs and across
-      team members.
-    - [ADR-12](docs/adr/ADR-12-cli-subcommand-surface.md) (commit
-      cec53d0) made the capability user-invokable via
-      `contextatlas index`, with `--full` as the escape hatch for
-      forced rebuilds.
-
-    Validated in production on 2026-04-22: the `be04884` re-extraction
-    exercised all four classifications (9 unchanged / 1 changed /
-    4 added / 0 deleted) against real prose files; api_calls (5)
-    matched files_extracted (5), confirming unchanged files were
-    correctly skipped.
-
-**13. Expand the benchmark harness.** Grow from the ~5-prompt MVP harness
-    (step 7) to the full 24-prompt set per repo. Add blind grading
-    infrastructure. Polish the output table for the README.
-
-### Tool scope philosophy
+## Tool scope philosophy
 
 The three tools (`get_symbol_context`, `find_by_intent`,
 `impact_of_change`) are not three parallel features. They are one
@@ -198,26 +87,25 @@ fused context system with three access patterns:
 - `find_by_intent` — "I don't know the symbol; find it by what it does"
 - `impact_of_change` — "I'm about to change this; what breaks?"
 
-Each composite (#8, #11) is a thin shell over the primitive (#6). Most
-of the hard engineering is in the primitive; the composites reuse its
-substrate. Do not build them as separate parallel systems.
+The composites (`find_by_intent`, `impact_of_change`) are thin shells
+over the primitive (`get_symbol_context`). Most of the hard
+engineering is in the primitive; the composites reuse its substrate.
+Do not build them as separate parallel systems.
 
-### Cut order if running behind
+**Protect at all costs:** the primitive and the extraction pipeline.
+Regressions there cascade to every composite and every downstream
+query.
 
-If scope pressure forces cuts, in this order:
-1. Full benchmark expansion (#13) — MVP harness from step 7 is enough
-   for the demo
-2. `impact_of_change` (#11)
-3. `find_by_intent` (#8)
-4. Python adapter (#9)
+### Test-file identification convention
 
-Protect the primitive (`get_symbol_context`), the extraction pipeline,
-and the MVP benchmark harness (step 7) at all costs. The benchmark
-harness stays protected because you need it to decide what else to
-protect.
-
-Everything beyond item 12 is v0.2 and out of scope for MVP. See
-DESIGN.md `Scope Gates` section for the exhaustive out-of-scope list.
+Test files are identified primarily via adapter-reported signals
+where available (e.g., tsserver's `isTestFile` heuristics), falling
+back to filename patterns: `*.test.ts`, `*.spec.ts`, `*.test.tsx`
+for TypeScript; `test_*.py`, `*_test.py`, and anything under a
+`tests/` directory for Python. The convention is not perfect —
+projects using non-standard test layouts may need explicit config
+in a future version — but it's sufficient for the benchmark targets
+and typical repos.
 
 ## ADRs That Constrain This Project
 
