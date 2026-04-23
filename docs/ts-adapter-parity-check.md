@@ -71,27 +71,94 @@ fields get populated as findings land.
 | Signature extraction for class with bases | `surfaces signatures for classes with bases` | similar ("populates signatures for class/function/type-alias") | audit |
 | Signature extraction for overloaded function | covered explicitly for Python overloads | likely untested for TS function overloads | audit |
 
-## Status: pending
+## Status: Step 4 complete (Phase D landed)
 
-Phase A (this doc) lands as a placeholder matrix. Phase C (hono
-spot-check) fills in "Hono usage" and reveals which shapes need
-fixture coverage. Phase B (parity fixture + tests) uses that
-evidence. Phase D documents outcomes — fix-or-defer per gap — back
-into the "Action" column.
+Execution flow ran A → C → B → D per the step plan's revision. Phase
+C (hono spot-check) informed Phase B (fixture). Four gaps fixed in
+v0.2; one deferred to v0.3 with rationale.
 
 ## Phase C — hono spot-check findings
 
-*(Populated during Phase C.)*
+Three files probed: `src/jsx/base.ts`, `src/hono-base.ts`,
+`src/http-exception.ts`. Five material gaps surfaced (see `##
+Revision history` in STEP-PLAN-V0.2.md for the formal rescope entry):
+
+- **Gap 1 (HIGH):** TS `listSymbols` iterates only top-level symbols.
+  Hono's class methods (`route`, `getResponse`, etc.) invisible;
+  `Hono` class resolves to 1 symbol with no members.
+- **Gap 2 (MEDIUM):** Namespace children (`JSX.Element`,
+  `JSX.IntrinsicElements`, etc. inside `export namespace JSX`)
+  invisible.
+- **Gap 3 (MEDIUM):** Complex class signature extraction truncates
+  on generic defaults — `class Hono<S extends Schema = {}, ...>` had
+  empty signature because `extractDeclarationHeader` stopped at the
+  `{` inside the generic default.
+- **Gap 4 (LOW-MEDIUM):** Arrow-function exports (`export const fn =
+  () => ...`) resolve to `kind=variable` with empty signature.
+- **Gap 5 (BUG):** Type-alias signatures bleed into the next
+  declaration under ASI convention (no trailing `;`).
+  `extractTypeAliasHeader` terminated only on `;` so collected
+  ran into subsequent `export type FC = ...`.
 
 ## Phase B — parity fixture coverage
 
-*(Populated during Phase B.)*
+`test/fixtures/typescript/parity.ts` exercises:
+- `ParityClass` — class with instance method, static method, readonly
+  property (Gap 1)
+- `ParityInterface` — interface with property signatures + method
+  signature (Gap 1)
+- `ParityNamespace` — namespace with inner interface + inner type
+  alias (Gap 2)
+- `FirstTypeAlias` / `SecondTypeAlias` — ASI-convention adjacent
+  type aliases (Gap 5)
+- `GenericHost<T, S = {}, U>` — multi-line generic class with `{}`
+  default to mirror hono's Hono class pathology (Gap 3)
+- `arrowExport` — arrow-function const export (Gap 4 surface, no
+  target assertion in v0.2)
+
+Integration tests live in `src/adapters/typescript.test.ts` under
+the `"parity (v0.2 Stream A #4)"` describe block.
 
 ## Phase D — gap outcomes
 
-*(Populated during Phase D.)*
+### Fixed in v0.2
 
-### Fix-or-defer rubric
+| Gap | Commit | Fix | Production LOC |
+|---|---|---|---|
+| 1 (class/interface children) | `36b2c87` | `listSymbols` iterates `sym.children` for container kinds (LSP 2/5/11); children whose mapped kind is `"other"` are filtered (matches Python policy) | ~25 |
+| 2 (namespace children) | `36b2c87` | Rides on Gap 1 — LSP kind=2 (Module/Namespace) added to CONTAINER_KINDS set | ~3 |
+| 3 (generic-default truncation) | `1aca8bf` | `extractDeclarationHeader` tracks `<...>` depth via character scan; `{` and `;` treated as terminators only at genericDepth 0 | ~15 |
+| 5 (type-alias signature bleed) | `7646243` | `extractTypeAliasHeader` adds second termination condition — stops before a subsequent line that starts a new top-level declaration (column-0 keyword match); exports `looksLikeNewTopLevelDeclaration` for unit testing | ~20 (inc. new helper + tests) |
+
+### Deferred to v0.3
+
+**Gap 4 — arrow-function export signatures.** `export const fn = (...) =>` resolves to `kind=variable` with empty signature. Users see the const as a variable without parameter list or return type.
+
+**Defer rationale:**
+- Not correctness — surfaced symbol is correctly typed as a variable; it just lacks signature detail.
+- Fix requires a new signature-extraction path (arrow-function heuristic detecting `= (...) =>` after a const declaration), distinct from the class/function declaration-header extractor.
+- Common pattern but not v0.2-thesis-blocking; deferred until v0.3 where the broader claim-source-enrichment work is happening and signature extraction can be revisited holistically (e.g., alongside JSDoc-driven signature augmentation).
+
+### Known limitation (not a gap)
+
+**TS fields typed as function don't surface as methods.** hono's `Hono` class declares HTTP verb routes as properties with function types:
+
+```typescript
+class Hono {
+  get!: HandlerInterface<...>   // LSP kind=7 (Field)
+  post!: HandlerInterface<...>  // LSP kind=7 (Field)
+  ...
+  route(path, app): Hono { ... }  // LSP kind=6 (Method)
+}
+```
+
+Verification against hono post-Step-4 confirmed: `route` surfaces as `method`; `get`/`post`/`put`/`delete` do NOT surface. This is correct policy — the children-iteration filters kinds that map to `"other"`, which includes LSP kind=7 (Property) and kind=8 (Field). Matches Python's "drop instance vars" discipline.
+
+No Python analog exists for "field typed as function" — Python methods are always `def name(self):` which LSP emits as kind=6. TS idiom of function-typed fields is strictly TS; the consistent-policy choice is to treat them as fields (dropped) rather than methods (kept). Claims that reference `Hono.get` should resolve to the `Hono` class itself, where the handler types are visible in the class signature.
+
+If future evidence (e.g., claim-resolution failures on real hono code) suggests this policy produces wrong results, the fix surface is extending `mapSymbolKind` to map LSP kind=7 to a new SymbolKind (requires ADR-01 amendment) or relaxing the child-filter policy to surface fields alongside methods (requires ADR-03 policy amendment). Neither fits v0.2 scope.
+
+### Fix-or-defer rubric (reference)
 
 - **Fix in v0.2** if: the gap produces wrong or absent symbols on
   real code shapes in hono or common TS projects, AND fix size is
