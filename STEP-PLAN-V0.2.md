@@ -2,6 +2,8 @@
 
 **Status:** Active execution plan for v0.2. See `## Revision history`
 (bottom of document) for material scope/plan changes during execution.
+**Last revised:** 2026-04-23 — Step 1 shipped as verification
+(see `## Revision history`).
 
 **What this document is:** The execution-level plan for v0.2 — step
 order, per-step ship criteria, dependencies, and progress tracking.
@@ -256,9 +258,9 @@ reference run measures. Per
 - [ ] Atlas committed to benchmarks repo at
   `atlases/httpx/` with provenance note (contextatlas commit SHA
   + httpx pinned commit SHA).
-- [ ] Atlas diff against v0.1 httpx atlas reviewed; every
-  non-trivial kind change (`class`→`variable`, `class`→`method`,
-  etc.) traced to a Stream A refinement. Unexplained changes
+- [ ] Atlas diff against v0.1 httpx atlas reviewed; if any changes
+  appear (expected: minimal or none given Step 1 shipped
+  zero-fix), trace them to a known source. Unexplained changes
   investigated before proceeding.
 - [ ] Cost-tracking output captured (uses step 2 capability).
 - [ ] Unresolved-candidate diff reviewed via step 3's verbose mode;
@@ -565,7 +567,41 @@ measurement.
 - Ship-criteria verification: [each criterion with evidence]
 ```
 
-*(No entries yet — v0.2 execution pending.)*
+### Step 1 shipped — 2026-04-23 (commit bcf032f)
+- Scope: Fix kind-mapping gaps surfaced during v0.1 httpx dogfood
+  (`__all__`, enum class members, dunder methods).
+- Outcome: Probe revealed current PyrightAdapter already satisfies
+  all three targets via existing code paths. No production code
+  changes required. Fixture + 4 assertion tests added as regression
+  protection; spot-check against real httpx source (3 files)
+  confirmed fixture results match real-world behavior.
+- Notable decisions:
+  - Default lean honored — remap enum members to `variable`, no new
+    SymbolKind, no ADR-14.
+  - Scope-doc framing ("currently `class`") was imprecise; actual
+    current state was already correct via kind-14 (Constant) and
+    `isModuleLevelAssignment` paths. Framing delta is corrected in
+    revision history, not a scope change.
+- Ship-criteria verification:
+  - `__all__` → `variable`: passes via test
+    `"__all__ module list resolves to kind 'variable'"`
+    (pyright.test.ts, "kind-mapping refinements" describe block).
+  - Enum members → `variable`: passes via test
+    `"enum class members resolve to kind 'variable'"` (covers
+    CLOSED, UNSET, OPEN). Mechanism: Pyright emits LSP kind=14
+    (Constant) for class-level enum values → `mapPyrightKind`
+    returns `variable`.
+  - Dunder methods → `method`: passes via tests
+    `"async dunder methods resolve to kind 'method'"` and
+    `"sync dunder methods resolve to kind 'method'"` (covers
+    `__aenter__`, `__aexit__`, `__enter__`, `__exit__`). Mechanism:
+    Pyright emits LSP kind=6 (Method) as children of kind=5
+    classes; existing children loop in `listSymbols` picks them up.
+  - Post-filter algorithm covered by unit tests: 4 new assertions
+    in `pyright.test.ts`.
+  - ADR-14: not needed (no new SymbolKind).
+  - Conformance suite: 68/68 pyright tests pass.
+  - No TS regression: 47/47 typescript tests pass.
 
 ---
 
@@ -583,7 +619,27 @@ affect v0.2-SCOPE.md OR downstream steps' ship criteria land here.*
 Downstream impact: [affected steps].
 ```
 
-*(No entries yet — plan as originally scoped.)*
+### 2026-04-23 (commit bcf032f): Step 1 shipped as verification, not surgery.
+Step 1 was scoped as ~1-2 days of adapter modification (fix three
+kind-mapping bugs). Actual outcome was probe + regression-test
+addition — current PyrightAdapter already satisfied all three
+targets via existing code paths (LSP kind=14 Constant handling
+for enum members, `isModuleLevelAssignment` for `__all__`,
+children-loop for dunders). Scope-doc framing "currently `class`"
+was imprecise.
+
+Downstream impact: Step 5's atlas-diff criterion relaxes from
+"trace every non-trivial kind change to a Stream A refinement"
+to "expect minimal or no changes given Step 1 shipped zero-fix;
+trace any that appear." Step 5 ship criterion updated in the
+same commit as this revision note.
+
+No change to v0.2-SCOPE.md — Step 1's target behavior is
+achieved; scope is delivered. **Observation for future steps:
+starting-state assumptions in scope doc should be verified
+empirically before declaring ship criteria, when the scope items
+trace back to backlog observations rather than empirically-
+confirmed bugs.**
 
 ---
 
