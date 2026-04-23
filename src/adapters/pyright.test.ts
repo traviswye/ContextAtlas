@@ -21,6 +21,7 @@ import {
 const FIXTURE_ROOT = pathResolve("test/fixtures/python");
 const SAMPLE = pathResolve(FIXTURE_ROOT, "sample.py");
 const BROKEN = pathResolve(FIXTURE_ROOT, "broken.py");
+const KINDS = pathResolve(FIXTURE_ROOT, "kinds.py");
 
 // ---------------------------------------------------------------------------
 // Pure helpers — unit tests (no LSP subprocess).
@@ -576,5 +577,64 @@ describe("PyrightAdapter", () => {
     // Drawable's own declaration uses `Protocol` from typing (mechanism
     // a) — so the cache serves to validate the population path, not a
     // behavior that mechanisms a+b don't already cover.
+  });
+
+  // -------------------------------------------------------------------
+  // Kind-mapping refinements (v0.2 Stream A #1, STEP-PLAN-V0.2.md §Step 1)
+  //
+  // Three cases surfaced during v0.1 httpx dogfood. Target behavior per
+  // scope doc:
+  //   - `__all__` module list  → kind "variable"
+  //   - Enum class members     → kind "variable"
+  //   - Dunder methods         → kind "method"
+  //
+  // Tests written against target; failures on initial commit document
+  // current state empirically (probe-by-failure).
+  // -------------------------------------------------------------------
+
+  describe("kind-mapping refinements (v0.2 Stream A #1)", () => {
+    it("__all__ module list resolves to kind 'variable'", async () => {
+      const symbols = await adapter.listSymbols(KINDS);
+      const allSym = symbols.find((s) => s.name === "__all__");
+      expect(allSym).toBeDefined();
+      expect(allSym?.kind).toBe("variable");
+    });
+
+    it("enum class members resolve to kind 'variable'", async () => {
+      const symbols = await adapter.listSymbols(KINDS);
+      const enumClass = symbols.find((s) => s.name === "ConnectionState");
+      expect(enumClass).toBeDefined();
+      expect(enumClass?.kind).toBe("class");
+
+      const closed = symbols.find((s) => s.name === "CLOSED");
+      const unset = symbols.find((s) => s.name === "UNSET");
+      const open = symbols.find((s) => s.name === "OPEN");
+      expect(closed).toBeDefined();
+      expect(unset).toBeDefined();
+      expect(open).toBeDefined();
+      expect(closed?.kind).toBe("variable");
+      expect(unset?.kind).toBe("variable");
+      expect(open?.kind).toBe("variable");
+    });
+
+    it("async dunder methods resolve to kind 'method'", async () => {
+      const symbols = await adapter.listSymbols(KINDS);
+      const aenter = symbols.find((s) => s.name === "__aenter__");
+      const aexit = symbols.find((s) => s.name === "__aexit__");
+      expect(aenter).toBeDefined();
+      expect(aexit).toBeDefined();
+      expect(aenter?.kind).toBe("method");
+      expect(aexit?.kind).toBe("method");
+    });
+
+    it("sync dunder methods resolve to kind 'method'", async () => {
+      const symbols = await adapter.listSymbols(KINDS);
+      const enter = symbols.find((s) => s.name === "__enter__");
+      const exit = symbols.find((s) => s.name === "__exit__");
+      expect(enter).toBeDefined();
+      expect(exit).toBeDefined();
+      expect(enter?.kind).toBe("method");
+      expect(exit?.kind).toBe("method");
+    });
   });
 });
