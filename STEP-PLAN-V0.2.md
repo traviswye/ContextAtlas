@@ -2,8 +2,9 @@
 
 **Status:** Active execution plan for v0.2. See `## Revision history`
 (bottom of document) for material scope/plan changes during execution.
-**Last revised:** 2026-04-23 — Step 1 shipped as verification
-(see `## Revision history`).
+**Last revised:** 2026-04-23 — Step 2 shipped (cost tracking + budget
+warning). Step 1 also shipped 2026-04-23 as verification. See
+`## Progress log`.
 
 **What this document is:** The execution-level plan for v0.2 — step
 order, per-step ship criteria, dependencies, and progress tracking.
@@ -566,6 +567,60 @@ measurement.
 - Notable decisions: [if any surfaced during execution]
 - Ship-criteria verification: [each criterion with evidence]
 ```
+
+### Step 2 shipped — 2026-04-23 (commits d4c7fc2, 56fd33c, 9b51751)
+- Scope: Cost tracking in extraction pipeline (Stream A #2) — surface
+  per-run cost + budget-warning mechanism per ADR-12 contract.
+- Outcome: Three commits. (A) `d4c7fc2` propagates Anthropic SDK
+  `usage` through `ExtractionClient` → `ExtractionPipelineResult` →
+  `cli-runner` summary (both `key=value` and `--json` modes), adds
+  `src/extraction/pricing.ts` with Opus 4.7 constants + dated
+  verification comment. (B) `56fd33c` adds the budget-warning
+  mechanism: new top-level `extraction:` config section with
+  `budget_warn_usd`, `--budget-warn <usd>` CLI flag, CLI-wins
+  precedence, fire-once-per-run warning. (C) `9b51751` amends ADR-12
+  with a "Cost visibility (v0.2 amendment)" section documenting the
+  three new summary fields + the budget mechanism, under its
+  pre-existing "new keys may be added" stability guarantee.
+- Notable decisions:
+  - Budget-warning surface: new top-level `extraction:` config
+    section (not folded into `atlas:` or `adrs:`) so future
+    extraction-specific config has a clean home.
+  - CLI flag named `--budget-warn` (matches config key minus `_usd`
+    suffix). Rejected `--max-cost` — "max" implies hard cap, which
+    we explicitly don't do.
+  - Fire-once-per-run warning. Avoids log spam when threshold is
+    crossed early.
+  - `cost_usd` stdout format: 4 decimals (not 2). Sub-cent
+    development iterations remain informative
+    (`cost_usd=0.0053` vs `0.00`); large runs still readable
+    (`2.9500`). Threshold comparisons use raw `costUsd` full
+    precision, independent of display format.
+  - Commits split: original 3-commit plan collapsed to 2
+    implementation commits + 1 documentation commit. Separating
+    key=value output from `--json` output would have been mechanical
+    (same `printSummary` function).
+  - Orchestrator-level interactive budget prompt (Travis's Phase-5
+    observation) explicitly deferred to benchmarks repo. Filed at
+    `../ContextAtlas-benchmarks/research/budget-prompt-enhancement.md`.
+- Ship-criteria verification:
+  - `response.usage` accumulated across API calls: passes via
+    `anthropic-client.test.ts` "usage propagation" describe block
+    + pipeline-level integration.
+  - `cost_usd`, `input_tokens`, `output_tokens` in stdout summary
+    (both modes): passes via `cli-runner.test.ts`
+    "key=value summary includes input_tokens, output_tokens,
+    cost_usd" and "--json summary includes ... as numbers".
+  - Budget warning mechanism shipped: config + CLI flag both work,
+    precedence verified, fire-once verified. Tests in
+    `pipeline.test.ts` "budget warning" describe block (5 tests)
+    + `cli-runner.test.ts` precedence describe block (5 tests).
+  - Cost-tracking interface documented: ADR-12 amendment
+    `9b51751` under "Cost visibility (v0.2 amendment)".
+- Tests: 537 passing repo-wide (was 508 at Step 1 close; +29 new
+  across pricing.test.ts, anthropic-client.test.ts,
+  pipeline.test.ts, cli-args.test.ts, parser.test.ts,
+  cli-runner.test.ts).
 
 ### Step 1 shipped — 2026-04-23 (commit bcf032f)
 - Scope: Fix kind-mapping gaps surfaced during v0.1 httpx dogfood
