@@ -47,6 +47,12 @@ import type {
 
 import { type ExtractionClient } from "./anthropic-client.js";
 import {
+  addUsage,
+  computeCostUsd,
+  ZERO_USAGE,
+  type UsageInfo,
+} from "./pricing.js";
+import {
   diffShas,
   walkProseFiles,
   walkSourceFiles,
@@ -134,6 +140,22 @@ export interface ExtractionPipelineResult {
   atlasExported: boolean;
   wallClockMs: number;
   apiCalls: number;
+  /**
+   * Cumulative `input_tokens` across successful Anthropic API calls
+   * (v0.2 Stream A #2). Failed-retry tokens are invisible to us and
+   * not included. Null-result calls (max_tokens, malformed JSON)
+   * still count — those API calls consumed tokens even if we
+   * couldn't use the response body.
+   */
+  inputTokens: number;
+  /** Cumulative `output_tokens`. Same inclusion rules as `inputTokens`. */
+  outputTokens: number;
+  /**
+   * USD cost computed from `inputTokens` and `outputTokens` under
+   * Opus 4.7 pricing (see `pricing.ts`). Full precision; formatting
+   * is the caller's concern.
+   */
+  costUsd: number;
   /**
    * Number of git commits captured during the run (ADR-11). Zero when
    * the repo is not a git working tree.
@@ -247,6 +269,7 @@ export async function runExtractionPipeline(
   let unresolvedCandidates = 0;
   let unresolvedFrontmatterHints = 0;
   let apiCalls = 0;
+  let totalUsage: UsageInfo = ZERO_USAGE;
   const extractionErrors: Array<{ sourcePath: string; error: string }> = [];
 
   for (let i = 0; i < filesToExtract.length; i += batchSize) {
@@ -272,7 +295,16 @@ export async function runExtractionPipeline(
 
     for (const { file, extracted } of results) {
       if (!extracted) continue;
-      const outcome = writeClaimsForFile(db, file, extracted.claims, inventory);
+      // Accumulate usage regardless of whether result is null — a
+      // max_tokens or malformed-JSON response still consumed tokens.
+      totalUsage = addUsage(totalUsage, extracted.usage);
+      if (!extracted.result) continue;
+      const outcome = writeClaimsForFile(
+        db,
+        file,
+        extracted.result.claims,
+        inventory,
+      );
       claimsWritten += outcome.claimsWritten;
       unresolvedCandidates += outcome.unresolved;
       unresolvedFrontmatterHints += outcome.frontmatterHintsUnresolved;
@@ -358,6 +390,9 @@ export async function runExtractionPipeline(
     atlasExported,
     wallClockMs: Date.now() - start,
     apiCalls,
+    inputTokens: totalUsage.inputTokens,
+    outputTokens: totalUsage.outputTokens,
+    costUsd: computeCostUsd(totalUsage),
     gitCommitsIndexed: gitResult.commits.length,
     extractedAtSha: gitResult.headSha,
   };

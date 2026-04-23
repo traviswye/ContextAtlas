@@ -37,6 +37,7 @@ import {
   type ExtractedClaim,
   type ExtractionResult,
 } from "./prompt.js";
+import { ZERO_USAGE, type UsageInfo } from "./pricing.js";
 
 export type RetryClassification = "retry" | "fail";
 
@@ -66,14 +67,35 @@ export function classifyError(err: unknown): RetryClassification {
   return "fail";
 }
 
+/**
+ * Outcome of a single `extract()` call.
+ *
+ * - `result` — parsed claims, or `null` if the document was skippable
+ *   (max-tokens stop or malformed JSON).
+ * - `usage` — token counts from the final successful API response.
+ *   Always present when `extract` resolves (even with `result: null`,
+ *   the call consumed tokens). Retries that threw before we saw a
+ *   response are NOT reflected here — those are invisible to us.
+ *   Throwing paths (retry-exhausted, non-retryable errors) never
+ *   reach this return shape.
+ */
+export interface ExtractionCallResult {
+  result: ExtractionResult | null;
+  usage: UsageInfo;
+}
+
 export interface ExtractionClient {
   /**
    * Run the extraction prompt against a single document body. Returns
-   * parsed and validated claims. Throws on irrecoverable failure.
-   * A `null` result signals the document was skippable (malformed JSON
-   * or max-tokens stop) — the caller decides whether to log and move on.
+   * parsed and validated claims plus token usage. Throws on
+   * irrecoverable failure.
+   *
+   * A `null` `result` signals the document was skippable (malformed
+   * JSON or max-tokens stop) — the caller decides whether to log and
+   * move on. `usage` is still populated in that case because the API
+   * call did consume tokens.
    */
-  extract(documentBody: string): Promise<ExtractionResult | null>;
+  extract(documentBody: string): Promise<ExtractionCallResult>;
 }
 
 export interface CreateExtractionClientOptions {
@@ -100,7 +122,7 @@ export function createExtractionClient(
   } = options;
 
   return {
-    async extract(documentBody: string): Promise<ExtractionResult | null> {
+    async extract(documentBody: string): Promise<ExtractionCallResult> {
       const prompt = EXTRACTION_PROMPT + documentBody + "\n---\n";
       let attempt = 0;
       // eslint-disable-next-line no-constant-condition
@@ -113,18 +135,20 @@ export function createExtractionClient(
             messages: [{ role: "user", content: prompt }],
           });
 
+          const usage = readUsage(response);
+
           if (response.stop_reason === "max_tokens") {
             log.warn("extraction: max_tokens hit; skipping document", {
               modelStopReason: response.stop_reason,
             });
-            return null;
+            return { result: null, usage };
           }
 
           const text = extractText(response);
-          if (text === null) return null;
+          if (text === null) return { result: null, usage };
 
           const parsed = parseAndValidate(text);
-          return parsed;
+          return { result: parsed, usage };
         } catch (err) {
           const classification = classifyError(err);
           if (classification === "fail") throw err;
@@ -185,6 +209,23 @@ function readRetryAfter(headers: unknown): number | null {
 
 function defaultSleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Read `input_tokens` and `output_tokens` from an Anthropic SDK
+ * response. The SDK's typed shape guarantees usage on successful
+ * responses; this helper normalizes to the internal `UsageInfo`
+ * shape and defends against mock/test shapes that might omit it.
+ */
+function readUsage(response: {
+  usage?: { input_tokens?: number; output_tokens?: number };
+}): UsageInfo {
+  const u = response.usage;
+  if (!u) return ZERO_USAGE;
+  return {
+    inputTokens: typeof u.input_tokens === "number" ? u.input_tokens : 0,
+    outputTokens: typeof u.output_tokens === "number" ? u.output_tokens : 0,
+  };
 }
 
 /**

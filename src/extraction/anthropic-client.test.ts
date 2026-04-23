@@ -84,10 +84,17 @@ function makeStubAnthropic(
   } as unknown as Anthropic;
 }
 
-function validResponse(claims: unknown[] = []) {
+function validResponse(
+  claims: unknown[] = [],
+  usage: { input_tokens?: number; output_tokens?: number } = {
+    input_tokens: 100,
+    output_tokens: 50,
+  },
+) {
   return {
     stop_reason: "end_turn",
     content: [{ type: "text", text: JSON.stringify({ claims }) }],
+    usage,
   };
 }
 
@@ -98,7 +105,7 @@ describe("createExtractionClient — retry loop", () => {
       anthropic,
       sleep: async () => {},
     });
-    const result = await client.extract("doc body");
+    const { result } = await client.extract("doc body");
     expect(result).toEqual({ claims: [] });
     expect((anthropic.messages.create as ReturnType<typeof vi.fn>).mock.calls).toHaveLength(1);
   });
@@ -119,7 +126,7 @@ describe("createExtractionClient — retry loop", () => {
       baseBackoffMs: 100,
       maxBackoffMs: 30_000,
     });
-    const result = await client.extract("doc body");
+    const { result } = await client.extract("doc body");
     expect(result).toEqual({ claims: [] });
     expect(calls).toBe(2);
     expect(sleeps).toEqual([100]);
@@ -205,22 +212,30 @@ describe("createExtractionClient — retry loop", () => {
 // ---------------------------------------------------------------------------
 
 describe("createExtractionClient — response handling", () => {
-  it("returns null on malformed JSON (skippable, not fatal)", async () => {
+  it("returns null result on malformed JSON (skippable, not fatal)", async () => {
     const anthropic = makeStubAnthropic(async () => ({
       stop_reason: "end_turn",
       content: [{ type: "text", text: "this is not json" }],
+      usage: { input_tokens: 100, output_tokens: 10 },
     }));
     const client = createExtractionClient({ anthropic, sleep: async () => {} });
-    expect(await client.extract("doc")).toBeNull();
+    const { result, usage } = await client.extract("doc");
+    expect(result).toBeNull();
+    // Usage is still captured — the API call consumed tokens even
+    // though the response body was unusable.
+    expect(usage).toEqual({ inputTokens: 100, outputTokens: 10 });
   });
 
-  it("returns null when stop_reason is max_tokens", async () => {
+  it("returns null result when stop_reason is max_tokens", async () => {
     const anthropic = makeStubAnthropic(async () => ({
       stop_reason: "max_tokens",
       content: [{ type: "text", text: '{"claims":[]}' }],
+      usage: { input_tokens: 500, output_tokens: 4000 },
     }));
     const client = createExtractionClient({ anthropic, sleep: async () => {} });
-    expect(await client.extract("doc")).toBeNull();
+    const { result, usage } = await client.extract("doc");
+    expect(result).toBeNull();
+    expect(usage).toEqual({ inputTokens: 500, outputTokens: 4000 });
   });
 
   it("drops individual malformed claim entries, keeps valid ones", async () => {
@@ -249,7 +264,7 @@ describe("createExtractionClient — response handling", () => {
       ]),
     );
     const client = createExtractionClient({ anthropic, sleep: async () => {} });
-    const result = await client.extract("doc");
+    const { result } = await client.extract("doc");
     expect(result?.claims.map((c) => c.claim)).toEqual([
       "must be X",
       "background",
@@ -269,7 +284,50 @@ describe("createExtractionClient — response handling", () => {
       ]),
     );
     const client = createExtractionClient({ anthropic, sleep: async () => {} });
-    const result = await client.extract("doc");
+    const { result } = await client.extract("doc");
     expect(result?.claims).toEqual([]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Usage propagation (v0.2 Stream A #2)
+// ---------------------------------------------------------------------------
+
+describe("createExtractionClient — usage propagation", () => {
+  it("captures input_tokens and output_tokens from SDK response", async () => {
+    const anthropic = makeStubAnthropic(async () =>
+      validResponse([], { input_tokens: 12345, output_tokens: 678 }),
+    );
+    const client = createExtractionClient({ anthropic, sleep: async () => {} });
+    const { usage } = await client.extract("doc");
+    expect(usage).toEqual({ inputTokens: 12345, outputTokens: 678 });
+  });
+
+  it("returns ZERO_USAGE shape when SDK response omits usage field", async () => {
+    const anthropic = makeStubAnthropic(async () => ({
+      stop_reason: "end_turn",
+      content: [{ type: "text", text: '{"claims":[]}' }],
+      // usage deliberately absent (degenerate mock shape)
+    }));
+    const client = createExtractionClient({ anthropic, sleep: async () => {} });
+    const { usage } = await client.extract("doc");
+    expect(usage).toEqual({ inputTokens: 0, outputTokens: 0 });
+  });
+
+  it("sequential extract calls report each response's usage independently", async () => {
+    const responses = [
+      validResponse([], { input_tokens: 100, output_tokens: 10 }),
+      validResponse([], { input_tokens: 200, output_tokens: 20 }),
+      validResponse([], { input_tokens: 300, output_tokens: 30 }),
+    ];
+    let i = 0;
+    const anthropic = makeStubAnthropic(async () => responses[i++]);
+    const client = createExtractionClient({ anthropic, sleep: async () => {} });
+    const u1 = (await client.extract("d1")).usage;
+    const u2 = (await client.extract("d2")).usage;
+    const u3 = (await client.extract("d3")).usage;
+    expect(u1).toEqual({ inputTokens: 100, outputTokens: 10 });
+    expect(u2).toEqual({ inputTokens: 200, outputTokens: 20 });
+    expect(u3).toEqual({ inputTokens: 300, outputTokens: 30 });
   });
 });

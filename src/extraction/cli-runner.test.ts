@@ -32,9 +32,30 @@ function captureStdout() {
 }
 
 function stubClient(
-  responder: (body: string) => ReturnType<ExtractionClient["extract"]>,
+  responder: (body: string) => Promise<unknown>,
 ): ExtractionClient {
-  return { extract: (body) => responder(body) };
+  return {
+    async extract(body) {
+      const raw = await responder(body);
+      // If the test passed the new shape directly, honor it. Otherwise
+      // wrap in the ExtractionCallResult envelope with default usage —
+      // most existing tests don't care about token accounting, so the
+      // default stamp keeps them ergonomic while the pipeline's usage
+      // accumulator still exercises.
+      if (
+        raw !== null &&
+        typeof raw === "object" &&
+        "result" in raw &&
+        "usage" in raw
+      ) {
+        return raw as Awaited<ReturnType<ExtractionClient["extract"]>>;
+      }
+      return {
+        result: raw as Awaited<ReturnType<ExtractionClient["extract"]>>["result"],
+        usage: { inputTokens: 100, outputTokens: 50 },
+      };
+    },
+  };
 }
 
 describe("runIndexSubcommand (ADR-12)", () => {
@@ -226,5 +247,78 @@ describe("runIndexSubcommand (ADR-12)", () => {
       writeStdout: stdout.writer,
     });
     expect(result.exitCode).toBe(0);
+  });
+
+  // ---------------------------------------------------------------
+  // Cost tracking in summary output (v0.2 Stream A #2)
+  // ---------------------------------------------------------------
+
+  it("key=value summary includes input_tokens, output_tokens, cost_usd", async () => {
+    // ADR present so the stub client is actually called; usage is
+    // stamped by the stub (defaults: inputTokens=100, outputTokens=50
+    // per file). One file → cost = (100/1M * 15) + (50/1M * 75)
+    // = 0.0015 + 0.00375 = 0.00525 USD.
+    writeFileSync(
+      pathJoin(tmp, "docs", "adr", "ADR-01.md"),
+      "---\nid: ADR-01\n---\nbody\n",
+    );
+    const stdout = captureStdout();
+    const result = await runIndexSubcommand({
+      configRoot: tmp,
+      configFile: null,
+      full: false,
+      json: false,
+      contextatlasVersion: "0.0.1-test",
+      clientOverride: stubClient(async () => ({ claims: [] })),
+      writeStdout: stdout.writer,
+    });
+    expect(result.exitCode).toBe(0);
+    const text = stdout.joined();
+    expect(text).toMatch(/input_tokens=100/);
+    expect(text).toMatch(/output_tokens=50/);
+    expect(text).toMatch(/cost_usd=0\.0053/);
+  });
+
+  it("--json summary includes input_tokens, output_tokens, cost_usd as numbers", async () => {
+    writeFileSync(
+      pathJoin(tmp, "docs", "adr", "ADR-01.md"),
+      "---\nid: ADR-01\n---\nbody\n",
+    );
+    const stdout = captureStdout();
+    const result = await runIndexSubcommand({
+      configRoot: tmp,
+      configFile: null,
+      full: false,
+      json: true,
+      contextatlasVersion: "0.0.1-test",
+      clientOverride: stubClient(async () => ({ claims: [] })),
+      writeStdout: stdout.writer,
+    });
+    expect(result.exitCode).toBe(0);
+    const parsed = JSON.parse(stdout.joined()) as Record<string, unknown>;
+    expect(parsed.input_tokens).toBe(100);
+    expect(parsed.output_tokens).toBe(50);
+    expect(typeof parsed.cost_usd).toBe("number");
+    expect(parsed.cost_usd).toBeCloseTo(0.00525, 4);
+  });
+
+  it("zero-file run reports zero cost", async () => {
+    // No ADRs in docs/adr — pipeline never calls the client, usage
+    // accumulator stays at zero.
+    const stdout = captureStdout();
+    const result = await runIndexSubcommand({
+      configRoot: tmp,
+      configFile: null,
+      full: false,
+      json: false,
+      contextatlasVersion: "0.0.1-test",
+      clientOverride: stubClient(async () => ({ claims: [] })),
+      writeStdout: stdout.writer,
+    });
+    expect(result.exitCode).toBe(0);
+    const text = stdout.joined();
+    expect(text).toMatch(/input_tokens=0/);
+    expect(text).toMatch(/output_tokens=0/);
+    expect(text).toMatch(/cost_usd=0\.0000/);
   });
 });

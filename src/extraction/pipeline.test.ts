@@ -67,7 +67,10 @@ function makeStubClient(
     async extract(_body: string) {
       const r = responses[i++];
       if (r === "throw") throw new Error("stub-client failure");
-      return r ?? null;
+      // Default usage stamp for stubbed responses — lets the pipeline's
+      // usage accumulator exercise without requiring every pipeline
+      // test to care about token counts.
+      return { result: r ?? null, usage: { inputTokens: 100, outputTokens: 50 } };
     },
   };
 }

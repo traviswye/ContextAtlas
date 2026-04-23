@@ -201,6 +201,9 @@ function printSummary(
       atlas_exported: result.atlasExported,
       wall_clock_ms: result.wallClockMs,
       api_calls: result.apiCalls,
+      input_tokens: result.inputTokens,
+      output_tokens: result.outputTokens,
+      cost_usd: Number(result.costUsd.toFixed(4)),
       extraction_errors: result.extractionErrors,
     };
     writeStdout(JSON.stringify(payload, null, 2) + "\n");
@@ -219,6 +222,9 @@ function printSummary(
     `atlas_exported=${result.atlasExported}`,
     `wall_clock_ms=${result.wallClockMs}`,
     `api_calls=${result.apiCalls}`,
+    `input_tokens=${result.inputTokens}`,
+    `output_tokens=${result.outputTokens}`,
+    `cost_usd=${result.costUsd.toFixed(4)}`,
     `extraction_errors=${result.extractionErrors.length}`,
   ];
   writeStdout(lines.join("\n") + "\n");
