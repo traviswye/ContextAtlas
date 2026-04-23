@@ -256,28 +256,64 @@ follow from the architecture or from pre-benchmark validation:
   on every claim, cost of $2.89 total (~$0.25 per substantial ADR).
   This isn't aspirational — it's measured.
 
-### What the benchmark will tell us
+### Phase 5 reference run — measured on hono
 
-The numbers below answer the questions we can't answer without running:
-how much tool-call reduction ContextAtlas actually delivers per task
-bucket, whether constraint-violation rates drop on the "implement within
-constraints" bucket, and where the tool helps vs. where it doesn't.
+Phase 5 shipped a single-run reference matrix across four conditions
+(alpha / ca / beta / beta-ca) on six pre-registered prompts. Full
+synthesis:
+[phase-5-reference-run.md](https://github.com/traviswye/ContextAtlas-benchmarks/blob/main/research/phase-5-reference-run.md).
 
-**Headline results (to be populated after benchmark runs):**
+**Efficiency — CA vs Alpha (hono, 6 prompts):**
 
-| Task bucket              | Baseline calls | CA calls | Baseline score | CA score |
-|--------------------------|----------------|----------|----------------|----------|
-| Localize                 | — | — | — | — |
-| Trace                    | — | — | — | — |
-| Understand constraints   | — | — | — | — |
-| Impact analysis          | — | — | — | — |
-| Bug hypothesis           | — | — | — | — |
-| Implement within constraints | — | — | — | — |
+| Prompt | Bucket | Alpha calls | CA calls | Δ | Alpha $ | CA $ |
+|---|---|---:|---:|---:|---:|---:|
+| h1-context-runtime | win | 18 | 9 | **−50%** | $2.36 | $1.52 |
+| h2-router-contract | win | 11 | 5 | **−55%** | $0.60 | $0.53 |
+| h3-middleware-onion | win | 5 | 5 | 0% | $0.38 | $0.47 |
+| h4-validator-typeflow | win | 21 | 6 | **−71%** | $2.95 | **$0.52** |
+| h5-hono-generics | tie | 11 | 13 | +18% | $0.79 | $1.17 |
+| h6-fetch-signature | trick | 3 | 4 | +33% | $0.17 | $0.29 |
+| **aggregate** | | **69** | **42** | **−39%** | **$7.25** | **$4.50 (−38%)** |
 
-The implement-within-constraints bucket is where the tool most obviously
-differentiates — this is where baseline Claude routinely produces code
-that violates architectural rules that are written down in the repo, and
-where ContextAtlas surfaces the rules before Claude commits to a design.
+**Efficiency — Beta-CA vs Beta (Claude Code CLI harness):**
+
+Beta-CA cost was lower than Beta on every measured prompt. Aggregate
+across 5 cells: Beta $1.43 → Beta-CA $0.68 (**−52%**). h6 beta-ca was
+not measured — the run halted at the $14 budget ceiling after 23 of
+24 cells. The cross-harness trick-bucket trajectory is captured in
+the synthesis document.
+
+**Highlights:**
+- **h4-validator-typeflow** — 7.3× cheaper ($2.95 → $0.52) at
+  equivalent answer depth. CA opens with the governing ADR by
+  number; alpha reconstructs the architecture from source.
+- **Tie/trick buckets** (h5, h6) show CA net-negative, as RUBRIC
+  predicted — CA over-engineers on questions where architectural
+  intent doesn't carry load (TS-compiler-space or trivial lookup).
+  Bucket-aware methodology surfaces these expected cases rather
+  than burying them.
+- **Within-harness comparisons only.** Alpha-vs-beta cost deltas
+  conflate model pricing, CLI caching, and harness architecture.
+  See RUBRIC.md §System prompt asymmetry.
+
+### Quality axis — deferred to step 13
+
+Phase 5 measures efficiency (tool calls, tokens, cost). Correctness
+scoring, hallucination rates, and constraint-violation detection are
+**quality-axis** measurements that require blind grading across a
+larger prompt set — scheduled for the step-13 full benchmark
+expansion, post-v0.3. The implement-within-constraints hypothesis
+(does CA-equipped Claude violate written architectural rules less
+often than baseline?) lands there.
+
+Phase 5's synthesis catalogs surface evidence that points in the
+expected direction — CA answers cite ADRs by number and exact line
+counts; alpha answers describe the same concepts in approximations —
+but surface evidence is not a correctness benchmark.
+
+Cross-repo validation on httpx and cross-language validation on Go
+(cobra) are v0.2 Stream B deliverables — see
+[v0.2-SCOPE.md](v0.2-SCOPE.md).
 
 **Dogfooding.** The third benchmark target is ContextAtlas itself. By
 the end of development, we wanted the tool to be good enough to help
