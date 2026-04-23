@@ -28,9 +28,8 @@ These are decisions already made. Do not relitigate them.
   bundled dependency. The TS adapter spawns it as a subprocess, but the
   binary itself is expected to be on the user's PATH or pointed to via
   config. This keeps the package lean and lets users choose their tsserver
-  version. If `package.json` currently lists it under `dependencies`,
-  move it to `peerDependencies` or document it as a runtime requirement
-  during step 2.
+  version. `package.json` lists it as a `peerDependency` — do not
+  promote to a direct dependency.
 - **LSP client strategy:** Raw JSON-RPC over stdio. No
   `vscode-languageclient` / `vscode-jsonrpc` dependency. The LSP
   subset we need (initialize, documentSymbol, references, diagnostics,
@@ -49,15 +48,14 @@ These are decisions already made. Do not relitigate them.
   DESIGN.md, and bumping the version.
 - **Extraction model:** `claude-opus-4-7` at default effort. Not extended
   thinking. See DESIGN.md section on extraction pipeline.
-- **Pre-drafted extraction prompt:** `src/extraction/prompt.ts` already
-  exists and is INTENTIONAL pre-work, not scratch code. It contains the
-  `EXTRACTION_PROMPT` constant validated pre-scaffolding on 12
+- **Pre-drafted extraction prompt:** `src/extraction/prompt.ts` holds
+  the `EXTRACTION_PROMPT` constant — validated pre-scaffolding on 12
   production-grade documents (100% JSON parse success, 169 claims
-  extracted correctly across hono and httpx ADRs). Step 5 should import
-  from this file rather than duplicate the prompt. The prompt content,
-  severity taxonomy, and model choice are frozen per ADR-02; call
-  signatures, error handling, and output validation around it are
-  expected to evolve during implementation.
+  extracted correctly across hono and httpx ADRs). The extraction
+  pipeline imports from this file; do not duplicate the prompt
+  elsewhere. The prompt content, severity taxonomy, and model choice
+  are frozen per ADR-02; call signatures, error handling, and output
+  validation around it evolve with the pipeline.
 
 ## Current Version
 
