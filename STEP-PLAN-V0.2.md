@@ -2,16 +2,16 @@
 
 **Status:** Active execution plan for v0.2. See `## Revision history`
 (bottom of document) for material scope/plan changes during execution.
-**Last revised:** 2026-04-24 — Step 8 shipped (Go LSP probe +
-ADR-14: gopls v0.21.1 probed against Go pathology fixture +
-cobra sanity; six adapter-required LSP methods all work; two
-gopls-specific runtime prerequisites documented — `go` on PATH,
-`workspace/configuration` length-matched array; struct-method
-receiver-encoded naming + interface-method flattening +
-cross-package implementation lock-downs for Step 9). ADR-03
-amendment NOT required. Stream A complete. Steps 1–7, 4b, 4c
-shipped 2026-04-23/24; Step 8 shipped 2026-04-24. Step 9
-(GoAdapter implementation) queues next.
+**Last revised:** 2026-04-24 — Step 9 survey expanded scope to
+absorb storage migration for Symbol.parent_id (ADR-14 §Decision 4
+specified the field; Symbol interface + SQLite schema + atlas
+schema v1.1 didn't have it). Storage prerequisite (~135 LOC)
+bundled under Step 9, following Step 4's "polish expanded to
+sub-steps" precedent. Total Step 9 scope: ~855 LOC across 6
+commits (1 storage + 5 adapter). ADR-06 unchanged — additive
+atlas schema bump 1.1 → 1.2 follows ADR-11's established
+pattern. See Revision history entry for rationale + ADR
+authoring observation.
 
 **What this document is:** The execution-level plan for v0.2 — step
 order, per-step ship criteria, dependencies, and progress tracking.
@@ -1457,6 +1457,44 @@ affect v0.2-SCOPE.md OR downstream steps' ship criteria land here.*
 ### YYYY-MM-DD (commit SHA): Step N revised — reason.
 Downstream impact: [affected steps].
 ```
+
+### 2026-04-24 (Step 9 pre-implementation): scope expanded to absorb storage migration for Symbol.parent_id.
+Step 9 survey surfaced that ADR-14 §Decision 4 specified a
+`parent_id` field on Symbol records for interface-method
+flattening, but the Symbol interface and storage layer had no
+`parent_id` support. Adding it required coordinated changes at
+three layers: SQLite schema (migration v4 adds `parent_id TEXT`
+column), atlas.json schema (bump 1.1 → 1.2, additive optional
+field), and the TypeScript Symbol interface.
+
+**Scope impact:** Step 9 grew from ADR-14's ~700–1000 LOC
+GoAdapter budget to ~855 LOC total (135 storage prerequisite +
+700 adapter). Storage work absorbed under Step 9 rather than
+split into a separate mini-step — the work exists only because
+Step 9 needs it; Step 4's precedent (polish step that expanded
+to 4 gaps + 4b re-extract + 4c spot-check) supports bundling
+under the originating step.
+
+**Commit arc (6 commits, was 5):** (1) storage migration v4 +
+atlas v1.2, (2) types.ts prerequisites, (3) GoAdapter skeleton,
+(4) listSymbols + getSymbolDetails + getDiagnostics, (5)
+findReferences + getTypeInfo, (6) conformance wiring +
+broken.go + ship criteria.
+
+**Pattern precedent:** ADR-11's atlas schema 1.0 → 1.1 bump
+for git signals established the additive-schema-bump pattern.
+This 1.1 → 1.2 bump follows the same pattern (importer accepts
+both versions, exporter writes latest, new field is optional).
+ADR-06 operating as designed; no ADR-06 amendment needed.
+
+**Observation for future ADR authoring:** ADR-14 was published
+without verifying that `parent_id` existed on the Symbol
+interface in `src/types.ts`. Future ADR authoring should
+verify specified fields exist in source types before publishing,
+or mark them explicitly as "field to be added" (ADR-13 did
+this for `PyrightAdapter` with its frontmatter-symbols note).
+
+Downstream impact: Step 9 only (ADR-14 otherwise unchanged).
 
 ### 2026-04-24 (Step 4c outcome): interpretation (A) with nuance — thesis survives.
 The Phase 5 spot-check (h4-ca re-run on refined hono atlas) found
