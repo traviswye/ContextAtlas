@@ -24,6 +24,7 @@
 import { spawn } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { resolve as pathResolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { log } from "../mcp/logger.js";
 import {
@@ -32,6 +33,7 @@ import {
   type LanguageAdapter,
   type LanguageCode,
   type Reference,
+  type ReferenceId,
   type Symbol as AtlasSymbol,
   type SymbolId,
   type SymbolKind,
@@ -70,6 +72,10 @@ interface LspDocumentSymbol {
   range: LspRange;
   selectionRange: LspRange;
   children?: LspDocumentSymbol[];
+}
+interface LspLocation {
+  uri: string;
+  range: LspRange;
 }
 
 // ---------------------------------------------------------------------------
@@ -369,10 +375,60 @@ export class GoAdapter implements LanguageAdapter {
     return symbols.find((s) => s.name === parsed.name) ?? null;
   }
 
-  async findReferences(_id: SymbolId): Promise<Reference[]> {
-    throw new Error(
-      "GoAdapter.findReferences not yet implemented (lands in Step 9 Commit 5).",
+  async findReferences(id: SymbolId): Promise<Reference[]> {
+    const parsed = parseSymbolId(id);
+    if (!parsed || !this.rootPath) return [];
+    const { absPath } = this.resolveFile(parsed.path);
+    if (!existsSync(absPath)) return [];
+    await this.ensureOpen(absPath);
+
+    const symbols = await this.client.request<LspDocumentSymbol[] | null>(
+      "textDocument/documentSymbol",
+      { textDocument: { uri: toFileUri(absPath) } },
+      this.options.requestTimeoutMs ?? 30_000,
     );
+    if (!symbols || !Array.isArray(symbols)) return [];
+
+    const target = findTargetPosition(symbols, parsed.name);
+    if (!target) return [];
+
+    const locations = await this.client.request<LspLocation[] | null>(
+      "textDocument/references",
+      {
+        textDocument: { uri: toFileUri(absPath) },
+        position: target,
+        context: { includeDeclaration: false },
+      },
+      this.options.requestTimeoutMs ?? 30_000,
+    );
+    if (!locations || !Array.isArray(locations)) return [];
+
+    const refs: Reference[] = [];
+    for (const loc of locations) {
+      let refAbs: string;
+      try {
+        refAbs = fileURLToPath(loc.uri);
+      } catch {
+        continue;
+      }
+      let refRel: string;
+      try {
+        refRel = toRelativePath(normalizePath(refAbs), this.rootPath);
+      } catch {
+        // Reference is outside the workspace root — skip. Stdlib
+        // references to e.g. `io.Writer` land here.
+        continue;
+      }
+      const line = loc.range.start.line + 1;
+      refs.push({
+        id: this.referenceId(refRel, line),
+        symbolId: id,
+        path: refRel,
+        line,
+        column: loc.range.start.character,
+      });
+    }
+    return refs;
   }
 
   async getDiagnostics(filePath: string): Promise<Diagnostic[]> {
@@ -421,10 +477,118 @@ export class GoAdapter implements LanguageAdapter {
     });
   }
 
-  async getTypeInfo(_id: SymbolId): Promise<TypeInfo> {
-    throw new Error(
-      "GoAdapter.getTypeInfo not yet implemented (lands in Step 9 Commit 5).",
+  async getTypeInfo(id: SymbolId): Promise<TypeInfo> {
+    const empty: TypeInfo = { extends: [], implements: [], usedByTypes: [] };
+    const parsed = parseSymbolId(id);
+    if (!parsed || !this.rootPath) return empty;
+    const { absPath } = this.resolveFile(parsed.path);
+    if (!existsSync(absPath)) return empty;
+    await this.ensureOpen(absPath);
+
+    const symbols = await this.client.request<LspDocumentSymbol[] | null>(
+      "textDocument/documentSymbol",
+      { textDocument: { uri: toFileUri(absPath) } },
+      this.options.requestTimeoutMs ?? 30_000,
     );
+    if (!symbols || !Array.isArray(symbols)) return empty;
+
+    // getTypeInfo only applies to top-level type symbols (interfaces +
+    // structs). Flattened interface-method names (e.g., `Shape.Area`)
+    // and struct methods (`(*Rectangle).Area`) return the empty shape
+    // — they're not types, they're members.
+    const topLevel = symbols.find((s) => s.name === parsed.name);
+    if (!topLevel) return empty;
+    const sourceKind = mapGoSymbolKind(topLevel.kind);
+    if (sourceKind !== "interface" && sourceKind !== "class") {
+      return empty;
+    }
+
+    const result: TypeInfo = { extends: [], implements: [], usedByTypes: [] };
+
+    // Forward direction (extends): interface embedding + struct
+    // embedding both surface as kind-8 children of the source symbol
+    // with the embedded type as the child name. Distinguish from
+    // regular fields by whether the child's detail matches its name
+    // (embedded: detail==name, e.g., Square.Rectangle child has
+    // detail="Rectangle"; field: detail is the field type, e.g.,
+    // Square.corner child has detail="string").
+    if (topLevel.children) {
+      for (const child of topLevel.children) {
+        if (child.kind !== 8) continue;
+        if (child.detail === child.name) {
+          result.extends.push(child.name);
+        }
+      }
+    }
+
+    // Inverse direction (implements / usedByTypes): call
+    // textDocument/implementation per ADR-14 §"getTypeInfo uses
+    // implementation directly." Partition results by SOURCE kind:
+    //   - source is interface → every result is an implementer →
+    //     usedByTypes (structs that satisfy the interface, plus
+    //     embedder interfaces)
+    //   - source is struct → every result is an interface this
+    //     struct satisfies → implements
+    // This is cleaner than partitioning by target kind because
+    // gopls already filters the directionally-relevant set.
+    const impls = await this.client.request<LspLocation[] | null>(
+      "textDocument/implementation",
+      {
+        textDocument: { uri: toFileUri(absPath) },
+        position: topLevel.selectionRange.start,
+      },
+      this.options.requestTimeoutMs ?? 30_000,
+    );
+    if (!impls || !Array.isArray(impls)) return result;
+
+    const selfUri = normalizePath(toFileUri(absPath));
+    const selfLine = topLevel.selectionRange.start.line;
+    const docSymbolCache = new Map<string, LspDocumentSymbol[]>();
+    const seen = new Set<string>();
+
+    for (const loc of impls) {
+      // Skip self — gopls usually doesn't return it but guard anyway.
+      if (
+        normalizePath(loc.uri) === selfUri &&
+        loc.range.start.line === selfLine
+      ) {
+        continue;
+      }
+
+      let targetSymbols = docSymbolCache.get(loc.uri);
+      if (targetSymbols === undefined) {
+        try {
+          const targetAbs = fileURLToPath(loc.uri);
+          await this.ensureOpen(targetAbs);
+          const resp = await this.client.request<
+            LspDocumentSymbol[] | null
+          >(
+            "textDocument/documentSymbol",
+            { textDocument: { uri: loc.uri } },
+            this.options.requestTimeoutMs ?? 30_000,
+          );
+          targetSymbols = resp && Array.isArray(resp) ? resp : [];
+        } catch {
+          targetSymbols = [];
+        }
+        docSymbolCache.set(loc.uri, targetSymbols);
+      }
+
+      const enclosing = findEnclosingSymbol(
+        targetSymbols,
+        loc.range.start,
+      );
+      if (!enclosing || seen.has(enclosing.name)) continue;
+      seen.add(enclosing.name);
+
+      if (sourceKind === "interface") {
+        result.usedByTypes.push(enclosing.name);
+      } else {
+        result.implements.push(enclosing.name);
+      }
+    }
+
+    return result;
   }
 
   // -------------------------------------------------------------------------
@@ -433,6 +597,10 @@ export class GoAdapter implements LanguageAdapter {
 
   private symbolId(relPath: string, name: string): SymbolId {
     return `sym:${LANG_CODES.go}:${relPath}:${name}`;
+  }
+
+  private referenceId(relPath: string, line: number): ReferenceId {
+    return `ref:${LANG_CODES.go}:${relPath}:${line}`;
   }
 
   private resolveFile(filePath: string): {
@@ -475,6 +643,67 @@ export function parseSymbolId(
   const match = /^sym:go:([^:]+):(.+)$/.exec(id);
   if (!match) return null;
   return { path: match[1]!, name: match[2]! };
+}
+
+/**
+ * Locate the position of a symbol identified by `name` within the
+ * documentSymbol tree. Handles three naming shapes uniformly:
+ *   - top-level plain names ("Shape", "NewRectangle")
+ *   - receiver-encoded struct-method names ("(*Rectangle).Area",
+ *     "(*Stack[T]).Push") — these are top-level symbols in gopls's
+ *     output, so a direct top-level match works
+ *   - flattened interface-method names ("Shape.Area") — not
+ *     top-level; split on the first dot and look up as parent.child
+ *     within the interface's children array
+ */
+export function findTargetPosition(
+  symbols: LspDocumentSymbol[],
+  name: string,
+): LspPosition | null {
+  for (const s of symbols) {
+    if (s.name === name) return s.selectionRange.start;
+  }
+  const dotIdx = name.indexOf(".");
+  if (dotIdx <= 0) return null;
+  const parentName = name.substring(0, dotIdx);
+  const childName = name.substring(dotIdx + 1);
+  const parent = symbols.find((s) => s.name === parentName);
+  if (!parent || !parent.children) return null;
+  const child = parent.children.find((c) => c.name === childName);
+  if (!child) return null;
+  return child.selectionRange.start;
+}
+
+/**
+ * Walk a documentSymbol tree and return the innermost symbol whose
+ * range contains the given position. Used by getTypeInfo to resolve
+ * each `implementation` result location back to the declaring
+ * symbol's name for the `implements` / `usedByTypes` partition.
+ */
+export function findEnclosingSymbol(
+  symbols: LspDocumentSymbol[],
+  pos: LspPosition,
+): LspDocumentSymbol | null {
+  for (const s of symbols) {
+    if (!positionInRange(pos, s.range)) continue;
+    if (s.children) {
+      for (const child of s.children) {
+        if (positionInRange(pos, child.range)) return child;
+      }
+    }
+    return s;
+  }
+  return null;
+}
+
+function positionInRange(pos: LspPosition, range: LspRange): boolean {
+  const afterStart =
+    pos.line > range.start.line ||
+    (pos.line === range.start.line && pos.character >= range.start.character);
+  const beforeEnd =
+    pos.line < range.end.line ||
+    (pos.line === range.end.line && pos.character <= range.end.character);
+  return afterStart && beforeEnd;
 }
 
 /**

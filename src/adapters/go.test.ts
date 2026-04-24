@@ -70,21 +70,6 @@ describe("GoAdapter — skeleton identity", () => {
   });
 });
 
-describe("GoAdapter — placeholder data methods (pending Commit 5)", () => {
-  it("findReferences throws 'not yet implemented'", async () => {
-    const adapter = new GoAdapter();
-    await expect(
-      adapter.findReferences("sym:go:kinds.go:Foo"),
-    ).rejects.toThrow(/not yet implemented/);
-  });
-
-  it("getTypeInfo throws 'not yet implemented'", async () => {
-    const adapter = new GoAdapter();
-    await expect(
-      adapter.getTypeInfo("sym:go:kinds.go:Foo"),
-    ).rejects.toThrow(/not yet implemented/);
-  });
-});
 
 describe("mapGoSymbolKind (ADR-14 kind mapping)", () => {
   it("maps struct (23) and type-def/alias (5) to 'class'", () => {
@@ -362,5 +347,142 @@ describe("GoAdapter — integration against fixture (gopls v0.21.1+)", () => {
       pathResolve(FIXTURE_ROOT, "does-not-exist.go"),
     );
     expect(diags).toEqual([]);
+  });
+
+  // -------------------------------------------------------------------------
+  // findReferences
+  // -------------------------------------------------------------------------
+
+  it("findReferences returns cross-file hits for NewRectangle", async () => {
+    const refs = await adapter.findReferences(
+      "sym:go:kinds.go:NewRectangle",
+    );
+    expect(refs.length).toBeGreaterThan(0);
+    const consumerHits = refs.filter((r) => r.path === "consumer.go");
+    expect(consumerHits.length).toBeGreaterThan(0);
+    for (const r of refs) {
+      expect(r.id).toMatch(/^ref:go:.+:\d+$/);
+      expect(r.symbolId).toBe("sym:go:kinds.go:NewRectangle");
+      expect(r.line).toBeGreaterThanOrEqual(1);
+    }
+  });
+
+  it("findReferences surfaces cross-package hits (renderer/impl.go)", async () => {
+    // Cross-package resolution was verified in the Step 8 probe (§T1b);
+    // this test confirms the adapter surfaces those cross-package refs.
+    // Shape is referenced in renderer/impl.go via the compile-time
+    // witness `var _ kinds.Shape = (*Circle)(nil)`.
+    const refs = await adapter.findReferences("sym:go:kinds.go:Shape");
+    const rendererHits = refs.filter((r) =>
+      r.path.replace(/\\/g, "/").startsWith("renderer/"),
+    );
+    expect(rendererHits.length).toBeGreaterThan(0);
+  });
+
+  it("findReferences works on flattened interface-method names", async () => {
+    // Shape.Area is an interface method; its position is the child
+    // entry inside Shape. findTargetPosition handles the parent.child
+    // split so findReferences can locate it.
+    const refs = await adapter.findReferences("sym:go:kinds.go:Shape.Area");
+    // May return 0 refs if no code outside the interface declaration
+    // calls through Shape.Area directly — acceptable. The test here is
+    // that the call completes without throwing and returns a
+    // well-shaped array (even if empty).
+    expect(Array.isArray(refs)).toBe(true);
+  });
+
+  it("findReferences returns [] for an unknown symbol", async () => {
+    const refs = await adapter.findReferences(
+      "sym:go:kinds.go:DoesNotExist",
+    );
+    expect(refs).toEqual([]);
+  });
+
+  it("findReferences returns [] for a malformed ID", async () => {
+    const refs = await adapter.findReferences("not:a:real:id");
+    expect(refs).toEqual([]);
+  });
+
+  // -------------------------------------------------------------------------
+  // getTypeInfo — ADR-14 §"implementation direct use"
+  // -------------------------------------------------------------------------
+
+  it("getTypeInfo on an interface returns implementers in usedByTypes", async () => {
+    // Shape's implementers: Renderer (embedder interface) + Rectangle,
+    // Square, ShapeRenderer (concrete structs) + Circle, FancyRenderer
+    // from the renderer subpackage.
+    const info = await adapter.getTypeInfo("sym:go:kinds.go:Shape");
+    expect(info.usedByTypes.length).toBeGreaterThanOrEqual(4);
+    expect(info.usedByTypes).toContain("Rectangle");
+    expect(info.usedByTypes).toContain("Square");
+    expect(info.usedByTypes).toContain("ShapeRenderer");
+    expect(info.usedByTypes).toContain("Renderer");
+    // Interfaces don't populate implements via getTypeInfo — they only
+    // have usedByTypes (down-stream) and extends (embedded interfaces).
+    expect(info.implements).toEqual([]);
+  });
+
+  it("getTypeInfo on an interface with embedding populates extends", async () => {
+    // Renderer embeds Shape — gopls surfaces that as a kind-8 child
+    // whose name equals its detail ("Shape").
+    const info = await adapter.getTypeInfo("sym:go:kinds.go:Renderer");
+    expect(info.extends).toContain("Shape");
+  });
+
+  it("getTypeInfo on a struct returns interfaces in implements", async () => {
+    // Rectangle satisfies Shape but not Renderer (no Render method).
+    const info = await adapter.getTypeInfo("sym:go:kinds.go:Rectangle");
+    expect(info.implements).toContain("Shape");
+    expect(info.implements).not.toContain("Renderer");
+    // Structs don't populate usedByTypes — there's no "struct satisfies
+    // this struct" direction.
+    expect(info.usedByTypes).toEqual([]);
+  });
+
+  it("getTypeInfo on a multi-interface struct returns every interface satisfied", async () => {
+    // ShapeRenderer implements both Shape AND Renderer.
+    const info = await adapter.getTypeInfo(
+      "sym:go:kinds.go:ShapeRenderer",
+    );
+    expect(info.implements).toContain("Shape");
+    expect(info.implements).toContain("Renderer");
+  });
+
+  it("getTypeInfo on a struct with embedding populates extends", async () => {
+    // Square embeds Rectangle; the embedded-field child has
+    // name="Rectangle", detail="Rectangle" — detected as embedding.
+    const info = await adapter.getTypeInfo("sym:go:kinds.go:Square");
+    expect(info.extends).toContain("Rectangle");
+  });
+
+  it("getTypeInfo returns empty shape for a non-type symbol (function)", async () => {
+    const info = await adapter.getTypeInfo(
+      "sym:go:kinds.go:NewRectangle",
+    );
+    expect(info).toEqual({ extends: [], implements: [], usedByTypes: [] });
+  });
+
+  it("getTypeInfo returns empty shape for an unknown symbol", async () => {
+    const info = await adapter.getTypeInfo(
+      "sym:go:kinds.go:DoesNotExist",
+    );
+    expect(info).toEqual({ extends: [], implements: [], usedByTypes: [] });
+  });
+
+  it("getTypeInfo returns empty shape for a flattened interface-method", async () => {
+    // Shape.Area is a method, not a type. getTypeInfo is only
+    // meaningful on types (interfaces + structs).
+    const info = await adapter.getTypeInfo(
+      "sym:go:kinds.go:Shape.Area",
+    );
+    expect(info).toEqual({ extends: [], implements: [], usedByTypes: [] });
+  });
+
+  it("getTypeInfo cross-package: surfaces Circle (renderer/impl.go) as Shape implementer", async () => {
+    // Cross-package implementation was probe-verified (§T1b); this
+    // confirms the adapter partitions cross-package results correctly.
+    const info = await adapter.getTypeInfo("sym:go:kinds.go:Shape");
+    expect(info.usedByTypes).toContain("Circle");
+    expect(info.usedByTypes).toContain("FancyRenderer");
   });
 });
