@@ -2,9 +2,10 @@
 
 **Status:** Active execution plan for v0.2. See `## Revision history`
 (bottom of document) for material scope/plan changes during execution.
-**Last revised:** 2026-04-23 — Step 4 (code) + Step 4b (hono atlas
-re-extraction) shipped. Step 4c (Phase 5 spot-check) queued for
-next session. Steps 1, 2, 3 shipped 2026-04-23.
+**Last revised:** 2026-04-24 — Step 4c shipped (Phase 5 spot-check:
+h4-ca cost ratio 7.3× → 3.93× on refined atlas; thesis survives,
+interpretation A with nuance, v0.2 continues to Step 5). Steps 1,
+2, 3, 4 (code), 4b (hono atlas) shipped 2026-04-23.
 
 **What this document is:** The execution-level plan for v0.2 — step
 order, per-step ship criteria, dependencies, and progress tracking.
@@ -674,6 +675,83 @@ measurement.
 - Ship-criteria verification: [each criterion with evidence]
 ```
 
+### Step 4c shipped — 2026-04-24 (benchmarks commits 7863273, 44d23fd)
+- Scope: Phase 5 spot-check on h4-ca against refined hono atlas
+  (Step 4b artifact). Verify 7.3× efficiency delta persists;
+  apply directional-asymmetry framing to interpretation.
+- Outcome: **Thesis survives; v0.2 continues to Step 5.** h4-ca
+  re-ran at $0.75 vs Phase 5's $0.52 (+44% cost, +67% tool calls,
+  −15% wall clock). ca/alpha cost ratio dropped 7.3× → 3.93× but
+  still a substantial CA win over alpha baseline. The finding
+  matches **interpretation (A) with nuance** framed in the
+  pre-implementation rescope entry — richer atlas enabled deeper
+  investigation, not efficiency regression with no quality gain.
+  Phase 5 analysis preserved as historical record; Step 4c
+  findings documented as a footnote (§9 in
+  `phase-5-reference-run.md`) plus 4 inline pointers.
+- Notable decisions:
+  - h4-alpha NOT re-run. Minimal-baseline agent has no MCP
+    connection and doesn't consume the atlas; Phase 5's
+    h4-alpha measurement stands as unchanged baseline. Saves
+    ~$3 in unnecessary re-measurement. Revised the step plan's
+    original estimate of $0.35 once the alpha-is-atlas-
+    independent observation surfaced during survey.
+  - **Mechanism validation is arguably the primary finding —
+    more than the numerical ratio.** Phase 5's 2 opening `Grep`
+    calls were replaced by Step 4c's 2 `find_by_intent`
+    queries. Exploration relocated from source-code (Bash/Grep)
+    to atlas layer (MCP). Validates the architectural thesis
+    at the mechanism level, which is what future versions
+    (v0.3+ fusion, v0.4 semantic, v0.5 task-shaped) depend on.
+    Numerical efficiency on any specific prompt is downstream
+    of mechanism; mechanism is what generalizes.
+  - Interpretation (A) chosen over (B): answer quality went UP
+    alongside cost (ASCII flow diagram added, specific file:line
+    citations, git-hot observation from atlas layer, richer
+    generic-parameter semantics). "(A) with nuance" because the
+    4 symbols Step 4c walked (`validator`, `ToSchema`, `Client`,
+    `HandlerInterface`) are all top-level type aliases that
+    v0.1 also surfaced — the v0.2 atlas provided *cleaner
+    signatures* (Gaps 3 and 5 fixes) rather than novel symbols.
+    Model elected thoroughness; atlas enabled it.
+  - Directional-asymmetry framing refined: showcase cells
+    (h4) weren't inflated by the gap (original framing stands)
+    AND had their cost suppressed because richer bundles weren't
+    available for deeper investigation (new framing). Phase 5's
+    7.3× and Step 4c's 3.93× are both "CA dominating alpha via
+    intent-first exploration" — different points on the same
+    efficiency/depth curve, not different conclusions.
+  - **Step 13 implication captured for v0.3+:** CA's value scales
+    with atlas richness rather than being a fixed efficiency
+    boost. Step 13 grading methodology should specifically
+    measure answer quality at **matched cost budgets**, not
+    just at matched prompt inputs. A grader comparing "alpha
+    with $N" vs "CA with $N" captures the quality-at-cost curve
+    that single-axis efficiency measurement misses.
+  - Documentation path: footnote (§9) + 4 inline pointers
+    (executive summary bullet 2, §3 header, §5.1 end, §6.1
+    end). Pointers prevent readers who cite specific Phase 5
+    numbers from carrying an overstated ratio forward without
+    context.
+  - n=1 vs n=1 variance caveat captured. Multi-run medians
+    (step 13 scope) needed to decompose run-to-run noise from
+    genuine refined-atlas effect. Step 4c reports directional
+    evidence, not a statistically isolated measurement.
+- Ship-criteria verification:
+  - h4-ca cell re-run against refined atlas: benchmarks commit
+    `7863273`. Artifact committed at
+    `runs/spotchecks/step-4c/hono/h4-validator-typeflow/ca.json`.
+    .gitignore updated to allow `runs/spotchecks/` tree.
+  - Comparison table populated with actual numbers: §9
+    quantitative section of `phase-5-reference-run.md`.
+  - `research/phase-5-reference-run.md` updated — §9 footnote
+    (~180 lines) + 4 inline pointers. Benchmarks commit
+    `44d23fd`.
+  - Explicit check-in decision landed: §9 §Decision subsection
+    reads "Thesis survives. v0.2 execution continues to Step 5
+    per STEP-PLAN-V0.2.md. No pause triggered."
+- Tests: N/A — Step 4c is measurement + analysis, no code.
+
 ### Step 4b shipped — 2026-04-23 (benchmarks repo commit 352b22e)
 - Scope: Re-extract hono atlas against the Step-4-refined
   TypeScriptAdapter. Produces the baseline atlas for Step 4c's
@@ -973,6 +1051,35 @@ affect v0.2-SCOPE.md OR downstream steps' ship criteria land here.*
 ### YYYY-MM-DD (commit SHA): Step N revised — reason.
 Downstream impact: [affected steps].
 ```
+
+### 2026-04-24 (Step 4c outcome): interpretation (A) with nuance — thesis survives.
+The Phase 5 spot-check (h4-ca re-run on refined hono atlas) found
+the CA/alpha cost ratio dropped from 7.3× to 3.93×, with richer
+answer output and a mechanism shift (`Grep` → `find_by_intent`).
+This matches interpretation (A) framed in the pre-implementation
+rescope entry below. Thesis survives; v0.2 continues to Step 5.
+
+**Documentation path: footnote, not revision.**
+`phase-5-reference-run.md` §9 appended (~180 lines covering
+context, metrics, mechanism validation, qualitative comparison,
+interpretation, updated asymmetry framing, v0.3+ implication,
+caveats, decision). Four inline pointers added (executive summary
+bullet 2, §3 header, §5.1 end, §6.1 end) to surface the
+re-measurement caveat to readers citing specific Phase 5 numbers.
+Phase 5 analysis preserved as historical record.
+
+**One amendment to the original framing:** the directional-
+asymmetry claim "showcase cells weren't inflated" still stands,
+but also: **showcase cells had their cost suppressed** because
+richer bundles weren't available for deeper investigation.
+Phase 5's 7.3× and Step 4c's 3.93× are both "CA dominating alpha
+via intent-first exploration" at different points on the same
+efficiency/depth curve, not different conclusions.
+
+**Additional insight for v0.3+ planning:** CA's value scales with
+atlas richness. Step 13 grading methodology should specifically
+measure answer quality at matched cost budgets, not just matched
+inputs. Captured in `phase-5-reference-run.md` §9 §Implication.
 
 ### 2026-04-23 (Step 4 rescope pre-implementation): TS-parity check reframed, scope expanded, Steps 4b/4c added.
 
