@@ -2,9 +2,9 @@
 
 **Status:** Active execution plan for v0.2. See `## Revision history`
 (bottom of document) for material scope/plan changes during execution.
-**Last revised:** 2026-04-23 — Step 4 rescoped pre-implementation
-(5-gap TS-parity finding + Steps 4b/4c added). See
-`## Revision history`. Steps 1, 2, 3 shipped 2026-04-23.
+**Last revised:** 2026-04-23 — Step 4 (code) + Step 4b (hono atlas
+re-extraction) shipped. Step 4c (Phase 5 spot-check) queued for
+next session. Steps 1, 2, 3 shipped 2026-04-23.
 
 **What this document is:** The execution-level plan for v0.2 — step
 order, per-step ship criteria, dependencies, and progress tracking.
@@ -673,6 +673,146 @@ measurement.
 - Notable decisions: [if any surfaced during execution]
 - Ship-criteria verification: [each criterion with evidence]
 ```
+
+### Step 4b shipped — 2026-04-23 (benchmarks repo commit 352b22e)
+- Scope: Re-extract hono atlas against the Step-4-refined
+  TypeScriptAdapter. Produces the baseline atlas for Step 4c's
+  Phase 5 spot-check.
+- Outcome: Full `--full` re-extraction ran against hono's pinned
+  commit `cf2d2b7`. Symbol count shifted **1923 → 2154** (+12%,
+  +231 symbols). LSP inventory pre-filter 2335 vs v0.1's 1923
+  (+21%). Claims essentially unchanged (80 → 78 — within
+  extraction noise on same 5 ADRs). Wall clock 74s; cost $1.35
+  across 5 API calls. Benchmarks-repo commit `352b22e` landed
+  with an abbreviated message (vim editing issue during commit
+  authorship) — rich context lives in this progress log entry and
+  the Step 4 fix commits it references.
+- Notable decisions:
+  - +12% symbol delta is smaller than the initial 1.5–2× estimate.
+    The estimate was anchored on the Phase C spot-check's +40%
+    scaling for `jsx/base.ts` (pathology-heavy file). Most hono
+    files aren't pathology-heavy — the bulk of hono's architectural
+    surface is regular exports that v0.1 already handled correctly.
+    +231 symbols is real evidence the fixes land in production,
+    not noise. The sub-estimate result does not indicate fixes
+    failing to land.
+  - **First live validation of Step 2 cost tracking in production.**
+    `cost_usd=1.3487`, `input_tokens=16647`, `output_tokens=14653`
+    all surfaced correctly in the key=value stdout summary. Step 2
+    works as designed at real workload scale.
+  - **First live validation of Step 3 `--verbose` in production.**
+    100 unresolved tokens emitted across 5 files, correctly
+    attributed to specific claims with severity annotations
+    (hard / soft / context). Most unresolveds are path-prefixed
+    references in claim text (e.g., `src/middleware`, `hono/tiny`,
+    `@hono/node-server`) rather than symbol-name misses — expected
+    behavior for ADR prose that names directories / package paths
+    alongside symbol identifiers; not an adapter regression.
+  - Observation (not acted on): `atlases/httpx/` appears untracked
+    in benchmarks-repo `git status`. Pre-existing from Phase 5
+    work, not introduced by Step 4b. Flagged for future cleanup;
+    outside Step 4 scope.
+- Ship-criteria verification:
+  - hono atlas re-extracted with refined TypeScriptAdapter:
+    benchmarks-repo commit `352b22e`.
+  - Atlas provenance: contextatlas commit `79228b1` (Step 4 code
+    shipped) + hono pinned commit
+    `cf2d2b7edcf07adef2db7614557f4d7f9e2be7ba`.
+  - Atlas diff reviewed; changes align with Step 4 refinements
+    (class methods, namespace children, corrected signatures).
+    No unexplained kind changes.
+  - Cost-tracking output captured via Step 2 capability:
+    `cost_usd=1.3487`, `input_tokens=16647`, `output_tokens=14653`.
+  - Symbol count delta documented: 1923 → 2154 (+12%).
+- Tests: N/A — Step 4b is an artifact-production step, not code.
+  Step 4's 583 passing repo-wide tests continue to apply.
+
+### Step 4 shipped — 2026-04-23 (commits 16fb9cc, 8d2ef94, 36b2c87, 7646243, 1aca8bf, 79228b1)
+- Scope: TypeScriptAdapter parity check (Stream A #4). Reframed
+  from the original scope doc's "Python-adapter dogfood query set"
+  language to "mirror Python's integration-test coverage density
+  on TS side" — see `## Revision history` for the rescope entry
+  and the 5-gap finding that triggered it.
+- Outcome: Six commits. Phase C spot-check against three hono
+  files (`jsx/base.ts`, `hono-base.ts`, `http-exception.ts`)
+  surfaced five material gaps: class members missing (Gap 1),
+  namespace children missing (Gap 2), complex class signature
+  truncation via generic `= {}` default (Gap 3), arrow-function
+  signatures empty (Gap 4), type-alias signature bleed under ASI
+  convention (Gap 5). Four of five fixed in v0.2; Gap 4 deferred
+  to v0.3 with rationale. Parity fixture + integration tests
+  added per Step 1 pattern — tests protect against regression
+  even for the one behavior that was already correct (Gap 5
+  corollary on multi-line object-shape type aliases).
+- Notable decisions:
+  - Scope expanded pre-implementation (~1 day → 2–3 days) when
+    Phase C surfaced 5 gaps. Revision history entry documents the
+    rescope and the directional-asymmetry framing the user
+    established for interpreting Step 4c's outcome.
+  - Gap 4 (arrow-function signatures) deferred to v0.3 — not
+    correctness (surfaced symbol is correctly typed as variable;
+    just lacks signature detail); requires a distinct
+    signature-extraction path; better revisited alongside v0.3
+    claim-source enrichment. Rationale captured in
+    `docs/ts-adapter-parity-check.md` §Deferred-to-v0.3.
+  - Gap 3 fixed via character-level generic-depth tracking in
+    `extractDeclarationHeader`. 14 LOC, well under the 30-LOC
+    timebox threshold the user set for Gap 3. Keeps `{` inside
+    `<… = {}>` from triggering premature termination.
+  - Gap 5 fix exported a new helper `looksLikeNewTopLevelDeclaration`
+    so the boundary heuristic is unit-testable in isolation.
+    Column-0 anchor distinguishes new declarations from indented
+    continuation lines inside multi-line object-shape or union
+    type-alias bodies.
+  - Known limitation documented (not a gap): TS fields typed as
+    function (hono's `get!: HandlerInterface<…>` pattern) don't
+    surface as methods. Consistent with Python's drop-instance-vars
+    policy — no Python analog exists for function-typed fields.
+    Hono's `route` method (actual method declaration) surfaces
+    correctly; the HTTP verb properties stay as fields. Future
+    fix surfaces documented in parity doc if evidence warrants.
+- Ship-criteria verification:
+  - Parity matrix doc committed at
+    `docs/ts-adapter-parity-check.md` with Phase C findings filled
+    in: commit `79228b1`.
+  - `test/fixtures/typescript/parity.ts` fixture committed:
+    commit `8d2ef94`.
+  - TS parity integration tests in `src/adapters/typescript.test.ts`
+    under `"parity (v0.2 Stream A #4)"` describe block: 5 tests,
+    all pass.
+  - Gap 1 (class/interface children iteration): passes via
+    "class members are surfaced" + "interface members are surfaced"
+    tests. Production verification on hono: `jsx/base.ts` went
+    25→35 symbols; `HTTPException.getResponse` now surfaces with
+    signature `getResponse(): Response`; `Hono.route` method
+    surfaces.
+  - Gap 2 (namespace children): passes via "namespace children
+    are surfaced" test. Production verification: JSX namespace's
+    inner types (`Element`, `ElementChildrenAttribute`,
+    `IntrinsicElements`, `IntrinsicAttributes`) all surface
+    correctly.
+  - Gap 5 (type-alias signature bleed): passes via "type-alias
+    signature does not bleed..." test + 3 new
+    `extractTypeAliasHeader` unit tests covering ASI cases +
+    28 `looksLikeNewTopLevelDeclaration` unit tests. Production
+    verification: `Props` signature on `jsx/base.ts` now clean
+    `type Props = Record<string, any>`.
+  - Gap 3 (generic-default truncation): passes via "complex
+    generic class signature with '= {}' default" test.
+    Production verification: `Hono` class signature fully
+    populated with all four type parameters including
+    `S extends Schema = {}`.
+  - Gap 4 deferral: passes via
+    `docs/ts-adapter-parity-check.md` §Deferred-to-v0.3 with
+    explicit rationale.
+  - Conformance suite continues passing unchanged: 68/68
+    pyright + 47/47 typescript.
+  - No regression in either adapter's test suite: 583 passing
+    repo-wide (+37 new since Step 3 close — 5 parity integration
+    tests, 3 ASI-convention unit tests, 28
+    `looksLikeNewTopLevelDeclaration` unit tests, 1
+    complex-class-signature test).
+- Tests: 583 passing repo-wide (was 546 at Step 3 close; +37 new).
 
 ### Step 3 shipped — 2026-04-23 (commits 9cd982f, 893a53b)
 - Scope: `--verbose` flag on `contextatlas index` that lists
