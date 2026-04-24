@@ -2,14 +2,16 @@
 
 **Status:** Active execution plan for v0.2. See `## Revision history`
 (bottom of document) for material scope/plan changes during execution.
-**Last revised:** 2026-04-24 — Step 7 shipped (MCP disclaimer
-investigation: Path (a) — root cause was harness missing
-`--allowedTools` on CLI spawn, not an upstream Claude Code
-quirk; 100% of MCP calls in beta-ca cells were blocked across
-both Phase 5 and Phase 6 runs; fix landed with regression
-tests; all 11 affected cells re-run; Phase 5 and Phase 6
-synthesis docs amended). Stream A complete. Step 8+ (Go track)
-queue. Steps 1–6, 4b, 4c, 7 shipped 2026-04-23/24.
+**Last revised:** 2026-04-24 — Step 8 shipped (Go LSP probe +
+ADR-14: gopls v0.21.1 probed against Go pathology fixture +
+cobra sanity; six adapter-required LSP methods all work; two
+gopls-specific runtime prerequisites documented — `go` on PATH,
+`workspace/configuration` length-matched array; struct-method
+receiver-encoded naming + interface-method flattening +
+cross-package implementation lock-downs for Step 9). ADR-03
+amendment NOT required. Stream A complete. Steps 1–7, 4b, 4c
+shipped 2026-04-23/24; Step 8 shipped 2026-04-24. Step 9
+(GoAdapter implementation) queues next.
 
 **What this document is:** The execution-level plan for v0.2 — step
 order, per-step ship criteria, dependencies, and progress tracking.
@@ -487,14 +489,24 @@ LSP choice, capturing probe findings. Per
 [v0.2-SCOPE.md Stream B #1–2](v0.2-SCOPE.md).
 
 **Ship criteria.**
-- [ ] Probe fixture committed (small Go project + probe script)
+- [x] Probe fixture committed (small Go project + probe script)
   under `docs/adr/` or `scripts/` as appropriate.
-- [ ] Probe findings document committed (empirical capture,
+      (`scripts/gopls-probe.ts` + `test/fixtures/go/` with
+      cross-package subpackage at `renderer/impl.go`. Commit A:
+      `1112240`.)
+- [x] Probe findings document committed (empirical capture,
   pre-ADR-N, mirroring `pyright-probe-findings.md`).
-- [ ] ADR-N landed documenting gopls choice, LSP method coverage,
+      (`docs/adr/gopls-probe-findings.md` — 2300+ LOC of raw
+      capture across T0/T1/T1b/T2/T3/T3b/T4/T7 + typeDefinition
+      + cobra sanity, followed by 12 Key Observations + decision
+      block. Commit A: `1112240`.)
+- [x] ADR-N landed documenting gopls choice, LSP method coverage,
   and any gopls-specific quirks the adapter must work around.
-- [ ] Probe confirms ADR-03 interface fits without fundamental
+      (`docs/adr/ADR-14-go-adapter-gopls.md`. Commit B: this commit.)
+- [x] Probe confirms ADR-03 interface fits without fundamental
   incompatibility.
+      (Decision: path (b) — workarounds required, no architectural
+      gap. ADR-03 amendment NOT required.)
 
 **Key decisions.**
 - Probe scope: minimum gopls methods required to validate
@@ -506,6 +518,17 @@ LSP choice, capturing probe findings. Per
   probe reveals questions.
 - If incompatibility found: trigger rescope per v0.2-SCOPE.md
   rescope conditions. Do not proceed to step 9.
+- **Gopls version pin:** v0.21.1 (Feb 2026 stable). Pin must
+  track Go toolchain version closely because of gopls's "only
+  latest Go" build-support policy — an earlier v0.16.2 proposal
+  would have been Go-1.26-incompatible. Documented in ADR-14.
+- **Runtime prerequisites discovered during probe:** two
+  gopls-specific requirements beyond "vanilla LSP" — (1) `go`
+  binary on PATH (gopls spawns it as a subprocess for module
+  loading; without it every LSP request returns "no views"),
+  (2) `workspace/configuration` handler must return a
+  length-matched array (pyright tolerates null; gopls does not).
+  Both documented in ADR-14 as adapter responsibilities.
 
 **Depends on.** Parallelizable with step 4 — probe is read-only
 and cannot destabilize Stream A. Step 9 (implementation) still
@@ -513,7 +536,7 @@ gates on Stream A complete, but step 8 does not. Practical
 earliest start: as soon as steps 1–3 land a stable PyrightAdapter
 baseline, though even that is not a hard technical dependency.
 **Unblocks.** Step 9.
-**References.** ADR-03, ADR-13, v0.2-SCOPE.md Stream B #1–2.
+**References.** ADR-03, ADR-13, ADR-14, v0.2-SCOPE.md Stream B #1–2.
 
 ---
 
@@ -712,6 +735,94 @@ measurement.
 - Notable decisions: [if any surfaced during execution]
 - Ship-criteria verification: [each criterion with evidence]
 ```
+
+### Step 8 shipped — 2026-04-24 (main-repo commits 1112240, <this commit>)
+- Scope: Empirical probe of `gopls` capabilities following
+  ADR-13's pattern. Land ADR-14 documenting gopls as the Go
+  adapter's LSP choice. Per v0.2-SCOPE.md Stream B #1–2.
+- Outcome: **Path (b) — workarounds required, no architectural
+  gap.** Six adapter-required LSP methods (documentSymbol,
+  hover, definition, references, typeDefinition, implementation)
+  all work cleanly against gopls v0.21.1. Two non-obvious
+  runtime prerequisites surfaced during probe iteration and are
+  documented in ADR-14 as adapter responsibilities. Twelve
+  LSP-behavior findings landed in the probe-findings doc and
+  each has an ADR-14 decision pointer.
+- Notable decisions:
+  - **Gopls v0.21.1 pinned** — must track Go toolchain version
+    closely because of gopls's "only latest Go" build-support
+    policy. An earlier v0.16.2 proposal would have been
+    Go-1.26-incompatible (pre-probe-iteration); corrected before
+    the probe ran. Documented in ADR-14 + probe findings.
+  - **Two runtime prerequisites surfaced that pyright did not
+    have:** (1) gopls spawns `go` as a subprocess for module
+    loading — requires `go` on PATH in the gopls process env or
+    every LSP request returns `"no views"`. (2)
+    `workspace/configuration` handler must return a
+    length-matched array (pyright tolerates `null`; gopls does
+    not, skipping workspace activation). Both documented as
+    ADR-14 adapter responsibilities.
+  - **Struct methods preserved with receiver encoding.** Gopls
+    emits struct methods as top-level symbols with names like
+    `(*Rectangle).Area` and `(Rectangle).Perimeter`. ADR-14
+    preserves this verbatim in SymbolId (no stripping to bare
+    method names). The `*` vs bare prefix carries
+    pointer-vs-value-receiver semantic information.
+  - **Interface methods flattened to top-level with `parent_id`
+    back-pointer.** Gopls's native shape is asymmetric
+    (struct-method flat, interface-method nested). ADR-14
+    flattens interface-methods to match struct-method shape but
+    preserves the interface → method relationship via a
+    `parent_id` field. Drop-the-parent alternative was explicitly
+    rejected — it would be strictly worse than the native shape.
+  - **`getTypeInfo` uses `implementation` directly.** No
+    inventory-walk fallback (pyright needed one for
+    Protocol/ABC). Gopls's `implementation` endpoint works
+    symmetrically and cross-package.
+  - **Build-tag dedup: pipeline-layer responsibility.** Adapter
+    surfaces symbols from all `.go` files regardless of build
+    constraint ("surface everything gopls sees"). Pipeline layer
+    applies language-specific dedup semantics. Explicit layer
+    boundary in ADR-14.
+  - **ADR-03 amendment NOT required** — the plugin interface
+    fits gopls as-is, same way it fit pyright. ADR-14 is
+    additive, mirroring ADR-13's pattern.
+  - **Cross-package implementation verified** — T1b subtest
+    added after initial probe scope review. Confirmed gopls
+    indexes implementers across package boundaries in a single
+    workspace view (a prerequisite for cobra's multi-file
+    architecture at Step 11).
+- Ship-criteria verification:
+  - All 4 ship criteria [x]. Probe scaffold, fixtures, raw
+    findings, and Phase 4 interpretation in commit `1112240`
+    (main repo). ADR-14 + STEP-PLAN progress in this commit.
+  - Raw capture at
+    `docs/adr/gopls-probe-findings.md` — 2300+ LOC (larger than
+    pyright's 1861 because Go's fixture covers more pathology +
+    cobra sanity + cross-package T1b).
+  - ADR-14 at `docs/adr/ADR-14-go-adapter-gopls.md` — 445 LOC
+    (comparable to ADR-13's 465). Target was 250–300 but Go's
+    quirk surface (infrastructure prereqs, interface flattening,
+    embedded types, iota, build tags, receiver semantics) is
+    dense enough that compression would lose signal.
+- Tests: N/A for Step 8. Probe script is throwaway scaffolding;
+  its output (findings doc + ADR-14) is what carries forward.
+  Full test suite unchanged: 583 main-repo tests + 192 benchmarks
+  tests from prior steps all green.
+- Next steps:
+  - **Step 9 (GoAdapter implementation) unblocked.** ADR-14
+    provides the empirical grounding; adapter budget estimate
+    700–1000 LOC per ADR-14 §Consequences (smaller than
+    `pyright.ts`'s 1247 because no Protocol/ABC fallback logic
+    and no inventory-walk for `getTypeInfo`).
+  - **Step 10 (Go ADR authoring for cobra):** cobra scouting
+    previously confirmed 8 substantive ADR candidates;
+    Step 10 writes them before the Step 11 reference run.
+  - **Step 11 (Go reference run):** cobra-specific. Budget
+    ceiling $14–16 per Phase 6 calibration. Pre-run
+    requirements now formalized in Step 11 body:
+    `powercfg` (hibernation prevention, from Step 6) +
+    MCP preflight check (from Step 7).
 
 ### Step 7 shipped — 2026-04-24 (benchmarks commits b03b633, c5b9486, 0d79317, 14e264d, 92b3491)
 - Scope: Investigate Claude Code CLI's permission-disclaimer
