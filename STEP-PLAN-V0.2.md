@@ -2,12 +2,13 @@
 
 **Status:** Active execution plan for v0.2. See `## Revision history`
 (bottom of document) for material scope/plan changes during execution.
-**Last revised:** 2026-04-24 — Step 5 shipped (httpx atlas
-first-time-committed; extraction metrics matched v0.1 baseline
-exactly, confirming Step 1's zero-fix verification in production).
-Stream A deliverables + httpx cross-repo artifact complete.
-Step 6 (httpx reference run) queues. Steps 1, 2, 3, 4 (code), 4b
-(hono atlas), 4c (Phase 5 spot-check) shipped 2026-04-23/24.
+**Last revised:** 2026-04-24 — Step 6 shipped (httpx reference
+run: cross-repo thesis replicates on Python; 3 of 4 win-bucket
+wins; p4 finding sharpens v0.3 scope; $8.36 cost / ~15 min
+compute; hibernation gotcha surfaced + documented). Stream A
+deliverables + httpx cross-repo validation complete. Step 7
+(MCP investigation, parallelizable), Step 8+ (Go track) queue.
+Steps 1–5, 4b, 4c shipped 2026-04-23/24.
 
 **What this document is:** The execution-level plan for v0.2 — step
 order, per-step ship criteria, dependencies, and progress tracking.
@@ -606,6 +607,12 @@ efficiency pattern replicates cross-language. Per
 - Whether the MVP Go reference run results are strong enough to
   count as Stream B success, or whether a broader benchmark is
   needed. Default: MVP-scale sufficient for v0.2; broader is v0.3+.
+- **Pre-run operational requirement (from Step 6):** apply
+  `powercfg -change -standby-timeout-ac 0` and
+  `-hibernate-timeout-ac 0` before launching the matrix; restore
+  post-run. Prevents hibernation-during-matrix ambiguity
+  documented at
+  `../ContextAtlas-benchmarks/research/reference-run-hibernation-gotcha.md`.
 
 **Depends on.** Steps 9, 10.
 **Unblocks.** Step 12.
@@ -676,6 +683,115 @@ measurement.
 - Notable decisions: [if any surfaced during execution]
 - Ship-criteria verification: [each criterion with evidence]
 ```
+
+### Step 6 shipped — 2026-04-24 (benchmarks commits 0e6a932, 40682d6, 868e7f8, b04c8ca, 831a0ca)
+- Scope: Execute Phase-5-style reference run protocol on httpx
+  (4 conditions × 6 prompts = 24 cells). Commit artifacts.
+  Write synthesis note comparing hono and httpx efficiency
+  patterns. Per v0.2-SCOPE.md Stream B #8–10.
+- Outcome: **Cross-repo thesis validation: replicates on
+  Python.** Matrix ran clean (24/24 cells, 0 errors, 1 retry)
+  at $8.36 cost (~50% under $13–16 projection) and ~15 min
+  compute. Win-bucket pattern held on 3 of 4 cells (p1 −75%,
+  p2 −25%, p3 −38%); p4-stream-lifecycle was the exception,
+  surfacing a claim-attribution + ranking precision finding
+  that sharpens v0.3+ scope. Tie/trick buckets behaved per
+  RUBRIC. Cross-harness correctness differential discovered
+  on p6-beta-ca (fills the Phase 5 unmeasured cell): beta-ca
+  6 calls + correct answer vs beta 11 calls + partially-wrong
+  answer due to atlas-artifact-spelunking in benchmark repo
+  tree.
+- Notable decisions:
+  - **p4 finding sharpens v0.3 scope beyond "Stream C"
+    (docstring/README mining).** The atlas has 17 claims from
+    ADR-05 directly answering p4's prompt, but
+    claim-attribution inheritance + deterministic per-symbol
+    ranking surface an off-target claim first. More claim
+    sources won't fix this; needs attribution precision +
+    query-aware ranking. Three candidate fixes documented in
+    `atlas-claim-attribution-ranking.md` (benchmarks commit
+    `868e7f8`).
+  - **p6 cross-harness correctness differential is genuinely
+    new evidence.** Phase 5's beta-ca story was
+    efficiency-only (cheaper than beta); Step 6 shows CA
+    tools deliver *correctness* on the same cell where beta,
+    going atlas-spelunking, answered the wrong question by
+    accident. Beta's baseline is inflated by
+    atlas-artifact-discoverability (§8 in synthesis) — noted
+    as methodology caveat — but the correctness differential
+    stands.
+  - **Cost calibration across two repos:** Python ~50% under
+    projection vs hono at $14 ceiling. Step 11 ceiling
+    proposed $14–16 (midway between data points); don't
+    tighten just because Go is structurally simpler.
+  - **Compute calibration:** 0.40 min/file hono vs 0.65
+    min/file httpx. "Mostly linear with some constant
+    overhead" interpretation (orchestrator baseline exists
+    but doesn't dominate). Useful for Step 11 time projection.
+  - **Hibernation methodology gotcha.** Host hibernated
+    mid-matrix; orchestrator survived and finalized p6 on
+    resume. Initial wall-clock read (70 min) conflated
+    compute with user-absent time — real compute ~15 min for
+    p1–p5. Filed at `reference-run-hibernation-gotcha.md`
+    (benchmarks commit `831a0ca`) with detection heuristic +
+    `powercfg` prevention. Step 11 execution should apply
+    the pre-run `powercfg` commands (now in Step 11 body).
+  - **Four v0.3+ backlog items now filed from v0.2 execution:**
+    budget-prompt-enhancement (Step 2),
+    atlas-contextatlas-commit-sha-gap (Step 5),
+    atlas-claim-attribution-ranking (Step 6 — most
+    substantive), reference-run-hibernation-gotcha (Step 6).
+    Pattern: execution-surfaced observations captured where
+    discovered rather than batched at v0.3 planning time.
+- Ship-criteria verification:
+  - Budget ceiling pre-set: $18 (vs ~$15 projection per
+    v0.2-SCOPE.md cost envelope). Actual $8.36, no halt.
+  - `runs/reference/httpx/` populated: 24 per-cell artifacts
+    + `run-manifest.json` + `summary.md`. Benchmarks commit
+    `0e6a932`.
+  - Synthesis note committed at
+    `research/phase-6-httpx-reference-run.md`. Original commit
+    `40682d6`; amended with compute-time corrections at
+    `b04c8ca`.
+  - Synthesis includes per-prompt efficiency table,
+    win/tie/trick bucket replication analysis vs hono,
+    caveats, three investigation subsections, cost + compute
+    envelope comparison, v0.3+ implications. All required
+    elements present.
+  - v0.2-SCOPE.md Success Criterion 3 satisfied: "httpx
+    reference run complete with Phase-5-comparable data
+    shape" — confirmed via `runs/reference/httpx/` structure
+    matching `runs/reference/hono/`.
+- Tests: N/A — Step 6 is measurement + analysis, no code.
+  Step 4's 583 main-repo tests + 187 benchmarks-repo tests
+  continue to apply.
+- Next steps:
+  - **Stream A complete + httpx cross-repo artifact shipped.**
+    Remaining Stream B work: Step 7 (MCP disclaimer
+    investigation — parallelizable), Step 8 (Go LSP probe +
+    ADR), Steps 9–11 (Go adapter + benchmark + reference
+    run), Step 12 (v0.2 ship gate).
+  - **Step 11 calibration data (cobra):** 19 source files
+    (`.go`, non-test), 17 test files, 36 total `.go` files,
+    66 total non-`.git` files. At httpx's calibrated 0.65
+    min/file, cobra matrix compute projects ~12–15 min.
+    Budget ceiling recommendation: $14–16 per existing Step
+    11 calibration — don't tighten just because repo is
+    small; Python came in ~50% under projection but Go
+    could surprise in either direction.
+  - **Step 8 probe consideration:** Original cobra-over-gin
+    choice (v0.2-SCOPE.md training-data asymmetry reasoning)
+    assumed sufficient architectural density. 19 source
+    files is tight. Scope-doc fallback to gin if probe
+    surfaces "<6 ADR-worthy decisions" remains active.
+    Step 8 probe should explicitly answer: does cobra's
+    architectural surface support 6+ meaningful ADRs before
+    Step 10 authoring commits?
+  - **Step 11 execution reminder:** apply
+    `powercfg -change -standby-timeout-ac 0` and
+    `-hibernate-timeout-ac 0` before launching the matrix;
+    restore post-run. Per
+    `reference-run-hibernation-gotcha.md` prevention.
 
 ### Step 5 shipped — 2026-04-24 (benchmarks commits 93ef22a, ac71be9)
 - Scope: Re-extract httpx atlas against refined PyrightAdapter
