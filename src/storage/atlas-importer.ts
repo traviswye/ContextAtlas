@@ -96,7 +96,8 @@ export function importAtlas(db: DatabaseInstance, atlas: AtlasFileV1): void {
       setSourceSha(db, path, sha);
     }
 
-    // symbols
+    // symbols — parent_id is atlas v1.2+; 1.0/1.1 entries omit it
+    // and import cleanly with parentId undefined.
     const symbols: AtlasSymbol[] = atlas.symbols.map((entry) => ({
       id: entry.id,
       name: entry.name,
@@ -105,6 +106,7 @@ export function importAtlas(db: DatabaseInstance, atlas: AtlasFileV1): void {
       line: entry.line,
       signature: entry.signature,
       language: inferLanguageFromId(entry.id),
+      parentId: entry.parent_id,
       fileSha: entry.file_sha,
     }));
     upsertSymbols(db, symbols);

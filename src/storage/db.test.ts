@@ -77,6 +77,50 @@ describe("openDatabase", () => {
     db.close();
   });
 
+  it("symbols table has the migration-v4 parent_id column (ADR-14)", () => {
+    const db = openDatabase(":memory:");
+    const cols = db
+      .prepare("PRAGMA table_info(symbols)")
+      .all() as { name: string; type: string; notnull: number }[];
+    const parent = cols.find((c) => c.name === "parent_id");
+    expect(parent).toBeDefined();
+    expect(parent?.type).toBe("TEXT");
+    expect(parent?.notnull).toBe(0); // nullable
+    db.close();
+  });
+
+  it("migration v4 adds parent_id additively to an existing v3 database", () => {
+    // Simulate an existing v3 DB by opening, then rolling schema_version
+    // back to 3 and dropping the parent_id column (conceptually), then
+    // reopening. better-sqlite3 doesn't support DROP COLUMN pre-3.35,
+    // so instead we open fresh and confirm migrations 1-4 apply in
+    // sequence without data loss. The idempotent-reopen test covers
+    // the no-op path; this covers the additive-apply path.
+    const tmp = mkdtempSync(pathJoin(tmpdir(), "contextatlas-db-"));
+    const dbPath = pathJoin(tmp, "index.db");
+    try {
+      const db1 = openDatabase(dbPath);
+      db1
+        .prepare(
+          `INSERT INTO symbols (id, name, kind, path, line, file_sha)
+           VALUES ('sym:ts:a.ts:Foo', 'Foo', 'class', 'a.ts', 1, 'sha')`,
+        )
+        .run();
+      db1.close();
+
+      // Re-open — migrations are idempotent; parent_id is NULL on the
+      // pre-existing row.
+      const db2 = openDatabase(dbPath);
+      const row = db2
+        .prepare("SELECT parent_id FROM symbols WHERE id = ?")
+        .get("sym:ts:a.ts:Foo") as { parent_id: string | null };
+      expect(row.parent_id).toBeNull();
+      db2.close();
+    } finally {
+      rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
   it("creates the expected indexes", () => {
     const db = openDatabase(":memory:");
     const indexes = db

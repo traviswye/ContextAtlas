@@ -107,17 +107,25 @@ export function exportAtlas(
 
     const symbols: AtlasSymbolEntry[] = listAllSymbols(db)
       .map((s): AtlasSymbolEntry => {
-        const entry: AtlasSymbolEntry = {
-          id: s.id,
-          name: s.name,
-          kind: s.kind,
-          path: s.path,
-          line: s.line,
-          file_sha: s.fileSha ?? "",
-        };
-        // Insert signature in its canonical position when present.
-        // Canonical key order for symbols: id, name, kind, path, line, signature, file_sha.
-        if (hasValue(s.signature)) {
+        // Canonical key order for symbols:
+        //   id, name, kind, path, line, signature?, parent_id?, file_sha.
+        // Rebuild the literal in canonical order whenever an optional
+        // key is present so serialization is deterministic.
+        const hasSig = hasValue(s.signature);
+        const hasParent = hasValue(s.parentId);
+        if (hasSig && hasParent) {
+          return {
+            id: s.id,
+            name: s.name,
+            kind: s.kind,
+            path: s.path,
+            line: s.line,
+            signature: s.signature,
+            parent_id: s.parentId,
+            file_sha: s.fileSha ?? "",
+          };
+        }
+        if (hasSig) {
           return {
             id: s.id,
             name: s.name,
@@ -128,7 +136,25 @@ export function exportAtlas(
             file_sha: s.fileSha ?? "",
           };
         }
-        return entry;
+        if (hasParent) {
+          return {
+            id: s.id,
+            name: s.name,
+            kind: s.kind,
+            path: s.path,
+            line: s.line,
+            parent_id: s.parentId,
+            file_sha: s.fileSha ?? "",
+          };
+        }
+        return {
+          id: s.id,
+          name: s.name,
+          kind: s.kind,
+          path: s.path,
+          line: s.line,
+          file_sha: s.fileSha ?? "",
+        };
       })
       .sort((a, b) => compareStrings(a.id, b.id));
 

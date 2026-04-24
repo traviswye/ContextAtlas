@@ -143,6 +143,20 @@ const MIGRATIONS: Migration[] = [
       `);
     },
   },
+  {
+    // ADR-14 §Decision 4: parent_id on symbols preserves the
+    // interface → method relationship when the Go adapter flattens
+    // interface methods from documentSymbol children to top-level
+    // Symbol records. Additive column, nullable — existing rows
+    // read back with parent_id NULL → undefined. Pattern precedent:
+    // ADR-11's atlas schema 1.0 → 1.1 bump for git signals.
+    version: 4,
+    apply(db) {
+      db.exec(`
+        ALTER TABLE symbols ADD COLUMN parent_id TEXT;
+      `);
+    },
+  },
 ];
 
 export const LATEST_SCHEMA_VERSION = MIGRATIONS.reduce(

@@ -133,6 +133,126 @@ describe("exportAtlas", () => {
     expect("excerpt" in atlas.claims[0]!).toBe(false);
   });
 
+  it("emits parent_id in canonical position between signature and file_sha (ADR-14 v1.2)", () => {
+    upsertSymbols(db, [
+      {
+        id: "sym:ts:src/a.ts:Shape.Area",
+        name: "Shape.Area",
+        kind: "method",
+        path: "src/a.ts",
+        line: 10,
+        language: "typescript",
+        fileSha: "sha",
+        signature: "Area(): number",
+        parentId: "sym:ts:src/a.ts:Shape",
+      },
+    ]);
+    const atlas = exportAtlas(db, {
+      generatedAt: "t",
+      contextatlasVersion: "v",
+      extractionModel: "m",
+    });
+    const entry = atlas.symbols[0]!;
+    expect(Object.keys(entry)).toEqual([
+      "id",
+      "name",
+      "kind",
+      "path",
+      "line",
+      "signature",
+      "parent_id",
+      "file_sha",
+    ]);
+    expect(entry.parent_id).toBe("sym:ts:src/a.ts:Shape");
+  });
+
+  it("omits parent_id when absent; canonical order still holds without it", () => {
+    upsertSymbols(db, [
+      {
+        id: "sym:ts:src/a.ts:Foo",
+        name: "Foo",
+        kind: "class",
+        path: "src/a.ts",
+        line: 1,
+        language: "typescript",
+        fileSha: "sha",
+        signature: "class Foo",
+        // no parentId
+      },
+      {
+        id: "sym:ts:src/a.ts:Bare",
+        name: "Bare",
+        kind: "class",
+        path: "src/a.ts",
+        line: 2,
+        language: "typescript",
+        fileSha: "sha",
+        // no signature, no parentId
+      },
+    ]);
+    const atlas = exportAtlas(db, {
+      generatedAt: "t",
+      contextatlasVersion: "v",
+      extractionModel: "m",
+    });
+    const withSig = atlas.symbols.find((s) => s.id.endsWith(":Foo"))!;
+    const bare = atlas.symbols.find((s) => s.id.endsWith(":Bare"))!;
+    expect("parent_id" in withSig).toBe(false);
+    expect("parent_id" in bare).toBe(false);
+    expect(Object.keys(withSig)).toEqual([
+      "id",
+      "name",
+      "kind",
+      "path",
+      "line",
+      "signature",
+      "file_sha",
+    ]);
+    expect(Object.keys(bare)).toEqual([
+      "id",
+      "name",
+      "kind",
+      "path",
+      "line",
+      "file_sha",
+    ]);
+  });
+
+  it("emits parent_id without signature when only parent_id is present", () => {
+    // Possible edge case: a method symbol that gopls reports without a
+    // signature (rare but possible). Canonical order: id, name, kind,
+    // path, line, parent_id, file_sha — signature slot skipped.
+    upsertSymbols(db, [
+      {
+        id: "sym:ts:src/a.ts:Shape.Sig",
+        name: "Shape.Sig",
+        kind: "method",
+        path: "src/a.ts",
+        line: 10,
+        language: "typescript",
+        fileSha: "sha",
+        parentId: "sym:ts:src/a.ts:Shape",
+        // no signature
+      },
+    ]);
+    const atlas = exportAtlas(db, {
+      generatedAt: "t",
+      contextatlasVersion: "v",
+      extractionModel: "m",
+    });
+    const entry = atlas.symbols[0]!;
+    expect(Object.keys(entry)).toEqual([
+      "id",
+      "name",
+      "kind",
+      "path",
+      "line",
+      "parent_id",
+      "file_sha",
+    ]);
+    expect("signature" in entry).toBe(false);
+  });
+
   it("source_shas keys are sorted alphabetically", () => {
     db.prepare("INSERT INTO source_shas VALUES (?, ?)").run(
       "z-last.md",
@@ -176,6 +296,57 @@ describe("atlas.json round-trip", () => {
       expect(rebuilt).toBe(original);
     } finally {
       db.close();
+    }
+  });
+
+  it("parent_id survives export → import → re-export (v1.2 round-trip)", () => {
+    const db1 = openDatabase(":memory:");
+    const db2 = openDatabase(":memory:");
+    try {
+      upsertSymbols(db1, [
+        {
+          id: "sym:ts:src/a.ts:Shape",
+          name: "Shape",
+          kind: "interface",
+          path: "src/a.ts",
+          line: 1,
+          language: "typescript",
+          fileSha: "sha",
+        },
+        {
+          id: "sym:ts:src/a.ts:Shape.Area",
+          name: "Shape.Area",
+          kind: "method",
+          path: "src/a.ts",
+          line: 2,
+          language: "typescript",
+          fileSha: "sha",
+          parentId: "sym:ts:src/a.ts:Shape",
+          signature: "Area(): number",
+        },
+      ]);
+      db1
+        .prepare("INSERT INTO atlas_meta (key, value) VALUES (?, ?)")
+        .run("version", "1.2");
+
+      const firstExport = exportAtlas(db1, {
+        generatedAt: "2026-04-24T00:00:00Z",
+        contextatlasVersion: "0.0.1",
+        extractionModel: "claude-opus-4-7",
+      });
+      const firstSerialized = serializeAtlas(firstExport);
+      expect(firstExport.version).toBe("1.2");
+      const methodEntry = firstExport.symbols.find(
+        (s) => s.name === "Shape.Area",
+      );
+      expect(methodEntry?.parent_id).toBe("sym:ts:src/a.ts:Shape");
+
+      importAtlas(db2, firstExport);
+      const secondSerialized = serializeAtlas(exportAtlas(db2));
+      expect(secondSerialized).toBe(firstSerialized);
+    } finally {
+      db1.close();
+      db2.close();
     }
   });
 

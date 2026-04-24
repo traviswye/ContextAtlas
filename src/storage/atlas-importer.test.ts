@@ -83,6 +83,70 @@ describe("importAtlas", () => {
     expect(() => importAtlas(db, bogus)).toThrow(/unsupported atlas version/);
   });
 
+  it("accepts v1.2 atlas with parent_id entries (ADR-14)", () => {
+    const v12Atlas: AtlasFileV1 = {
+      version: "1.2",
+      generated_at: "2026-04-24T00:00:00Z",
+      generator: {
+        contextatlas_version: "0.0.1",
+        extraction_model: "claude-opus-4-7",
+      },
+      source_shas: {},
+      symbols: [
+        {
+          id: "sym:ts:src/a.ts:Shape",
+          name: "Shape",
+          kind: "interface",
+          path: "src/a.ts",
+          line: 1,
+          file_sha: "sha",
+        },
+        {
+          id: "sym:ts:src/a.ts:Shape.Area",
+          name: "Shape.Area",
+          kind: "method",
+          path: "src/a.ts",
+          line: 2,
+          parent_id: "sym:ts:src/a.ts:Shape",
+          file_sha: "sha",
+        },
+      ],
+      claims: [],
+    };
+    importAtlas(db, v12Atlas);
+    const symbols = listAllSymbols(db);
+    const method = symbols.find((s) => s.name === "Shape.Area");
+    expect(method?.parentId).toBe("sym:ts:src/a.ts:Shape");
+    const iface = symbols.find((s) => s.name === "Shape");
+    expect(iface?.parentId).toBeUndefined();
+  });
+
+  it("accepts v1.1 atlas without parent_id (back-compat; every symbol reads parentId undefined)", () => {
+    const v11Atlas: AtlasFileV1 = {
+      version: "1.1",
+      generated_at: "2026-04-24T00:00:00Z",
+      generator: {
+        contextatlas_version: "0.0.1",
+        extraction_model: "claude-opus-4-7",
+      },
+      source_shas: {},
+      symbols: [
+        {
+          id: "sym:ts:src/a.ts:Foo",
+          name: "Foo",
+          kind: "class",
+          path: "src/a.ts",
+          line: 1,
+          file_sha: "sha",
+        },
+      ],
+      claims: [],
+    };
+    importAtlas(db, v11Atlas);
+    const symbols = listAllSymbols(db);
+    expect(symbols[0]?.parentId).toBeUndefined();
+  });
+
   it("rolls back the entire transaction on failure — no partial state", () => {
     // Pre-seed the DB with some data that should survive a failed import.
     importAtlasFile(db, FIXTURE_PATH);

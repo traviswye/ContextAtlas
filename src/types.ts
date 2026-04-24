@@ -74,6 +74,16 @@ export interface Symbol {
   signature?: string;
   language: LanguageCode;
   /**
+   * Optional back-pointer to a parent symbol. Used by adapters that
+   * flatten nested-child declarations to top-level Symbol records and
+   * need to preserve the parent → child relationship — e.g., Go
+   * interface methods flattened from interface children to sibling
+   * top-level entries per ADR-14 §Decision 4. Left undefined for
+   * top-level symbols with no parent relationship (functions,
+   * classes, standalone vars/constants, etc.).
+   */
+  parentId?: SymbolId;
+  /**
    * SHA of the source file this symbol lives in. Optional on the adapter
    * boundary (adapters don't compute SHAs), required at the storage
    * boundary (indexer stamps SHA before insert).

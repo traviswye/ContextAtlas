@@ -16,7 +16,7 @@ import {
 function makeSym(
   overrides: Partial<AtlasSymbol> & Pick<AtlasSymbol, "id" | "name">,
 ): AtlasSymbol {
-  return {
+  const sym: AtlasSymbol = {
     id: overrides.id,
     name: overrides.name,
     kind: overrides.kind ?? "class",
@@ -26,6 +26,8 @@ function makeSym(
     language: overrides.language ?? "typescript",
     fileSha: overrides.fileSha ?? "sha-default",
   };
+  if (overrides.parentId !== undefined) sym.parentId = overrides.parentId;
+  return sym;
 }
 
 describe("symbols CRUD", () => {
@@ -86,6 +88,62 @@ describe("symbols CRUD", () => {
       "sym:ts:src/a.ts:Bar",
       "sym:ts:src/a.ts:Foo",
     ]);
+  });
+
+  it("round-trips parentId when present (ADR-14 flattened-child pattern)", () => {
+    const parent = makeSym({
+      id: "sym:ts:src/a.ts:Shape",
+      name: "Shape",
+      kind: "interface",
+      path: "src/a.ts",
+      fileSha: "p",
+    });
+    const child = makeSym({
+      id: "sym:ts:src/a.ts:Shape.Area",
+      name: "Shape.Area",
+      kind: "method",
+      path: "src/a.ts",
+      parentId: parent.id,
+      fileSha: "p",
+    });
+    upsertSymbols(db, [parent, child]);
+
+    const parentRead = getSymbol(db, parent.id);
+    const childRead = getSymbol(db, child.id);
+    expect(parentRead?.parentId).toBeUndefined();
+    expect(childRead?.parentId).toBe(parent.id);
+  });
+
+  it("omits parentId on the returned Symbol when column is NULL", () => {
+    // Historical rows (atlas schema <= 1.1, or top-level symbols
+    // written post-migration without parent_id) read back with
+    // parentId undefined — not the string "null", not an empty string.
+    upsertSymbol(
+      db,
+      makeSym({ id: "sym:ts:src/a.ts:Foo", name: "Foo", fileSha: "sha" }),
+    );
+    const fetched = getSymbol(db, "sym:ts:src/a.ts:Foo");
+    expect(fetched).toBeDefined();
+    expect("parentId" in fetched!).toBe(false);
+  });
+
+  it("upsert updates parentId on an existing row", () => {
+    upsertSymbol(
+      db,
+      makeSym({
+        id: "sym:ts:src/a.ts:X.M",
+        name: "X.M",
+        parentId: "sym:ts:src/a.ts:X",
+      }),
+    );
+    // Re-upsert with no parent_id — mimics a re-path where the
+    // symbol loses its parent relationship.
+    upsertSymbol(
+      db,
+      makeSym({ id: "sym:ts:src/a.ts:X.M", name: "X.M" }),
+    );
+    const fetched = getSymbol(db, "sym:ts:src/a.ts:X.M");
+    expect(fetched?.parentId).toBeUndefined();
   });
 
   it("deleteSymbolsByPath removes rows and cascades claim_symbols links", () => {

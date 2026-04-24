@@ -23,11 +23,12 @@ interface SymbolRow {
   path: string;
   line: number;
   signature: string | null;
+  parent_id: string | null;
   file_sha: string;
 }
 
 function rowToSymbol(row: SymbolRow): AtlasSymbol {
-  return {
+  const sym: AtlasSymbol = {
     id: row.id,
     name: row.name,
     kind: row.kind as SymbolKind,
@@ -37,6 +38,8 @@ function rowToSymbol(row: SymbolRow): AtlasSymbol {
     language: languageFromId(row.id),
     fileSha: row.file_sha,
   };
+  if (row.parent_id !== null) sym.parentId = row.parent_id;
+  return sym;
 }
 
 /**
@@ -69,14 +72,15 @@ export function upsertSymbol(
     );
   }
   db.prepare(
-    `INSERT INTO symbols (id, name, kind, path, line, signature, file_sha)
-     VALUES (@id, @name, @kind, @path, @line, @signature, @file_sha)
+    `INSERT INTO symbols (id, name, kind, path, line, signature, parent_id, file_sha)
+     VALUES (@id, @name, @kind, @path, @line, @signature, @parent_id, @file_sha)
      ON CONFLICT(id) DO UPDATE SET
        name = excluded.name,
        kind = excluded.kind,
        path = excluded.path,
        line = excluded.line,
        signature = excluded.signature,
+       parent_id = excluded.parent_id,
        file_sha = excluded.file_sha`,
   ).run({
     id: symbol.id,
@@ -85,6 +89,7 @@ export function upsertSymbol(
     path: symbol.path,
     line: symbol.line,
     signature: symbol.signature ?? null,
+    parent_id: symbol.parentId ?? null,
     file_sha: symbol.fileSha,
   });
 }

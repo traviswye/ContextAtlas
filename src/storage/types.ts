@@ -12,15 +12,21 @@
  *   - 1.1: ADR-11 adds `extracted_at_sha` and `git_commits`. Readers of
  *          1.1 atlases tolerate absence of both fields (optional per
  *          spec); readers of 1.0 atlases simply have no git data.
+ *   - 1.2: ADR-14 §Decision 4 adds optional `parent_id` on symbol
+ *          entries. Used by the Go adapter to preserve interface →
+ *          method relationships when interface methods are flattened
+ *          from documentSymbol children to top-level Symbol records.
+ *          1.0 / 1.1 atlases import cleanly (parent_id absent on every
+ *          row); 1.2 atlases round-trip their parent_id values.
  */
 
 import type { Severity, SymbolId, SymbolKind } from "../types.js";
 
 /** Newest-version atlas the exporter writes and the importer prefers. */
-export const ATLAS_VERSION = "1.1" as const;
+export const ATLAS_VERSION = "1.2" as const;
 
 /** All atlas versions the importer accepts. */
-export const SUPPORTED_ATLAS_VERSIONS = ["1.0", "1.1"] as const;
+export const SUPPORTED_ATLAS_VERSIONS = ["1.0", "1.1", "1.2"] as const;
 export type AtlasVersion = (typeof SUPPORTED_ATLAS_VERSIONS)[number];
 
 export interface AtlasSymbolEntry {
@@ -30,6 +36,13 @@ export interface AtlasSymbolEntry {
   path: string;
   line: number;
   signature?: string;
+  /**
+   * Optional parent-symbol back-pointer (ADR-14 §Decision 4).
+   * Present on flattened children (e.g., Go interface methods);
+   * omitted on standalone top-level symbols. Introduced in atlas
+   * schema v1.2.
+   */
+  parent_id?: SymbolId;
   file_sha: string;
 }
 
