@@ -33,7 +33,7 @@ export type SymbolId = string;
  */
 export type ReferenceId = string;
 
-export type LanguageCode = "typescript" | "python";
+export type LanguageCode = "typescript" | "python" | "go";
 
 /**
  * Authoritative mapping from LanguageCode (used in config and interfaces)
@@ -46,12 +46,14 @@ export type LanguageCode = "typescript" | "python";
 export const LANG_CODES: Record<LanguageCode, string> = {
   typescript: "ts",
   python: "py",
+  go: "go",
 } as const;
 
 /** Inverse mapping: short code → full LanguageCode. */
 export const LANG_CODES_INVERSE: Record<string, LanguageCode> = {
   ts: "typescript",
   py: "python",
+  go: "go",
 } as const;
 
 export type SymbolKind =

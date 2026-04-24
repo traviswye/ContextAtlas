@@ -140,14 +140,14 @@ describe("loadConfig — error cases", () => {
   it("missing 'languages' — lists valid values as remediation", () => {
     writeCfg("version: 1\nadrs: { path: x }");
     expect(() => loadConfig(tmp)).toThrow(
-      /Missing required field 'languages'.*typescript, python/,
+      /Missing required field 'languages'.*typescript, python, go/,
     );
   });
 
   it("empty 'languages' — rejects with remediation", () => {
     writeCfg("version: 1\nlanguages: []\nadrs: { path: x }");
     expect(() => loadConfig(tmp)).toThrow(
-      /must not be empty.*typescript, python/,
+      /must not be empty.*typescript, python, go/,
     );
   });
 
