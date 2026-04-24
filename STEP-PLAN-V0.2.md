@@ -2,10 +2,12 @@
 
 **Status:** Active execution plan for v0.2. See `## Revision history`
 (bottom of document) for material scope/plan changes during execution.
-**Last revised:** 2026-04-24 — Step 4c shipped (Phase 5 spot-check:
-h4-ca cost ratio 7.3× → 3.93× on refined atlas; thesis survives,
-interpretation A with nuance, v0.2 continues to Step 5). Steps 1,
-2, 3, 4 (code), 4b (hono atlas) shipped 2026-04-23.
+**Last revised:** 2026-04-24 — Step 5 shipped (httpx atlas
+first-time-committed; extraction metrics matched v0.1 baseline
+exactly, confirming Step 1's zero-fix verification in production).
+Stream A deliverables + httpx cross-repo artifact complete.
+Step 6 (httpx reference run) queues. Steps 1, 2, 3, 4 (code), 4b
+(hono atlas), 4c (Phase 5 spot-check) shipped 2026-04-23/24.
 
 **What this document is:** The execution-level plan for v0.2 — step
 order, per-step ship criteria, dependencies, and progress tracking.
@@ -674,6 +676,66 @@ measurement.
 - Notable decisions: [if any surfaced during execution]
 - Ship-criteria verification: [each criterion with evidence]
 ```
+
+### Step 5 shipped — 2026-04-24 (benchmarks commits 93ef22a, ac71be9)
+- Scope: Re-extract httpx atlas against refined PyrightAdapter
+  (Steps 1–3 shipped). First-time-tracked commit of httpx
+  atlas in benchmarks repo.
+- Outcome: **Atlas metrics matched v0.1 baseline exactly.**
+  symbols 1179 (v0.1: 1179), claims 80 (v0.1: 80), source_shas 5
+  (same 5 httpx ADRs). LSP pre-filter inventory 1303 vs v0.1's
+  pre-filter count (not captured in v0.1 artifact — no direct
+  comparison possible, but post-filter exact match validates
+  adapter stability). Extraction: $1.32 / 5 API calls / ~2 min
+  wall clock. Step 1's verification finding ("PyrightAdapter
+  needs no fixes") confirmed at production scale; the fresh
+  adapter produces byte-equivalent output to v0.1's on the same
+  ADR inputs (modulo Opus stochasticity on claim wording, which
+  still yielded the same claim count).
+- Notable decisions:
+  - v0.1 httpx atlas was never committed to benchmarks repo —
+    it existed locally from close-out dogfood (2026-04-22) but
+    stayed untracked. Step 5 is therefore the first-time commit
+    of this artifact in git history. The on-disk v0.1 atlas
+    served as comparison baseline before extraction overwrote
+    it; baseline metrics captured pre-extraction to preserve
+    comparability.
+  - Atlas schema v1.1 fields (`generator.contextatlas_version`,
+    `generator.extraction_model`, `extracted_at_sha`) all
+    populate correctly. A transient "missing fields" concern
+    during verification turned out to be a bug in my own
+    verification script (checking wrong top-level field names
+    instead of nested `generator.*` paths). No actual atlas
+    bug — fields are schema-correct.
+  - **Schema observation filed for v0.3+ backlog:** atlas.json
+    tracks `generator.contextatlas_version` ("0.0.1", stable
+    across all Step 1–4 work) but NOT a contextatlas commit
+    SHA. Run-manifests in benchmarks/runs/ capture that SHA
+    for reproducibility; atlas.json alone cannot differentiate
+    pre-fix vs post-fix atlases. Filed at
+    `../ContextAtlas-benchmarks/research/atlas-contextatlas-commit-sha-gap.md`
+    (benchmarks commit `ac71be9`). Not v0.2 scope.
+  - Cross-language validation of Step 2 + Step 3 in production:
+    `cost_usd=$1.32`, `input_tokens`/`output_tokens` populated;
+    `--verbose` correctly emitted Python-ADR unresolved
+    candidates. First time either capability exercised on
+    Python source beyond hono's TypeScript dogfood.
+- Ship-criteria verification:
+  - httpx atlas re-extracted with refined PyrightAdapter:
+    benchmarks commit `93ef22a`. Atlas at `atlases/httpx/atlas.json`.
+  - Provenance: contextatlas commit `055aa4b` (main repo HEAD
+    at Step 4c close) + httpx pinned `26d48e0...` per RUBRIC.
+    Atlas schema v1.1.
+  - Atlas diff against v0.1 baseline: **zero content change**
+    on post-filter symbols (1179 = 1179) and claims (80 = 80).
+    No unexplained changes; Step 1's zero-fix finding upheld.
+  - Cost-tracking output captured via Step 2 capability:
+    `cost_usd=1.3200` (ish — user-reported value).
+  - Unresolved-candidate diff reviewed via Step 3's verbose mode:
+    no regressions surfaced.
+- Tests: N/A — Step 5 is artifact-production, not code. Step 4's
+  583 passing repo-wide tests continue to apply. Benchmarks repo
+  187 tests still passing.
 
 ### Step 4c shipped — 2026-04-24 (benchmarks commits 7863273, 44d23fd)
 - Scope: Phase 5 spot-check on h4-ca against refined hono atlas
