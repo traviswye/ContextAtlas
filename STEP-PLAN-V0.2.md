@@ -2,16 +2,16 @@
 
 **Status:** Active execution plan for v0.2. See `## Revision history`
 (bottom of document) for material scope/plan changes during execution.
-**Last revised:** 2026-04-24 — Step 9 survey expanded scope to
-absorb storage migration for Symbol.parent_id (ADR-14 §Decision 4
-specified the field; Symbol interface + SQLite schema + atlas
-schema v1.1 didn't have it). Storage prerequisite (~135 LOC)
-bundled under Step 9, following Step 4's "polish expanded to
-sub-steps" precedent. Total Step 9 scope: ~855 LOC across 6
-commits (1 storage + 5 adapter). ADR-06 unchanged — additive
-atlas schema bump 1.1 → 1.2 follows ADR-11's established
-pattern. See Revision history entry for rationale + ADR
-authoring observation.
+**Last revised:** 2026-04-24 — Step 9 shipped (GoAdapter against
+gopls v0.21.1, 996 LOC across 6 commits — storage migration v4 +
+atlas schema v1.2 + Symbol.parentId + LanguageCode extension +
+adapter skeleton + listSymbols/getSymbolDetails/getDiagnostics +
+findReferences/getTypeInfo + conformance wiring + broken.go
+fixture). All 14 shared conformance tests pass against the Go
+fixture; 48 Go-specific integration tests verify ADR-14
+decisions end-to-end. Final LOC lands at ADR-14's 1000 upper
+bound exactly — original estimate was correct; no calibration
+amendment. Step 11 (Go reference run against cobra) unblocks.
 
 **What this document is:** The execution-level plan for v0.2 — step
 order, per-step ship criteria, dependencies, and progress tracking.
@@ -547,32 +547,59 @@ conformance suite. Per
 [v0.2-SCOPE.md Stream B #3–4](v0.2-SCOPE.md).
 
 **Ship criteria.**
-- [ ] `src/adapters/go-adapter.ts` (or equivalent path) implementing
+- [x] `src/adapters/go-adapter.ts` (or equivalent path) implementing
   the `LanguageAdapter` interface from `src/types.ts`.
-- [ ] All five data methods working against Go fixtures:
+      (`src/adapters/go.ts`, 751 LOC. Commits 3–5.)
+- [x] All five data methods working against Go fixtures:
   `listSymbols`, `getSymbolDetails`, `findReferences`,
   `getDiagnostics`, `getTypeInfo` (per ADR-07 contract).
-- [ ] Lifecycle methods `initialize` and `shutdown` implemented per
+      (Implementations + 28 integration tests in `go.test.ts`,
+      Commits 4–5. Cross-package `implementation` queries verified
+      via `test/fixtures/go/renderer/impl.go`.)
+- [x] Lifecycle methods `initialize` and `shutdown` implemented per
   interface contract.
-- [ ] Conformance suite passes for GoAdapter with no
+      (Includes `go version` preflight + workspace/configuration
+      length-matched handler per ADR-14 runtime prerequisites.
+      Commit 3.)
+- [x] Conformance suite passes for GoAdapter with no
   language-specific special-casing in the suite itself.
-- [ ] Go-specific kind mappings documented (interfaces, struct
+      (`src/adapters/go.conformance.test.ts` wires the existing
+      shared suite; all 14 conformance cases pass against the Go
+      fixture. Commit 6.)
+- [x] Go-specific kind mappings documented (interfaces, struct
   methods, receiver methods, etc.).
-- [ ] No circular dependencies introduced; adapter → core → storage
+      (ADR-14 §"Symbol-kind mapping" covers it; `mapGoSymbolKind`
+      implements the table. Commit 3.)
+- [x] No circular dependencies introduced; adapter → core → storage
   direction preserved.
-- [ ] v0.2-SCOPE.md Success Criterion 2a ("Go adapter shipped with
+      (Registry imports GoAdapter; core does not import GoAdapter
+      directly.)
+- [x] v0.2-SCOPE.md Success Criterion 2a ("Go adapter shipped with
   conformance suite passing") satisfied.
 
 **Key decisions.**
 - Go-specific kind mappings not covered by existing SymbolKind
   enum (e.g., how to represent Go interfaces vs structs). Default:
   reuse existing enum; add new kinds only if conformance forces it.
+  **Resolved:** reused existing SymbolKind without extension.
+  Structs and type-defs/aliases both map to "class"; interfaces to
+  "interface". `detail` field disambiguates struct vs type-def.
 - Whether conformance suite needs extension for Go (open question
   #1 in v0.2-SCOPE.md). Expected answer: no, but confirm.
+  **Resolved:** no extension needed. All 14 shared-suite cases
+  pass as-is against the Go fixture. The "Python Protocol →
+  interface" clause in conformance.ts's class-symbol assertion
+  is accepting enough to cover "Go struct → class" too.
+- **Scope expansion absorbed mid-step:** survey surfaced that
+  ADR-14 §Decision 4 specified a `parent_id` field on Symbol
+  records that didn't exist at Step 9 start. Added via storage
+  migration v4 + atlas schema v1.2 + Symbol.parentId interface
+  field in Commit 1. See `## Revision history`
+  2026-04-24 entry.
 
 **Depends on.** Step 8.
 **Unblocks.** Steps 10, 11.
-**References.** ADR-03, v0.2-SCOPE.md Stream B #3–4.
+**References.** ADR-03, ADR-14, v0.2-SCOPE.md Stream B #3–4.
 
 ---
 
@@ -736,7 +763,99 @@ measurement.
 - Ship-criteria verification: [each criterion with evidence]
 ```
 
-### Step 8 shipped — 2026-04-24 (main-repo commits 1112240, <this commit>)
+### Step 9 shipped — 2026-04-24 (main-repo commits 5eeb7ef, f17f4f1, 8a39d6f, 1a2a3c0, dfff473, d53d067, <this commit>)
+- Scope: Build GoAdapter against gopls; pass the existing
+  conformance suite. Per v0.2-SCOPE.md Stream B #3–4.
+- Outcome: **GoAdapter ships against gopls v0.21.1 with all ADR-14
+  decisions honored end-to-end.** 48 Go-specific integration tests
+  + 14 shared conformance tests all pass against
+  test/fixtures/go/. Cross-package implementation queries work
+  (Circle + FancyRenderer from renderer/impl.go surface in
+  Shape.usedByTypes). Receiver-encoded method names preserved
+  verbatim in SymbolIds. Interface methods flattened to top-level
+  with parent_id back-pointers. Iota const members flat.
+  Build-tagged files both surface. No inventory-walk fallback
+  needed (ADR-14 §Decision 7 — implementation endpoint works
+  directly, unlike pyright's Protocol/ABC path).
+- Notable decisions:
+  - **Scope expanded mid-step to absorb storage migration.** ADR-14
+    §Decision 4 specified Symbol.parent_id but the Symbol interface
+    + SQLite schema + atlas schema v1.1 didn't have it. Commit 1
+    added migration v4 (ALTER TABLE symbols ADD COLUMN parent_id
+    TEXT) + atlas schema v1.2 (additive, mirrors ADR-11's 1.0 →
+    1.1 pattern) + Symbol.parentId interface field. ADR-06
+    unchanged (additive schema bump is the established pattern).
+    Documented in `## Revision history` 2026-04-24 with observation
+    for future ADR authoring: verify specified fields against
+    src/types.ts before publishing (ADR-13 did this via its
+    frontmatter-symbols note; ADR-14 didn't).
+  - **Two gopls runtime prerequisites implemented as adapter
+    responsibilities** (Commit 3): `go version` preflight before
+    spawning gopls (ADR-14 §"Go binary on PATH" — fails fast with
+    actionable error instead of gopls's cryptic "no views"
+    cascade) and `workspace/configuration` length-matched-array
+    handler (ADR-14 §"workspace/configuration handler" — pyright
+    tolerates null, gopls doesn't).
+  - **Target-kind partitioning in getTypeInfo via source kind, not
+    target kind** (Commit 5). ADR-14 §Decision 7 says "partition by
+    whether each result location is interface or struct" but the
+    simpler equivalent works: gopls's implementation endpoint is
+    directionally filtered (interface source → implementers;
+    struct source → interfaces satisfied), so branching on source
+    kind alone handles it. Cleaner than per-target documentSymbol
+    + hover walks; verified against the fixture's mixed
+    interface-embedder (Renderer) + concrete-implementer
+    (Rectangle/Square/ShapeRenderer) case.
+  - **Forward-direction `extends` derived from documentSymbol
+    children** (Commit 5). gopls emits embedded types as kind-8
+    children whose `detail` equals their `name` (e.g., Square's
+    Rectangle child has detail="Rectangle"); real fields have
+    detail=type (e.g., Square's corner child has detail="string").
+    Enough signal to distinguish without hover.
+  - **broken.go: anonymous function body error doesn't cascade.**
+    `var _ = func() { return "wrong" }` produces a type error
+    scoped to broken.go's own expression; getDiagnostics on
+    kinds.go stays clean. Fallbacks (named function body, separate
+    subpackage) not needed — Option c worked first try.
+  - **LOC trajectory: skeleton overrun balanced by lean data
+    methods.** Commit 3 skeleton came in at 413 LOC vs my 150
+    estimate (underbudgeted pre-implementation cost of the PATH
+    preflight + workspace/configuration handler + kind mapping +
+    diagnostics listener + helpers). Commit 4 data methods at 109
+    vs 300-400 estimate — gopls's clean LSP semantics meant no
+    text parsing, no fallback logic. Net: final production LOC
+    lands at ~996, at ADR-14's 1000 upper bound exactly. Original
+    ADR-14 estimate correct; no calibration amendment.
+- Ship-criteria verification:
+  - All 7 criteria [x] (see Step 9 body). v0.2-SCOPE.md Success
+    Criterion 2a satisfied.
+  - Adapter at `src/adapters/go.ts` (751 LOC). Conformance wiring
+    at `src/adapters/go.conformance.test.ts`.
+  - broken.go fixture at `test/fixtures/go/broken.go`.
+  - All 14 shared conformance tests pass without language-
+    specific special-casing.
+  - Storage migration v4 + atlas schema v1.2 round-trip verified
+    (52 storage tests covering parent_id CRUD, schema migration,
+    canonical export ordering, v1.1/v1.2 import compat).
+- Tests: **main-repo suite 659 passing** (was 583 at Step 9 start;
+  +76 new tests across storage, registry, config, GoAdapter unit
+  + integration, conformance). 0 skipped. 34→35 test files.
+- Next steps:
+  - **Step 10 already shipped** (benchmarks commits 71ec036 +
+    41f0916) — cobra ADRs + infrastructure landed concurrently with
+    Step 8's session.
+  - **Step 11 (Go reference run against cobra):** GoAdapter is now
+    the functional dependency. Step 11 first extracts the cobra
+    atlas via the Step 9 adapter, then runs the 4-condition × 6-
+    prompt matrix. Pre-run requirements formalized in Step 11 body
+    (powercfg hibernation prevention from Step 6 + MCP preflight
+    check from Step 7).
+  - **Cobra prompt authoring** is Step 11's opening sub-task
+    (prompts/cobra.yml does not exist; authoring requires
+    engagement with cobra's architecture, mirroring how Step 6
+    opened with httpx prompt authoring).
+
+### Step 8 shipped — 2026-04-24 (main-repo commits 1112240, 38bdd3a)
 - Scope: Empirical probe of `gopls` capabilities following
   ADR-13's pattern. Land ADR-14 documenting gopls as the Go
   adapter's LSP choice. Per v0.2-SCOPE.md Stream B #1–2.
