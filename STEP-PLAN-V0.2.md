@@ -2,13 +2,14 @@
 
 **Status:** Active execution plan for v0.2. See `## Revision history`
 (bottom of document) for material scope/plan changes during execution.
-**Last revised:** 2026-04-24 — Step 6 shipped (httpx reference
-run: cross-repo thesis replicates on Python; 3 of 4 win-bucket
-wins; p4 finding sharpens v0.3 scope; $8.36 cost / ~15 min
-compute; hibernation gotcha surfaced + documented). Stream A
-deliverables + httpx cross-repo validation complete. Step 7
-(MCP investigation, parallelizable), Step 8+ (Go track) queue.
-Steps 1–5, 4b, 4c shipped 2026-04-23/24.
+**Last revised:** 2026-04-24 — Step 7 shipped (MCP disclaimer
+investigation: Path (a) — root cause was harness missing
+`--allowedTools` on CLI spawn, not an upstream Claude Code
+quirk; 100% of MCP calls in beta-ca cells were blocked across
+both Phase 5 and Phase 6 runs; fix landed with regression
+tests; all 11 affected cells re-run; Phase 5 and Phase 6
+synthesis docs amended). Stream A complete. Step 8+ (Go track)
+queue. Steps 1–6, 4b, 4c, 7 shipped 2026-04-23/24.
 
 **What this document is:** The execution-level plan for v0.2 — step
 order, per-step ship criteria, dependencies, and progress tracking.
@@ -431,32 +432,50 @@ successful MCP calls. 2-day advisory timebox. Per
 **Ship criteria** (one of two paths).
 
 *Path (a) — root-cause and fix:*
-- [ ] Root cause identified and documented.
-- [ ] Fix landed at our layer (spawn flags, response-shape
+- [x] Root cause identified and documented.
+      (`ContextAtlas-benchmarks/research/beta-ca-mcp-permission-block-finding.md`)
+- [x] Fix landed at our layer (spawn flags, response-shape
   adjustment, or similar).
-- [ ] Regression test added ensuring beta-ca output no longer
+      (`--allowedTools` added to CLI spawn argv in
+      `src/harness/claude-code-driver.ts`; extracted to
+      `buildClaudeSpawnArgs` for testability. Benchmarks commit
+      `c5b9486`.)
+- [x] Regression test added ensuring beta-ca output no longer
   carries the disclaimer.
+      (5 unit tests on `buildClaudeSpawnArgs` verifying
+      `--allowedTools` composition; full 11-cell re-run produces
+      zero "Claude requested permissions to use" messages.)
 
-*Path (b) — document as known issue:*
-- [ ] Investigation findings documented (hypotheses tested,
-  evidence for/against each).
-- [ ] README or troubleshooting section describes the behavior +
-  user workaround.
-- [ ] Upstream tracking pointer (GitHub issue, Claude Code repo,
-  or similar) if appropriate.
+*Path (b) — document as known issue:* N/A — Path (a) taken.
 
 *Always:*
-- [ ] Either (a) or (b) landed; investigation closed.
-- [ ] Timebox observed — if still investigating past ~2 days, pick
-  (b) and move on.
+- [x] Either (a) or (b) landed; investigation closed.
+- [x] Timebox observed — if still investigating past ~2 days, pick
+  (b) and move on. (Investigation completed same day.)
 
 **Key decisions.**
-- (a) vs (b): depends on probe findings. No pre-commitment.
+- (a) vs (b): **(a) taken.** Root cause found within a single
+  investigation session; fix is one spawn flag + test; far lower
+  cost than documenting a user-workaround.
+- **Re-run scope: all 11 affected cells.** Option C (fix + re-run +
+  retroactive corrections) chosen over Option A (fix-only) or
+  Option B (fix + re-run without synthesis-doc amendments). The
+  re-run artifacts are the evidence that anchors the retroactive
+  corrections; committing the fix without correcting the Phase 5
+  and Phase 6 synthesis docs would leave the committed record
+  built on invalidated data.
+- **Preservation convention:** v1 MCP-blocked artifacts kept
+  alongside v2 artifacts as `beta-ca-v1-permission-blocked.json`
+  in each cell directory. Supports the methodology-correction
+  audit trail.
 
 **Depends on.** Nothing (parallelizable — can run concurrently
 with steps 8–11).
 **Unblocks.** Nothing on critical path; closes Stream A.
-**References.** Phase 5 §4.3, §7.2, v0.2-SCOPE.md Stream A #5.
+**References.** Phase 5 §4.3, §7.2 (superseded/resolved);
+Phase 6 §5.3 (amended); research note
+`ContextAtlas-benchmarks/research/beta-ca-mcp-permission-block-finding.md`;
+v0.2-SCOPE.md Stream A #5.
 
 ---
 
@@ -613,6 +632,16 @@ efficiency pattern replicates cross-language. Per
   post-run. Prevents hibernation-during-matrix ambiguity
   documented at
   `../ContextAtlas-benchmarks/research/reference-run-hibernation-gotcha.md`.
+- **Pre-run operational requirement (from Step 7):** run an MCP
+  preflight probe before launching the matrix. A single probe
+  cell invoked with a prompt that triggers at least one MCP tool
+  call; abort the matrix if any tool result contains
+  `"Claude requested permissions to use"`. Catches harness
+  permission regressions before they invalidate a full matrix.
+  Implementation: ~20-LOC addition to `scripts/run-reference.ts`,
+  or a standalone script invoked from the wrapper. The Step 7
+  fix (benchmarks `c5b9486`) patches the known regression; the
+  preflight prevents future ones.
 
 **Depends on.** Steps 9, 10.
 **Unblocks.** Step 12.
@@ -683,6 +712,94 @@ measurement.
 - Notable decisions: [if any surfaced during execution]
 - Ship-criteria verification: [each criterion with evidence]
 ```
+
+### Step 7 shipped — 2026-04-24 (benchmarks commits b03b633, c5b9486, 0d79317, 14e264d, 92b3491)
+- Scope: Investigate Claude Code CLI's permission-disclaimer
+  preamble on beta-ca cells. Per v0.2-SCOPE.md Stream A #5.
+- Outcome: **Path (a) — root-caused and fixed.** The "disclaimer"
+  was not a model quirk but a 100% MCP block at the CLI
+  permission layer: every MCP tool call across all 11 beta-ca
+  cells (Phase 5 h1–h5 + Phase 6 p1–p6) returned a
+  permission-request message rather than atlas data, because
+  the harness spawn-args block missed `--allowedTools`. Under
+  `--bare`, Claude Code still enforces the permission system;
+  `--strict-mcp-config` and `--allowedTools` are orthogonal
+  concerns the v0.1 harness conflated. Fix shipped, tests
+  added, 11 affected cells re-run, Phase 5 and Phase 6
+  synthesis docs amended with v1/v2 diffs.
+- Notable decisions:
+  - **Path (a) taken over Path (b).** Root cause found within
+    one investigation session; a single spawn-flag fix is far
+    cheaper than documenting a user-workaround. Timebox (~2
+    days advisory) was not consumed — investigation completed
+    same day.
+  - **Option C for re-run + corrections.** Re-ran all 11
+    affected cells *and* amended the Phase 5 and Phase 6
+    synthesis docs. Leaving v1 numbers in place while shipping
+    the fix would have left the committed record built on
+    invalidated data; amendments are part of the ship.
+  - **Preservation convention for v1 artifacts.** Original
+    blocked cells preserved as
+    `beta-ca-v1-permission-blocked.json` alongside
+    post-fix `beta-ca.json` in each cell directory. The v1
+    artifacts are the *evidence* that supports the
+    methodology-correction research note; deleting them would
+    weaken the audit trail.
+  - **Retroactive Phase 5 §4.3 correction is the most
+    consequential amendment.** The original hypothesis
+    ("model mis-labels its own access") was wrong. Corrected
+    interpretation: Claude Code's permission layer did exactly
+    what it's supposed to do; the harness was the bug. This
+    strengthens the Phase 5/6 "beta-ca-cheaper-than-beta"
+    headline under v2 — v1's beta-ca cost figures were
+    partly artificial (short MCP-blocked answers from
+    training priors), v2's are real CA tool effect.
+  - **Narrow claim verification matters.** Early draft
+    said "h1 and h4 beta-ca happened to be materially correct
+    because the non-MCP substrate was sufficient." Verification
+    against actual answer text found h1 was substrate-correct
+    (Read+Bash produced source-cited answer) but h4 was
+    training-prior-correct (zero source reads; self-caveated as
+    unverified). Narrowed the claim before committing the
+    research note.
+  - **Sharpens v0.2 Step 11 scope.** Added MCP preflight
+    check as a new Step 11 ship criterion: a pre-matrix probe
+    that aborts if MCP returns a permission-request string.
+    The fix patches the known bug; the preflight prevents the
+    next one.
+  - **Hono h3/h4 cost ratios shift under v2.** v1 showed
+    beta-ca h3 −73% vs beta (driven partly by the block
+    short-circuiting the cell) and h4 −66%. v2 shows h3 −23%
+    and h4 −54% — h4 retains its largest-win position; h3
+    narrows because v2 h3-beta-ca actually used atlas tools
+    (more work = more tokens). The directional claim
+    ("beta-ca cheaper than beta on every measured prompt")
+    survives.
+- Ship-criteria verification:
+  - Path (a) all three criteria [x] (root cause documented;
+    fix landed; regression test). Path (b) N/A.
+  - Always criteria [x] (investigation closed same day;
+    timebox observed).
+  - Research note at
+    `ContextAtlas-benchmarks/research/beta-ca-mcp-permission-block-finding.md`
+    (benchmarks `b03b633`). Fix at
+    `src/harness/claude-code-driver.ts` (benchmarks `c5b9486`)
+    with 5 new unit tests on `buildClaudeSpawnArgs`.
+  - Re-run artifacts promoted with preservation convention
+    (benchmarks `0d79317`). Phase 5 amended (benchmarks
+    `14e264d`). Phase 6 amended (benchmarks `92b3491`).
+  - Full benchmarks test suite green: 192 passed / 9 skipped
+    after fix; no regressions.
+- Tests: 5 new main-repo-equivalent (benchmarks-repo) tests
+  on `buildClaudeSpawnArgs` verifying `--allowedTools`
+  composition. Full benchmarks suite 192 passing. Main repo
+  tests unchanged.
+- Next steps:
+  - **Stream A complete.** Steps 4, 4b, 4c, 7 all shipped.
+  - **Step 8 queues.** Go LSP probe + ADR. Parallelizable
+    with step 4 / already done.
+  - **Step 11 preflight requirement documented** in step
+    body above; implement as part of Step 11 execution.
 
 ### Step 6 shipped — 2026-04-24 (benchmarks commits 0e6a932, 40682d6, 868e7f8, b04c8ca, 831a0ca)
 - Scope: Execute Phase-5-style reference run protocol on httpx
