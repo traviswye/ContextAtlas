@@ -15,11 +15,9 @@ describe("createAdapter", () => {
     expect(adapter.extensions).toContain(".py");
   });
 
-  it("throws a 'not yet implemented' error for 'go' (Commit 2 placeholder)", () => {
-    // Replaced with `new GoAdapter()` in Commit 3 of Step 9. The test
-    // here pins the contract for extraction runs that target Go before
-    // the adapter class is wired in: fail fast with an actionable error
-    // rather than silently returning nothing.
-    expect(() => createAdapter("go")).toThrow(/Go adapter not yet implemented/);
+  it("returns a GoAdapter for 'go' (Step 9 Commit 3)", () => {
+    const adapter = createAdapter("go");
+    expect(adapter.language).toBe("go");
+    expect(adapter.extensions).toContain(".go");
   });
 });
