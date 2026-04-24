@@ -22,7 +22,7 @@
  */
 
 import { spawn } from "node:child_process";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { resolve as pathResolve } from "node:path";
 
 import { log } from "../mcp/logger.js";
@@ -32,7 +32,6 @@ import {
   type LanguageAdapter,
   type LanguageCode,
   type Reference,
-  type ReferenceId,
   type Symbol as AtlasSymbol,
   type SymbolId,
   type SymbolKind,
@@ -63,6 +62,14 @@ interface LspDiagnostic {
   range: LspRange;
   severity?: number;
   message: string;
+}
+interface LspDocumentSymbol {
+  name: string;
+  detail?: string;
+  kind: number;
+  range: LspRange;
+  selectionRange: LspRange;
+  children?: LspDocumentSymbol[];
 }
 
 // ---------------------------------------------------------------------------
@@ -280,16 +287,86 @@ export class GoAdapter implements LanguageAdapter {
   // than silently returning empty results during the in-progress window.
   // -------------------------------------------------------------------------
 
-  async listSymbols(_filePath: string): Promise<AtlasSymbol[]> {
-    throw new Error(
-      "GoAdapter.listSymbols not yet implemented (lands in Step 9 Commit 4).",
+  async listSymbols(filePath: string): Promise<AtlasSymbol[]> {
+    const { absPath, relPath } = this.resolveFile(filePath);
+    if (!existsSync(absPath)) return [];
+    await this.ensureOpen(absPath);
+
+    const result = await this.client.request<LspDocumentSymbol[] | null>(
+      "textDocument/documentSymbol",
+      { textDocument: { uri: toFileUri(absPath) } },
+      this.options.requestTimeoutMs ?? 30_000,
     );
+    if (!result || !Array.isArray(result)) return [];
+
+    const out: AtlasSymbol[] = [];
+
+    // Map a gopls documentSymbol to our AtlasSymbol shape. Returns
+    // null when the kind lives on the "other" filter path (fields,
+    // embedded-interface entries, module namespaces) — caller drops.
+    const toAtlasSymbol = (
+      sym: LspDocumentSymbol,
+      effectiveName: string,
+      parentId?: SymbolId,
+    ): AtlasSymbol | null => {
+      const kind = mapGoSymbolKind(sym.kind);
+      if (kind === "other") return null;
+      const atlasSym: AtlasSymbol = {
+        id: this.symbolId(relPath, effectiveName),
+        name: effectiveName,
+        kind,
+        path: relPath,
+        line: sym.selectionRange.start.line + 1,
+        language: "go",
+      };
+      if (sym.detail && sym.detail.length > 0) {
+        atlasSym.signature = sym.detail;
+      }
+      if (parentId !== undefined) {
+        atlasSym.parentId = parentId;
+      }
+      return atlasSym;
+    };
+
+    for (const top of result) {
+      const topSym = toAtlasSymbol(top, top.name);
+      if (!topSym) continue;
+      out.push(topSym);
+
+      // ADR-14 §Decision 4 (interface-method flattening): gopls nests
+      // interface methods as children of the interface. We flatten
+      // them to top-level Symbol records with a `parent_id`
+      // back-pointer and a dotted name (`Shape.Area`) so downstream
+      // consumers see a uniform flat layout regardless of whether the
+      // owner is a struct or interface. Struct children (kind 23) are
+      // fields — they map to "other" and are filtered at
+      // toAtlasSymbol, so no flattening happens for them; struct
+      // methods are already top-level with receiver-encoded names
+      // (finding §4) and pass through unchanged.
+      //
+      // Interface children that are themselves kind 8 (embedded
+      // interfaces, e.g. `Shape` nested inside `Renderer`) map to
+      // "other" and are dropped. Their promoted methods surface via
+      // the `implementation` endpoint in getTypeInfo (Commit 5), not
+      // via listSymbols.
+      if (top.kind === 11 && top.children) {
+        for (const child of top.children) {
+          const flatName = `${top.name}.${child.name}`;
+          const flattened = toAtlasSymbol(child, flatName, topSym.id);
+          if (!flattened) continue;
+          out.push(flattened);
+        }
+      }
+    }
+
+    return out;
   }
 
-  async getSymbolDetails(_id: SymbolId): Promise<AtlasSymbol | null> {
-    throw new Error(
-      "GoAdapter.getSymbolDetails not yet implemented (lands in Step 9 Commit 4).",
-    );
+  async getSymbolDetails(id: SymbolId): Promise<AtlasSymbol | null> {
+    const parsed = parseSymbolId(id);
+    if (!parsed) return null;
+    const symbols = await this.listSymbols(parsed.path);
+    return symbols.find((s) => s.name === parsed.name) ?? null;
   }
 
   async findReferences(_id: SymbolId): Promise<Reference[]> {
@@ -298,10 +375,50 @@ export class GoAdapter implements LanguageAdapter {
     );
   }
 
-  async getDiagnostics(_filePath: string): Promise<Diagnostic[]> {
-    throw new Error(
-      "GoAdapter.getDiagnostics not yet implemented (lands in Step 9 Commit 4).",
-    );
+  async getDiagnostics(filePath: string): Promise<Diagnostic[]> {
+    const { absPath } = this.resolveFile(filePath);
+    if (!existsSync(absPath)) return [];
+    await this.ensureOpen(absPath);
+    const uriKey = normalizePath(toFileUri(absPath));
+
+    // If diagnostics already landed via publishDiagnostics (delivered
+    // async after didOpen), return them. Otherwise wait briefly for
+    // gopls to finish analysis and emit.
+    const existing = this.diagnosticsByUri.get(uriKey);
+    if (existing !== undefined) return existing;
+
+    await new Promise<void>((resolve) => {
+      let settled = false;
+      const settle = (): void => {
+        if (settled) return;
+        settled = true;
+        this.diagnosticsListeners.delete(uriKey);
+        resolve();
+      };
+      this.diagnosticsListeners.set(uriKey, settle);
+      setTimeout(settle, 2_000);
+    });
+
+    return this.diagnosticsByUri.get(uriKey) ?? [];
+  }
+
+  private async ensureOpen(absPath: string): Promise<void> {
+    const normalized = normalizePath(absPath);
+    if (this.openFiles.has(normalized)) return;
+    this.openFiles.add(normalized);
+    const uri = toFileUri(absPath);
+    let text: string;
+    try {
+      text = readFileSync(absPath, "utf8");
+    } catch {
+      // Can't open what we can't read; dropping silently leaves the
+      // caller's empty-result path intact.
+      this.openFiles.delete(normalized);
+      return;
+    }
+    this.client.notify("textDocument/didOpen", {
+      textDocument: { uri, languageId: "go", version: 1, text },
+    });
   }
 
   async getTypeInfo(_id: SymbolId): Promise<TypeInfo> {
@@ -311,26 +428,14 @@ export class GoAdapter implements LanguageAdapter {
   }
 
   // -------------------------------------------------------------------------
-  // Helpers exposed for Commit 4/5 wiring (kept private; listed here so the
-  // skeleton communicates intent). The actual implementations inline them.
+  // Private helpers
   // -------------------------------------------------------------------------
 
-  protected symbolId(relPath: string, name: string): SymbolId {
+  private symbolId(relPath: string, name: string): SymbolId {
     return `sym:${LANG_CODES.go}:${relPath}:${name}`;
   }
 
-  protected referenceId(relPath: string, line: number): ReferenceId {
-    return `ref:${LANG_CODES.go}:${relPath}:${line}`;
-  }
-
-  protected toAbs(relPath: string): string {
-    if (!this.rootPath) {
-      throw new Error("GoAdapter not initialized; call initialize() first.");
-    }
-    return pathResolve(this.rootPath, relPath);
-  }
-
-  protected resolveFile(filePath: string): {
+  private resolveFile(filePath: string): {
     absPath: string;
     relPath: string;
   } {
@@ -344,20 +449,6 @@ export class GoAdapter implements LanguageAdapter {
     );
     return { absPath, relPath };
   }
-
-  /**
-   * Mark an open file unused symbol; Commit 4 wires ensureOpen against
-   * didOpen. Skeleton keeps the set initialized so Commit 4 doesn't
-   * need to add class state.
-   */
-  protected hasOpen(absPath: string): boolean {
-    return this.openFiles.has(normalizePath(absPath));
-  }
-
-  /** File exists + readable check used by Commit 4. */
-  protected fileExists(absPath: string): boolean {
-    return existsSync(absPath);
-  }
 }
 
 // ---------------------------------------------------------------------------
@@ -366,6 +457,24 @@ export class GoAdapter implements LanguageAdapter {
 
 function resolveGoplsBin(explicit?: string): string {
   return explicit ?? process.env.CONTEXTATLAS_GOPLS_BIN ?? "gopls";
+}
+
+/**
+ * Parse a Go SymbolId (`sym:go:<path>:<name>`) into its components.
+ * Returns null for IDs that don't match the expected shape — callers
+ * treat that as "no such symbol" rather than throwing.
+ *
+ * Go symbol names can contain `()`, `*`, `[`, `]`, and `.` from the
+ * receiver encoding (`(*Rectangle).Area`, `(*Stack[T]).Push`,
+ * `Shape.Area`) but never colons, so a greedy regex anchored on the
+ * second `:` divides path from name cleanly.
+ */
+export function parseSymbolId(
+  id: SymbolId,
+): { path: string; name: string } | null {
+  const match = /^sym:go:([^:]+):(.+)$/.exec(id);
+  if (!match) return null;
+  return { path: match[1]!, name: match[2]! };
 }
 
 /**
