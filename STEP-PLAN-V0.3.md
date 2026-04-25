@@ -1,0 +1,902 @@
+# ContextAtlas v0.3 Step Plan
+
+**Status:** Active execution plan for v0.3. See `## Revision history`
+(bottom of document) for material scope/plan changes during execution.
+**Last revised:** 2026-04-25 — initial authoring at v0.3 prep
+session close. v0.3 scope per [`v0.3-SCOPE.md`](v0.3-SCOPE.md);
+input substrate from
+[`../ContextAtlas-benchmarks/research/v0.2-retrospective.md`](../ContextAtlas-benchmarks/research/v0.2-retrospective.md)
++
+[`../ContextAtlas-benchmarks/research/v0.3-backlog-inventory.md`](../ContextAtlas-benchmarks/research/v0.3-backlog-inventory.md).
+16 numbered steps spanning Streams A/B/C/D + ship gate.
+
+**What this document is:** The execution-level plan for v0.3 — step
+order, per-step ship criteria, dependencies, ownership, and progress
+tracking. Mirrors STEP-PLAN-V0.2.md structure with one addition
+(Owner field per step).
+
+**What this document isn't:** The scope doc. The thesis, stream-level
+deliverables, success criteria, and rescope conditions live in
+[`v0.3-SCOPE.md`](v0.3-SCOPE.md). This plan *implements* that scope;
+it does not redefine it.
+
+**Responsibility split:**
+
+- [`v0.3-SCOPE.md`](v0.3-SCOPE.md) — *what* and *why*. Stable during
+  execution; changes trigger revision notes here.
+- **This document** — *how* and *when*. Evolves during execution;
+  material rescopes get logged in `## Revision history`.
+
+---
+
+## Conventions
+
+### Step structure
+
+Each step below has five fields:
+
+- **Scope.** One-line statement + pointer to the `v0.3-SCOPE.md`
+  section it implements.
+- **Ship criteria.** Concrete checkboxes, each verifiable via a
+  committed artifact, passing test, or landed ADR. Vague criteria
+  ("feature works") are not valid; they hide incomplete shipping.
+- **Key decisions.** Choices that surface during execution. Not
+  every step has them. When present, the decision itself becomes a
+  progress-log note at ship time.
+- **Depends on / Unblocks.** Explicit step numbers. Drives the
+  execution-order diagram below.
+- **Owner.** Who does the work. Three values:
+  - **Claude** — Claude Code does the implementation work (code,
+    tests, ADR text drafts, doc drafts).
+  - **Travis** — User does the work directly (runs API calls,
+    commits prompts under pre-registration, makes scope decisions
+    requiring judgment).
+  - **Both** — Sequential collaboration (Claude drafts, Travis
+    approves/runs/commits, or vice versa).
+
+### Progress log entries
+
+When a step ships, append an entry to `## Progress log` using this
+format:
+
+```
+### Step N shipped — YYYY-MM-DD (commit SHA)
+- Scope: [one-line from step definition]
+- Outcome: [1-2 sentences on what actually shipped]
+- Notable decisions: [if any surfaced during execution]
+- Ship-criteria verification: [each criterion with evidence]
+```
+
+Reverse-chronological. Most recent on top.
+
+### Revision history entries
+
+If a step's scope, ship criteria, or dependencies change materially
+*during execution*, append a revision note:
+
+```
+### 2026-MM-DD (commit SHA): Step N revised — reason.
+Downstream impact: [affected steps].
+```
+
+**Threshold: material rescope.** Log if the change affects
+`v0.3-SCOPE.md` OR changes downstream steps' ship criteria.
+Tactical adjustments (minor re-ordering within a step, timebox
+tweaks) don't need revision notes — rewrite in place with rationale
+in the git commit.
+
+---
+
+## Execution order
+
+Streams have natural dependencies enforced by the v0.3-SCOPE.md
+Sequencing section's two load-bearing constraints:
+
+1. **Theme 1.2 must precede Stream B.** Adding docstring claims
+   without ranking precision would amplify the muddy-bundle
+   problem.
+2. **Theme 2.1 must precede Stream D.** Without atlas-file-
+   visibility filtering, the v0.3 reference run inherits the
+   c6-class measurement artifact.
+
+Stream A (precision foundation) lands first. Stream C 2.1 is small
+enough to slot anywhere before Stream D — practical placement is
+inside the Stream B work window where it doesn't gate other
+streams. Stream B follows Stream A. Stream D follows Stream B.
+Stream C 2.2/2.3 land alongside Stream D.
+
+```
+ [1] Theme 1.2 Fix 1 — ADR authoring validation ─┐
+ [2] Theme 1.3 — atlas schema v1.3 commit_sha ───┤
+                                                  │
+                                                  ↓
+ [3] Theme 1.1 — multi-symbol API ADR-N draft
+                  │
+                  ↓
+ [4] Theme 1.1 — multi-symbol implementation + tests
+                  │
+                  ↓
+ [5] Theme 1.2 Fix 2 — narrower attribution + p4 spot-check
+ [6] Theme 1.2 Fix 3 — BM25 ranking + ADR-09 amendment + p4 spot-check
+                  │
+                  ↓
+ [7] Stream A finalization — fix-selection decision + flag retirement
+                  │
+                  ↓ (Theme 1.2 prerequisites Stream B)
+ [8] Stream B probe — cross-language docstring surface examination
+                  │
+                  ↓
+ [9] Stream B prompt drafting + calibration on 10–15 examples
+                  │
+                  ↓
+[10] Docstring extraction — language 1 (probe-decided, contract-defining)
+                  │
+                  ↓
+[11] Docstring extraction — languages 2 + 3 + cross-language conformance
+                  │
+                  ↓
+[12] Theme 2.1 — atlas-file-visibility filter + methodology note
+                  │ (Theme 2.1 prerequisites Stream D)
+                  ↓
+[13] Theme 2.3 — Go-specific cost priors (harness-code change)
+                  │
+                  ↓
+[14] v0.3 atlas re-extraction (hono / httpx / cobra)
+                  │
+                  ↓
+[15] Stream D — reference matrix + Phase 8 synthesis (incl. Theme 2.2)
+                  │
+                  ↓
+[16] v0.3 ship gate
+```
+
+Steps 5 + 6 may run in either order or in parallel — both are
+flag-gated implementations whose spot-checks inform the Step 7
+decision. Step 11's per-language order (which is "language 2"
+vs "language 3") is probe-decided in Step 8; default Stream B
+ordering is Go → TS → Python per the v0.3-SCOPE.md Stream B
+item 0 default. Theme 2.2 (cross-harness asymmetry comparison)
+is delivered as part of Step 15's Phase 8 synthesis + RUBRIC.md
+amendment, not as a separate step — it's a synthesis-time
+methodology addition rather than harness code.
+
+---
+
+## Steps
+
+### Step 1 — Theme 1.2 Fix 1: ADR authoring validation
+
+**Scope.** At extraction time, flag frontmatter-declared symbols
+that don't resolve. Smallest of the three Theme 1.2 fixes; ships
+unconditionally per
+[`v0.3-SCOPE.md`](v0.3-SCOPE.md) Stream A item 1 Fix 1.
+
+**Ship criteria.**
+- [ ] Extraction pipeline emits a warning channel listing
+  unresolved frontmatter symbols (per-ADR + total count).
+- [ ] Tests cover (a) all-resolve happy path, (b) some-unresolved
+  warning path, (c) all-unresolved sanity case.
+- [ ] Behavior documented inline in `src/extraction/pipeline.ts`
+  (or wherever frontmatter resolution lives) — no new ADR; this
+  is additive diagnostic output.
+- [ ] No regression in existing 659-passing main-repo test suite.
+
+**Key decisions.**
+- Output channel: stderr text vs structured JSON entry in extraction
+  result. Default: both — stderr line for human visibility, structured
+  field in `ExtractionPipelineResult` for tooling.
+
+**Depends on.** Nothing. Smallest start; ships first.
+**Unblocks.** Step 7 (Stream A finalization assumes Fix 1 in atlas).
+**Owner.** Claude.
+**References.** v0.3-SCOPE.md Stream A item 1 Fix 1; backlog
+inventory Theme 1.2; Phase 6 §5.1.
+
+---
+
+### Step 2 — Theme 1.3: atlas schema v1.3 + contextatlas_commit_sha
+
+**Scope.** Bump atlas schema 1.2 → 1.3 with optional
+`generator.contextatlas_commit_sha` field. Same additive pattern as
+1.0 → 1.1 (ADR-11) and 1.1 → 1.2 (ADR-14 in v0.2). Per
+[`v0.3-SCOPE.md`](v0.3-SCOPE.md) Stream A item 3.
+
+**Ship criteria.**
+- [ ] `src/storage/types.ts`: ATLAS_VERSION = "1.3";
+  SUPPORTED_ATLAS_VERSIONS = ["1.0", "1.1", "1.2", "1.3"];
+  AtlasGeneratorInfo gains optional `contextatlas_commit_sha?: string`.
+- [ ] Extraction pipeline captures `git rev-parse HEAD` from the
+  contextatlas package root at extraction time; populates the new
+  field.
+- [ ] Atlas exporter emits the field when populated; importer reads
+  it back; round-trip preserved.
+- [ ] Storage migration: not required (field is optional and lives
+  in the `generator` JSON blob already in `atlas_meta`).
+- [ ] ADR-06 amendment: small block documenting the new field +
+  ADR-11/ADR-14 pattern reference.
+- [ ] Tests cover round-trip with field present + field absent.
+
+**Key decisions.**
+- How does the extraction pipeline find the contextatlas package
+  root for `git rev-parse`? Default: `createRequire` package-root
+  lookup, same pattern `scripts/run-reference.ts` uses for
+  benchmarks-repo provenance.
+
+**Depends on.** Nothing. Independent of Step 1.
+**Unblocks.** Step 15 (v0.3 atlas extraction will populate the
+field on first emission).
+**Owner.** Claude.
+**References.** v0.3-SCOPE.md Stream A item 3; backlog inventory
+Theme 1.3; ADR-06; ADR-11 precedent.
+
+---
+
+### Step 3 — Theme 1.1: multi-symbol API ADR-N draft
+
+**Scope.** Author ADR-N documenting the multi-symbol
+`get_symbol_context` call shape decision: tool-shape (new tool vs
+extending existing), output format, error semantics for partial
+failures, max-symbols cap. Per
+[`v0.3-SCOPE.md`](v0.3-SCOPE.md) Stream A item 2 + Open Question
+#2.
+
+**Ship criteria.**
+- [ ] ADR-N committed at `docs/adr/ADR-N-multi-symbol-context.md`
+  with full Context / Decision / Rationale / Consequences /
+  Limitations / Non-goals sections (mirroring ADR-13/14).
+- [ ] Decision locked: new tool `get_symbols_context([sym])` vs
+  option on existing `get_symbol_context(sym | [sym])` — explicit
+  rationale either way.
+- [ ] Frontmatter symbols list includes the new symbols (the new
+  tool function/handler if path A; the modified handler if path
+  B). Pre-implementation; will read as unresolved during this
+  step's extraction runs (same pattern ADR-13/ADR-14 used for
+  PyrightAdapter / GoAdapter).
+- [ ] Cross-references to v0.3-SCOPE.md Stream A item 2 + Open
+  Question #2.
+
+**Key decisions.**
+- New tool vs existing extension (Open Question #2). Default lean:
+  extend existing if MCP-SDK serialization handles the union type
+  cleanly; new tool if discriminator semantics matter for
+  tool-routing. Probe MCP SDK's tool-input schema during ADR
+  drafting.
+
+**Depends on.** Nothing. Parallelizable with Steps 1, 2.
+**Unblocks.** Step 4 (implementation locks against this ADR).
+**Owner.** Claude. ADR-N draft + symbol-list resolution.
+**Travis sub-task at ship time:** review ADR-N decisions
+(particularly the new-tool-vs-extend-existing call from Open
+Question #2) before Step 4 begins.
+**References.** v0.3-SCOPE.md Stream A item 2; Phase 7 §5.1
+grep-ceiling finding; ADR-13/14 probe-then-decide precedent.
+
+---
+
+### Step 4 — Theme 1.1: multi-symbol implementation + tests
+
+**Scope.** Implement the multi-symbol call shape per Step 3's
+ADR-N. Per [`v0.3-SCOPE.md`](v0.3-SCOPE.md) Stream A item 2.
+
+**Ship criteria.**
+- [ ] MCP tool surface implements ADR-N's chosen shape; existing
+  single-symbol path preserved.
+- [ ] Output format: per-symbol sub-bundles within a single
+  compact-text response. JSON variant follows ADR-04's opt-in
+  pattern.
+- [ ] Tests cover (a) single-symbol equivalence with old call,
+  (b) multi-symbol happy path, (c) partial failure (one symbol
+  resolves, one doesn't), (d) max-symbols cap enforcement.
+- [ ] Integration test exercises the new shape against the
+  contextatlas-self atlas (dogfood pattern from CLAUDE.md).
+- [ ] No regression in main-repo test suite.
+
+**Key decisions.**
+- None expected at implementation time; ADR-N locks the
+  decisions in Step 3.
+
+**Depends on.** Step 3.
+**Unblocks.** Step 16 (Phase 8 synthesis exercises this on Go
+c4-stream-lifecycle per Stream D scope item 4).
+**Owner.** Claude.
+**References.** v0.3-SCOPE.md Stream A item 2; ADR-N (from Step 3).
+
+---
+
+### Step 5 — Theme 1.2 Fix 2: narrower attribution + p4 spot-check
+
+**Scope.** Implement narrower claim attribution behind a feature
+flag — drop frontmatter-baseline inheritance in
+`writeClaimsForFile`. Spot-check on Phase 6 p4-stream-lifecycle
+to inform Step 7's decision. Per
+[`v0.3-SCOPE.md`](v0.3-SCOPE.md) Stream A item 1 Fix 2.
+
+**Ship criteria.**
+- [ ] Feature flag `extraction.narrowerAttribution` (or
+  equivalent CLI flag) defaults off; flag-on changes the
+  attribution mechanic.
+- [ ] Tests cover (a) flag-off matches v0.2 attribution exactly,
+  (b) flag-on drops frontmatter inheritance, (c) per-claim
+  candidates still resolve correctly.
+- [ ] **Spot-check measurement on Phase 6 p4-stream-lifecycle**:
+  re-extract httpx atlas with flag on, re-run p4 alpha + ca
+  cells, capture per-cell metrics. Total spot-check cost
+  ~$0.10–0.30. Findings recorded as comment in
+  `research/v0.3-stream-a-spot-check.md` (scratch note;
+  promotion into Phase 8 synthesis at Step 16).
+- [ ] No regression in main-repo test suite.
+
+**Key decisions.**
+- Per-claim candidate fallback when frontmatter inheritance
+  drops: how aggressive is the candidate-resolver substitute?
+  Default: minimal — claims with no resolved candidates surface
+  as warnings (composes with Step 1's diagnostic channel).
+
+**Depends on.** Step 1 (Fix 1's diagnostic channel composes
+cleanly with the warnings Fix 2 may surface).
+**Unblocks.** Step 7 (decision reads Step 5 + Step 6 evidence).
+**Owner.** Claude. Implementation + spot-check execution.
+**Travis sub-task at ship time:** review spot-check evidence
+note before Step 7 begins (decision input).
+**References.** v0.3-SCOPE.md Stream A item 1 Fix 2; backlog
+inventory Theme 1.2; Phase 6 §5.1.
+
+---
+
+### Step 6 — Theme 1.2 Fix 3: BM25 ranking + ADR-09 amendment + p4 spot-check
+
+**Scope.** Implement BM25 ranking on `get_symbol_context` claims
+behind a feature flag. Amend ADR-09 to extend BM25 from
+`find_by_intent` to `get_symbol_context`. Spot-check on Phase 6
+p4-stream-lifecycle. Per
+[`v0.3-SCOPE.md`](v0.3-SCOPE.md) Stream A item 1 Fix 3 (BM25
+sub-approach; embedding-based deferred to v0.4).
+
+**Ship criteria.**
+- [ ] Feature flag `mcp.symbolContextBM25` (or equivalent)
+  defaults off; flag-on activates query-aware ranking.
+- [ ] MCP tool-interface change: `get_symbol_context` accepts
+  optional `query` parameter; when present and flag on, claims
+  are BM25-ranked against query.
+- [ ] ADR-09 amendment: extends scope from find-by-intent to
+  symbol-context; documents the optional-query interface
+  change; cross-references ADR-N from Step 3 if multi-symbol
+  shape also receives query parameter.
+- [ ] Tests cover (a) flag-off behavior unchanged, (b) flag-on
+  with query ranks claims, (c) flag-on without query falls back
+  to deterministic order.
+- [ ] **Spot-check measurement on Phase 6 p4-stream-lifecycle**:
+  re-extract httpx atlas (or reuse Step 5's atlas if Fix 2 +
+  Fix 3 don't conflict at extraction time), re-run p4 ca cell
+  with flag on, capture per-cell metrics. Findings recorded in
+  same scratch note as Step 5.
+- [ ] No regression in main-repo test suite.
+
+**Key decisions.**
+- Whether `query` parameter on `get_symbol_context` is
+  always-passed (caller-provided context) or optional. ADR-09
+  amendment locks this. Default: optional — backward-compat
+  with v0.2 callers; ranking only when query provided.
+
+**Depends on.** Step 1 (Fix 1 unconditionally; Fix 3 composes
+above it).
+**Unblocks.** Step 7 (decision).
+**Owner.** Claude. Implementation + ADR-09 amendment draft +
+spot-check execution.
+**Travis sub-tasks at ship time:** review ADR-09 amendment
+text + review spot-check evidence note before Step 7 begins
+(decision input).
+**References.** v0.3-SCOPE.md Stream A item 1 Fix 3 + Open
+Question #1; backlog inventory Theme 1.2; ADR-09.
+
+---
+
+### Step 7 — Stream A finalization: Theme 1.2 fix-selection + flag retirement
+
+**Scope.** Based on Step 5 + Step 6 spot-check evidence, lock
+which Theme 1.2 fixes ship to v0.3 atlas extraction. Retire
+losing flag(s); ship winning fix(es) as default behavior. Per
+[`v0.3-SCOPE.md`](v0.3-SCOPE.md) Stream A item 1 + Open
+Question #1.
+
+**Ship criteria.**
+- [ ] Decision documented: which combination of Fix 2, Fix 3,
+  or both ships in v0.3 atlas extraction. Rationale cites
+  Step 5 + Step 6 spot-check evidence.
+- [ ] If Fix 2 ships: feature flag retired; behavior becomes
+  default. If Fix 3 ships: feature flag retired; query
+  parameter becomes documented stable interface.
+- [ ] If neither ships (rescope per v0.3-SCOPE.md rescope
+  condition #1): rationale documented in
+  `research/v0.3-stream-a-spot-check.md` + flagged for
+  Phase 8 synthesis.
+- [ ] Stream A scope completion confirmed: Fix 1 (Step 1) +
+  Theme 1.3 (Step 2) + Theme 1.1 (Step 4) + Theme 1.2
+  decision (this step) all shipped.
+- [ ] Spot-check note ready for promotion into Phase 8
+  synthesis at Step 16.
+
+**Spot-check evidence vs Stream D measurement.** Spot-check
+evidence from Steps 5+6 informs fix selection; Stream D atlas
+extraction at Step 14 (atlas re-extraction; renumbered from
+prior Step 15) locks the chosen fix into v0.3 atlases. If
+Stream D measurement contradicts spot-check evidence, that's a
+Phase 8 finding (recorded in Step 15 synthesis), not a re-do
+trigger. The spot-check is the cheap gate; Stream D is the
+rigorous measurement. Both surface evidence; only Stream D's
+result ships to v0.3 narrative.
+
+**Key decisions.**
+- The decision itself is the ship criterion. Captured in the
+  step's progress-log entry.
+
+**Depends on.** Steps 5, 6.
+**Unblocks.** Step 8 (Stream B begins; Theme 1.2 ↔ Stream B
+sequencing constraint resolved).
+**Owner.** Both. Travis decides based on evidence; Claude
+executes flag retirement + finalization.
+**References.** v0.3-SCOPE.md Stream A item 1 + Open Question
+#1 + Rescope Condition #1.
+
+---
+
+### Step 8 — Stream B probe: cross-language docstring surface
+
+**Scope.** Probe phase preceding implementation: examine
+docstring surface across TypeScript / Python / Go to inform
+Stream B contract design. Decide language implementation order.
+Per [`v0.3-SCOPE.md`](v0.3-SCOPE.md) Stream B item 0.
+
+**Ship criteria.**
+- [ ] Probe artifacts in `docs/adr/docstring-probe-findings.md`
+  (mirrors `pyright-probe-findings.md` and `gopls-probe-findings.md`
+  pattern).
+- [ ] Per-language sample: 5–10 docstrings each from hono /
+  httpx / cobra source files. Captured raw form (file:line +
+  literal text).
+- [ ] Per-language analysis: structured fields available
+  (TS JSDoc tags, Python Sphinx/Google/NumPy sections, Go
+  natural-prose conventions); claim shape extractable from
+  each surface; severity inference signals available.
+- [ ] **Stream B sub-decision: language implementation order**
+  recorded with rationale. Default (A) Go-first per
+  v0.3-SCOPE.md unless probe rules it out.
+- [ ] Probe-findings doc cross-referenced from Steps 9, 10, 11,
+  12 step bodies.
+
+**Key decisions.**
+- Language order (A vs B per v0.3-SCOPE.md). Decided here, not
+  in scope doc.
+- Whether Go's gopls hover output suffices or direct comment
+  parsing required. Probe surfaces evidence either way.
+
+**Depends on.** Step 7 (Stream A complete; sequencing constraint
+satisfied).
+**Unblocks.** Steps 9, 10, 11, 12 (Stream B implementation
+work).
+**Owner.** Claude.
+**References.** v0.3-SCOPE.md Stream B item 0; v0.2
+retrospective §"Pre-implementation surveys"; ADR-13/14
+probe-then-decide precedent.
+
+---
+
+### Step 9 — Stream B prompt drafting + calibration
+
+**Scope.** Draft docstring-extraction prompt; calibrate against
+10–15 docstring examples surfaced in Step 8 probe; decide
+single-prompt vs dual-prompt (with ADR-02 amendment if dual).
+Per [`v0.3-SCOPE.md`](v0.3-SCOPE.md) Stream B item 5.
+
+**Ship criteria.**
+- [ ] Docstring-extraction prompt drafted in
+  `src/extraction/docstring-prompt.ts` (or sibling to the
+  ADR-extraction prompt, depending on dual-prompt decision).
+- [ ] Calibration run: 10–15 docstring examples processed;
+  100% JSON parse success required (matches ADR-02 quality
+  bar from v0.1's 12-document validation).
+- [ ] Severity inference validated: known-`@deprecated` cases
+  → `hard`; explicit "must" cases → `hard`; default → `soft`.
+- [ ] Decision: single shared prompt (extends EXTRACTION_PROMPT)
+  vs dual prompts (separate ADR-prompt + docstring-prompt).
+  Rationale documented.
+- [ ] If dual-prompt: ADR-02 amendment block landed.
+- [ ] Calibration results captured in
+  `research/v0.3-docstring-prompt-calibration.md` (scratch
+  note; absorbed into Phase 8 synthesis at Step 16 if findings
+  shape v0.3 narrative).
+
+**Key decisions.**
+- Single vs dual prompt (per v0.3-SCOPE.md Stream B item 5).
+  Default lean: dual if calibration shows ADR-prompt's
+  ADR-shape priors hurt docstring extraction; single if shape
+  is generic enough to reuse.
+
+**Depends on.** Step 8.
+**Unblocks.** Steps 10, 11, 12.
+**Owner.** Both. Claude drafts prompt + analyzes calibration;
+Travis runs API calibration calls (~$1–2 spend) + approves
+prompt.
+**References.** v0.3-SCOPE.md Stream B item 5; ADR-02; v0.1
+prompt validation pattern.
+
+---
+
+### Step 10 — Docstring extraction: language 1 (probe-decided)
+
+**Scope.** Implement docstring extraction for the first language
+per Step 8's order decision. Default Go (richest surface). Per
+[`v0.3-SCOPE.md`](v0.3-SCOPE.md) Stream B items 1/2/3 (specific
+language picked at execution).
+
+**Ship criteria.**
+- [ ] Extraction pipeline reads docstrings via the language's
+  adapter substrate (gopls hover for Go; tsserver hover or
+  comment scan for TS; pyright hover for Python).
+- [ ] Claims emitted with `source: "docstring:<path>"` (or
+  the source-key shape decided in v0.3-SCOPE.md Open Question
+  #3 during Step 9 implementation).
+- [ ] Symbol-keyed: each docstring's claims attach to the
+  documented symbol's SymbolId.
+- [ ] Severity inference applied per Step 9's calibration.
+- [ ] Tests cover (a) docstring present + parsed correctly,
+  (b) docstring absent (no claim), (c) malformed docstring
+  (graceful skip with diagnostic).
+- [ ] Dogfood validation: extraction produces docstring claims
+  on a sample file from the relevant repo (cobra for Go;
+  hono for TS; httpx for Python).
+- [ ] No regression in main-repo test suite.
+
+**Key decisions.**
+- Module-level docstring SymbolId shape (Python — applies
+  here if Python is language 1; otherwise resolves in later
+  step). Default per v0.3-SCOPE.md Stream B item 2:
+  `sym:py:<path>:<module>` synthetic SymbolId.
+
+**Depends on.** Step 9.
+**Unblocks.** Step 11 (next language).
+**Owner.** Claude.
+**References.** v0.3-SCOPE.md Stream B items 1/2/3 (specific
+item per probe decision); ADR-13/14 if Go.
+
+---
+
+### Step 11 — Docstring extraction: second and third languages + cross-language conformance
+
+**Scope.** Implement docstring extraction for the two remaining
+languages (per Step 8's order decision) and complete the
+cross-language conformance pass. Languages 2 and 3 are
+mechanical extension of Step 10's contract-defining work — the
+adapter substrate differs but the pipeline shape is settled.
+Per [`v0.3-SCOPE.md`](v0.3-SCOPE.md) Stream B items 1/2/3.
+
+**Ship criteria.**
+- [ ] Language 2 docstring extraction shipped: same shape as
+  Step 10's contract; reads via the language's adapter
+  substrate; emits claims with the v0.3 source-key shape.
+- [ ] Language 3 docstring extraction shipped (same shape).
+- [ ] Cross-language conformance: all three language docstring
+  extractors share the same claim-emission interface; pipeline
+  routes per-file by adapter language; no per-language
+  special-casing in the pipeline itself, only in the per-adapter
+  docstring readers.
+- [ ] Multi-language atlas extraction produces docstring claims
+  from all three languages in a single run (relevant when
+  contextatlas-self dogfoods or for multi-language repos).
+- [ ] Tests cover all three languages composing in the same
+  atlas extraction run.
+- [ ] Dogfood validation: extraction produces docstring claims
+  on a sample file from each remaining repo (TS / Python / Go,
+  per probe order).
+- [ ] Stream B scope completion confirmed: TS / Python / Go all
+  shipping docstring claims.
+- [ ] No regression in main-repo test suite.
+
+**Key decisions.**
+- Module-level docstring SymbolId shape (Python — applies
+  here if Python is language 2 or 3 and wasn't resolved in
+  Step 10). Default per v0.3-SCOPE.md Stream B item 2:
+  `sym:py:<path>:<module>` synthetic SymbolId.
+
+**Depends on.** Step 10 (contract-defining first language
+must land before mechanical extension).
+**Unblocks.** Step 14 (v0.3 atlas re-extraction).
+**Owner.** Claude.
+**References.** v0.3-SCOPE.md Stream B items 1/2/3 + closing
+note on cross-language conformance.
+
+---
+
+### Step 12 — Theme 2.1: atlas-file-visibility filter + methodology note
+
+**Scope.** Implement trace-time filter excluding cells where
+beta's trace references atlas paths. Author the methodology
+note during execution per v0.2 retrospective lesson. Per
+[`v0.3-SCOPE.md`](v0.3-SCOPE.md) Stream C item 1.
+
+**Ship criteria.**
+- [ ] Trace-time filter shipped in benchmarks-repo
+  `src/harness/run.ts` (or equivalent): post-run pass detects
+  cells whose beta trace references `atlases/<repo>/atlas.json`,
+  `atlases/<repo>/index.db`, or similar atlas paths; flags
+  affected cells.
+- [ ] Filter produces structured output usable by synthesis
+  authoring (filtered-cells list + per-cell trace excerpt
+  showing the contamination).
+- [ ] Methodology note authored at
+  `research/atlas-file-visibility-benchmark-methodology.md`
+  (benchmarks repo): documents the filter + alternative paths
+  (clean-workspace mode, atlas-aware prompts) for v0.4+
+  consideration.
+- [ ] RUBRIC.md amendment documenting the filter as standard
+  v0.3+ methodology.
+- [ ] Backwards-applied to v0.2 reference data: filter run on
+  Phase 5/6/7 traces, contamination rate measured. If the
+  c6-class artifact rate is <10% across v0.2 data (per
+  rescope condition threshold), trace-time filter approach
+  suffices for v0.3.
+- [ ] Benchmarks-repo test suite passes (was 197).
+
+**Key decisions.**
+- If v0.2 backwards-applied filter shows >10% contamination
+  rate, trigger v0.3-SCOPE.md rescope condition #4 (clean-
+  workspace mode pivot).
+
+**Depends on.** Nothing structurally — could in principle land
+earlier. Placed here to keep Stream A and Stream B work
+unblocked. Realistic earliest: after Step 7 (Stream A locks
+atlas extraction shape that Stream D will measure against).
+**Unblocks.** Step 16 (Stream D synthesis uses filter output).
+**Owner.** Claude.
+**References.** v0.3-SCOPE.md Stream C item 1 + Rescope
+Condition #4; backlog inventory Theme 2.1; v0.2 retrospective
+§"Author methodology-issue notes during execution."
+
+---
+
+### Step 13 — Theme 2.3: Go-specific cost priors
+
+**Scope.** Refactor `COST_PRIORS_V0_1` (or its v0.3 successor)
+in benchmarks-repo `src/harness/run.ts` to support per-language
+bucket scales. Seed Go priors from Phase 7 cobra data. Standalone
+harness-code change. Per [`v0.3-SCOPE.md`](v0.3-SCOPE.md) Stream
+C item 3. (Theme 2.2 — synthesis-doc convention — moves to
+Step 15 as a Phase 8 deliverable rather than a separate step;
+it's a synthesis-time addition, not harness code.)
+
+**Ship criteria.**
+- [ ] `src/harness/run.ts` cost-priors refactored to support
+  per-language bucket scales. Default priors seeded from
+  Phase 5/6/7 data: hono (TS-baseline) at current values;
+  httpx (Python) calibrated against Phase 6; cobra (Go) at
+  ~$0.30/cell blended per Phase 7.
+- [ ] RUBRIC.md amendment documenting the per-language
+  calibration pattern.
+- [ ] Step-13 (downstream future-step) budget projection
+  updated to $115–150 (per Phase 7 §7) in any docs that
+  previously cited $176–210.
+- [ ] Benchmarks-repo test suite passes; cost-priors tests
+  cover (a) per-language lookup, (b) fallback when language
+  not seeded.
+
+**Depends on.** Nothing structurally; small standalone
+harness-code change. Practical placement: alongside Step 12's
+RUBRIC.md amendment to bundle methodology updates.
+**Unblocks.** Step 15 (Phase 8 synthesis cites revised
+priors; v0.3 budget projections defensible).
+**Owner.** Claude.
+**References.** v0.3-SCOPE.md Stream C item 3; backlog
+inventory Theme 2.3; Phase 7 §7 + §8.4.
+
+---
+
+### Step 14 — v0.3 atlas re-extraction
+
+**Scope.** Re-extract atlases for hono / httpx / cobra against
+the v0.3-sharpened pipeline (Stream A's chosen Theme 1.2 fixes
++ Stream B's docstring extraction across all three languages +
+Theme 1.3's commit_sha). First-time-commit per the v0.2 Step 5
+pattern (httpx atlas first-time-commit) but for three repos
+this time. Per [`v0.3-SCOPE.md`](v0.3-SCOPE.md) Stream D item 1.
+
+**Ship criteria.**
+- [ ] hono atlas re-extracted: `atlases/hono/atlas.json`
+  committed in benchmarks repo; symbol count + claim count
+  recorded; sentinel `Hono` present; `contextatlas_commit_sha`
+  populated.
+- [ ] httpx atlas re-extracted: same shape; sentinel `Client`
+  present.
+- [ ] cobra atlas re-extracted: same shape; sentinel `Command`
+  present.
+- [ ] Each atlas's claim count materially higher than v0.2's
+  ADR-only count (docstring claims now included).
+- [ ] Provenance notes in each atlas's commit message:
+  contextatlas commit SHA, extraction model, atlas schema v1.3,
+  Stream A chosen-fix configuration.
+- [ ] Total extraction cost recorded (~$3–6 per scope doc).
+- [ ] Benchmarks repo's `verify-pinned-repos.mjs` passes
+  (target SHAs unchanged from v0.2).
+
+**Key decisions.**
+- None expected. All shape decisions resolved in Steps 1–13.
+
+**Depends on.** Steps 7 (Stream A complete), 11 (Stream B
+complete), 13 (cost priors current).
+**Unblocks.** Step 15.
+**Owner.** Travis. Runs extraction via
+`scripts/extract-benchmark-atlas.mjs <repo>` for each target.
+**References.** v0.3-SCOPE.md Stream D item 1; v0.2 Step 5
+first-time-commit pattern.
+
+---
+
+### Step 15 — Stream D matrix execution + Phase 8 synthesis (incl. Theme 2.2)
+
+**Scope.** Execute the v0.3 reference matrix on the three new
+atlases against the same locked pre-registered prompts. Author
+Phase 8 synthesis covering the minimum-three findings + any
+additional findings Stream D investigation surfaces. Phase 8
+also delivers Theme 2.2 (cross-harness asymmetry comparison
+table) as standard synthesis-doc convention — first
+implementation here; RUBRIC.md amendment lands as part of this
+step. Per [`v0.3-SCOPE.md`](v0.3-SCOPE.md) Stream D items 2-5
++ Stream C item 2.
+
+**Ship criteria.**
+- [ ] Three reference matrices executed: hono / httpx / cobra.
+  Each: 24/24 cells clean (or rescope per v0.3-SCOPE.md
+  rescope condition #3 if matrix contradicts Phase 5/6/7
+  patterns on sharpened atlas).
+- [ ] **MCP preflight passes** for each beta-ca matrix launch
+  (v0.2 Step 7 finding + Step 11 infra).
+- [ ] **Hibernation prevention** (`powercfg` per v0.2 Step 6
+  finding) applied before each matrix launch.
+- [ ] Trace-time filter (Step 12) applied to each matrix's
+  output; contamination rate recorded per repo.
+- [ ] Reference artifacts promoted to
+  `runs/reference/{hono,httpx,cobra}/` per the Phase 5/6/7
+  promotion pattern. Per-cell artifacts; run-manifest.json;
+  summary.md.
+- [ ] **Phase 8 synthesis** at
+  `research/phase-8-v0.3-reference-run.md` (benchmarks repo).
+  Mandatory minimum (per v0.3-SCOPE.md Stream D item 4):
+  Theme 1.2 fix validation on p4-stream-lifecycle; Stream B
+  docstring source value; Theme 1.1 multi-symbol API exercise
+  on c4-stream-lifecycle (or equivalent grep-ceiling cell).
+  Additional findings allowed.
+- [ ] **Theme 2.2 deliverable**: Phase 8 includes the
+  cross-harness asymmetry comparison (beta-ca-vs-beta vs
+  ca-vs-alpha delta tables) as standard methodology. RUBRIC.md
+  amendment in this step documents the comparison as v0.3+
+  synthesis-doc convention. (Theme 2.2 was originally bundled
+  with Theme 2.3 at one Step; split per v0.3 plan revision —
+  Theme 2.3 lives as Step 13 harness-code change; Theme 2.2
+  lives here as synthesis-time deliverable.)
+- [ ] Step-A spot-check note (from Steps 5/6/7) absorbed into
+  Phase 8 §"Theme 1.2 fix validation" with rigorous evidence.
+  Per Step 7's "spot-check vs Stream D measurement" framing,
+  if Phase 8 evidence contradicts Steps 5/6 spot-check
+  evidence, that contradiction is the finding — not a re-do
+  trigger.
+- [ ] Step-9 prompt-calibration note (from Step 9) absorbed
+  into Phase 8 if findings shape v0.3 narrative.
+- [ ] Total matrix cost recorded against v0.3-SCOPE.md envelope
+  (~$15–25).
+
+**Key decisions.**
+- Phase 8 length per the v0.2 retrospective lesson: synthesis
+  LOC is finding-scaled, not estimate-scaled. Don't pre-anchor
+  at "shorter than Phase 5."
+- Cross-harness asymmetry hypothesis (Phase 7 §5.3): does
+  Phase 8 evidence confirm or falsify it across the three v0.3
+  reference runs? Document either way; this is the comparison
+  table's first rigorous test.
+
+**Depends on.** Step 14 (atlases ready), Step 12 (filter ready),
+Step 13 (priors current).
+**Unblocks.** Step 16 (v0.3 ship gate).
+**Owner.** Both. Travis runs matrices (3 × `npx tsx
+scripts/run-reference.ts`); Claude drafts synthesis from
+artifacts + RUBRIC.md amendment; Travis reviews + edits.
+**References.** v0.3-SCOPE.md Stream D + Stream C item 2 +
+Success Criterion 4 + Open Questions #5 (synthesis depth);
+Phase 5/6/7 reference runs; Phase 7 §5.3 cross-harness
+asymmetry.
+
+---
+
+### Step 16 — v0.3 ship gate
+
+**Scope.** Verify all v0.3-SCOPE.md success criteria met; refresh
+external-facing docs (README, ROADMAP, DESIGN, CLAUDE.md);
+package.json bump; annotated tag v0.3.0. External-facing target
+(resume + community-sharing) raises bar on doc accuracy. Per
+[`v0.3-SCOPE.md`](v0.3-SCOPE.md) Success Criteria.
+
+**Ship criteria.**
+- [ ] v0.3-SCOPE.md Success Criterion 1 (Stream A complete)
+  verified via committed artifacts: ADR authoring validation
+  shipped, Theme 1.2 chosen fix(es) shipped, Theme 1.1
+  multi-symbol API shipped with new ADR, atlas schema v1.3
+  with commit_sha shipped.
+- [ ] Success Criterion 2 (Stream B docstring source landed
+  across three languages) verified.
+- [ ] Success Criterion 3 (Stream C methodology hardening
+  complete) verified.
+- [ ] Success Criterion 4 (Stream D Phase 8 reference run
+  committed with mandatory minimum findings) verified.
+- [ ] Success Criterion 5 (no quality-axis claims published)
+  verified — README + Phase 8 synthesis explicitly note
+  efficiency + bundle-precision measurement only; quality
+  axis remains v0.4 scope.
+- [ ] README refresh (mirror v0.2's Step 12 pattern):
+  v0.3-shipped status block, headline numbers from Phase 8,
+  cross-language replication updated, v0.4 hint queued.
+- [ ] ROADMAP.md: v0.3 [IN PROGRESS] → [SHIPPED] with
+  empirical-validation block; v0.4 section updated with
+  what v0.3 surfaced as v0.4 deliverables.
+- [ ] DESIGN.md: atlas schema example bumped to v1.3 with
+  `contextatlas_commit_sha` example; multi-symbol tool
+  documented; docstring source documented.
+- [ ] CLAUDE.md: Current Version block refreshed; Benchmark
+  Targets section unchanged (still hono/httpx/cobra unless
+  Stream D rescoped).
+- [ ] Main-repo test suite green; benchmarks-repo test suite
+  green.
+- [ ] `package.json` version bumped 0.2.0 → 0.3.0.
+- [ ] Annotated tag `v0.3.0` created with summary message.
+- [ ] All commits pushed to origin.
+- [ ] STEP-PLAN-V0.3.md `## Progress log` complete with all
+  16 step entries; revision history block reflects any
+  scope changes during execution.
+
+**Key decisions.**
+- External-facing target deliverables specifics (Open
+  Question #6): what counts as "community-sharing target
+  met"? Default: README + Phase 8 synthesis are the
+  community-readable surface; blog post / public benchmark
+  site are post-v0.3 considerations not blocking the ship.
+
+**Depends on.** Step 15.
+**Unblocks.** v0.4 planning. v0.3 ships when this step
+shipped.
+**Owner.** Both. Claude drafts doc updates; Travis approves
++ runs version-bump commit + tag commands + push.
+**References.** v0.3-SCOPE.md Success Criteria + Open Question
+#6; v0.2 Step 12 ship-gate pattern.
+
+---
+
+## Progress log
+
+*Entries added in reverse-chronological order as steps ship.*
+
+*Format:*
+
+```
+### Step N shipped — YYYY-MM-DD (commit SHA)
+- Scope: [one-line from step definition]
+- Outcome: [1-2 sentences on what actually shipped]
+- Notable decisions: [if any surfaced during execution]
+- Ship-criteria verification: [each criterion with evidence]
+```
+
+*(No entries yet — v0.3 execution has not begun.)*
+
+---
+
+## Revision history
+
+*Material scope/plan changes during execution. Small tactical
+adjustments (timebox tweaks, sub-item re-ordering within a step)
+are absorbed into git commits on this file; only changes that
+affect v0.3-SCOPE.md OR downstream steps' ship criteria land here.*
+
+*Format:*
+
+```
+### YYYY-MM-DD (commit SHA): Step N revised — reason.
+Downstream impact: [affected steps].
+```
+
+*(No entries yet — v0.3 execution has not begun.)*
