@@ -881,7 +881,7 @@ shipped.
 - Ship-criteria verification: [each criterion with evidence]
 ```
 
-### Step 3 shipped — 2026-04-25 (commit SHA TBD)
+### Step 3 shipped — 2026-04-25 (550caee)
 - **Scope.** Theme 1.1 — multi-symbol API ADR-N draft.
   ADR-15 locks the API surface decisions for the multi-symbol
   `get_symbol_context` call shape (Phase 7 §5.1 grep-ceiling
