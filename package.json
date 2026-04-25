@@ -1,6 +1,6 @@
 {
   "name": "contextatlas",
-  "version": "0.0.1",
+  "version": "0.2.0",
   "description": "An MCP server that gives Claude Code a curated atlas of your codebase — fusing LSP precision with architectural intent from your ADRs, docs, and git history.",
   "license": "UNLICENSED",
   "private": false,
