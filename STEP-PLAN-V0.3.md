@@ -881,7 +881,7 @@ shipped.
 - Ship-criteria verification: [each criterion with evidence]
 ```
 
-### Step 2 shipped — 2026-04-25 (commit SHA TBD)
+### Step 2 shipped — 2026-04-25 (14a0356)
 - **Scope.** Theme 1.3 — atlas schema v1.3 +
   `generator.contextatlas_commit_sha` provenance field.
 - **Outcome.** `AtlasGeneratorInfo` gains optional
