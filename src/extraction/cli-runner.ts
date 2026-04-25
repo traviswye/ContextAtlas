@@ -64,6 +64,14 @@ export interface IndexCliOptions {
    */
   budgetWarnOverride?: number | null;
   /**
+   * `--narrow-attribution=<value>` CLI flag value. When non-null,
+   * overrides `config.extraction.narrow_attribution`. When null,
+   * config value (if present) takes effect. When both absent,
+   * baseline frontmatter inheritance (v0.2 behavior) holds.
+   * v0.3 Theme 1.2 Fix 2 (Phase 6 §5.1 muddy-bundle mechanism).
+   */
+  narrowAttributionOverride?: "drop" | "drop-with-fallback" | null;
+  /**
    * Test seam — inject a fake ExtractionClient instead of constructing
    * a real one backed by the Anthropic SDK. When provided, API-key
    * discovery is skipped.
@@ -185,6 +193,15 @@ export async function runIndexSubcommand(
         ? options.budgetWarnOverride
         : config.extraction?.budgetWarnUsd;
 
+    // Narrow-attribution precedence: CLI override wins; null override
+    // falls through to config; absent both = baseline (v0.2 behavior).
+    // Same precedence pattern as budgetWarnUsd above. v0.3 Fix 2.
+    const narrowAttribution =
+      options.narrowAttributionOverride !== null &&
+      options.narrowAttributionOverride !== undefined
+        ? options.narrowAttributionOverride
+        : config.extraction?.narrowAttribution;
+
     // Resolve the contextatlas binary's own git HEAD SHA once per run
     // (atlas schema v1.3+, v0.3 Theme 1.3). Test seam: callers may
     // pass an explicit value (string or `null`) to skip the spawn and
@@ -210,6 +227,7 @@ export async function runIndexSubcommand(
         // `full` flag via the `skipShaDiff` option added below.
         ...(options.full ? { skipShaDiff: true } : {}),
         ...(budgetWarnUsd !== undefined ? { budgetWarnUsd } : {}),
+        ...(narrowAttribution !== undefined ? { narrowAttribution } : {}),
       });
     } catch (err) {
       log.error("index: extraction pipeline threw", { err: String(err) });

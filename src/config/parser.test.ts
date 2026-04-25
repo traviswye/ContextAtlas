@@ -416,7 +416,7 @@ describe("loadConfig — source block (ADR-08 runtime)", () => {
         "extraction:\n  bogus: 1\n",
     );
     expect(() => loadConfig(tmp)).toThrow(
-      /Unknown key 'extraction\.bogus'.*Valid keys at this level: budget_warn_usd/,
+      /Unknown key 'extraction\.bogus'.*Valid keys at this level: budget_warn_usd, narrow_attribution/,
     );
   });
 
@@ -426,6 +426,59 @@ describe("loadConfig — source block (ADR-08 runtime)", () => {
         "extraction: just-a-string\n",
     );
     expect(() => loadConfig(tmp)).toThrow(/Invalid 'extraction'/);
+  });
+
+  // ---------------------------------------------------------------
+  // extraction.narrow_attribution (v0.3 Theme 1.2 Fix 2)
+  // ---------------------------------------------------------------
+
+  it("extraction.narrow_attribution = 'drop' → parses to camelCase field", () => {
+    writeCfg(
+      "version: 1\nlanguages: [typescript]\nadrs: { path: docs/adr/ }\n" +
+        "extraction:\n  narrow_attribution: drop\n",
+    );
+    expect(loadConfig(tmp).extraction).toEqual({ narrowAttribution: "drop" });
+  });
+
+  it("extraction.narrow_attribution = 'drop-with-fallback' → parses", () => {
+    writeCfg(
+      "version: 1\nlanguages: [typescript]\nadrs: { path: docs/adr/ }\n" +
+        "extraction:\n  narrow_attribution: drop-with-fallback\n",
+    );
+    expect(loadConfig(tmp).extraction).toEqual({
+      narrowAttribution: "drop-with-fallback",
+    });
+  });
+
+  it("extraction.narrow_attribution invalid string → rejected with actionable error", () => {
+    writeCfg(
+      "version: 1\nlanguages: [typescript]\nadrs: { path: docs/adr/ }\n" +
+        "extraction:\n  narrow_attribution: full\n",
+    );
+    expect(() => loadConfig(tmp)).toThrow(
+      /Invalid 'extraction\.narrow_attribution'.*'drop' or 'drop-with-fallback'/,
+    );
+  });
+
+  it("extraction.narrow_attribution non-string (e.g. boolean) → rejected", () => {
+    writeCfg(
+      "version: 1\nlanguages: [typescript]\nadrs: { path: docs/adr/ }\n" +
+        "extraction:\n  narrow_attribution: true\n",
+    );
+    expect(() => loadConfig(tmp)).toThrow(
+      /Invalid 'extraction\.narrow_attribution'/,
+    );
+  });
+
+  it("extraction with both budget_warn_usd and narrow_attribution → both parse", () => {
+    writeCfg(
+      "version: 1\nlanguages: [typescript]\nadrs: { path: docs/adr/ }\n" +
+        "extraction:\n  budget_warn_usd: 1.50\n  narrow_attribution: drop\n",
+    );
+    expect(loadConfig(tmp).extraction).toEqual({
+      budgetWarnUsd: 1.5,
+      narrowAttribution: "drop",
+    });
   });
 });
 

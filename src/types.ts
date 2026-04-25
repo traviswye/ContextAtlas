@@ -260,15 +260,31 @@ export interface ContextAtlasConfig {
     root: string;
   };
   /**
-   * Optional extraction-pipeline knobs (v0.2 Stream A #2).
+   * Optional extraction-pipeline knobs (v0.2 Stream A #2 +
+   * v0.3 Theme 1.2 Fix 2).
    *
    * `budgetWarnUsd`: when the cumulative API cost during an
    * extraction run exceeds this threshold, a single warning is
    * logged to stderr. Not a hard cap — the run continues. Absent
    * means no budget check. CLI flag `--budget-warn` overrides this
    * value at invocation time.
+   *
+   * `narrowAttribution`: claim-attribution narrowing rule (v0.3
+   * Theme 1.2 Fix 2; targets Phase 6 §5.1 muddy-bundle mechanism).
+   * Absent (default) preserves v0.2 baseline (frontmatter symbols
+   * inherited as per-claim baseline). Two on-states ship behind
+   * this flag for Step 7 evaluation:
+   *   - `"drop"`: drop frontmatter inheritance entirely; claims
+   *     attach only to model-extracted candidates. Cleanest
+   *     experimental knob; Phase 6 §5.1's mechanism check.
+   *   - `"drop-with-fallback"`: drop, but fall back to merging
+   *     frontmatter when a claim resolves to zero symbols.
+   *     Recovers Option A's "claim attaches to no symbols → invisible
+   *     to get_symbol_context" regression risk.
+   * CLI flag `--narrow-attribution=<value>` overrides config.
    */
   extraction?: {
-    budgetWarnUsd: number;
+    budgetWarnUsd?: number;
+    narrowAttribution?: "drop" | "drop-with-fallback";
   };
 }

@@ -83,6 +83,7 @@ export async function main(): Promise<void> {
       json: parsed.json,
       verbose: parsed.verbose,
       budgetWarnOverride: parsed.budgetWarn,
+      narrowAttributionOverride: parsed.narrowAttribution,
       contextatlasVersion: version,
     });
     process.exit(result.exitCode);

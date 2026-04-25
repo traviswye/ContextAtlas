@@ -452,23 +452,40 @@ function validateExtraction(
   }
   rejectUnknownKeys(
     raw,
-    new Set(["budget_warn_usd"]),
+    new Set(["budget_warn_usd", "narrow_attribution"]),
     "extraction.",
     configPath,
   );
+
+  const out: NonNullable<ContextAtlasConfig["extraction"]> = {};
+
   const budget = raw.budget_warn_usd;
-  if (budget === undefined) {
-    // Section present but empty — treat as if section were absent.
-    // No point in landing an extraction record with no fields set.
-    return undefined;
+  if (budget !== undefined) {
+    if (typeof budget !== "number" || !Number.isFinite(budget) || budget < 0) {
+      throw cfgError(
+        configPath,
+        `Invalid 'extraction.budget_warn_usd': expected non-negative number (USD), got ${describeType(budget)}.`,
+      );
+    }
+    out.budgetWarnUsd = budget;
   }
-  if (typeof budget !== "number" || !Number.isFinite(budget) || budget < 0) {
-    throw cfgError(
-      configPath,
-      `Invalid 'extraction.budget_warn_usd': expected non-negative number (USD), got ${describeType(budget)}.`,
-    );
+
+  const narrow = raw.narrow_attribution;
+  if (narrow !== undefined) {
+    if (narrow !== "drop" && narrow !== "drop-with-fallback") {
+      throw cfgError(
+        configPath,
+        `Invalid 'extraction.narrow_attribution': expected 'drop' or 'drop-with-fallback', got ${describeType(narrow)}${typeof narrow === "string" ? ` ('${narrow}')` : ""}. ` +
+          "See Phase 6 §5.1 for mechanism context.",
+      );
+    }
+    out.narrowAttribution = narrow;
   }
-  return { budgetWarnUsd: budget };
+
+  // Section present but empty — treat as if section were absent.
+  // No point in landing an extraction record with no fields set.
+  if (Object.keys(out).length === 0) return undefined;
+  return out;
 }
 
 // ---------------------------------------------------------------------------

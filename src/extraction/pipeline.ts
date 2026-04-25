@@ -135,6 +135,34 @@ export interface ExtractionPipelineDeps {
    * Not a hard cap — the run continues regardless. v0.2 Stream A #2.
    */
   budgetWarnUsd?: number;
+  /**
+   * Claim-attribution narrowing rule (v0.3 Theme 1.2 Fix 2).
+   * Targets the muddy-bundle mechanism documented in Phase 6 §5.1
+   * (atlas-claim-attribution-ranking.md): frontmatter symbols
+   * inherited as a per-claim baseline dominate per-symbol ranking
+   * when many claims share the same baseline.
+   *
+   * Three states:
+   *   - `undefined` (default): baseline behavior — frontmatter
+   *     symbols merge into every claim's candidates as authoritative
+   *     leading entries. v0.2 behavior; preserves byte-equivalence
+   *     with pre-Step-5 atlases.
+   *   - `"drop"`: drop frontmatter inheritance entirely. Claims
+   *     attach only to model-extracted candidates. Cleanest
+   *     experimental knob; isolates Phase 6 §5.1's mechanism check.
+   *     Regression risk: claims where the model didn't surface
+   *     specific candidates may attach to ZERO symbols, becoming
+   *     invisible to get_symbol_context lookups.
+   *   - `"drop-with-fallback"`: drop, but recover when a claim
+   *     would otherwise resolve to zero symbols by falling back to
+   *     frontmatter inheritance for that claim only. Addresses the
+   *     "drop" regression risk; cheap insurance.
+   *
+   * Step 5 ships flag opt-in only; Step 7 reads spot-check evidence
+   * + decides the v0.3 ship default. Stream D (Step 15) re-measures
+   * the chosen configuration.
+   */
+  narrowAttribution?: "drop" | "drop-with-fallback";
 }
 
 /**
@@ -353,6 +381,7 @@ export async function runExtractionPipeline(
         file,
         extracted.result.claims,
         inventory,
+        deps.narrowAttribution,
       );
       claimsWritten += outcome.claimsWritten;
       unresolvedCandidates += outcome.unresolved;
@@ -557,6 +586,7 @@ function writeClaimsForFile(
     excerpt: string;
   }[],
   inventory: SymbolInventory,
+  narrowAttribution: "drop" | "drop-with-fallback" | undefined,
 ): {
   claimsWritten: number;
   unresolved: number;
@@ -600,14 +630,39 @@ function writeClaimsForFile(
   let unresolved = 0;
   const claimUnresolved: UnresolvedClaimDetail[] = [];
   for (const ec of extracted) {
-    // Frontmatter first (author-declared authoritative intent), then
-    // model candidates (inferred). resolveCandidates dedupes within its
-    // result, so shared names don't double-resolve.
-    const merged = [...frontmatterResolvable, ...ec.symbol_candidates];
-    const { symbolIds, unresolved: unres } = resolveCandidates(
-      inventory,
-      merged,
-    );
+    // Attribution merge — three modes per v0.3 Fix 2:
+    //   - undefined (baseline): frontmatter first (author-declared
+    //     authoritative intent), then model candidates (inferred).
+    //     Frontmatter inheritance applies to every claim from the
+    //     same file.
+    //   - "drop": claim-specific candidates only. Drops frontmatter
+    //     inheritance entirely; isolates Phase 6 §5.1's mechanism
+    //     check.
+    //   - "drop-with-fallback": same as "drop", but recovers if the
+    //     claim would otherwise resolve to zero symbols (zero-claim
+    //     fallback to frontmatter inheritance).
+    // resolveCandidates dedupes within its result, so shared names
+    // don't double-resolve.
+    const merged =
+      narrowAttribution === undefined
+        ? [...frontmatterResolvable, ...ec.symbol_candidates]
+        : ec.symbol_candidates;
+    const resolved = resolveCandidates(inventory, merged);
+    let symbolIds = resolved.symbolIds;
+    const unres = resolved.unresolved;
+    // Option E (drop-with-fallback): zero-symbol fallback. Only
+    // fires when narrowAttribution === "drop-with-fallback" AND the
+    // claim resolved to no symbols AND frontmatter has resolvable
+    // entries to fall back to. The fallback symbols are already
+    // resolved upstream, so unres is unaffected.
+    if (
+      narrowAttribution === "drop-with-fallback" &&
+      symbolIds.length === 0 &&
+      frontmatterResolvable.length > 0
+    ) {
+      const fallback = resolveCandidates(inventory, frontmatterResolvable);
+      symbolIds = fallback.symbolIds;
+    }
     unresolved += unres.length;
     if (unres.length > 0) {
       claimUnresolved.push({

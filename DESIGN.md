@@ -353,11 +353,47 @@ atlas:
   committed: true                        # commit atlas.json to the repo
   path: .contextatlas/atlas.json         # committed artifact location
   local_cache: .contextatlas/index.db    # gitignored SQLite cache
+extraction:                              # optional; v0.2 + v0.3 knobs
+  budget_warn_usd: 1.50                  # USD warn threshold (v0.2 Stream A #2)
+  narrow_attribution: drop               # claim-attribution rule (v0.3 Fix 2)
 ```
 
-Seven sections required. No inheritance, no workspaces, no cross-repo refs.
-MVP-scoped deliberately. See ADR-06 for the atlas committed/local-cache
-split.
+Seven sections required (`extraction` is optional). No inheritance, no
+workspaces, no cross-repo refs. MVP-scoped deliberately. See ADR-06 for
+the atlas committed/local-cache split.
+
+### `extraction` section (optional)
+
+Pipeline knobs surfaced after v0.2 reference runs.
+
+- **`budget_warn_usd`** (v0.2 Stream A #2). When the cumulative
+  Anthropic API cost during an extraction run exceeds this threshold,
+  a single warning is logged to stderr. Not a hard cap — the run
+  continues. CLI flag `--budget-warn <usd>` overrides at invocation
+  time. Absent means no budget check.
+- **`narrow_attribution`** (v0.3 Theme 1.2 Fix 2). Claim-attribution
+  narrowing rule targeting the muddy-bundle mechanism documented in
+  Phase 6 §5.1
+  ([`../ContextAtlas-benchmarks/research/phase-6-httpx-reference-run.md`](../ContextAtlas-benchmarks/research/phase-6-httpx-reference-run.md)
+  §5.1 + the `atlas-claim-attribution-ranking.md` companion note in
+  the same directory). Three states:
+  - **Absent (default).** Baseline v0.2 behavior — frontmatter symbols
+    inherit as a per-claim baseline merged with model-extracted
+    candidates. Preserves byte-equivalence with pre-Step-5 atlases.
+  - **`drop`.** Drop frontmatter inheritance entirely; claims attach
+    only to model-extracted candidates. Cleanest experimental knob;
+    isolates the Phase 6 mechanism check. Regression risk: claims
+    where the model didn't surface specific candidates may attach to
+    ZERO symbols, becoming invisible to `get_symbol_context` lookups.
+  - **`drop-with-fallback`.** Same as `drop`, but recovers when a
+    claim would otherwise resolve to zero symbols by falling back to
+    frontmatter inheritance for that claim only. Addresses the `drop`
+    regression risk; cheap insurance.
+  - CLI flag `--narrow-attribution=<value>` overrides at invocation
+    time. Step 5 ships flag opt-in only; Step 7 reads spot-check
+    evidence + decides the v0.3 ship default after Step 6's BM25
+    work (Fix 3) lands. Stream D (Step 15) re-measures the chosen
+    configuration; non-default configs may stay flag-accessible.
 
 ## Extraction Pipeline
 

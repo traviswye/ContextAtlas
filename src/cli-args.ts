@@ -56,6 +56,20 @@
  *                         unchanged; verbose affects the diagnostic
  *                         channel only.
  *
+ *   --narrow-attribution=<drop|drop-with-fallback>
+ *                         (v0.3 Theme 1.2 Fix 2) Accepted only with
+ *                         `index`. Enables claim-attribution narrowing
+ *                         to mitigate the muddy-bundle mechanism
+ *                         documented in Phase 6 §5.1. `drop` removes
+ *                         frontmatter inheritance entirely (the
+ *                         cleanest experimental knob). `drop-with-
+ *                         fallback` drops, but recovers claims that
+ *                         would otherwise attach to zero symbols.
+ *                         Overrides `extraction.narrow_attribution`
+ *                         from the config file when both are specified.
+ *                         Both `--narrow-attribution drop` and
+ *                         `--narrow-attribution=drop` forms accepted.
+ *
  * Unknown arguments throw with actionable errors. Unknown
  * subcommand names get the "did you mean?" suggestion treatment when
  * they're close to a real name (prominently "reindex" → "index", per
@@ -118,11 +132,20 @@ export interface ParsedArgs {
    * non-`index` invocation. Per v0.2 Stream A #3.
    */
   verbose: boolean;
+  /**
+   * Value of `--narrow-attribution=<value>` if passed; otherwise null.
+   * When present, overrides `extraction.narrow_attribution` from the
+   * config file. One of "drop" | "drop-with-fallback". Rejected on any
+   * non-`index` invocation. Per v0.3 Theme 1.2 Fix 2 (Phase 6 §5.1
+   * muddy-bundle mechanism).
+   */
+  narrowAttribution: "drop" | "drop-with-fallback" | null;
 }
 
 const USAGE =
   "Usage: contextatlas [index] [--config-root <path>] [--config <file>] " +
-  "[--check] [--full] [--json] [--budget-warn <usd>] [--verbose]  " +
+  "[--check] [--full] [--json] [--budget-warn <usd>] [--verbose] " +
+  "[--narrow-attribution <drop|drop-with-fallback>]  " +
   "(see ADR-08, ADR-11, ADR-12)";
 
 const KNOWN_SUBCOMMANDS: readonly Subcommand[] = ["index"];
@@ -150,6 +173,7 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
   let json = false;
   let budgetWarn: number | null = null;
   let verbose = false;
+  let narrowAttribution: "drop" | "drop-with-fallback" | null = null;
   let subcommand: Subcommand = "mcp";
   let subcommandSeen = false;
 
@@ -325,6 +349,43 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
       i += 1;
       continue;
     }
+    if (arg === "--narrow-attribution") {
+      if (narrowAttribution !== null) {
+        throw new Error(
+          `Flag --narrow-attribution specified more than once. ${USAGE}`,
+        );
+      }
+      const value = argv[i + 1];
+      if (value === undefined) {
+        throw new Error(
+          `Flag --narrow-attribution requires a value but none was given. ${USAGE}`,
+        );
+      }
+      if (value === "" || value.startsWith("--")) {
+        throw new Error(
+          `Flag --narrow-attribution requires a non-empty value; got '${value}'. ${USAGE}`,
+        );
+      }
+      narrowAttribution = parseNarrowAttribution(value);
+      i += 2;
+      continue;
+    }
+    if (arg.startsWith("--narrow-attribution=")) {
+      if (narrowAttribution !== null) {
+        throw new Error(
+          `Flag --narrow-attribution specified more than once. ${USAGE}`,
+        );
+      }
+      const value = arg.slice("--narrow-attribution=".length);
+      if (value === "") {
+        throw new Error(
+          `Flag --narrow-attribution= requires a non-empty value. ${USAGE}`,
+        );
+      }
+      narrowAttribution = parseNarrowAttribution(value);
+      i += 1;
+      continue;
+    }
     throw new Error(`Unknown argument '${arg}'. ${USAGE}`);
   }
 
@@ -356,6 +417,11 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
       `Flag --verbose is only accepted with the 'index' subcommand. ${USAGE}`,
     );
   }
+  if (narrowAttribution !== null && subcommand !== "index") {
+    throw new Error(
+      `Flag --narrow-attribution is only accepted with the 'index' subcommand. ${USAGE}`,
+    );
+  }
 
   return {
     subcommand,
@@ -366,6 +432,7 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
     json,
     budgetWarn,
     verbose,
+    narrowAttribution,
   };
 }
 
@@ -377,4 +444,11 @@ function parseBudgetWarn(raw: string): number {
     );
   }
   return n;
+}
+
+function parseNarrowAttribution(raw: string): "drop" | "drop-with-fallback" {
+  if (raw === "drop" || raw === "drop-with-fallback") return raw;
+  throw new Error(
+    `Flag --narrow-attribution requires 'drop' or 'drop-with-fallback'; got '${raw}'. ${USAGE}`,
+  );
 }

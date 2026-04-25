@@ -863,4 +863,108 @@ describe("runIndexSubcommand (ADR-12)", () => {
     };
     expect(payload.frontmatter_unresolved_by_file).toEqual([]);
   });
+
+  // ---------------------------------------------------------------
+  // narrow_attribution precedence (v0.3 Fix 2)
+  // CLI override > config value > undefined (baseline)
+  // Mirrors budgetWarn precedence pattern.
+  // ---------------------------------------------------------------
+
+  it("narrow_attribution: CLI override 'drop' wins over config 'drop-with-fallback'", async () => {
+    writeFileSync(
+      pathJoin(tmp, ".contextatlas.yml"),
+      [
+        "version: 1",
+        "languages: [typescript]",
+        "adrs: { path: docs/adr/, format: markdown-frontmatter }",
+        "docs: { include: [] }",
+        "atlas: { committed: true, path: .contextatlas/atlas.json, " +
+          "local_cache: .contextatlas/index.db }",
+        "extraction: { narrow_attribution: drop-with-fallback }",
+        "",
+      ].join("\n"),
+    );
+    writeFileSync(
+      pathJoin(tmp, "docs", "adr", "ADR-1.md"),
+      "---\nid: ADR-1\nsymbols:\n  - Real\n---\nbody\n",
+    );
+    writeFileSync(pathJoin(tmp, "src", "x.ts"), "export class Real {}");
+    const stdout = captureStdout();
+    const result = await runIndexSubcommand({
+      configRoot: tmp,
+      configFile: null,
+      full: false,
+      json: false,
+      narrowAttributionOverride: "drop",
+      contextatlasVersion: "0.0.1-test",
+      clientOverride: stubClient(async () => ({
+        claims: [
+          {
+            symbol_candidates: [],
+            claim: "vague",
+            severity: "hard",
+            rationale: "r",
+            excerpt: "e",
+          },
+        ],
+      })),
+      writeStdout: stdout.writer,
+    });
+    expect(result.exitCode).toBe(0);
+    // CLI override is "drop" (no fallback). Claim has no model
+    // candidates, so it attaches to zero symbols. unresolved_candidates
+    // stays 0 (empty list isn't unresolved; just empty).
+    // The unresolved_frontmatter_hints stays 0 (Real does resolve).
+    expect(stdout.joined()).toMatch(/unresolved_frontmatter_hints=0/);
+  });
+
+  it("narrow_attribution: null override falls through to config value", async () => {
+    writeFileSync(
+      pathJoin(tmp, ".contextatlas.yml"),
+      [
+        "version: 1",
+        "languages: [typescript]",
+        "adrs: { path: docs/adr/, format: markdown-frontmatter }",
+        "docs: { include: [] }",
+        "atlas: { committed: true, path: .contextatlas/atlas.json, " +
+          "local_cache: .contextatlas/index.db }",
+        "extraction: { narrow_attribution: drop }",
+        "",
+      ].join("\n"),
+    );
+    writeFileSync(
+      pathJoin(tmp, "docs", "adr", "ADR-1.md"),
+      "---\nid: ADR-1\n---\nbody\n",
+    );
+    const stdout = captureStdout();
+    const result = await runIndexSubcommand({
+      configRoot: tmp,
+      configFile: null,
+      full: false,
+      json: false,
+      // narrowAttributionOverride: undefined or null falls through.
+      contextatlasVersion: "0.0.1-test",
+      clientOverride: stubClient(async () => ({ claims: [] })),
+      writeStdout: stdout.writer,
+    });
+    expect(result.exitCode).toBe(0);
+  });
+
+  it("narrow_attribution: both absent → baseline behavior (no flag set)", async () => {
+    writeFileSync(
+      pathJoin(tmp, "docs", "adr", "ADR-1.md"),
+      "---\nid: ADR-1\n---\nbody\n",
+    );
+    const stdout = captureStdout();
+    const result = await runIndexSubcommand({
+      configRoot: tmp,
+      configFile: null,
+      full: false,
+      json: false,
+      contextatlasVersion: "0.0.1-test",
+      clientOverride: stubClient(async () => ({ claims: [] })),
+      writeStdout: stdout.writer,
+    });
+    expect(result.exitCode).toBe(0);
+  });
 });

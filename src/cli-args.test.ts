@@ -17,6 +17,7 @@ const EMPTY: ParsedArgs = {
   json: false,
   budgetWarn: null,
   verbose: false,
+  narrowAttribution: null,
 };
 
 describe("parseArgs — baseline and --config-root", () => {
@@ -487,6 +488,97 @@ describe("parseArgs — --verbose", () => {
   it("flag-before-subcommand ordering parses identically to flag-after", () => {
     const before = parseArgs(["--verbose", "index"]);
     const after = parseArgs(["index", "--verbose"]);
+    expect(before).toEqual(after);
+  });
+});
+
+describe("parseArgs — --narrow-attribution (v0.3 Fix 2)", () => {
+  it("--narrow-attribution drop (space form) sets the value", () => {
+    expect(parseArgs(["index", "--narrow-attribution", "drop"])).toEqual({
+      ...EMPTY,
+      subcommand: "index",
+      narrowAttribution: "drop",
+    });
+  });
+
+  it("--narrow-attribution=drop (equals form) sets the value", () => {
+    expect(parseArgs(["index", "--narrow-attribution=drop"])).toEqual({
+      ...EMPTY,
+      subcommand: "index",
+      narrowAttribution: "drop",
+    });
+  });
+
+  it("--narrow-attribution drop-with-fallback (space form)", () => {
+    expect(
+      parseArgs(["index", "--narrow-attribution", "drop-with-fallback"]),
+    ).toEqual({
+      ...EMPTY,
+      subcommand: "index",
+      narrowAttribution: "drop-with-fallback",
+    });
+  });
+
+  it("--narrow-attribution=drop-with-fallback (equals form)", () => {
+    expect(
+      parseArgs(["index", "--narrow-attribution=drop-with-fallback"]),
+    ).toEqual({
+      ...EMPTY,
+      subcommand: "index",
+      narrowAttribution: "drop-with-fallback",
+    });
+  });
+
+  it("invalid value → actionable error", () => {
+    expect(() =>
+      parseArgs(["index", "--narrow-attribution", "full"]),
+    ).toThrow(/'drop' or 'drop-with-fallback'.*got 'full'/);
+  });
+
+  it("invalid equals-form value → actionable error", () => {
+    expect(() =>
+      parseArgs(["index", "--narrow-attribution=full"]),
+    ).toThrow(/'drop' or 'drop-with-fallback'.*got 'full'/);
+  });
+
+  it("space-form missing value → actionable error", () => {
+    expect(() => parseArgs(["index", "--narrow-attribution"])).toThrow(
+      /requires a value/,
+    );
+  });
+
+  it("equals-form empty value → actionable error", () => {
+    expect(() => parseArgs(["index", "--narrow-attribution="])).toThrow(
+      /requires a non-empty value/,
+    );
+  });
+
+  it("flag-with-flag-value (space form) → rejected", () => {
+    expect(() =>
+      parseArgs(["index", "--narrow-attribution", "--full"]),
+    ).toThrow(/non-empty value; got '--full'/);
+  });
+
+  it("specified twice → rejected (space form first, equals form second)", () => {
+    expect(() =>
+      parseArgs([
+        "index",
+        "--narrow-attribution",
+        "drop",
+        "--narrow-attribution=drop-with-fallback",
+      ]),
+    ).toThrow(/specified more than once/);
+  });
+
+  it("rejected on non-`index` invocation (default mcp subcommand)", () => {
+    expect(() => parseArgs(["--narrow-attribution=drop"])).toThrow(
+      /only accepted with the 'index' subcommand/,
+    );
+  });
+
+  it("flag-before-subcommand ordering parses identically to flag-after", () => {
+    const before = parseArgs(["--narrow-attribution=drop", "index"]);
+    const after = parseArgs(["index", "--narrow-attribution=drop"]);
     expect(before).toEqual(after);
   });
 });

@@ -1096,3 +1096,237 @@ describe("runExtractionPipeline — ADR authoring validation", () => {
     expect(adrValidationWarnings[0]).toMatch(/2 file/);
   });
 });
+
+// ---------------------------------------------------------------------------
+// v0.3 Theme 1.2 Fix 2 — narrow_attribution flag (Phase 6 §5.1 mechanism)
+//
+// Three flag states: undefined (baseline), "drop" (Option A), and
+// "drop-with-fallback" (Option E). Tests construct an ADR fixture
+// mirroring the Phase 6 ADR-05 muddy-bundle pattern: frontmatter declares
+// 2 symbols, claims fall into two groups — those whose model candidates
+// resolve to specific symbols, and those whose model candidates resolve
+// to nothing (would attach to zero symbols under Option A).
+// ---------------------------------------------------------------------------
+
+describe("runExtractionPipeline — narrow_attribution (v0.3 Fix 2)", () => {
+  let tmp: string;
+  let db: DatabaseInstance;
+
+  beforeEach(() => {
+    tmp = mkdtempSync(pathJoin(tmpdir(), "ca-pipeline-narrow-"));
+    mkdirSync(pathJoin(tmp, "docs", "adr"), { recursive: true });
+    mkdirSync(pathJoin(tmp, "src"), { recursive: true });
+    mkdirSync(pathJoin(tmp, ".contextatlas"), { recursive: true });
+    db = openDatabase(":memory:");
+  });
+
+  afterEach(() => {
+    db.close();
+    rmSync(tmp, { recursive: true, force: true });
+  });
+
+  function setupFixture() {
+    // ADR with 2 frontmatter symbols (both resolve in inventory).
+    // Two extracted claims:
+    //   - Claim A: model candidates include "SpecificClass" → resolves
+    //     specifically. Frontmatter inheritance would broaden to 3 symbols.
+    //   - Claim B: model candidates empty → under "drop", attaches to
+    //     zero symbols (Option A regression risk). Under
+    //     "drop-with-fallback", recovers to the 2 frontmatter symbols.
+    writeFileSync(
+      pathJoin(tmp, "docs", "adr", "ADR-99.md"),
+      "---\nid: ADR-99\nsymbols:\n  - BaseFoo\n  - BaseBar\n---\nBody.",
+    );
+    writeFileSync(
+      pathJoin(tmp, "src", "x.ts"),
+      "export class BaseFoo {}\nexport class BaseBar {}\nexport class SpecificClass {}",
+    );
+    const adapter = makeStubAdapter("typescript", [".ts"], (absPath) =>
+      absPath.endsWith("x.ts")
+        ? [
+            {
+              id: "sym:ts:src/x.ts:BaseFoo",
+              name: "BaseFoo",
+              kind: "class",
+              path: "src/x.ts",
+              line: 1,
+              language: "typescript",
+            },
+            {
+              id: "sym:ts:src/x.ts:BaseBar",
+              name: "BaseBar",
+              kind: "class",
+              path: "src/x.ts",
+              line: 2,
+              language: "typescript",
+            },
+            {
+              id: "sym:ts:src/x.ts:SpecificClass",
+              name: "SpecificClass",
+              kind: "class",
+              path: "src/x.ts",
+              line: 3,
+              language: "typescript",
+            },
+          ]
+        : [],
+    );
+    const client = makeStubClient([
+      {
+        claims: [
+          makeClaim({
+            claim: "claim-A specific",
+            symbol_candidates: ["SpecificClass"],
+          }),
+          makeClaim({
+            claim: "claim-B vague",
+            symbol_candidates: [], // model gave no specific candidates
+          }),
+        ],
+      },
+    ]);
+    return { adapter, client };
+  }
+
+  it("flag undefined (baseline): both claims inherit frontmatter — Phase 6 §5.1 baseline", async () => {
+    // Step 5 v0.2-equivalence canary. Parallel role to Step 4's
+    // BYTE_EQUIVALENCE_EXPECTED (src/mcp/server.test.ts) which guards
+    // the ADR-15 single-string output contract. This test guards the
+    // Fix 2 narrow_attribution flag-undefined contract: when the flag
+    // is absent, claim attribution must match v0.2 baseline exactly
+    // (frontmatter symbols inherit as per-claim baseline merged with
+    // model candidates). Any divergence here means the Fix 2
+    // implementation broke baseline behavior — which would silently
+    // corrupt every existing user's atlas on next re-extraction.
+    // Ship-blocker for Step 5; future readers MUST NOT weaken this
+    // assertion during refactors. Canary discipline established by
+    // Step 4 (ADR-15) and continued here makes regression-protection
+    // a discoverable pattern across v0.3 work.
+    const { adapter, client } = setupFixture();
+    await runExtractionPipeline({
+      repoRoot: tmp,
+      config: baseConfig(),
+      db,
+      anthropicClient: client,
+      adapters: new Map([["typescript", adapter]]),
+      // narrowAttribution: undefined (default)
+    });
+    const claims = listAllClaims(db);
+    expect(claims).toHaveLength(2);
+    const claimA = claims.find((c) => c.claim === "claim-A specific")!;
+    const claimB = claims.find((c) => c.claim === "claim-B vague")!;
+    // Baseline: both claims inherit BaseFoo + BaseBar from frontmatter.
+    // Claim A also gets SpecificClass via model candidate.
+    expect(claimA.symbolIds.sort()).toEqual([
+      "sym:ts:src/x.ts:BaseBar",
+      "sym:ts:src/x.ts:BaseFoo",
+      "sym:ts:src/x.ts:SpecificClass",
+    ]);
+    expect(claimB.symbolIds.sort()).toEqual([
+      "sym:ts:src/x.ts:BaseBar",
+      "sym:ts:src/x.ts:BaseFoo",
+    ]);
+  });
+
+  it("flag 'drop' (Option A): frontmatter inheritance dropped; claim-B becomes invisible", async () => {
+    const { adapter, client } = setupFixture();
+    await runExtractionPipeline({
+      repoRoot: tmp,
+      config: baseConfig(),
+      db,
+      anthropicClient: client,
+      adapters: new Map([["typescript", adapter]]),
+      narrowAttribution: "drop",
+    });
+    const claims = listAllClaims(db);
+    expect(claims).toHaveLength(2);
+    const claimA = claims.find((c) => c.claim === "claim-A specific")!;
+    const claimB = claims.find((c) => c.claim === "claim-B vague")!;
+    // Option A: only model candidates count. Claim A keeps SpecificClass.
+    // Claim B has empty candidates → ZERO symbols. This is the Option A
+    // regression risk (claim becomes invisible to get_symbol_context).
+    expect(claimA.symbolIds).toEqual(["sym:ts:src/x.ts:SpecificClass"]);
+    expect(claimB.symbolIds).toEqual([]);
+  });
+
+  it("flag 'drop-with-fallback' (Option E): zero-symbol claims recover to frontmatter", async () => {
+    const { adapter, client } = setupFixture();
+    await runExtractionPipeline({
+      repoRoot: tmp,
+      config: baseConfig(),
+      db,
+      anthropicClient: client,
+      adapters: new Map([["typescript", adapter]]),
+      narrowAttribution: "drop-with-fallback",
+    });
+    const claims = listAllClaims(db);
+    expect(claims).toHaveLength(2);
+    const claimA = claims.find((c) => c.claim === "claim-A specific")!;
+    const claimB = claims.find((c) => c.claim === "claim-B vague")!;
+    // Option E: claim A still narrow (SpecificClass only — fallback
+    // does NOT fire because symbolIds.length > 0). Claim B recovers
+    // via fallback to BaseFoo + BaseBar.
+    expect(claimA.symbolIds).toEqual(["sym:ts:src/x.ts:SpecificClass"]);
+    expect(claimB.symbolIds.sort()).toEqual([
+      "sym:ts:src/x.ts:BaseBar",
+      "sym:ts:src/x.ts:BaseFoo",
+    ]);
+  });
+
+  it("flag 'drop': claim with no resolvable frontmatter and no candidates still produces zero-symbol claim (no synthetic recovery)", async () => {
+    // ADR has only unresolvable frontmatter symbols + empty model
+    // candidates. Under "drop", no fallback applies — claim attaches
+    // to zero symbols. This is Option A's intended degenerate case;
+    // documented in the regression-risk framing.
+    writeFileSync(
+      pathJoin(tmp, "docs", "adr", "ADR-100.md"),
+      "---\nid: ADR-100\nsymbols:\n  - DoesNotExist\n---\nBody.",
+    );
+    const adapter = makeStubAdapter("typescript", [".ts"], () => []);
+    const client = makeStubClient([
+      {
+        claims: [makeClaim({ claim: "vague claim", symbol_candidates: [] })],
+      },
+    ]);
+    await runExtractionPipeline({
+      repoRoot: tmp,
+      config: baseConfig(),
+      db,
+      anthropicClient: client,
+      adapters: new Map([["typescript", adapter]]),
+      narrowAttribution: "drop",
+    });
+    const claims = listAllClaims(db);
+    expect(claims).toHaveLength(1);
+    expect(claims[0]?.symbolIds).toEqual([]);
+  });
+
+  it("flag 'drop-with-fallback': fallback only fires when frontmatter HAS resolvable entries", async () => {
+    // Same setup as above but with drop-with-fallback. Frontmatter
+    // entries don't resolve, so there's nothing to fall back to.
+    // Claim still attaches to zero symbols — fallback gracefully
+    // no-ops rather than synthesizing symbols out of unresolvable
+    // names.
+    writeFileSync(
+      pathJoin(tmp, "docs", "adr", "ADR-100.md"),
+      "---\nid: ADR-100\nsymbols:\n  - DoesNotExist\n---\nBody.",
+    );
+    const adapter = makeStubAdapter("typescript", [".ts"], () => []);
+    const client = makeStubClient([
+      {
+        claims: [makeClaim({ claim: "vague claim", symbol_candidates: [] })],
+      },
+    ]);
+    await runExtractionPipeline({
+      repoRoot: tmp,
+      config: baseConfig(),
+      db,
+      anthropicClient: client,
+      adapters: new Map([["typescript", adapter]]),
+      narrowAttribution: "drop-with-fallback",
+    });
+    const claims = listAllClaims(db);
+    expect(claims).toHaveLength(1);
+    expect(claims[0]?.symbolIds).toEqual([]);
+  });
+});
