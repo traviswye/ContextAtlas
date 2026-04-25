@@ -134,14 +134,15 @@ context substrate:
 
 ### `get_symbol_context`
 
-The primitive. Returns a fused context bundle for a symbol.
+The primitive. Returns a fused context bundle for a symbol — or for a
+batch of symbols (multi-symbol mode, ADR-15).
 
 **Input:**
 
 ```jsonc
 {
-  "symbol": "OrderProcessor",              // required
-  "file_hint": "src/orders/processor.ts",  // optional, disambiguates
+  "symbol": "OrderProcessor",              // required: string OR string[] (max 10)
+  "file_hint": "src/orders/processor.ts",  // optional, disambiguates (uniform across batch)
   "depth": "summary" | "standard" | "deep", // default: standard
   "include": ["refs", "intent", "git", "types", "tests"], // optional filter
   "max_refs": 50                            // cap on references
@@ -171,6 +172,47 @@ JSON format available via `format: "json"` input parameter.
 savings vs JSON on the same content, with no measurable loss in Claude's
 ability to use the information. JSON is available for programmatic
 consumers.
+
+**Multi-symbol mode (ADR-15).** When `symbol` is an array of up to 10
+names, the response carries one sub-bundle per symbol, separated by
+named delimiters. Per-symbol failures inline as ERR sub-bundles in
+their positional slot; the call returns `isError: true` only when
+*every* symbol failed to resolve. Order matches request order.
+Duplicate input strings are dropped via `.trim()`-normalized
+exact-string-match dedup before resolution. Single-string input
+preserves the legacy single-bundle output shape (no envelope, no
+delimiters) — `["Foo"]` and `"Foo"` produce different shapes by design.
+
+Compact output:
+
+```
+--- get_symbol_context: OrderProcessor (1 of 2) ---
+SYM OrderProcessor@src/orders/processor.ts:42 class
+  ...
+
+--- get_symbol_context: GhostSymbol (2 of 2) ---
+ERR not_found
+  MESSAGE Symbol 'GhostSymbol' not found. ...
+```
+
+JSON output (envelope shape):
+
+```jsonc
+{
+  "results": [
+    { "symbol": "OrderProcessor", "bundle": { ... }, "error": null },
+    { "symbol": "GhostSymbol", "bundle": null,
+      "error": { "code": "not_found", "message": "..." } }
+  ]
+}
+```
+
+When *all* symbols fail, the compact response prepends
+`ERR all_symbols_failed\n  COUNT <N>\n` plus a blank line (compact-only
+affordance — JSON consumers detect all-failed via `isError: true` plus
+walking `results`). Cap exceedance (11+ items) raises an MCP
+`InvalidParams` protocol error rather than silently truncating —
+explicit error is the cleaner failure mode.
 
 ### `find_by_intent`
 

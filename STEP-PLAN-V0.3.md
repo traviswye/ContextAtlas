@@ -881,6 +881,112 @@ shipped.
 - Ship-criteria verification: [each criterion with evidence]
 ```
 
+### Step 4 shipped — 2026-04-25 (commit SHA TBD)
+- **Scope.** Theme 1.1 — multi-symbol API implementation
+  per ADR-15. Schema + handler + tests + DESIGN.md
+  amendment in a single commit.
+- **Outcome.** Multi-symbol `get_symbol_context` shipped:
+  `oneOf` schema with `string | string[]` input, 10-cap
+  enforcement (`MAX_SYMBOLS_PER_CALL`), per-symbol
+  partial-failure semantics, named-delimiter compact
+  output, JSON `results` envelope, request-order
+  preservation, `.trim()`-normalized exact-match dedup.
+  Diff: **+1138 / -68 = +1070 net LOC** across 4 files
+  (`src/mcp/schemas.ts` +48, `src/mcp/handlers/get-symbol-context.ts`
+  +433/-55, `src/mcp/server.test.ts` +609, `DESIGN.md`
+  +48).
+- **Tests.** **698/698 passing** (was 679; +19 new — 18
+  multi-symbol category-(b)-(h) tests + 1 byte-equivalence
+  canary in single-symbol describe). TypeScript strict
+  typecheck clean. All 8 ADR-15 §Consequences acceptance
+  criteria (a-h) green:
+  - (a) byte-equivalence canary: **GREEN** — literal
+    `.toBe()` match against pre-refactor output captured
+    2026-04-25 from probe run against HEAD before any
+    handler changes
+  - (b) multi-symbol happy path (compact + JSON
+    envelope + length-1-array semantics)
+  - (c) partial failure (not_found + disambiguation
+    inlined; `isError: false`)
+  - (d) all-failed (compact `ERR all_symbols_failed
+    COUNT N` header + JSON asymmetry per Q4 inline-doc
+    decision)
+  - (e) cap enforcement (11 → InvalidParams; 10 boundary
+    pass; empty rejection)
+  - (f) dedup edge cases (4 sub-tests per ADR-15 §8)
+  - (g) order preservation (compact + JSON variants)
+  - (h) `file_hint` uniform application + control test
+- **Notable decisions.**
+  - **Byte-equivalence ship-blocker enforcement.** Probe
+    captured pre-refactor output BEFORE any handler
+    changes; canary asserts literal `.toBe()` match.
+    Existing `.toMatch(/pattern/)` tests catch most
+    regressions; this catches subtle ones (whitespace,
+    ordering, trailing newline). Travis-requested
+    explicit ship-blocker comment present on both
+    constant and test.
+  - **`MAX_SYMBOLS_PER_CALL = 10` location** (Q1
+    decision): `src/mcp/schemas.ts` — slight deviation
+    from ADR-15 §Consequences which suggested
+    `src/mcp/handlers/`. Reasoning: schema's `maxItems`
+    is the binding wire-level enforcement; defining at
+    the schema boundary keeps both surfaces in sync via
+    single import. Documented in the constant's JSDoc.
+  - **JSON-format all-failed asymmetry** (Q4 decision):
+    JSON uses the same `{ results: [...] }` envelope as
+    partial-failure; no `all_symbols_failed` summary
+    header (compact-only affordance). Consumers detect
+    via `isError: true` + walking `results`. Documented
+    inline in handler so future readers don't wonder
+    about the asymmetry.
+  - **Length-1 array semantics** (Q3 confirmed): `["Foo"]`
+    gets multi-symbol envelope with one entry; `"Foo"`
+    gets legacy single-bundle shape. Detection on input
+    shape, not response. Test (b) verifies this directly.
+  - **Optional binary smoke test deferred** (Q2
+    decision): in-memory MCP pair tests cover the
+    contract; binary-spawn parity is Step 16 ship-gate
+    concern. Step 16 planning notes carry "Multi-symbol
+    binary smoke test parallel to existing single-symbol
+    coverage" as a future-Step-16 reminder.
+- **Calibration data point** (refines Step 2/3 pattern):
+  - Handler refactor: 250 LOC estimate → 308 net LOC
+    actual (~23% over, within 30-40% inflation pattern
+    but past explicit 350-LOC threshold cue Travis set
+    during proposal). Threshold triggered an accounting
+    pause confirming every LOC traceable to spec
+    requirements (no padding, no speculative code).
+    Travis approved Option 1 (proceed) after the
+    accounting; the cue served its intended purpose.
+  - Tests: 270 LOC estimate → 609 LOC actual (~125%
+    over). Driven by ADR-15's 8 categories each
+    needing both compact + JSON variants where
+    applicable, dedup needing 4 sub-tests, full fixture
+    setup in `beforeEach`, file_hint needing a control
+    test for honest exercising.
+  - **Cumulative pattern across Steps 2/3/4:**
+    implementation estimates need ~30-40% inflation
+    when work includes empirical-grounding discipline
+    (verification, rendered examples, contract docs,
+    actionable validation messages, both-format test
+    coverage). Future v0.3 step estimates should apply
+    this inflation factor explicitly rather than
+    re-discovering it per step.
+- **Ship-criteria verification.**
+  - MCP tool surface implements ADR-N's chosen shape;
+    existing single-symbol path preserved (byte-equivalence
+    canary green).
+  - Output format: per-symbol sub-bundles within a
+    single compact-text response. JSON variant follows
+    ADR-04's opt-in pattern via `format: "json"`.
+  - Tests cover (a)-(h) per ADR-15 §Consequences plus
+    sub-tests for dedup edge cases and JSON-format
+    variants. Integration coverage via in-memory MCP
+    pair (binary smoke test deferred to Step 16).
+  - **No regression in main-repo test suite** —
+    698/698 green; pre-Step-4 baseline was 679, every
+    pre-existing test still passes.
+
 ### Step 3 shipped — 2026-04-25 (550caee)
 - **Scope.** Theme 1.1 — multi-symbol API ADR-N draft.
   ADR-15 locks the API surface decisions for the multi-symbol

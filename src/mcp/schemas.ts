@@ -19,19 +19,61 @@ export type ToolName = (typeof TOOL_NAMES)[keyof typeof TOOL_NAMES];
 
 const SIGNAL_VALUES = ["refs", "intent", "git", "types", "tests"] as const;
 
+/**
+ * Maximum number of symbols accepted in a single multi-symbol
+ * `get_symbol_context` call (ADR-15 §2). Wire-level enforcement lives
+ * in this file's `inputSchema` (`maxItems: MAX_SYMBOLS_PER_CALL`);
+ * the handler imports this constant for its own defense-in-depth
+ * cap check before fan-out. Adjustable sub-decision per ADR-15;
+ * raise on benchmark evidence.
+ *
+ * Slight deviation from ADR-15 §Consequences which suggested
+ * `src/mcp/handlers/`: definition lives at the schema boundary
+ * because `maxItems` is the binding wire-level enforcement; handler
+ * imports for secondary defense.
+ */
+export const MAX_SYMBOLS_PER_CALL = 10;
+
 const getSymbolContextTool: Tool = {
   name: TOOL_NAMES.getSymbolContext,
   description:
     "Return a fused context bundle for a symbol: signature, architectural " +
     "intent (ADR/doc claims), references, git activity, related tests, and " +
     "type relationships. The primitive tool — single call replaces 8-15 " +
-    "grep/read/blame round-trips.",
+    "grep/read/blame round-trips. Accepts a single symbol name (legacy " +
+    "shape) or an array of up to " +
+    MAX_SYMBOLS_PER_CALL +
+    " names for batched retrieval (multi-symbol mode, ADR-15) — useful " +
+    "when retrieving a behavior cluster (e.g., a struct + its methods) " +
+    "in one call rather than fragmenting across many.",
   inputSchema: {
     type: "object",
     properties: {
       symbol: {
-        type: "string",
-        description: "Symbol name to look up (e.g. 'OrderProcessor').",
+        oneOf: [
+          {
+            type: "string",
+            description: "Single symbol name (e.g. 'OrderProcessor').",
+          },
+          {
+            type: "array",
+            items: { type: "string" },
+            minItems: 1,
+            maxItems: MAX_SYMBOLS_PER_CALL,
+            uniqueItems: false,
+            description:
+              "Array of symbol names for multi-symbol retrieval (ADR-15). " +
+              "Up to " +
+              MAX_SYMBOLS_PER_CALL +
+              " entries; duplicates are deduplicated " +
+              "input-side (.trim()-normalized exact-string-match). Per-symbol " +
+              "failures inline as ERR sub-bundles; the call returns " +
+              "isError: true only when every symbol fails.",
+          },
+        ],
+        description:
+          "Symbol name to look up (e.g. 'OrderProcessor'), or an array of " +
+          "names for multi-symbol mode.",
       },
       file_hint: {
         type: "string",

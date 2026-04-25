@@ -21,6 +21,24 @@ import type {
 import { TOOL_NAMES } from "./schemas.js";
 import { createServer } from "./server.js";
 
+// BYTE_EQUIVALENCE_EXPECTED — Captured 2026-04-25 from single-symbol
+// happy-path full-ID call against the fixture in the single-symbol
+// `get_symbol_context` describe block. ADR-15 §Consequences ship-blocker:
+// any divergence in single-string output blocks Step 4 ship.
+//
+// The constant is the literal text the pre-ADR-15 handler returned. The
+// post-refactor handler must produce byte-identical output for the
+// `oneOf` schema's first alternative (string input). Existing
+// `.toMatch(/pattern/)` assertions catch most regressions; this `.toBe()`
+// catches the subtle ones (whitespace, ordering, trailing newline).
+const BYTE_EQUIVALENCE_EXPECTED = `SYM OrderProcessor@src/orders/processor.ts:42 class
+  SIG class OrderProcessor extends BaseProcessor<Order>
+  INTENT ADR-07 hard "must be idempotent"
+    RATIONALE "enables safe retry"
+  REFS 1 [billing:1]
+    TOP ref:ts:billing/charges.ts:88
+`;
+
 describe("MCP server skeleton", () => {
   let client: Client;
   let server: ReturnType<typeof createServer>;
@@ -248,6 +266,28 @@ describe("MCP server with runtime context — get_symbol_context", () => {
     expect(text).toMatch(/REFS 1 \[billing:1\]/);
   });
 
+  it("ADR-15 byte-equivalence canary: single-string input matches pre-refactor output exactly", async () => {
+    // Ship-blocker per ADR-15 §Consequences. If this fails, the
+    // `oneOf` schema's first alternative (string input) is no longer
+    // byte-identical to the pre-ADR-15 handler. See
+    // BYTE_EQUIVALENCE_EXPECTED comment at top of file.
+    const result = await client.request(
+      {
+        method: "tools/call",
+        params: {
+          name: TOOL_NAMES.getSymbolContext,
+          arguments: {
+            symbol: "sym:ts:src/orders/processor.ts:OrderProcessor",
+          },
+        },
+      },
+      CallToolResultSchema,
+    );
+    expect(result.isError).toBeFalsy();
+    const text = (result.content[0] as { text: string }).text;
+    expect(text).toBe(BYTE_EQUIVALENCE_EXPECTED);
+  });
+
   it("returns JSON format when requested", async () => {
     const result = await client.request(
       {
@@ -335,6 +375,575 @@ describe("MCP server with runtime context — get_symbol_context", () => {
     expect(text).toMatch(/ERR disambiguation_required/);
     expect(text).toMatch(/CAND sym:ts:src\/a\.ts:Foo/);
     expect(text).toMatch(/CAND sym:ts:src\/b\.ts:Foo/);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Multi-symbol get_symbol_context (ADR-15)
+//
+// Eight categories per ADR-15 §Consequences:
+//   (a) byte-equivalence — covered above in single-symbol describe
+//   (b) multi-symbol happy path (compact + JSON envelope)
+//   (c) partial failure with isError: false, ERR sub-bundles inlined
+//   (d) all-failed with isError: true, `ERR all_symbols_failed COUNT N` header
+//   (e) cap enforcement (11 items → McpError InvalidParams)
+//   (f) dedup edge cases (whitespace trim, case sensitivity, full-ID vs name)
+//   (g) order preservation across mixed success/failure inputs
+//   (h) file_hint applied uniformly to every batch entry
+// ---------------------------------------------------------------------------
+
+describe("MCP server with runtime context — get_symbol_context multi-symbol (ADR-15)", () => {
+  let client: Client;
+  let server: ReturnType<typeof createServer>;
+  let db: ReturnType<typeof openDatabase>;
+
+  beforeEach(async () => {
+    db = openDatabase(":memory:");
+    // Multi-symbol fixture — covers happy-path resolution, ambiguous
+    // names (Foo in both a.ts and b.ts), unique names with shared
+    // file_hint applicability (Bar only in a.ts), and a non-resolving
+    // baseline. OrderProcessor + RetryBudget are unique uppercase
+    // names; Foo intentionally collides for disambiguation tests.
+    upsertSymbols(db, [
+      {
+        id: "sym:ts:src/orders/processor.ts:OrderProcessor",
+        name: "OrderProcessor",
+        kind: "class",
+        path: "src/orders/processor.ts",
+        line: 42,
+        signature: "class OrderProcessor extends BaseProcessor<Order>",
+        language: "typescript",
+        fileSha: "abc",
+      },
+      {
+        id: "sym:ts:src/billing/retry.ts:RetryBudget",
+        name: "RetryBudget",
+        kind: "class",
+        path: "src/billing/retry.ts",
+        line: 1,
+        language: "typescript",
+        fileSha: "def",
+      },
+      {
+        id: "sym:ts:src/a.ts:Foo",
+        name: "Foo",
+        kind: "class",
+        path: "src/a.ts",
+        line: 1,
+        language: "typescript",
+        fileSha: "fa",
+      },
+      {
+        id: "sym:ts:src/b.ts:Foo",
+        name: "Foo",
+        kind: "class",
+        path: "src/b.ts",
+        line: 2,
+        language: "typescript",
+        fileSha: "fb",
+      },
+      {
+        id: "sym:ts:src/a.ts:Bar",
+        name: "Bar",
+        kind: "class",
+        path: "src/a.ts",
+        line: 5,
+        language: "typescript",
+        fileSha: "fa",
+      },
+    ]);
+    insertClaims(db, [
+      {
+        source: "ADR-07",
+        sourcePath: "docs/adr/ADR-07.md",
+        sourceSha: "s",
+        severity: "hard",
+        claim: "must be idempotent",
+        symbolIds: ["sym:ts:src/orders/processor.ts:OrderProcessor"],
+      },
+    ]);
+
+    server = createServer({
+      name: "ContextAtlas",
+      version: "0.0.1-test",
+      context: {
+        db,
+        adapters: new Map([["typescript", stubAdapter({})]]),
+        gitRecentCommits: 5,
+      },
+    });
+    client = new Client(
+      { name: "test-client", version: "0.0.1" },
+      { capabilities: {} },
+    );
+    const [clientTransport, serverTransport] =
+      InMemoryTransport.createLinkedPair();
+    await Promise.all([
+      server.connect(serverTransport),
+      client.connect(clientTransport),
+    ]);
+  });
+
+  afterEach(async () => {
+    await client.close();
+    await server.close();
+    db.close();
+  });
+
+  // -------------------------------------------------------------------------
+  // (b) Multi-symbol happy path
+  // -------------------------------------------------------------------------
+
+  it("(b) compact: 2-symbol happy path renders both with named delimiters", async () => {
+    const result = await client.request(
+      {
+        method: "tools/call",
+        params: {
+          name: TOOL_NAMES.getSymbolContext,
+          arguments: {
+            symbol: ["OrderProcessor", "RetryBudget"],
+          },
+        },
+      },
+      CallToolResultSchema,
+    );
+    expect(result.isError).toBeFalsy();
+    const text = (result.content[0] as { text: string }).text;
+    expect(text).toMatch(
+      /^--- get_symbol_context: OrderProcessor \(1 of 2\) ---/,
+    );
+    expect(text).toMatch(
+      /--- get_symbol_context: RetryBudget \(2 of 2\) ---/,
+    );
+    // Both bundles render their SYM headers.
+    expect(text).toMatch(/SYM OrderProcessor@/);
+    expect(text).toMatch(/SYM RetryBudget@/);
+  });
+
+  it("(b) JSON: 2-symbol happy path produces results envelope with bundle entries", async () => {
+    const result = await client.request(
+      {
+        method: "tools/call",
+        params: {
+          name: TOOL_NAMES.getSymbolContext,
+          arguments: {
+            symbol: ["OrderProcessor", "RetryBudget"],
+            format: "json",
+          },
+        },
+      },
+      CallToolResultSchema,
+    );
+    expect(result.isError).toBeFalsy();
+    const text = (result.content[0] as { text: string }).text;
+    const parsed = JSON.parse(text) as {
+      results: Array<{
+        symbol: string;
+        bundle: { symbol: { name: string } } | null;
+        error: { code: string } | null;
+      }>;
+    };
+    expect(parsed.results).toHaveLength(2);
+    expect(parsed.results[0]?.symbol).toBe("OrderProcessor");
+    expect(parsed.results[0]?.bundle?.symbol.name).toBe("OrderProcessor");
+    expect(parsed.results[0]?.error).toBeNull();
+    expect(parsed.results[1]?.symbol).toBe("RetryBudget");
+    expect(parsed.results[1]?.bundle?.symbol.name).toBe("RetryBudget");
+    expect(parsed.results[1]?.error).toBeNull();
+  });
+
+  it("(b) length-1 array input gets multi-symbol envelope, not legacy single-bundle shape", async () => {
+    // Per ADR-15 §4: ["Foo"] gets multi-symbol envelope with one entry;
+    // "Foo" gets legacy shape. Detection on input shape, not response.
+    const result = await client.request(
+      {
+        method: "tools/call",
+        params: {
+          name: TOOL_NAMES.getSymbolContext,
+          arguments: { symbol: ["OrderProcessor"] },
+        },
+      },
+      CallToolResultSchema,
+    );
+    expect(result.isError).toBeFalsy();
+    const text = (result.content[0] as { text: string }).text;
+    expect(text).toMatch(/^--- get_symbol_context: OrderProcessor \(1 of 1\) ---/);
+  });
+
+  // -------------------------------------------------------------------------
+  // (c) Partial failure — isError: false, per-symbol ERR inlined
+  // -------------------------------------------------------------------------
+
+  it("(c) partial failure: not_found inlined; isError stays false; siblings render bundles", async () => {
+    const result = await client.request(
+      {
+        method: "tools/call",
+        params: {
+          name: TOOL_NAMES.getSymbolContext,
+          arguments: {
+            symbol: ["OrderProcessor", "GhostSymbol", "RetryBudget"],
+          },
+        },
+      },
+      CallToolResultSchema,
+    );
+    expect(result.isError).toBeFalsy();
+    const text = (result.content[0] as { text: string }).text;
+    // OrderProcessor at slot 1, GhostSymbol ERR at slot 2, RetryBudget at slot 3.
+    expect(text).toMatch(
+      /--- get_symbol_context: OrderProcessor \(1 of 3\) ---\nSYM OrderProcessor@/,
+    );
+    expect(text).toMatch(
+      /--- get_symbol_context: GhostSymbol \(2 of 3\) ---\nERR not_found/,
+    );
+    expect(text).toMatch(
+      /--- get_symbol_context: RetryBudget \(3 of 3\) ---\nSYM RetryBudget@/,
+    );
+  });
+
+  it("(c) partial failure with disambiguation inlined as ERR sub-bundle", async () => {
+    // Foo collides between src/a.ts and src/b.ts → disambiguation in slot 2.
+    // No file_hint passed, so the disambiguation surfaces.
+    const result = await client.request(
+      {
+        method: "tools/call",
+        params: {
+          name: TOOL_NAMES.getSymbolContext,
+          arguments: {
+            symbol: ["OrderProcessor", "Foo", "RetryBudget"],
+          },
+        },
+      },
+      CallToolResultSchema,
+    );
+    expect(result.isError).toBeFalsy();
+    const text = (result.content[0] as { text: string }).text;
+    expect(text).toMatch(/SYM OrderProcessor@/);
+    expect(text).toMatch(
+      /--- get_symbol_context: Foo \(2 of 3\) ---\nERR disambiguation_required/,
+    );
+    expect(text).toMatch(/CAND sym:ts:src\/a\.ts:Foo/);
+    expect(text).toMatch(/CAND sym:ts:src\/b\.ts:Foo/);
+    expect(text).toMatch(/SYM RetryBudget@/);
+  });
+
+  // -------------------------------------------------------------------------
+  // (d) All-failed — isError: true, ERR all_symbols_failed header
+  // -------------------------------------------------------------------------
+
+  it("(d) all-failed: isError true, header emitted, all sub-bundles render ERR", async () => {
+    const result = await client.request(
+      {
+        method: "tools/call",
+        params: {
+          name: TOOL_NAMES.getSymbolContext,
+          arguments: {
+            symbol: ["GhostA", "GhostB", "GhostC"],
+          },
+        },
+      },
+      CallToolResultSchema,
+    );
+    expect(result.isError).toBe(true);
+    const text = (result.content[0] as { text: string }).text;
+    // Header per ADR-15 §5: `ERR all_symbols_failed\n  COUNT 3\n` followed
+    // by blank line then the per-symbol delimiter+sub-bundle shape.
+    expect(text).toMatch(/^ERR all_symbols_failed\n  COUNT 3\n\n/);
+    expect(text).toMatch(/--- get_symbol_context: GhostA \(1 of 3\) ---/);
+    expect(text).toMatch(/--- get_symbol_context: GhostB \(2 of 3\) ---/);
+    expect(text).toMatch(/--- get_symbol_context: GhostC \(3 of 3\) ---/);
+    // Three not_found ERRs (one per slot).
+    expect((text.match(/ERR not_found/g) ?? []).length).toBe(3);
+  });
+
+  it("(d) all-failed JSON: isError true, no all_symbols_failed header in JSON (compact-only affordance)", async () => {
+    // JSON-asymmetry note from handler: the compact `ERR all_symbols_failed
+    // COUNT N` header has no JSON analogue. Consumers detect all-failed
+    // via isError + walking results for non-null `error` entries.
+    const result = await client.request(
+      {
+        method: "tools/call",
+        params: {
+          name: TOOL_NAMES.getSymbolContext,
+          arguments: {
+            symbol: ["GhostA", "GhostB"],
+            format: "json",
+          },
+        },
+      },
+      CallToolResultSchema,
+    );
+    expect(result.isError).toBe(true);
+    const text = (result.content[0] as { text: string }).text;
+    expect(text).not.toMatch(/all_symbols_failed/);
+    const parsed = JSON.parse(text) as {
+      results: Array<{ symbol: string; bundle: unknown; error: { code: string } | null }>;
+    };
+    expect(parsed.results).toHaveLength(2);
+    expect(parsed.results[0]?.error?.code).toBe("not_found");
+    expect(parsed.results[0]?.bundle).toBeNull();
+    expect(parsed.results[1]?.error?.code).toBe("not_found");
+  });
+
+  // -------------------------------------------------------------------------
+  // (e) Cap enforcement
+  // -------------------------------------------------------------------------
+
+  it("(e) cap enforcement: 11-item array → McpError InvalidParams (no partial response)", async () => {
+    const eleven = Array.from({ length: 11 }, (_, i) => `Sym${i}`);
+    await expect(
+      client.request(
+        {
+          method: "tools/call",
+          params: {
+            name: TOOL_NAMES.getSymbolContext,
+            arguments: { symbol: eleven },
+          },
+        },
+        CallToolResultSchema,
+      ),
+    ).rejects.toThrow(/exceeds 10-item cap/);
+  });
+
+  it("(e) cap accepts exactly 10 items (boundary check)", async () => {
+    const ten = Array.from({ length: 10 }, (_, i) => `GhostSym${i}`);
+    const result = await client.request(
+      {
+        method: "tools/call",
+        params: {
+          name: TOOL_NAMES.getSymbolContext,
+          arguments: { symbol: ten },
+        },
+      },
+      CallToolResultSchema,
+    );
+    // All 10 are not_found names; isError true, header reports COUNT 10.
+    expect(result.isError).toBe(true);
+    const text = (result.content[0] as { text: string }).text;
+    expect(text).toMatch(/^ERR all_symbols_failed\n  COUNT 10\n/);
+  });
+
+  it("(e) empty array → McpError InvalidParams", async () => {
+    await expect(
+      client.request(
+        {
+          method: "tools/call",
+          params: {
+            name: TOOL_NAMES.getSymbolContext,
+            arguments: { symbol: [] },
+          },
+        },
+        CallToolResultSchema,
+      ),
+    ).rejects.toThrow(/at least one entry/);
+  });
+
+  // -------------------------------------------------------------------------
+  // (f) Dedup edge cases — per ADR-15 §8
+  // -------------------------------------------------------------------------
+
+  it("(f) dedup: ['foo','foo'] → 1 sub-bundle (M reflects post-dedup count)", async () => {
+    const result = await client.request(
+      {
+        method: "tools/call",
+        params: {
+          name: TOOL_NAMES.getSymbolContext,
+          arguments: {
+            symbol: ["GhostX", "GhostX"],
+          },
+        },
+      },
+      CallToolResultSchema,
+    );
+    expect(result.isError).toBe(true); // single not_found, all failed
+    const text = (result.content[0] as { text: string }).text;
+    expect(text).toMatch(/COUNT 1\n/);
+    expect(text).toMatch(/--- get_symbol_context: GhostX \(1 of 1\) ---/);
+    // No "(2 of 2)" or "(2 of 1)" — duplicate dropped.
+    expect(text).not.toMatch(/\(2 of/);
+  });
+
+  it("(f) dedup: ['foo','  foo  '] → 1 sub-bundle (whitespace trim normalizes)", async () => {
+    const result = await client.request(
+      {
+        method: "tools/call",
+        params: {
+          name: TOOL_NAMES.getSymbolContext,
+          arguments: {
+            symbol: ["GhostY", "  GhostY  "],
+          },
+        },
+      },
+      CallToolResultSchema,
+    );
+    expect(result.isError).toBe(true);
+    const text = (result.content[0] as { text: string }).text;
+    expect(text).toMatch(/COUNT 1\n/);
+    expect(text).toMatch(/--- get_symbol_context: GhostY \(1 of 1\) ---/);
+  });
+
+  it("(f) dedup: ['foo','Foo'] → 2 sub-bundles (case-sensitive, matches ADR-01)", async () => {
+    const result = await client.request(
+      {
+        method: "tools/call",
+        params: {
+          name: TOOL_NAMES.getSymbolContext,
+          arguments: {
+            symbol: ["ghostz", "GhostZ"],
+          },
+        },
+      },
+      CallToolResultSchema,
+    );
+    expect(result.isError).toBe(true);
+    const text = (result.content[0] as { text: string }).text;
+    expect(text).toMatch(/COUNT 2\n/);
+    expect(text).toMatch(/--- get_symbol_context: ghostz \(1 of 2\) ---/);
+    expect(text).toMatch(/--- get_symbol_context: GhostZ \(2 of 2\) ---/);
+  });
+
+  it("(f) dedup: full SymbolId + plain name → 2 sub-bundles (input-layer dedup, not resolution-layer)", async () => {
+    // Both input strings resolve to the same OrderProcessor symbol.
+    // Per ADR-15 §8: dedup is on input strings; resolution collisions
+    // intentionally produce two response slots with identical bundles.
+    const result = await client.request(
+      {
+        method: "tools/call",
+        params: {
+          name: TOOL_NAMES.getSymbolContext,
+          arguments: {
+            symbol: [
+              "sym:ts:src/orders/processor.ts:OrderProcessor",
+              "OrderProcessor",
+            ],
+          },
+        },
+      },
+      CallToolResultSchema,
+    );
+    expect(result.isError).toBeFalsy();
+    const text = (result.content[0] as { text: string }).text;
+    expect(text).toMatch(
+      /--- get_symbol_context: sym:ts:src\/orders\/processor\.ts:OrderProcessor \(1 of 2\) ---/,
+    );
+    expect(text).toMatch(
+      /--- get_symbol_context: OrderProcessor \(2 of 2\) ---/,
+    );
+    // Both slots carry SYM headers (both resolved to the same symbol).
+    expect((text.match(/SYM OrderProcessor@/g) ?? []).length).toBe(2);
+  });
+
+  // -------------------------------------------------------------------------
+  // (g) Order preservation across mixed success/failure
+  // -------------------------------------------------------------------------
+
+  it("(g) order preservation: 4-symbol mixed input renders in request order", async () => {
+    const result = await client.request(
+      {
+        method: "tools/call",
+        params: {
+          name: TOOL_NAMES.getSymbolContext,
+          arguments: {
+            symbol: ["RetryBudget", "GhostA", "OrderProcessor", "GhostB"],
+          },
+        },
+      },
+      CallToolResultSchema,
+    );
+    expect(result.isError).toBeFalsy();
+    const text = (result.content[0] as { text: string }).text;
+
+    const slot1 = text.indexOf("(1 of 4)");
+    const slot2 = text.indexOf("(2 of 4)");
+    const slot3 = text.indexOf("(3 of 4)");
+    const slot4 = text.indexOf("(4 of 4)");
+    expect(slot1).toBeGreaterThan(-1);
+    expect(slot2).toBeGreaterThan(slot1);
+    expect(slot3).toBeGreaterThan(slot2);
+    expect(slot4).toBeGreaterThan(slot3);
+
+    // Each slot's delimiter carries the input string from that position.
+    expect(text).toMatch(/--- get_symbol_context: RetryBudget \(1 of 4\) ---/);
+    expect(text).toMatch(/--- get_symbol_context: GhostA \(2 of 4\) ---/);
+    expect(text).toMatch(/--- get_symbol_context: OrderProcessor \(3 of 4\) ---/);
+    expect(text).toMatch(/--- get_symbol_context: GhostB \(4 of 4\) ---/);
+  });
+
+  it("(g) JSON results array preserves request order", async () => {
+    const result = await client.request(
+      {
+        method: "tools/call",
+        params: {
+          name: TOOL_NAMES.getSymbolContext,
+          arguments: {
+            symbol: ["RetryBudget", "GhostA", "OrderProcessor"],
+            format: "json",
+          },
+        },
+      },
+      CallToolResultSchema,
+    );
+    expect(result.isError).toBeFalsy();
+    const parsed = JSON.parse(
+      (result.content[0] as { text: string }).text,
+    ) as { results: Array<{ symbol: string }> };
+    expect(parsed.results.map((r) => r.symbol)).toEqual([
+      "RetryBudget",
+      "GhostA",
+      "OrderProcessor",
+    ]);
+  });
+
+  // -------------------------------------------------------------------------
+  // (h) file_hint applied uniformly
+  // -------------------------------------------------------------------------
+
+  it("(h) file_hint applies uniformly: disambiguates Foo to a.ts AND resolves Bar (only in a.ts)", async () => {
+    // Without file_hint, Foo would disambiguate (collides between
+    // a.ts and b.ts). With file_hint "src/a.ts", Foo resolves to
+    // sym:ts:src/a.ts:Foo. Bar only has one match (in a.ts), so the
+    // shared file_hint doesn't conflict — it resolves cleanly.
+    const result = await client.request(
+      {
+        method: "tools/call",
+        params: {
+          name: TOOL_NAMES.getSymbolContext,
+          arguments: {
+            symbol: ["Foo", "Bar"],
+            file_hint: "src/a.ts",
+          },
+        },
+      },
+      CallToolResultSchema,
+    );
+    expect(result.isError).toBeFalsy();
+    const text = (result.content[0] as { text: string }).text;
+    expect(text).toMatch(/--- get_symbol_context: Foo \(1 of 2\) ---/);
+    expect(text).toMatch(/--- get_symbol_context: Bar \(2 of 2\) ---/);
+    // Both resolved (no ERR sub-bundles).
+    expect(text).not.toMatch(/ERR /);
+    // Both bundles render their SYM headers from src/a.ts.
+    expect(text).toMatch(/SYM Foo@src\/a\.ts:1/);
+    expect(text).toMatch(/SYM Bar@src\/a\.ts:5/);
+  });
+
+  it("(h) without file_hint, Foo disambiguates as expected (control)", async () => {
+    // Same input minus file_hint — confirms the file_hint test above
+    // is actually exercising disambiguation, not just trivially passing.
+    const result = await client.request(
+      {
+        method: "tools/call",
+        params: {
+          name: TOOL_NAMES.getSymbolContext,
+          arguments: { symbol: ["Foo", "Bar"] },
+        },
+      },
+      CallToolResultSchema,
+    );
+    expect(result.isError).toBeFalsy(); // Bar still resolves; partial failure
+    const text = (result.content[0] as { text: string }).text;
+    expect(text).toMatch(/ERR disambiguation_required/);
+    expect(text).toMatch(/SYM Bar@src\/a\.ts:5/);
   });
 });
 

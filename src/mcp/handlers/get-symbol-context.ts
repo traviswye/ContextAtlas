@@ -1,15 +1,30 @@
 /**
  * Real handler for `get_symbol_context` — the primitive MCP tool.
  *
- * Input is parsed strictly, the symbol is resolved (accepts either a
- * full ID or a plain name with optional file_hint), the bundle is
- * assembled via src/queries/symbol-context.ts, and the result is
- * rendered compact-by-default (ADR-04) or JSON if requested.
+ * Single-symbol mode (legacy): caller passes `symbol: string`. Input is
+ * parsed, the symbol is resolved (full ID or plain name with optional
+ * file_hint), the bundle is assembled via src/queries/symbol-context.ts,
+ * and the result is rendered compact-by-default (ADR-04) or JSON.
+ * Disambiguation / not_found / no_adapter map to whole-call
+ * `isError: true`. Output is byte-identical to the pre-ADR-15
+ * implementation — guarded by the byte-equivalence test in
+ * src/mcp/server.test.ts.
  *
- * Disambiguation is returned as a CallToolResult with isError=true and
- * a compact-format "ERR disambiguation_required" body. Not-found is
- * similarly returned as a compact ERR result. Protocol-level errors
- * (invalid arguments) throw McpError.
+ * Multi-symbol mode (ADR-15): caller passes `symbol: string[]` (up to
+ * MAX_SYMBOLS_PER_CALL items). Input strings are .trim()-normalized
+ * and exact-match-deduped before resolution; resolution fans out per
+ * input; per-symbol failures inline as ERR sub-bundles; whole-call
+ * `isError: true` only when EVERY input failed. Compact output uses
+ * named delimiters (`--- get_symbol_context: <symbol> (N of M) ---`);
+ * JSON output uses a `{ results: [{ symbol, bundle, error }, ...] }`
+ * envelope. Order matches request order.
+ *
+ * Implementation note on JSON shape symmetry: in JSON mode the all-failed
+ * case uses the same `{ results: [...] }` envelope as the partial-failure
+ * case — the only signal distinguishing them is the JSON-RPC response's
+ * `isError: true` flag plus the consumer walking `results` for non-null
+ * `error` entries. The compact-format `ERR all_symbols_failed COUNT <N>`
+ * summary header has no JSON analogue; that is a compact-only affordance.
  */
 
 import {
@@ -20,7 +35,10 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 
 import { renderCompact } from "../../formatters/compact.js";
-import { buildBundle, DEFAULT_SIGNALS } from "../../queries/symbol-context.js";
+import {
+  buildBundle,
+  DEFAULT_SIGNALS,
+} from "../../queries/symbol-context.js";
 import { resolveSymbol } from "../../queries/symbol-resolver.js";
 import type { DatabaseInstance } from "../../storage/db.js";
 import type {
@@ -29,7 +47,10 @@ import type {
   LanguageAdapter,
   LanguageCode,
   Symbol as AtlasSymbol,
+  SymbolContextBundle,
 } from "../../types.js";
+
+import { MAX_SYMBOLS_PER_CALL } from "../schemas.js";
 
 export interface HandlerDeps {
   db: DatabaseInstance;
@@ -47,71 +68,272 @@ export function createGetSymbolContextHandler(
   return async (request) => {
     const args = parseArgs(request.params.arguments);
 
-    const result = resolveSymbol(deps.db, args.symbol, {
-      fileHint: args.fileHint,
-    });
-
-    if (result.kind === "not_found") {
-      return notFoundResult(args.symbol);
-    }
-    if (result.kind === "disambiguation") {
-      return disambiguationResult(args.symbol, result.candidates, args.format);
-    }
-
-    const symbol = result.symbol;
-    const adapter = deps.adapters.get(symbol.language);
-    if (!adapter) {
-      return {
-        isError: true,
-        content: [
-          {
-            type: "text",
-            text:
-              `ERR no_adapter\n  MESSAGE Symbol '${symbol.id}' uses language '${symbol.language}' ` +
-              "but no adapter is registered for that language in the current config.\n",
-          },
-        ],
-      };
+    // Single-symbol legacy path: byte-identical to the pre-ADR-15 code.
+    // Detection on input shape (string vs. array), per ADR-15 §4
+    // "Single-symbol input compatibility" — `["Foo"]` and `"Foo"` produce
+    // different output shapes by design.
+    if (!args.inputWasArray) {
+      const input = args.symbols[0]!;
+      const outcome = await resolveSingle(deps, input, args);
+      return renderSingle(outcome, args);
     }
 
-    const bundle = await buildBundle(
-      { db: deps.db, adapter },
-      {
-        symbol,
-        depth: args.depth,
-        include: args.include,
-        maxRefs: args.maxRefs,
-        gitRecentCommits: deps.gitRecentCommits,
-      },
+    // Multi-symbol path: fan out, fold, render.
+    const outcomes = await Promise.all(
+      args.symbols.map((input) => resolveSingle(deps, input, args)),
     );
-
-    if (args.format === "json") {
-      return {
-        content: [
-          { type: "text", text: JSON.stringify(bundle, null, 2) },
-        ],
-      };
-    }
-    return {
-      content: [
-        {
-          type: "text",
-          text: renderCompact(bundle, {
-            depth: args.depth,
-            maxRefs: args.maxRefs,
-          }),
-        },
-      ],
-    };
+    const allFailed = outcomes.every((o) => o.kind !== "bundle");
+    return renderMulti(outcomes, args, allFailed);
   };
 }
 
 // ---------------------------------------------------------------------------
-// Input parsing
+// Per-symbol resolution
+// ---------------------------------------------------------------------------
+
+type SubBundleOutcome =
+  | { kind: "bundle"; input: string; bundle: SymbolContextBundle }
+  | { kind: "not_found"; input: string }
+  | {
+      kind: "disambiguation";
+      input: string;
+      candidates: readonly AtlasSymbol[];
+    }
+  | {
+      kind: "no_adapter";
+      input: string;
+      symbolId: string;
+      language: string;
+    };
+
+async function resolveSingle(
+  deps: HandlerDeps,
+  input: string,
+  args: ParsedArgs,
+): Promise<SubBundleOutcome> {
+  const result = resolveSymbol(deps.db, input, {
+    fileHint: args.fileHint,
+  });
+  if (result.kind === "not_found") {
+    return { kind: "not_found", input };
+  }
+  if (result.kind === "disambiguation") {
+    return { kind: "disambiguation", input, candidates: result.candidates };
+  }
+  const symbol = result.symbol;
+  const adapter = deps.adapters.get(symbol.language);
+  if (!adapter) {
+    return {
+      kind: "no_adapter",
+      input,
+      symbolId: symbol.id,
+      language: symbol.language,
+    };
+  }
+  const bundle = await buildBundle(
+    { db: deps.db, adapter },
+    {
+      symbol,
+      depth: args.depth,
+      include: args.include,
+      maxRefs: args.maxRefs,
+      gitRecentCommits: deps.gitRecentCommits,
+    },
+  );
+  return { kind: "bundle", input, bundle };
+}
+
+// ---------------------------------------------------------------------------
+// Single-symbol rendering (legacy path; byte-identical to pre-ADR-15)
+// ---------------------------------------------------------------------------
+
+function renderSingle(
+  outcome: SubBundleOutcome,
+  args: ParsedArgs,
+): CallToolResult {
+  if (outcome.kind === "not_found") {
+    return notFoundResult(outcome.input);
+  }
+  if (outcome.kind === "disambiguation") {
+    return disambiguationResult(outcome.input, outcome.candidates, args.format);
+  }
+  if (outcome.kind === "no_adapter") {
+    return noAdapterResult(outcome.symbolId, outcome.language);
+  }
+  if (args.format === "json") {
+    return {
+      content: [
+        { type: "text", text: JSON.stringify(outcome.bundle, null, 2) },
+      ],
+    };
+  }
+  return {
+    content: [
+      {
+        type: "text",
+        text: renderCompact(outcome.bundle, {
+          depth: args.depth,
+          maxRefs: args.maxRefs,
+        }),
+      },
+    ],
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Multi-symbol rendering (ADR-15)
+// ---------------------------------------------------------------------------
+
+function renderMulti(
+  outcomes: readonly SubBundleOutcome[],
+  args: ParsedArgs,
+  allFailed: boolean,
+): CallToolResult {
+  if (args.format === "json") {
+    return renderMultiJson(outcomes, allFailed);
+  }
+  return renderMultiCompact(outcomes, args, allFailed);
+}
+
+function renderMultiCompact(
+  outcomes: readonly SubBundleOutcome[],
+  args: ParsedArgs,
+  allFailed: boolean,
+): CallToolResult {
+  const total = outcomes.length;
+  const parts: string[] = [];
+
+  if (allFailed) {
+    parts.push(
+      `ERR all_symbols_failed\n  COUNT ${total}\n\n`,
+    );
+  }
+
+  outcomes.forEach((outcome, idx) => {
+    const n = idx + 1;
+    parts.push(`--- get_symbol_context: ${outcome.input} (${n} of ${total}) ---\n`);
+    parts.push(renderSubBundleCompact(outcome, args));
+    if (idx < outcomes.length - 1) {
+      parts.push("\n");
+    }
+  });
+
+  const text = parts.join("");
+  const result: CallToolResult = {
+    content: [{ type: "text", text }],
+  };
+  if (allFailed) result.isError = true;
+  return result;
+}
+
+function renderSubBundleCompact(
+  outcome: SubBundleOutcome,
+  args: ParsedArgs,
+): string {
+  if (outcome.kind === "not_found") {
+    return (
+      `ERR not_found\n  MESSAGE Symbol '${outcome.input}' not found. ` +
+      "Try find_by_intent if you're searching by concept rather than name.\n"
+    );
+  }
+  if (outcome.kind === "disambiguation") {
+    const lines = [
+      "ERR disambiguation_required",
+      `  MESSAGE Symbol '${outcome.input}' matches ${outcome.candidates.length} candidates. Pass file_hint to disambiguate.`,
+    ];
+    for (const c of outcome.candidates) {
+      lines.push(`  CAND ${c.id} ${c.path}:${c.line} ${c.kind}`);
+    }
+    return lines.join("\n") + "\n";
+  }
+  if (outcome.kind === "no_adapter") {
+    return (
+      `ERR no_adapter\n  MESSAGE Symbol '${outcome.symbolId}' uses language '${outcome.language}' ` +
+      "but no adapter is registered for that language in the current config.\n"
+    );
+  }
+  return renderCompact(outcome.bundle, {
+    depth: args.depth,
+    maxRefs: args.maxRefs,
+  });
+}
+
+interface JsonResultEntry {
+  symbol: string;
+  bundle: SymbolContextBundle | null;
+  error: { code: string; message: string; candidates?: unknown[] } | null;
+}
+
+function renderMultiJson(
+  outcomes: readonly SubBundleOutcome[],
+  allFailed: boolean,
+): CallToolResult {
+  const results: JsonResultEntry[] = outcomes.map((outcome) => {
+    if (outcome.kind === "bundle") {
+      return { symbol: outcome.input, bundle: outcome.bundle, error: null };
+    }
+    if (outcome.kind === "not_found") {
+      return {
+        symbol: outcome.input,
+        bundle: null,
+        error: {
+          code: "not_found",
+          message: `Symbol '${outcome.input}' not found.`,
+        },
+      };
+    }
+    if (outcome.kind === "disambiguation") {
+      return {
+        symbol: outcome.input,
+        bundle: null,
+        error: {
+          code: "disambiguation_required",
+          message: `Symbol '${outcome.input}' matches ${outcome.candidates.length} candidates. Pass file_hint to disambiguate.`,
+          candidates: outcome.candidates.map((c) => ({
+            symbol_id: c.id,
+            path: c.path,
+            line: c.line,
+            kind: c.kind,
+          })),
+        },
+      };
+    }
+    return {
+      symbol: outcome.input,
+      bundle: null,
+      error: {
+        code: "no_adapter",
+        message: `Symbol '${outcome.symbolId}' uses language '${outcome.language}' but no adapter is registered for that language in the current config.`,
+      },
+    };
+  });
+  const text = JSON.stringify({ results }, null, 2);
+  const result: CallToolResult = {
+    content: [{ type: "text", text }],
+  };
+  if (allFailed) result.isError = true;
+  return result;
+}
+
+// ---------------------------------------------------------------------------
+// Input parsing — extended for ADR-15 array shape
 // ---------------------------------------------------------------------------
 
 interface ParsedArgs {
-  symbol: string;
+  /**
+   * Always a string array internally (single-string input becomes a
+   * length-1 array). `.trim()`-normalized + exact-match-deduped before
+   * landing here. The `inputWasArray` flag drives output shape detection
+   * per ADR-15 §4.
+   */
+  symbols: string[];
+  /**
+   * True when the caller passed `string[]`; false when they passed a
+   * single `string`. Drives whether to render the legacy single-bundle
+   * shape or the multi-symbol envelope. Per ADR-15 §4: `["Foo"]` and
+   * `"Foo"` produce different output shapes by design.
+   */
+  inputWasArray: boolean;
   fileHint?: string;
   depth: BundleDepth;
   include: readonly BundleSignal[];
@@ -136,12 +358,7 @@ function parseArgs(rawArgs: unknown): ParsedArgs {
   }
   const args = rawArgs as Record<string, unknown>;
 
-  if (typeof args.symbol !== "string" || args.symbol.trim().length === 0) {
-    throw new McpError(
-      ErrorCode.InvalidParams,
-      "get_symbol_context: 'symbol' must be a non-empty string (full ID or plain name).",
-    );
-  }
+  const { symbols, inputWasArray } = parseSymbolInput(args.symbol);
 
   const depth = parseDepth(args.depth);
   const include = parseInclude(args.include);
@@ -153,7 +370,8 @@ function parseArgs(rawArgs: unknown): ParsedArgs {
       : undefined;
 
   const parsed: ParsedArgs = {
-    symbol: args.symbol,
+    symbols,
+    inputWasArray,
     depth,
     include,
     maxRefs,
@@ -161,6 +379,81 @@ function parseArgs(rawArgs: unknown): ParsedArgs {
   };
   if (fileHint !== undefined) parsed.fileHint = fileHint;
   return parsed;
+}
+
+/**
+ * Parse + normalize the `symbol` input. Accepts a non-empty string or a
+ * non-empty array of strings (ADR-15 §1 oneOf schema). Array inputs are
+ * `.trim()`-normalized, exact-match-deduped (ADR-15 §8), and cap-checked
+ * against MAX_SYMBOLS_PER_CALL.
+ *
+ * Cap enforcement is defense-in-depth — the schema's `maxItems` blocks
+ * 11+ at the protocol layer when callers respect the schema, but a
+ * non-conforming caller could ship 11+ items past the schema, so the
+ * handler re-checks. ADR-15 §2: "11+ items → McpError InvalidParams".
+ */
+function parseSymbolInput(raw: unknown): {
+  symbols: string[];
+  inputWasArray: boolean;
+} {
+  if (typeof raw === "string") {
+    if (raw.trim().length === 0) {
+      throw new McpError(
+        ErrorCode.InvalidParams,
+        "get_symbol_context: 'symbol' must be a non-empty string (full ID or plain name).",
+      );
+    }
+    return { symbols: [raw], inputWasArray: false };
+  }
+
+  if (Array.isArray(raw)) {
+    if (raw.length === 0) {
+      throw new McpError(
+        ErrorCode.InvalidParams,
+        "get_symbol_context: 'symbol' array must contain at least one entry.",
+      );
+    }
+    if (raw.length > MAX_SYMBOLS_PER_CALL) {
+      throw new McpError(
+        ErrorCode.InvalidParams,
+        `get_symbol_context: 'symbol' array exceeds ${MAX_SYMBOLS_PER_CALL}-item cap (got ${raw.length}). Split into multiple calls.`,
+      );
+    }
+    const trimmed: string[] = [];
+    for (const entry of raw) {
+      if (typeof entry !== "string") {
+        throw new McpError(
+          ErrorCode.InvalidParams,
+          "get_symbol_context: every 'symbol' array entry must be a string.",
+        );
+      }
+      const t = entry.trim();
+      if (t.length === 0) {
+        throw new McpError(
+          ErrorCode.InvalidParams,
+          "get_symbol_context: 'symbol' array entries must be non-empty after trimming whitespace.",
+        );
+      }
+      trimmed.push(t);
+    }
+    // Exact-string-match dedup (ADR-15 §8). Case-sensitive — matches
+    // ADR-01's case-sensitive symbol resolution. Preserves first-occurrence
+    // order so request-order semantics hold.
+    const seen = new Set<string>();
+    const deduped: string[] = [];
+    for (const s of trimmed) {
+      if (!seen.has(s)) {
+        seen.add(s);
+        deduped.push(s);
+      }
+    }
+    return { symbols: deduped, inputWasArray: true };
+  }
+
+  throw new McpError(
+    ErrorCode.InvalidParams,
+    "get_symbol_context: 'symbol' must be a non-empty string or array of strings.",
+  );
 }
 
 function parseDepth(v: unknown): BundleDepth {
@@ -215,7 +508,9 @@ function parseFormat(v: unknown): "compact" | "json" {
 }
 
 // ---------------------------------------------------------------------------
-// Error-shaped results (isError: true, returned to caller — not thrown)
+// Single-symbol error-shaped results (isError: true, returned to caller —
+// not thrown). Byte-identical to pre-ADR-15 implementation, since
+// renderSingle delegates here for the legacy path.
 // ---------------------------------------------------------------------------
 
 function notFoundResult(input: string): CallToolResult {
@@ -272,5 +567,19 @@ function disambiguationResult(
   return {
     isError: true,
     content: [{ type: "text", text: lines.join("\n") + "\n" }],
+  };
+}
+
+function noAdapterResult(symbolId: string, language: string): CallToolResult {
+  return {
+    isError: true,
+    content: [
+      {
+        type: "text",
+        text:
+          `ERR no_adapter\n  MESSAGE Symbol '${symbolId}' uses language '${language}' ` +
+          "but no adapter is registered for that language in the current config.\n",
+      },
+    ],
   };
 }
