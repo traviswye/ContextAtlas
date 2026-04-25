@@ -147,6 +147,24 @@ degraded mode, but it's a supported degraded mode.
   be handled automatically — users should not have to regenerate
   atlases by hand.
 
+  *Additive minor bumps follow a cumulative pattern.* Each post-v1.0
+  bump has added one optional, omit-when-absent field — back-compat
+  with all earlier versions, no migration needed:
+  - **v1.0 → v1.1** ([ADR-11](ADR-11-git-signal-at-index-time.md)) —
+    adds `extracted_at_sha` + `git_commits` (target-repo git signals).
+  - **v1.1 → v1.2** ([ADR-14](ADR-14-go-adapter-gopls.md), §Decision 4) —
+    adds `symbols[].parent_id` (Go interface→method relationship after
+    flattening).
+  - **v1.2 → v1.3** (v0.3 Theme 1.3) — adds
+    `generator.contextatlas_commit_sha` (the *tool's* HEAD, distinct
+    from `extracted_at_sha`'s *target repo's* HEAD).
+
+  The omit-when-absent rule is load-bearing: any future minor bump
+  MUST add only optional fields, MUST follow the round-trip nullish
+  convention (empty/undefined/null all collapse to omission), and
+  MUST leave earlier-version atlases readable without modification.
+  Anything else is a major bump.
+
 - **PR workflow requires atlas updates to accompany ADR/code changes.**
   If a developer edits an ADR and doesn't update atlas.json, CI should
   flag the drift. Ideally a pre-commit hook regenerates atlas.json

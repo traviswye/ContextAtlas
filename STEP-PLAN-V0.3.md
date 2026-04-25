@@ -881,7 +881,70 @@ shipped.
 - Ship-criteria verification: [each criterion with evidence]
 ```
 
-*(No entries yet — v0.3 execution has not begun.)*
+### Step 2 shipped — 2026-04-25 (commit SHA TBD)
+- **Scope.** Theme 1.3 — atlas schema v1.3 +
+  `generator.contextatlas_commit_sha` provenance field.
+- **Outcome.** `AtlasGeneratorInfo` gains optional
+  `contextatlas_commit_sha`; `ATLAS_VERSION` bumps 1.2 → 1.3;
+  importer + exporter + pipeline + cli-runner wire commit_sha
+  through with null / undefined / string semantics matching
+  `extracted_at_sha`. New `resolveContextatlasCommitSha()` CLI
+  helper walks file-URL → package root → `git rev-parse HEAD`,
+  returning null on any failure path (graceful for non-git
+  `npm install`-ed binaries). DESIGN.md schema example bumped
+  to v1.3; ADR-06 amended with cumulative additive-bump
+  pattern reference. 12 new tests; **679/679 passing** (was
+  667). +439 / -8 across 11 files.
+- **Notable decisions.**
+  - Canonical generator key order: `contextatlas_version`,
+    `contextatlas_commit_sha`, `extraction_model`. commit_sha
+    sits adjacent to its sibling provenance field
+    (`contextatlas_version`) rather than at the end so the
+    two tool-identity fields read together; rationale captured
+    as an inline comment on the exporter literal (Decision 3
+    modification).
+  - DESIGN.md + ADR-06 amendments **bundled in this commit**
+    (Decision 5 modification): documents update WITH the
+    change that affects them, not deferred to ship gate.
+  - ADR-06 amendment captures cumulative additive-bump
+    pattern across three data points (v1.0 → v1.1 ADR-11,
+    v1.1 → v1.2 ADR-14, v1.2 → v1.3 v0.3 Theme 1.3) — three
+    data points = pattern documented (Decision 6 modification).
+- **Calibration notes.**
+  1. *Schema-bump LOC envelope.* Full-coverage schema-bump
+     steps are 150-200 LOC range, not 50-100. Step 2 actual:
+     +439 LOC (~70-100 LOC production, remainder = tests +
+     docs). Calibration data for future v0.3 scope
+     estimates and v0.4+ schema work.
+  2. *Documents-update-with-change discipline.* Introduced
+     this step: schema-touching commits include the DESIGN.md
+     example bump + ADR amendment in the same commit, not
+     deferred to a final docs-batch step. Adopt as v0.3
+     pattern; prevents schema-doc drift between commits.
+- **Ship-criteria verification.**
+  - Round-trip canary: `atlas-exporter.test.ts` "contextatlas_commit_sha
+    survives export → import → re-export (v1.3 round-trip)"
+    asserts byte-identical re-serialized output through a
+    second DB. Passing.
+  - Pipeline persistence: pipeline test asserts `atlas_meta`
+    row written + `atlas.json` on disk contains the SHA in
+    canonical position; null path asserts field absence.
+  - Resolver shape contract: `resolveContextatlasCommitSha()`
+    returns `^[0-9a-f]{40}$` or null, never throws.
+  - Full suite: 679/679 green; 26/26 storage tests
+    (importer + exporter); 27/27 cli-runner tests.
+
+### Step 1 shipped — 2026-04-25 (85214eb)
+- **Scope.** Theme 1.2 Fix 1 — ADR authoring validation
+  surfaces unresolved frontmatter symbols.
+- **Outcome.** Pipeline emits `log.warn` summary + cli-runner
+  `printFrontmatterWarnings` per-file breakdown by default
+  (no `--verbose` required); JSON mode adds
+  `frontmatter_unresolved_by_file` array. +369 LOC. 667/667
+  passing (was 659).
+- **Notable decisions.** Warn-not-error stance preserved for
+  legitimate forward-declared symbols (ADR drafting
+  precedent: ADR-13 PyrightAdapter, ADR-14 GoAdapter).
 
 ---
 

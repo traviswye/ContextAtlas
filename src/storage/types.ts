@@ -18,15 +18,24 @@
  *          from documentSymbol children to top-level Symbol records.
  *          1.0 / 1.1 atlases import cleanly (parent_id absent on every
  *          row); 1.2 atlases round-trip their parent_id values.
+ *   - 1.3: v0.3 Theme 1.3 adds optional
+ *          `generator.contextatlas_commit_sha` — the git HEAD SHA of
+ *          the contextatlas binary that produced the atlas. Distinct
+ *          from `extracted_at_sha` (which records the *target repo's*
+ *          HEAD); this records the *tool's* HEAD for provenance
+ *          alongside `contextatlas_version`. Optional: omitted when
+ *          the binary is run from a non-git checkout (e.g., a
+ *          published npm install). Earlier-version atlases import
+ *          cleanly with the field absent.
  */
 
 import type { Severity, SymbolId, SymbolKind } from "../types.js";
 
 /** Newest-version atlas the exporter writes and the importer prefers. */
-export const ATLAS_VERSION = "1.2" as const;
+export const ATLAS_VERSION = "1.3" as const;
 
 /** All atlas versions the importer accepts. */
-export const SUPPORTED_ATLAS_VERSIONS = ["1.0", "1.1", "1.2"] as const;
+export const SUPPORTED_ATLAS_VERSIONS = ["1.0", "1.1", "1.2", "1.3"] as const;
 export type AtlasVersion = (typeof SUPPORTED_ATLAS_VERSIONS)[number];
 
 export interface AtlasSymbolEntry {
@@ -72,6 +81,16 @@ export interface AtlasGitCommit {
 
 export interface AtlasGeneratorInfo {
   contextatlas_version: string;
+  /**
+   * Git HEAD SHA of the contextatlas binary that produced the atlas
+   * (atlas schema v1.3+, v0.3 Theme 1.3). Records the *tool's* HEAD
+   * for provenance — distinct from `extracted_at_sha` on the atlas
+   * envelope, which records the *target repo's* HEAD. Optional:
+   * absent when contextatlas is run from a non-git checkout (e.g.,
+   * `npm install`-ed binary) or when SHA resolution fails for any
+   * other reason.
+   */
+  contextatlas_commit_sha?: string;
   extraction_model: string;
 }
 

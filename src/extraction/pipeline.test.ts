@@ -619,6 +619,65 @@ describe("runExtractionPipeline", () => {
     expect(claims[0]?.symbolIds).toEqual([]);
   });
 
+  it("persists contextatlasCommitSha to atlas_meta and atlas.json (v1.3)", async () => {
+    writeFileSync(
+      pathJoin(tmp, "docs", "adr", "ADR-01.md"),
+      "---\nid: ADR-01\n---\nbody\n",
+    );
+    const adapter = adapterForSrc({});
+    const client = makeStubClient([
+      { claims: [makeClaim({ claim: "x", symbol_candidates: [] })] },
+    ]);
+    const sha = "e".repeat(40);
+    const result = await runExtractionPipeline({
+      repoRoot: tmp,
+      config: baseConfig(),
+      db,
+      anthropicClient: client,
+      adapters: new Map([["typescript", adapter]]),
+      contextatlasVersion: "0.3.0",
+      contextatlasCommitSha: sha,
+    });
+    expect(result.atlasExported).toBe(true);
+    const metaRow = db
+      .prepare("SELECT value FROM atlas_meta WHERE key = ?")
+      .get("generator.contextatlas_commit_sha") as
+      | { value: string }
+      | undefined;
+    expect(metaRow?.value).toBe(sha);
+    const atlasOnDisk = readFileSync(
+      pathJoin(tmp, ".contextatlas", "atlas.json"),
+      "utf8",
+    );
+    expect(atlasOnDisk).toContain(`"contextatlas_commit_sha": "${sha}"`);
+    expect(atlasOnDisk).toContain('"version": "1.3"');
+  });
+
+  it("omits contextatlas_commit_sha from atlas.json when null is passed (binary not in git)", async () => {
+    writeFileSync(
+      pathJoin(tmp, "docs", "adr", "ADR-01.md"),
+      "---\nid: ADR-01\n---\nbody\n",
+    );
+    const adapter = adapterForSrc({});
+    const client = makeStubClient([
+      { claims: [makeClaim({ claim: "x", symbol_candidates: [] })] },
+    ]);
+    await runExtractionPipeline({
+      repoRoot: tmp,
+      config: baseConfig(),
+      db,
+      anthropicClient: client,
+      adapters: new Map([["typescript", adapter]]),
+      contextatlasVersion: "0.3.0",
+      contextatlasCommitSha: null,
+    });
+    const atlasOnDisk = readFileSync(
+      pathJoin(tmp, ".contextatlas", "atlas.json"),
+      "utf8",
+    );
+    expect(atlasOnDisk).not.toContain("contextatlas_commit_sha");
+  });
+
   it("supports external ADR root with configRoot separate from repoRoot (ADR-08)", async () => {
     // Three-location fixture mirroring the benchmarks-repo architecture:
     //   tmp/benchmarks-root/

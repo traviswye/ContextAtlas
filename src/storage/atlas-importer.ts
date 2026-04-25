@@ -38,6 +38,12 @@ export const ATLAS_META_KEYS = {
   version: "version",
   generatedAt: "generated_at",
   generatorContextatlasVersion: "generator.contextatlas_version",
+  /**
+   * Atlas schema v1.3+ (v0.3 Theme 1.3) — git HEAD SHA of the
+   * contextatlas binary that produced the atlas. Optional; absent
+   * when the binary is not run from a git checkout.
+   */
+  generatorContextatlasCommitSha: "generator.contextatlas_commit_sha",
   generatorExtractionModel: "generator.extraction_model",
   /** ADR-11 — git HEAD SHA at extraction time. Stored even when null-absent. */
   extractedAtSha: "extracted_at_sha",
@@ -83,6 +89,12 @@ export function importAtlas(db: DatabaseInstance, atlas: AtlasFileV1): void {
       ATLAS_META_KEYS.generatorContextatlasVersion,
       atlas.generator.contextatlas_version,
     );
+    if (atlas.generator.contextatlas_commit_sha !== undefined) {
+      setMeta.run(
+        ATLAS_META_KEYS.generatorContextatlasCommitSha,
+        atlas.generator.contextatlas_commit_sha,
+      );
+    }
     setMeta.run(
       ATLAS_META_KEYS.generatorExtractionModel,
       atlas.generator.extraction_model,

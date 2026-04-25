@@ -100,6 +100,15 @@ export interface ExtractionPipelineDeps {
   /** Provided by caller when a real run should bump generated_at. */
   contextatlasVersion?: string;
   /**
+   * Git HEAD SHA of the contextatlas binary that produced the atlas
+   * (atlas schema v1.3+, v0.3 Theme 1.3). Resolved by the CLI runner
+   * at startup; passed through to atlas_meta + the exported atlas.
+   * Pass `null` to explicitly omit (e.g., binary not in a git
+   * checkout). Pass `undefined` to fall back to the stored meta
+   * value (lossless round-trip path for imported atlases).
+   */
+  contextatlasCommitSha?: string | null;
+  /**
    * Override the git `log` window. Defaults to the ADR-11 constant.
    * Primarily a test knob — production runs take the default.
    */
@@ -442,6 +451,23 @@ export async function runExtractionPipeline(
       ATLAS_META_KEYS.generatorContextatlasVersion,
       contextatlasVer,
     );
+    // contextatlas_commit_sha (atlas v1.3+) — null sentinel from the
+    // caller means "explicitly absent" (e.g., binary not in a git
+    // checkout); undefined means "fall back to stored value", matching
+    // the exporter's null/undefined convention.
+    if (
+      deps.contextatlasCommitSha !== undefined &&
+      deps.contextatlasCommitSha !== null
+    ) {
+      setMeta.run(
+        ATLAS_META_KEYS.generatorContextatlasCommitSha,
+        deps.contextatlasCommitSha,
+      );
+    } else if (deps.contextatlasCommitSha === null) {
+      db.prepare("DELETE FROM atlas_meta WHERE key = ?").run(
+        ATLAS_META_KEYS.generatorContextatlasCommitSha,
+      );
+    }
     if (gitResult.headSha !== null) {
       setMeta.run(ATLAS_META_KEYS.extractedAtSha, gitResult.headSha);
     } else {
@@ -454,6 +480,7 @@ export async function runExtractionPipeline(
       exportAtlasToFile(db, atlasAbsPath, {
         generatedAt: newGeneratedAt,
         contextatlasVersion: contextatlasVer,
+        contextatlasCommitSha: deps.contextatlasCommitSha ?? null,
         extractionModel,
         extractedAtSha: gitResult.headSha ?? null,
       });

@@ -14,8 +14,10 @@
  * stubbed Anthropic client.
  */
 
-import { mkdirSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import { existsSync, mkdirSync } from "node:fs";
 import { dirname, resolve as pathResolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import Anthropic from "@anthropic-ai/sdk";
 
@@ -46,6 +48,14 @@ export interface IndexCliOptions {
    */
   verbose?: boolean;
   contextatlasVersion: string;
+  /**
+   * Git HEAD SHA of the contextatlas binary itself (atlas schema
+   * v1.3+, v0.3 Theme 1.3). When omitted, the runner resolves it via
+   * `resolveContextatlasCommitSha()` (walks up from this module's
+   * file URL to find package root, then `git rev-parse HEAD`). Tests
+   * pass a string or `null` to bypass git invocation entirely.
+   */
+  contextatlasCommitSha?: string | null;
   /**
    * `--budget-warn <usd>` CLI flag value. When non-null, overrides
    * `config.extraction.budget_warn_usd`. When null, config value (if
@@ -175,6 +185,15 @@ export async function runIndexSubcommand(
         ? options.budgetWarnOverride
         : config.extraction?.budgetWarnUsd;
 
+    // Resolve the contextatlas binary's own git HEAD SHA once per run
+    // (atlas schema v1.3+, v0.3 Theme 1.3). Test seam: callers may
+    // pass an explicit value (string or `null`) to skip the spawn and
+    // make the run hermetic.
+    const contextatlasCommitSha =
+      options.contextatlasCommitSha !== undefined
+        ? options.contextatlasCommitSha
+        : resolveContextatlasCommitSha();
+
     let pipelineResult: ExtractionPipelineResult;
     try {
       pipelineResult = await runExtractionPipeline({
@@ -185,6 +204,7 @@ export async function runIndexSubcommand(
         anthropicClient: client,
         adapters,
         contextatlasVersion: options.contextatlasVersion,
+        contextatlasCommitSha,
         // `--full` forces every prose file through extraction
         // by ignoring the SHA baseline. The pipeline respects the
         // `full` flag via the `skipShaDiff` option added below.
@@ -228,6 +248,54 @@ async function shutdownAll(
     } catch (err) {
       log.warn("index: adapter shutdown error", { lang, err: String(err) });
     }
+  }
+}
+
+/**
+ * Resolve the contextatlas binary's git HEAD SHA at runtime (atlas
+ * schema v1.3+, v0.3 Theme 1.3). Walks up from this module's file URL
+ * to find the contextatlas package root (the directory containing
+ * `package.json`), then invokes `git rev-parse HEAD` against it.
+ * Returns `null` on any failure path — non-git checkout (e.g., a
+ * published `npm install`-ed binary), `git` not on PATH, or any
+ * other spawn error. Failure is silent: provenance is best-effort,
+ * and absence is a normal state for installed binaries.
+ *
+ * Exported for direct testability; production callers go through
+ * `runIndexSubcommand` which calls this when `contextatlasCommitSha`
+ * is not pre-supplied.
+ */
+export function resolveContextatlasCommitSha(): string | null {
+  try {
+    const here = dirname(fileURLToPath(import.meta.url));
+    // Walk up looking for package.json. Works whether the module is
+    // running from src/extraction/ (tsx/vitest) or dist/extraction/
+    // (built); both layouts have package.json one level up from src/
+    // or dist/, but a robust walk handles symlinks, monorepo roots,
+    // and any future layout change without re-tuning the depth.
+    let dir = here;
+    let pkgDir: string | null = null;
+    for (let i = 0; i < 10; i++) {
+      if (existsSync(pathResolve(dir, "package.json"))) {
+        pkgDir = dir;
+        break;
+      }
+      const parent = dirname(dir);
+      if (parent === dir) break;
+      dir = parent;
+    }
+    if (pkgDir === null) return null;
+
+    const result = spawnSync("git", ["rev-parse", "HEAD"], {
+      cwd: pkgDir,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    });
+    if (result.status !== 0) return null;
+    const sha = (result.stdout ?? "").trim();
+    return /^[0-9a-f]{40}$/.test(sha) ? sha : null;
+  } catch {
+    return null;
   }
 }
 

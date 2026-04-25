@@ -121,6 +121,49 @@ describe("importAtlas", () => {
     expect(iface?.parentId).toBeUndefined();
   });
 
+  it("accepts v1.3 atlas with generator.contextatlas_commit_sha (v0.3 Theme 1.3)", () => {
+    const v13Atlas: AtlasFileV1 = {
+      version: "1.3",
+      generated_at: "2026-04-24T00:00:00Z",
+      generator: {
+        contextatlas_version: "0.3.0",
+        contextatlas_commit_sha: "d".repeat(40),
+        extraction_model: "claude-opus-4-7",
+      },
+      source_shas: {},
+      symbols: [],
+      claims: [],
+    };
+    importAtlas(db, v13Atlas);
+    const row = db
+      .prepare("SELECT value FROM atlas_meta WHERE key = ?")
+      .get("generator.contextatlas_commit_sha") as
+      | { value: string }
+      | undefined;
+    expect(row?.value).toBe("d".repeat(40));
+  });
+
+  it("accepts v1.3 atlas without contextatlas_commit_sha (omitted optional field)", () => {
+    const v13Atlas: AtlasFileV1 = {
+      version: "1.3",
+      generated_at: "2026-04-24T00:00:00Z",
+      generator: {
+        contextatlas_version: "0.3.0",
+        extraction_model: "claude-opus-4-7",
+      },
+      source_shas: {},
+      symbols: [],
+      claims: [],
+    };
+    importAtlas(db, v13Atlas);
+    const row = db
+      .prepare("SELECT value FROM atlas_meta WHERE key = ?")
+      .get("generator.contextatlas_commit_sha") as
+      | { value: string }
+      | undefined;
+    expect(row).toBeUndefined();
+  });
+
   it("accepts v1.1 atlas without parent_id (back-compat; every symbol reads parentId undefined)", () => {
     const v11Atlas: AtlasFileV1 = {
       version: "1.1",

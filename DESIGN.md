@@ -402,10 +402,11 @@ Schema:
 
 ```jsonc
 {
-  "version": "1.2",
+  "version": "1.3",
   "generated_at": "2026-04-25T03:06:25Z",
   "generator": {
-    "contextatlas_version": "0.2.0",
+    "contextatlas_version": "0.3.0",
+    "contextatlas_commit_sha": "a1b2c3d4e5f6...",
     "extraction_model": "claude-opus-4-7"
   },
   "source_shas": {
@@ -479,6 +480,14 @@ Key properties of atlas.json:
   cleanly with `parent_id` undefined on every symbol; v1.2 atlases
   round-trip the field. Same additive-bump pattern ADR-11 used for
   the 1.0 → 1.1 git-signal addition.
+- **`generator.contextatlas_commit_sha` (atlas schema v1.3+).**
+  Optional git HEAD SHA of the contextatlas binary that produced
+  the atlas (v0.3 Theme 1.3). Records the *tool's* HEAD for
+  provenance — distinct from `extracted_at_sha` on the envelope,
+  which records the *target repo's* HEAD. Omitted when the binary
+  is not run from a git checkout (e.g., a published `npm install`-ed
+  binary) or when SHA resolution fails. Earlier-version atlases
+  import cleanly with the field absent.
 
 ### index.db — local derived cache
 
@@ -765,8 +774,9 @@ v2 concern.
 This document tracks the shipped architecture; v0.1 + v0.2 shipped
 (2026-04-25). Material changes to the tool interface, storage schema,
 or config schema bump the minor version. Atlas schema versioning is
-additive within minor versions (v0.2 bumped atlas schema 1.1 → 1.2
-following ADR-11's pattern). Per-version release notes start with v0.3;
+additive within minor versions (v0.2 bumped 1.1 → 1.2; v0.3 bumped
+1.2 → 1.3 to add `generator.contextatlas_commit_sha`, all following
+ADR-11's pattern). Per-version release notes start with v0.3;
 v0.1 + v0.2 historical record lives in
 [`STEP-PLAN-V0.2.md`](STEP-PLAN-V0.2.md) progress logs and the
 benchmarks-repo Phase 5/6/7 synthesis docs.

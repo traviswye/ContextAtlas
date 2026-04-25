@@ -1,6 +1,7 @@
 import {
   mkdirSync,
   mkdtempSync,
+  readFileSync,
   rmSync,
   writeFileSync,
 } from "node:fs";
@@ -10,7 +11,10 @@ import { join as pathJoin } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { ExtractionClient } from "./anthropic-client.js";
-import { runIndexSubcommand } from "./cli-runner.js";
+import {
+  resolveContextatlasCommitSha,
+  runIndexSubcommand,
+} from "./cli-runner.js";
 
 /**
  * Integration harness for `contextatlas index` that avoids spawning
@@ -770,6 +774,73 @@ describe("runIndexSubcommand (ADR-12)", () => {
     );
     expect(a?.symbols).toEqual(["Ghost1", "Ghost2"]);
     expect(b?.symbols).toEqual(["Ghost3"]);
+  });
+
+  // ---------------------------------------------------------------
+  // contextatlas_commit_sha plumbing (v0.3 Theme 1.3, atlas v1.3)
+  // ---------------------------------------------------------------
+
+  it("contextatlasCommitSha option flows through into atlas.json", async () => {
+    writeFileSync(
+      pathJoin(tmp, "docs", "adr", "ADR-01.md"),
+      "---\nid: ADR-01\n---\nbody\n",
+    );
+    const stdout = captureStdout();
+    const sha = "f".repeat(40);
+    await runIndexSubcommand({
+      configRoot: tmp,
+      configFile: null,
+      full: false,
+      json: false,
+      contextatlasVersion: "0.3.0-test",
+      contextatlasCommitSha: sha,
+      clientOverride: stubClient(async () => ({ claims: [] })),
+      writeStdout: stdout.writer,
+    });
+    const atlasOnDisk = JSON.parse(
+      readFileSync(pathJoin(tmp, ".contextatlas", "atlas.json"), "utf8"),
+    ) as {
+      version: string;
+      generator: { contextatlas_commit_sha?: string };
+    };
+    expect(atlasOnDisk.version).toBe("1.3");
+    expect(atlasOnDisk.generator.contextatlas_commit_sha).toBe(sha);
+  });
+
+  it("contextatlasCommitSha=null suppresses the field in atlas.json", async () => {
+    writeFileSync(
+      pathJoin(tmp, "docs", "adr", "ADR-01.md"),
+      "---\nid: ADR-01\n---\nbody\n",
+    );
+    const stdout = captureStdout();
+    await runIndexSubcommand({
+      configRoot: tmp,
+      configFile: null,
+      full: false,
+      json: false,
+      contextatlasVersion: "0.3.0-test",
+      contextatlasCommitSha: null,
+      clientOverride: stubClient(async () => ({ claims: [] })),
+      writeStdout: stdout.writer,
+    });
+    const atlasText = readFileSync(
+      pathJoin(tmp, ".contextatlas", "atlas.json"),
+      "utf8",
+    );
+    expect(atlasText).not.toContain("contextatlas_commit_sha");
+  });
+
+  it("resolveContextatlasCommitSha returns 40-hex sha or null (best-effort, never throws)", () => {
+    // The contextatlas project itself is a git checkout in CI and dev,
+    // so the helper resolves a real SHA. We don't pin the value (it
+    // changes every commit) — we assert shape contract: 40 lowercase
+    // hex, OR null on environments where git isn't available.
+    const result = resolveContextatlasCommitSha();
+    if (result !== null) {
+      expect(result).toMatch(/^[0-9a-f]{40}$/);
+    }
+    // Critically: the call does not throw under any condition.
+    expect(() => resolveContextatlasCommitSha()).not.toThrow();
   });
 
   it("--json mode: frontmatter_unresolved_by_file is empty array when none unresolved", async () => {

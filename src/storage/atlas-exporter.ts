@@ -52,6 +52,13 @@ export interface ExportAtlasOptions {
   generatedAt?: string;
   /** Override the generator info. Falls back to stored values. */
   contextatlasVersion?: string;
+  /**
+   * Override the contextatlas binary's git HEAD SHA captured at
+   * extraction time (atlas schema v1.3+, v0.3 Theme 1.3). Defaults
+   * to the value stored in `atlas_meta`. Pass `null` to explicitly
+   * omit (e.g., when the binary is not in a git checkout).
+   */
+  contextatlasCommitSha?: string | null;
   extractionModel?: string;
   /**
    * Override the git HEAD SHA captured at extraction time. Defaults to
@@ -89,6 +96,15 @@ export function exportAtlas(
       options.contextatlasVersion ??
       meta["generator.contextatlas_version"] ??
       "0.0.0";
+    // contextatlas_commit_sha follows the same null-vs-undefined override
+    // semantics as extracted_at_sha: explicit `null` forces omission;
+    // `undefined` falls back to stored meta (which itself may be absent).
+    const contextatlasCommitShaResolved =
+      options.contextatlasCommitSha === null
+        ? undefined
+        : (options.contextatlasCommitSha ??
+          meta["generator.contextatlas_commit_sha"] ??
+          undefined);
     const extractionModel =
       options.extractionModel ??
       meta["generator.extraction_model"] ??
@@ -226,8 +242,17 @@ export function exportAtlas(
       ...(extractedAtShaResolved !== undefined
         ? { extracted_at_sha: extractedAtShaResolved }
         : {}),
+      // Canonical generator key order: contextatlas_version,
+      // contextatlas_commit_sha (when present), extraction_model.
+      // commit_sha sits adjacent to its sibling provenance field
+      // (contextatlas_version) rather than at the end so the two
+      // tool-identity fields read together; extraction_model trails
+      // since it identifies the *model* rather than the *binary*.
       generator: {
         contextatlas_version: contextatlasVersion,
+        ...(contextatlasCommitShaResolved !== undefined
+          ? { contextatlas_commit_sha: contextatlasCommitShaResolved }
+          : {}),
         extraction_model: extractionModel,
       },
       source_shas: sourceShas,

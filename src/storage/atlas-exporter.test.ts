@@ -218,6 +218,57 @@ describe("exportAtlas", () => {
     ]);
   });
 
+  it("emits contextatlas_commit_sha between contextatlas_version and extraction_model (v1.3 canonical order)", () => {
+    const atlas = exportAtlas(db, {
+      generatedAt: "2026-04-24T00:00:00Z",
+      contextatlasVersion: "0.3.0",
+      contextatlasCommitSha: "a".repeat(40),
+      extractionModel: "claude-opus-4-7",
+    });
+    expect(Object.keys(atlas.generator)).toEqual([
+      "contextatlas_version",
+      "contextatlas_commit_sha",
+      "extraction_model",
+    ]);
+    expect(atlas.generator.contextatlas_commit_sha).toBe("a".repeat(40));
+  });
+
+  it("omits contextatlas_commit_sha when null override is passed (explicit absence)", () => {
+    const atlas = exportAtlas(db, {
+      generatedAt: "t",
+      contextatlasVersion: "0.3.0",
+      contextatlasCommitSha: null,
+      extractionModel: "m",
+    });
+    expect("contextatlas_commit_sha" in atlas.generator).toBe(false);
+    expect(Object.keys(atlas.generator)).toEqual([
+      "contextatlas_version",
+      "extraction_model",
+    ]);
+  });
+
+  it("omits contextatlas_commit_sha when option absent and meta has no value", () => {
+    const atlas = exportAtlas(db, {
+      generatedAt: "t",
+      contextatlasVersion: "0.3.0",
+      extractionModel: "m",
+    });
+    expect("contextatlas_commit_sha" in atlas.generator).toBe(false);
+  });
+
+  it("falls back to atlas_meta.generator.contextatlas_commit_sha when no override", () => {
+    db.prepare("INSERT INTO atlas_meta (key, value) VALUES (?, ?)").run(
+      "generator.contextatlas_commit_sha",
+      "b".repeat(40),
+    );
+    const atlas = exportAtlas(db, {
+      generatedAt: "t",
+      contextatlasVersion: "0.3.0",
+      extractionModel: "m",
+    });
+    expect(atlas.generator.contextatlas_commit_sha).toBe("b".repeat(40));
+  });
+
   it("emits parent_id without signature when only parent_id is present", () => {
     // Possible edge case: a method symbol that gopls reports without a
     // signature (rare but possible). Canonical order: id, name, kind,
@@ -340,6 +391,34 @@ describe("atlas.json round-trip", () => {
         (s) => s.name === "Shape.Area",
       );
       expect(methodEntry?.parent_id).toBe("sym:ts:src/a.ts:Shape");
+
+      importAtlas(db2, firstExport);
+      const secondSerialized = serializeAtlas(exportAtlas(db2));
+      expect(secondSerialized).toBe(firstSerialized);
+    } finally {
+      db1.close();
+      db2.close();
+    }
+  });
+
+  it("contextatlas_commit_sha survives export → import → re-export (v1.3 round-trip)", () => {
+    const db1 = openDatabase(":memory:");
+    const db2 = openDatabase(":memory:");
+    try {
+      db1
+        .prepare("INSERT INTO atlas_meta (key, value) VALUES (?, ?)")
+        .run("version", "1.3");
+      const firstExport = exportAtlas(db1, {
+        generatedAt: "2026-04-24T00:00:00Z",
+        contextatlasVersion: "0.3.0",
+        contextatlasCommitSha: "c".repeat(40),
+        extractionModel: "claude-opus-4-7",
+      });
+      const firstSerialized = serializeAtlas(firstExport);
+      expect(firstExport.version).toBe("1.3");
+      expect(firstExport.generator.contextatlas_commit_sha).toBe(
+        "c".repeat(40),
+      );
 
       importAtlas(db2, firstExport);
       const secondSerialized = serializeAtlas(exportAtlas(db2));
