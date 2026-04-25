@@ -101,46 +101,60 @@ Practical implication: v0.2 slippage doesn't block v0.3+. v0.4 gates on v0.3 del
 
 ---
 
-### v0.2 — Language adapter breadth + cross-repo validation [IN PROGRESS]
+### v0.2 — Language adapter breadth + cross-repo validation [SHIPPED]
 
 **Delivers:**
-- **Stream A — Adapter quality polish.** PyrightAdapter kind-mapping refinements, cost tracking in extraction pipeline, unresolved-candidate diagnostics, TypeScriptAdapter parity check, Claude Code CLI MCP disclaimer investigation.
-- **Stream B — Third language adapter + cross-repo benchmark.** Go adapter via `gopls` + conformance suite; cobra as benchmark target (probe-phase fallback to gin); **httpx reference run** — first cross-repo validation of the Phase 5 methodology.
+- **Stream A — Adapter quality polish.** PyrightAdapter kind-mapping refinements, cost tracking in extraction pipeline, unresolved-candidate diagnostics, TypeScriptAdapter parity check, Claude Code CLI MCP disclaimer investigation (resolved as harness `--allowedTools` regression — fix shipped in benchmarks repo, ADR-14 documented for future hardening).
+- **Stream B — Third language adapter + cross-repo benchmark.** Go adapter via `gopls` ([ADR-14](docs/adr/ADR-14-go-adapter-gopls.md)) + conformance suite; cobra as benchmark target (8 ADRs, prompts pre-registered); **httpx reference run** + **cobra reference run** — cross-repo + cross-language validation of the Phase 5 methodology.
 
-Python adapter and conformance test suite shipped in v0.1 (commits 701dba3 → 6f8d8ae); v0.2 builds on that foundation. Full scope: [`v0.2-SCOPE.md`](v0.2-SCOPE.md).
+Python adapter and conformance test suite shipped in v0.1 (commits 701dba3 → 6f8d8ae); v0.2 built on that foundation. Full scope: [`v0.2-SCOPE.md`](v0.2-SCOPE.md). Atlas schema bumped 1.1 → 1.2 (additive `parent_id` support for ADR-14's interface-method flattening — same pattern as ADR-11's 1.0 → 1.1 git-signal addition).
 
 **Validates:**
-- ADR-03's LanguageAdapter abstraction holds across three distinct LSP implementations (tsserver, Pyright, gopls)
-- Phase 5 methodology replicates cross-repo (httpx) and cross-language (Go/cobra)
-- "Works across languages and repos, not just authors' hand-picked TypeScript sample" — v0.2's core thesis
+- ADR-03's LanguageAdapter abstraction holds across three distinct LSP implementations (tsserver, Pyright, gopls).
+- Phase 5 methodology replicates cross-repo (httpx, Phase 6) and cross-language (Go/cobra, Phase 7).
+- "Works across languages and repos, not just authors' hand-picked TypeScript sample" — v0.2's core thesis empirically supported.
 
 **Scope boundaries:**
-- No new MCP tools. Existing three tools gain language coverage.
+- No new MCP tools. Existing three tools gained language coverage.
 - No new signal sources (Stream C — docstring / README mining — moved to v0.3).
 - No external-user trial (Stream D — moved to v0.3 alongside Stream C).
 - h5-class TS-compiler-space gap not addressed (v0.4+ per [`v0.2-SCOPE.md`](v0.2-SCOPE.md) §Beyond v0.2 scope).
 
+**Status:** Shipped 2026-04-25. All four v0.2-SCOPE.md success criteria satisfied via committed artifacts.
+
+**Empirical validation:**
+- **Phase 6 reference run (httpx, Python):** 24/24 cells clean, $8.11 cost (post-Step-7 amendment); cross-repo replication of Phase 5's win-bucket pattern. Full synthesis: [`../ContextAtlas-benchmarks/research/phase-6-httpx-reference-run.md`](../ContextAtlas-benchmarks/research/phase-6-httpx-reference-run.md).
+- **Phase 7 reference run (cobra, Go):** 24/24 cells clean, $7.19 cost, 12-min wall clock — cleanest single run in the v0.1/v0.2 series. Three-language baseline established. Full synthesis: [`../ContextAtlas-benchmarks/research/phase-7-cobra-reference-run.md`](../ContextAtlas-benchmarks/research/phase-7-cobra-reference-run.md).
+- **c1 / h1 / p1 architectural-intent win mechanism is consistent across all three languages.** Identical commands-as-data / context-runtime / sync-async-split architectural prompt produces clean CA wins on each.
+- **Three v0.3+ investigation findings logged:** Go grep-ability paradigm sensitivity (Phase 7 §5.1, positive calibration), atlas-file-visibility benchmark methodology issue (Phase 7 §5.2, v0.3+ backlog candidate), cross-harness asymmetry hypothesis (Phase 7 §5.3, beta-ca-vs-beta consistently stronger than ca-vs-alpha — worth tracking through v0.3).
+
 ---
 
-### v0.3 — Claim source enrichment [PLANNED]
+### v0.3 — Claim source enrichment + v0.2 follow-throughs [PLANNED]
 
-**Delivers:**
+**Delivers (claim source enrichment — original v0.3 scope):**
 - Docstring extraction (JSDoc, docstrings, XML doc comments) as claim source
 - README / `docs/` / `CONTRIBUTING.md` parsing for architectural claims
 - Git commit message claim extraction (beyond the v0.1 regex for fix/bug/hotfix)
 - PR description mining (via GitHub/GitLab API integration, opt-in)
 - Claim provenance: every claim traces to its source (ADR-N, docstring at file:line, commit SHA, PR #)
 
+**Delivers (v0.2 follow-throughs — promoted from Phase 7 findings):**
+- **Multi-symbol `get_symbol_context` call shape** (or batched `find_by_intent` with explicit symbol disjunction). From Phase 7 §5.1 Go grep-ability finding: knowledgeable Grep retrieves multiple related symbols in one regex disjunction; CA's per-symbol fetches add overhead on flat-package languages. A multi-symbol call shape closes most of that gap.
+- **Atlas-file-visibility benchmark methodology fix.** From Phase 7 §5.2: visible `atlases/<repo>/` artifacts in the benchmarks workspace can mislead the beta condition on prompts whose target symbol has a generic name. Recommended starting point: trace-time filter excluding cells where beta's trace references atlas paths. To be authored at `research/atlas-file-visibility-benchmark-methodology.md` (benchmarks repo).
+- **Cross-harness asymmetry tracking.** From Phase 7 §5.3: across hono / httpx / cobra, the beta-ca-vs-beta delta is consistently stronger than the ca-vs-alpha delta. v0.3 reference runs should include this comparison explicitly to confirm or falsify the hypothesis on additional targets.
+
 **Validates:**
 - The "ADR dependency" concern from v0.1 dissolves. Typical repos have SOME architectural signal even without dedicated ADRs.
 - Claim provenance supports review workflows (which claims are high-confidence vs. speculative?)
-- Signal fusion at query time handles multiple heterogeneous claim sources
+- Signal fusion at query time handles multiple heterogeneous claim sources.
+- Phase 7's three findings either resolve into v0.3 deliverables or graduate to confirmed cross-target findings on additional benchmark runs.
 
 **Scope boundaries:**
 - No claim capture from agent sessions (v0.6+).
 - Source ingestion is static (at extraction time), not continuous.
 
-**Rationale:** This version directly addresses the concern that v0.1 is only useful for repos with curated ADRs. Most real repos have architectural signal scattered across docs, commit messages, and PR descriptions — v0.3 harvests it.
+**Rationale:** This version addresses two concerns simultaneously: (1) v0.1's ADR-dependency concern (most real repos have architectural signal scattered across docs / commit messages / PR descriptions, not curated ADRs); (2) Phase 7's paradigm-sensitivity and methodology findings, which surfaced concrete next steps, not abstract directions.
 
 ---
 
