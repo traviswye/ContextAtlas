@@ -196,6 +196,18 @@ export async function runIndexSubcommand(
       return { exitCode: 1 };
     }
 
+    // ADR authoring validation breakdown (v0.3 Theme 1.2 Fix 1).
+    // Fires regardless of --verbose so authors see authoring-quality
+    // issues by default. stderr destination keeps stdout (especially
+    // --json) machine-parseable. When --verbose is also set,
+    // printVerboseUnresolved supersedes this with full per-claim
+    // detail; printing both would duplicate the frontmatter list.
+    if (
+      pipelineResult.unresolvedFrontmatterHints > 0 &&
+      !options.verbose
+    ) {
+      printFrontmatterWarnings(pipelineResult.unresolvedDetails, writeStderr);
+    }
     if (options.verbose) {
       printVerboseUnresolved(pipelineResult.unresolvedDetails, writeStderr);
     }
@@ -270,12 +282,57 @@ function printVerboseUnresolved(
   writeStderr(lines.join("\n") + "\n");
 }
 
+/**
+ * Format ADR authoring validation breakdown to stderr — per-file
+ * unresolved frontmatter symbols (v0.3 Theme 1.2 Fix 1). Pipeline
+ * already fires a single `log.warn` summary; this prints the
+ * concrete file-by-symbol list humans need to act on.
+ *
+ * Caller gates on `unresolvedFrontmatterHints > 0`; this function
+ * trusts the gate and renders unconditionally.
+ */
+function printFrontmatterWarnings(
+  details: readonly FileUnresolvedDetail[],
+  writeStderr: (chunk: string) => void,
+): void {
+  let totalSymbols = 0;
+  const filesWithFrontmatter: FileUnresolvedDetail[] = [];
+  for (const d of details) {
+    if (d.frontmatterUnresolved.length === 0) continue;
+    totalSymbols += d.frontmatterUnresolved.length;
+    filesWithFrontmatter.push(d);
+  }
+  if (totalSymbols === 0) return; // gate redundancy; kept for clarity.
+
+  const lines: string[] = [];
+  lines.push(
+    `[warn] ADR authoring validation: ${totalSymbols} unresolved frontmatter symbol(s) across ${filesWithFrontmatter.length} file(s)`,
+  );
+  for (const d of filesWithFrontmatter) {
+    lines.push(
+      `  ${d.sourcePath}: ${d.frontmatterUnresolved.join(", ")}`,
+    );
+  }
+  writeStderr(lines.join("\n") + "\n");
+}
+
 function printSummary(
   result: ExtractionPipelineResult,
   asJson: boolean,
   writeStdout: (chunk: string) => void,
 ): void {
   if (asJson) {
+    // v0.3 Theme 1.2 Fix 1: per-file frontmatter unresolved breakdown
+    // surfaces structurally for tooling consumers. Empty array when
+    // no files had unresolved frontmatter symbols. Full per-file
+    // detail (claim-level unresolved tokens) still requires --verbose
+    // and lives outside the JSON payload.
+    const frontmatterUnresolvedByFile = result.unresolvedDetails
+      .filter((d) => d.frontmatterUnresolved.length > 0)
+      .map((d) => ({
+        source_path: d.sourcePath,
+        symbols: d.frontmatterUnresolved,
+      }));
     const payload = {
       files_extracted: result.filesExtracted,
       files_unchanged: result.filesUnchanged,
@@ -284,6 +341,7 @@ function printSummary(
       symbols_indexed: result.symbolsIndexed,
       unresolved_candidates: result.unresolvedCandidates,
       unresolved_frontmatter_hints: result.unresolvedFrontmatterHints,
+      frontmatter_unresolved_by_file: frontmatterUnresolvedByFile,
       git_commits_indexed: result.gitCommitsIndexed,
       extracted_at_sha: result.extractedAtSha,
       atlas_exported: result.atlasExported,

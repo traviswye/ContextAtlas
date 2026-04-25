@@ -386,6 +386,31 @@ export async function runExtractionPipeline(
     );
   }
 
+  // ADR authoring validation (v0.3 Theme 1.2 Fix 1). Surface a single
+  // warning summarizing files with unresolved frontmatter symbols.
+  // Per-symbol detail stays at debug level; per-file breakdown lands at
+  // the cli-runner display layer (see cli-runner.ts
+  // printFrontmatterWarnings) so callers see the concrete list without
+  // needing --verbose. The warn-not-error stance is deliberate: ADRs
+  // can legitimately reference forward-declared symbols (ADR-13's
+  // PyrightAdapter / ADR-14's GoAdapter placeholders during their
+  // ADR-drafting commits are precedent).
+  if (unresolvedFrontmatterHints > 0) {
+    const fileCount = unresolvedDetails.filter(
+      (d) => d.frontmatterUnresolved.length > 0,
+    ).length;
+    log.warn(
+      "extraction: ADR authoring validation — " +
+        `${unresolvedFrontmatterHints} unresolved frontmatter symbol(s) ` +
+        `detected across ${fileCount} file(s). Authors: confirm each ` +
+        "unresolved symbol is intentional (e.g., placeholder for " +
+        "unimplemented future work) or update the ADR to match current " +
+        "source. See per-file detail in extraction summary or run with " +
+        "--verbose.",
+      { unresolvedFrontmatterHints, fileCount },
+    );
+  }
+
   // --- Stage 7: update atlas_meta + export ----------------------------
   // Git state advancing counts as a modification: the committed atlas
   // carries `extracted_at_sha` + `git_commits`, so a new HEAD SHA means

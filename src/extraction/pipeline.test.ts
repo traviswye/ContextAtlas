@@ -890,3 +890,150 @@ describe("runExtractionPipeline — budget warning", () => {
     expect(budgetWarnings).toHaveLength(1);
   });
 });
+
+// ---------------------------------------------------------------------------
+// ADR authoring validation (v0.3 Step 1 — Theme 1.2 Fix 1)
+// ---------------------------------------------------------------------------
+
+describe("runExtractionPipeline — ADR authoring validation", () => {
+  let tmp: string;
+  let db: DatabaseInstance;
+
+  beforeEach(() => {
+    tmp = mkdtempSync(pathJoin(tmpdir(), "ca-pipeline-adr-validation-"));
+    mkdirSync(pathJoin(tmp, "docs", "adr"), { recursive: true });
+    mkdirSync(pathJoin(tmp, "src"), { recursive: true });
+    mkdirSync(pathJoin(tmp, ".contextatlas"), { recursive: true });
+    db = openDatabase(":memory:");
+  });
+
+  afterEach(() => {
+    db.close();
+    rmSync(tmp, { recursive: true, force: true });
+  });
+
+  function adapterForSrc(symbolsByFile: Record<string, AtlasSymbol[]>) {
+    return makeStubAdapter("typescript", [".ts"], (absPath) => {
+      const hit = Object.entries(symbolsByFile).find(([k]) =>
+        absPath.endsWith(k),
+      );
+      return hit ? hit[1] : [];
+    });
+  }
+
+  it("all-resolve happy path: ADR authoring validation warning silent", async () => {
+    writeFileSync(
+      pathJoin(tmp, "docs", "adr", "ADR-clean.md"),
+      "---\nid: ADR-clean\nsymbols:\n  - Real\n---\nBody.",
+    );
+    writeFileSync(pathJoin(tmp, "src", "x.ts"), "export class Real {}");
+    const warnings = captureWarnings();
+    const adapter = adapterForSrc({
+      "x.ts": [
+        {
+          id: "sym:ts:src/x.ts:Real",
+          name: "Real",
+          kind: "class",
+          path: "src/x.ts",
+          line: 1,
+          language: "typescript",
+        },
+      ],
+    });
+    const client = makeStubClient([
+      { claims: [makeClaim({ claim: "rule", symbol_candidates: ["Real"] })] },
+    ]);
+    const result = await runExtractionPipeline({
+      repoRoot: tmp,
+      config: baseConfig(),
+      db,
+      anthropicClient: client,
+      adapters: new Map([["typescript", adapter]]),
+    });
+    warnings.restore();
+    expect(result.unresolvedFrontmatterHints).toBe(0);
+    const adrValidationWarnings = warnings.lines.filter((l) =>
+      l.includes("ADR authoring validation"),
+    );
+    expect(adrValidationWarnings).toHaveLength(0);
+  });
+
+  it("some-unresolved warning path: warn line fires once with totals + file count", async () => {
+    writeFileSync(
+      pathJoin(tmp, "docs", "adr", "ADR-mixed-A.md"),
+      "---\nid: ADR-mixed-A\nsymbols:\n  - Ghost\n  - Real\n---\nBody.",
+    );
+    writeFileSync(
+      pathJoin(tmp, "docs", "adr", "ADR-mixed-B.md"),
+      "---\nid: ADR-mixed-B\nsymbols:\n  - AlsoGhost\n---\nBody.",
+    );
+    writeFileSync(pathJoin(tmp, "src", "x.ts"), "export class Real {}");
+    const warnings = captureWarnings();
+    const adapter = adapterForSrc({
+      "x.ts": [
+        {
+          id: "sym:ts:src/x.ts:Real",
+          name: "Real",
+          kind: "class",
+          path: "src/x.ts",
+          line: 1,
+          language: "typescript",
+        },
+      ],
+    });
+    const client = makeStubClient([
+      { claims: [makeClaim({ claim: "rule A", symbol_candidates: [] })] },
+      { claims: [makeClaim({ claim: "rule B", symbol_candidates: [] })] },
+    ]);
+    const result = await runExtractionPipeline({
+      repoRoot: tmp,
+      config: baseConfig(),
+      db,
+      anthropicClient: client,
+      adapters: new Map([["typescript", adapter]]),
+    });
+    warnings.restore();
+    // Two unresolved frontmatter symbols (Ghost in ADR-A; AlsoGhost in ADR-B)
+    // across two files.
+    expect(result.unresolvedFrontmatterHints).toBe(2);
+    const adrValidationWarnings = warnings.lines.filter((l) =>
+      l.includes("ADR authoring validation"),
+    );
+    expect(adrValidationWarnings).toHaveLength(1);
+    expect(adrValidationWarnings[0]).toMatch(/2 unresolved frontmatter/);
+    expect(adrValidationWarnings[0]).toMatch(/2 file/);
+  });
+
+  it("all-unresolved sanity case: warn line fires once with correct totals", async () => {
+    writeFileSync(
+      pathJoin(tmp, "docs", "adr", "ADR-broken-A.md"),
+      "---\nid: ADR-broken-A\nsymbols:\n  - GhostA1\n  - GhostA2\n---\nBody.",
+    );
+    writeFileSync(
+      pathJoin(tmp, "docs", "adr", "ADR-broken-B.md"),
+      "---\nid: ADR-broken-B\nsymbols:\n  - GhostB1\n---\nBody.",
+    );
+    // No source symbols at all — every frontmatter declaration unresolved.
+    const warnings = captureWarnings();
+    const adapter = adapterForSrc({});
+    const client = makeStubClient([
+      { claims: [makeClaim({ claim: "rule A", symbol_candidates: [] })] },
+      { claims: [makeClaim({ claim: "rule B", symbol_candidates: [] })] },
+    ]);
+    const result = await runExtractionPipeline({
+      repoRoot: tmp,
+      config: baseConfig(),
+      db,
+      anthropicClient: client,
+      adapters: new Map([["typescript", adapter]]),
+    });
+    warnings.restore();
+    expect(result.unresolvedFrontmatterHints).toBe(3);
+    const adrValidationWarnings = warnings.lines.filter((l) =>
+      l.includes("ADR authoring validation"),
+    );
+    expect(adrValidationWarnings).toHaveLength(1);
+    expect(adrValidationWarnings[0]).toMatch(/3 unresolved frontmatter/);
+    expect(adrValidationWarnings[0]).toMatch(/2 file/);
+  });
+});

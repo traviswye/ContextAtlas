@@ -653,4 +653,143 @@ describe("runIndexSubcommand (ADR-12)", () => {
     // Default summary still reports count.
     expect(stdout.joined()).toMatch(/unresolved_candidates=1/);
   });
+
+  // ---------------------------------------------------------------
+  // ADR authoring validation breakdown (v0.3 Step 1 — Theme 1.2 Fix 1)
+  // ---------------------------------------------------------------
+
+  it("default mode: frontmatter-warning breakdown printed when unresolved frontmatter symbols exist", async () => {
+    writeFileSync(
+      pathJoin(tmp, "docs", "adr", "ADR-mixed.md"),
+      "---\nid: ADR-mixed\nsymbols:\n  - Ghost\n  - AlsoGhost\n---\nbody\n",
+    );
+    const stderr = captureStderr();
+    const stdout = captureStdout();
+    await runIndexSubcommand({
+      configRoot: tmp,
+      configFile: null,
+      full: false,
+      json: false,
+      // verbose NOT set
+      contextatlasVersion: "0.0.1-test",
+      clientOverride: stubClient(async () => ({ claims: [] })),
+      writeStdout: stdout.writer,
+      writeStderr: stderr.writer,
+    });
+    const err = stderr.joined();
+    expect(err).toMatch(
+      /\[warn\] ADR authoring validation: 2 unresolved frontmatter symbol\(s\) across 1 file\(s\)/,
+    );
+    expect(err).toMatch(/ADR-mixed\.md:.*Ghost.*AlsoGhost/);
+    // Default summary still reports the count.
+    expect(stdout.joined()).toMatch(/unresolved_frontmatter_hints=2/);
+  });
+
+  it("default mode: silent when no frontmatter symbols are unresolved", async () => {
+    writeFileSync(
+      pathJoin(tmp, "docs", "adr", "ADR-clean.md"),
+      "---\nid: ADR-clean\n---\nbody\n",
+    );
+    const stderr = captureStderr();
+    const stdout = captureStdout();
+    await runIndexSubcommand({
+      configRoot: tmp,
+      configFile: null,
+      full: false,
+      json: false,
+      contextatlasVersion: "0.0.1-test",
+      clientOverride: stubClient(async () => ({ claims: [] })),
+      writeStdout: stdout.writer,
+      writeStderr: stderr.writer,
+    });
+    expect(stderr.joined()).not.toMatch(/ADR authoring validation/);
+    expect(stdout.joined()).toMatch(/unresolved_frontmatter_hints=0/);
+  });
+
+  it("--verbose mode: frontmatter breakdown NOT duplicated (verbose printer supersedes)", async () => {
+    writeFileSync(
+      pathJoin(tmp, "docs", "adr", "ADR-mixed.md"),
+      "---\nid: ADR-mixed\nsymbols:\n  - Ghost\n---\nbody\n",
+    );
+    const stderr = captureStderr();
+    const stdout = captureStdout();
+    await runIndexSubcommand({
+      configRoot: tmp,
+      configFile: null,
+      full: false,
+      json: false,
+      verbose: true,
+      contextatlasVersion: "0.0.1-test",
+      clientOverride: stubClient(async () => ({ claims: [] })),
+      writeStdout: stdout.writer,
+      writeStderr: stderr.writer,
+    });
+    const err = stderr.joined();
+    // Verbose block fires (covers frontmatter + claim-level detail).
+    expect(err).toMatch(/unresolved symbol candidates \(--verbose\)/);
+    expect(err).toMatch(/\[frontmatter\] Ghost/);
+    // Default-mode warning header should NOT also fire — would be duplicate.
+    expect(err).not.toMatch(/\[warn\] ADR authoring validation/);
+  });
+
+  it("--json mode: frontmatter_unresolved_by_file field present with correct shape", async () => {
+    writeFileSync(
+      pathJoin(tmp, "docs", "adr", "ADR-json-A.md"),
+      "---\nid: ADR-json-A\nsymbols:\n  - Ghost1\n  - Ghost2\n---\nbody\n",
+    );
+    writeFileSync(
+      pathJoin(tmp, "docs", "adr", "ADR-json-B.md"),
+      "---\nid: ADR-json-B\nsymbols:\n  - Ghost3\n---\nbody\n",
+    );
+    const stderr = captureStderr();
+    const stdout = captureStdout();
+    await runIndexSubcommand({
+      configRoot: tmp,
+      configFile: null,
+      full: false,
+      json: true,
+      contextatlasVersion: "0.0.1-test",
+      clientOverride: stubClient(async () => ({ claims: [] })),
+      writeStdout: stdout.writer,
+      writeStderr: stderr.writer,
+    });
+    const payload = JSON.parse(stdout.joined()) as {
+      frontmatter_unresolved_by_file: Array<{
+        source_path: string;
+        symbols: string[];
+      }>;
+      unresolved_frontmatter_hints: number;
+    };
+    expect(payload.unresolved_frontmatter_hints).toBe(3);
+    expect(payload.frontmatter_unresolved_by_file).toHaveLength(2);
+    const a = payload.frontmatter_unresolved_by_file.find((x) =>
+      x.source_path.endsWith("ADR-json-A.md"),
+    );
+    const b = payload.frontmatter_unresolved_by_file.find((x) =>
+      x.source_path.endsWith("ADR-json-B.md"),
+    );
+    expect(a?.symbols).toEqual(["Ghost1", "Ghost2"]);
+    expect(b?.symbols).toEqual(["Ghost3"]);
+  });
+
+  it("--json mode: frontmatter_unresolved_by_file is empty array when none unresolved", async () => {
+    writeFileSync(
+      pathJoin(tmp, "docs", "adr", "ADR-clean.md"),
+      "---\nid: ADR-clean\n---\nbody\n",
+    );
+    const stdout = captureStdout();
+    await runIndexSubcommand({
+      configRoot: tmp,
+      configFile: null,
+      full: false,
+      json: true,
+      contextatlasVersion: "0.0.1-test",
+      clientOverride: stubClient(async () => ({ claims: [] })),
+      writeStdout: stdout.writer,
+    });
+    const payload = JSON.parse(stdout.joined()) as {
+      frontmatter_unresolved_by_file: unknown[];
+    };
+    expect(payload.frontmatter_unresolved_by_file).toEqual([]);
+  });
 });
