@@ -881,6 +881,142 @@ shipped.
 - Ship-criteria verification: [each criterion with evidence]
 ```
 
+### Step 5 shipped — 2026-04-25 (commit SHA TBD)
+- **Scope.** Theme 1.2 Fix 2 — claim-attribution narrowing
+  flag (`narrow_attribution`) targeting the Phase 6 §5.1
+  muddy-bundle mechanism. Three-state enum (absent | `drop`
+  | `drop-with-fallback`) covering Option A and Option E
+  from the design-space survey.
+- **Outcome — main repo.** Implementation at commit
+  [`7e1956a`](https://github.com/traviswye/ContextAtlas/commit/7e1956a):
+  schema/parser/CLI/pipeline plumbing + new ship-blocker
+  test (v0.2-equivalence canary, parallel role to Step 4's
+  BYTE_EQUIVALENCE_EXPECTED). 723/723 tests passing
+  (was 698; +25 new). +726 / -26 across 11 files.
+- **Outcome — benchmarks repo.** Evidence note at
+  [`research/v0.3-stream-a-spot-check.md`](../ContextAtlas-benchmarks/research/v0.3-stream-a-spot-check.md)
+  (commit `68e3d1e` in benchmarks repo). Cross-repo
+  separation per Phase 5/6/7 pattern.
+- **Spot-check empirical findings (single-cell n=1; Stream
+  D is rigorous):**
+  - Option A (`drop`): 17 of 75 claims attached to zero
+    symbols, 8 from ADR-05 (p4-relevant ADR). Regression
+    risk materialized exactly as inventory note predicted.
+  - Option E (`drop-with-fallback`): 0 zero-symbol claims;
+    fallback recovered all 17. Designed behavior verified.
+  - Cell efficiency: Option E reduced tool calls vs Phase 6
+    baseline by -57%; Option A by -36%. Option E cell also
+    22% cheaper than Option A's ($0.48 vs $0.61).
+  - Both variants share residual: §5.1 Request-side
+    off-target claim still surfaces as top INTENT for
+    `content` queries. **Fix 2 alone does not fully close
+    the §5.1 mechanism**; Fix 3 is positioned to address
+    the residual.
+  - **Variant recommendation (scoped):** if Step 7 chooses
+    to include Fix 2 in v0.3 default, variant should be
+    `drop-with-fallback`. Fix 2 ship/no-ship still Step 7's
+    call after reading Step 6's evidence + matrix
+    evaluation.
+- **Notable decisions.**
+  - **Three-state enum, not boolean+boolean.** Option A and
+    Option E land as flag values together (~10 LOC for the
+    fallback branch), rather than as a sequential
+    "implement A first, evaluate, then maybe E" path.
+    Travis's call: cheap insurance vs re-implementation if
+    A too coarse. Spot-check evidence supports the call —
+    Option E recovered the regression risk Option A
+    introduced, on the only cell measured.
+  - **MAX_SYMBOLS_PER_CALL-style flag location.** Defined
+    in `src/types.ts` config + `src/cli-args.ts`, mirroring
+    `--budget-warn` precedence (CLI > config > absent).
+    Keeps config-vs-flag separation legible.
+  - **v0.2-equivalence canary as ship-blocker** (parallel
+    to Step 4's BYTE_EQUIVALENCE_EXPECTED). Comment
+    sharpened with explicit cross-reference to
+    `src/mcp/server.test.ts` and "MUST NOT weaken this
+    assertion during refactors" framing — establishes
+    canary discipline as a discoverable pattern across
+    v0.3 work, not isolated examples.
+  - **Verification discipline.** Phase 6 baseline numbers
+    (14 calls, 60.8k tokens, "There's an ADR on this"
+    framing, "+2 Grep rounds") verified against actual
+    `phase-6-httpx-reference-run.md` text before evidence
+    note publication. Line/section anchors cited:
+    `§3:102` for metrics, `§5.1:172-176` for narrative.
+    Same discipline as Step 3 ADR-15 cobra hook fields.
+- **Calibration data accumulated (refined from Steps
+  2/3/4 cumulative pattern).**
+  - **Production code: 30-40% inflation** (Steps 2/3/4
+    evidence holds; Step 5 production at +200 LOC vs ~290
+    estimate — within calibration).
+  - **Test code: 100-130% inflation.** Step 4: +609 vs 270
+    estimate (~125% over). Step 5: +471 vs 220 estimate
+    (~114% over). The cumulative
+    "30-40% inflation" baseline under-counted test work
+    specifically. **Refined calibration: split inflation
+    factors by surface — production ~30-40%, tests
+    ~100-130%.** Future v0.3 step estimates apply
+    separately. Driver of test inflation: empirical-
+    grounding discipline (per-state assertions, dedup
+    edge cases, both-format coverage, contract-grade
+    fixtures).
+- **Spot-check budget calibration.**
+  - **Original $0.40 cap was 8.75× off.** Naive multiplier
+    used; honest per-cell cost from
+    `phase-5-cost-calibration.md` is $0.58 average for ca
+    cells, with p4 ca specifically at 60.8k tokens
+    projecting $1.00-1.30. Cap revised to $5.00; actual
+    spend $3.57 (Option A + Option E), within cap with
+    safety margin used.
+  - **Lesson:** spot-check budget envelopes must reference
+    `phase-5-cost-calibration.md` per-cell data, not naive
+    multipliers. Future Step 6 + Stream D budget estimates
+    apply the same grounding.
+- **Step 5 deviation flagged.**
+  - **Travis-runs-spot-check** (API key environment
+    access). Original STEP-PLAN listed Step 5 as
+    "Claude implements + spot-check execution" — practical
+    constraint required Travis-execution.
+  - **Artifact-flowback pattern established:** Travis
+    runs commands → pastes raw artifacts → Claude drafts
+    synthesis. Reusable for Step 6 spot-check + Stream D
+    Steps 14/15 reference runs. The pattern preserves
+    Claude's drafting throughput while keeping API spend
+    under Travis's direct supervision.
+- **Environment finding.**
+  - **PowerShell-vs-bash runbook mismatch** caught at
+    Phase 1 pre-flight (Phase 1 commands were dual-shell
+    by accident; Phase 2 sed/heredoc/$()/2> would have
+    failed). Future Travis-executed runbooks should be
+    PowerShell-native by default.
+- **Verification disciplines exercised across Step 5.**
+  Three distinct verification gates fired:
+  1. v0.2-equivalence canary (ship-blocker assertion at
+     test time)
+  2. Phase 6 baseline number citations (line-anchor
+     verification before evidence-note publication)
+  3. PowerShell-vs-bash command translation (Phase 1
+     pre-flight catch)
+  Pattern: empirical-grounding discipline manifests in
+  multiple forms; identifying each form's gate prevents
+  silent drift.
+- **Stream D scope implication.**
+  - Single-cell evidence (n=1); Stream D Step 15 measures
+    across all p1-p6 on httpx + hono + cobra.
+  - Phase 6 baseline cost not directly re-extracted in
+    Step 5; Stream D will provide direct baseline
+    measurements for the chosen v0.3 default.
+- **Step 5 ship-criteria verification.**
+  - Feature flag with three states (absent | `drop` |
+    `drop-with-fallback`) ✓
+  - Tests cover (a) flag-off matches v0.2 attribution
+    exactly (v0.2-equivalence canary), (b) flag-on drops
+    frontmatter inheritance, (c) per-claim candidate
+    fallback when frontmatter inheritance drops ✓
+  - Spot-check measurement on Phase 6 p4-stream-lifecycle
+    with cost data + scratch-note publication ✓
+  - No regression in main-repo test suite (723/723) ✓
+
 ### Step 4 shipped — 2026-04-25 (45cfa13)
 - **Scope.** Theme 1.1 — multi-symbol API implementation
   per ADR-15. Schema + handler + tests + DESIGN.md
