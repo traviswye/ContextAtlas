@@ -881,7 +881,7 @@ shipped.
 - Ship-criteria verification: [each criterion with evidence]
 ```
 
-### Step 6 shipped — 2026-04-25 (commit SHA TBD)
+### Step 6 shipped — 2026-04-25 (44f043c + 144c576; benchmarks e81dbe2)
 - **Scope.** Theme 1.2 Fix 3 — BM25 ranking on
   `get_symbol_context` (ADR-16) + Path 1 unit-level
   spot-check + ADR-16 fresh ADR.
