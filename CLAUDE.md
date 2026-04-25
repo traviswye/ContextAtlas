@@ -59,21 +59,34 @@ These are decisions already made. Do not relitigate them.
 
 ## Current Version
 
-- **Current:** v0.2 in progress. Scope anchor: [`v0.2-SCOPE.md`](v0.2-SCOPE.md).
-- **Execution plan:** `STEP-PLAN-V0.2.md` (lands during v0.2 planning Step 4).
+- **Current:** v0.2 shipped 2026-04-25. v0.3 (claim source enrichment +
+  Phase 7 follow-throughs) queues next; not yet started.
 - **Strategic arc:** [`ROADMAP.md`](ROADMAP.md) covers v0.1 → v1.0.
-- **v0.2 thesis:** ContextAtlas works across languages and repos, not
-  just hand-picked TypeScript. Stream A = adapter quality polish,
-  Stream B = Go adapter (cobra, with gin fallback) + httpx reference
-  run for cross-repo validation. See `v0.2-SCOPE.md` for the full
-  stream-level scope, sequencing, and rescope conditions.
+- **v0.2 outcome:** Three-language baseline established across hono
+  (TypeScript), httpx (Python), and cobra (Go). Stream A (adapter
+  quality polish) and Stream B (Go adapter via gopls + cobra
+  benchmark + httpx + cobra reference runs) both shipped. v0.2
+  thesis ("works across languages and repos") empirically validated.
+- **Three v0.3+ findings logged during Phase 7:** Go grep-ability
+  paradigm sensitivity (Phase 7 §5.1, positive calibration);
+  atlas-file-visibility benchmark methodology issue (§5.2,
+  v0.3 backlog); cross-harness asymmetry hypothesis (§5.3, worth
+  tracking through v0.3 reference runs).
+- **Historical references:** `STEP-PLAN-V0.2.md` progress log
+  documents the per-step execution arc; `v0.2-SCOPE.md` is the
+  scope anchor as shipped (success criteria all satisfied — see
+  [STEP-PLAN-V0.2.md `## Progress log` Step 11 entry](STEP-PLAN-V0.2.md)).
 
-When working on v0.2 tasks, check `v0.2-SCOPE.md` for the stream
-you're in. When making architectural decisions, check ADRs first.
+When making architectural decisions, check ADRs first. ADR-13
+(Pyright) and ADR-14 (gopls) document the language-adapter LSP
+contracts; ADR-06 (committed atlas) and ADR-11 (git signal index)
+document the atlas-side invariants.
 
 v0.1 shipped with Phase 5 empirical validation (50–71% tool-call
-reduction on architectural win-bucket prompts). Historical MVP
-build-plan details live in git history, not this file.
+reduction on architectural win-bucket prompts on hono). v0.2
+shipped Phase 6 (httpx) + Phase 7 (cobra) reference runs validating
+cross-language replication. Historical MVP build-plan details
+live in git history, not this file.
 
 ## Tool scope philosophy
 
@@ -149,14 +162,20 @@ Do not ask before:
 
 ## Benchmark Targets
 
-Three repos are pre-locked. Do not change without discussion:
+Three external repos are pre-locked. Do not change without discussion:
 
 - `honojs/hono` — TypeScript, 186 source files
 - `encode/httpx` — Python, 23 source files
-- ContextAtlas itself — dogfood
+- `spf13/cobra` — Go, 19 source files
 
-ADRs written for the first two are in `benchmarks/adrs/`. Benchmark
-prompts will land in `benchmarks/prompts/` during the hackathon week.
+ADRs written for all three are in
+[`../ContextAtlas-benchmarks/adrs/`](../ContextAtlas-benchmarks/adrs/)
+(5 hono + 5 httpx + 8 cobra). Benchmark prompts are in
+[`../ContextAtlas-benchmarks/prompts/`](../ContextAtlas-benchmarks/prompts/),
+locked per pre-registration discipline. ContextAtlas itself is
+dogfooded during development but is not part of the measured
+benchmark matrix — the four-condition matrix runs only against the
+three external targets above.
 
 ## Using ContextAtlas on Itself
 
