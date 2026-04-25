@@ -147,10 +147,12 @@ tools (which can't really be committed) and knowledge-graph tools
 
 ## Installation
 
-> **Status:** v0.1 shipped with Phase 5 benchmark validation; v0.2 in
-> progress (see [ROADMAP.md](ROADMAP.md) and
-> [v0.2-SCOPE.md](v0.2-SCOPE.md)). Installation instructions will
-> be finalized post-v0.2.
+> **Status:** v0.1 + v0.2 shipped (2026-04-25). Three-language baseline
+> validated on hono (TypeScript), httpx (Python), and cobra (Go) —
+> Phase 5/6/7 reference runs in the
+> [benchmarks repo](https://github.com/traviswye/ContextAtlas-benchmarks).
+> v0.3 (claim source enrichment) queues next. Package not yet published
+> to npm; install instructions below describe the intended shape.
 
 ```bash
 # Placeholder
@@ -223,11 +225,11 @@ contextatlas index
 We benchmark ContextAtlas against baseline Claude Code on three
 repositories chosen to reflect realistic developer workloads:
 
-| Repo                | Language   | Source files | Role                         |
-|---------------------|------------|--------------|------------------------------|
-| honojs/hono         | TypeScript | 186          | Mid-sized framework          |
-| encode/httpx        | Python     | 23           | Focused production library   |
-| contextatlas (self) | TypeScript | ~40          | Meta/dogfood                 |
+| Repo          | Language   | Source files | Role                         |
+|---------------|------------|--------------|------------------------------|
+| honojs/hono   | TypeScript | 186          | Mid-sized framework          |
+| encode/httpx  | Python     | 23           | Focused production library   |
+| spf13/cobra   | Go         | 19           | CLI framework                |
 
 **Methodology.** 24 prompts per repo, 6 task buckets, three runs per
 condition, blind manual grading. Full methodology in
@@ -296,6 +298,20 @@ the synthesis document.
   conflate model pricing, CLI caching, and harness architecture.
   See RUBRIC.md §System prompt asymmetry.
 
+### Cross-language replication — Phases 6 + 7
+
+Cross-language replication validated on Python (httpx, Phase 6) and
+Go (cobra, Phase 7). The c1/h1/p1 architectural-intent win mechanism
+is consistent across all three languages. Go's grep-friendly naming
+convention reduces the magnitude of CA's efficiency advantage on
+dispersed-symbol prompts (see Phase 7 §5.1 for paradigm sensitivity
+finding).
+
+- **Phase 6 — httpx (Python):**
+  [phase-6-httpx-reference-run.md](https://github.com/traviswye/ContextAtlas-benchmarks/blob/main/research/phase-6-httpx-reference-run.md)
+- **Phase 7 — cobra (Go):**
+  [phase-7-cobra-reference-run.md](https://github.com/traviswye/ContextAtlas-benchmarks/blob/main/research/phase-7-cobra-reference-run.md)
+
 ### Quality axis — deferred to step 13
 
 Phase 5 measures efficiency (tool calls, tokens, cost). Correctness
@@ -311,18 +327,19 @@ expected direction — CA answers cite ADRs by number and exact line
 counts; alpha answers describe the same concepts in approximations —
 but surface evidence is not a correctness benchmark.
 
-Cross-repo validation on httpx and cross-language validation on Go
-(cobra) are v0.2 Stream B deliverables — see
-[v0.2-SCOPE.md](v0.2-SCOPE.md).
+Cross-repo and cross-language validation shipped in v0.2 — see the
+Phase 6/7 links above and [`v0.2-SCOPE.md`](v0.2-SCOPE.md) for
+context.
 
-**Dogfooding.** The third benchmark target is ContextAtlas itself. By
-the end of development, we wanted the tool to be good enough to help
-build itself — Claude Code using ContextAtlas to navigate the ContextAtlas
-codebase during ongoing development. ADRs written for ContextAtlas (tool
-interface stability, symbol ID format, extraction pipeline stages)
-constrain future changes to the tool the same way they constrain
-generated code. It's a recursive test: if the tool helps us ship the
-tool, it'll help others too.
+**Dogfooding.** Throughout development, ContextAtlas indexes its own
+ADRs and is used by Claude Code during work on ContextAtlas itself.
+ADRs written for ContextAtlas (tool interface stability, symbol ID
+format, extraction pipeline stages) constrain future changes to the
+tool the same way they constrain generated code. Recursive test: if
+the tool helps us ship the tool, it'll help others too. This is a
+development practice, not part of the measured benchmark matrix —
+the four-condition matrix runs only against the three external
+targets above.
 
 ## What ContextAtlas Is Not
 
@@ -425,15 +442,19 @@ not a core change.
 - [x] `impact_of_change` — thin composite, primitive + git co-change
   + test-impact data
 
-**Infrastructure (shipped in v0.1):**
+**Infrastructure (shipped in v0.1 + v0.2):**
 - [x] Core MCP server skeleton
 - [x] TypeScript language adapter (via `typescript-language-server`)
 - [x] Python language adapter (via Pyright, ADR-13)
+- [x] **Go language adapter (via `gopls`, ADR-14) — v0.2**
 - [x] Adapter conformance test suite (identical behavioral contract
-  across both adapters)
+  across all three adapters)
 - [x] Opus 4.7 index-time extraction pipeline (validated: 100% parse
   success across 12 production-grade documents tested)
 - [x] SQLite storage with SHA-based incremental reindex
+  (atlas schema v1.2 — adds `parent_id` support for
+  flattened-child symbols, required by ADR-14's interface
+  method handling)
 - [x] Git integration (recent commits, co-change, hot-path signals)
 - [x] Compact output format (default) + JSON format (opt-in)
 - [x] Benchmark harness (in the separate
@@ -441,17 +462,30 @@ not a core change.
   repo; see the linked Benchmarks and Methodology section below)
 
 **Benchmark assets:**
-- [x] Production-grade ADRs for benchmark targets (5 hono + 5 httpx)
+- [x] Production-grade ADRs for benchmark targets (5 hono + 5 httpx
+  + 8 cobra)
 - [x] Self-ADRs for ContextAtlas's own architectural decisions
 - [x] Extraction pipeline validated end-to-end on real ADRs
-- [x] Three benchmark repositories (hono, httpx, self)
-- [x] Phase 5 reference run (hono) — 50–71% tool-call reduction on
-  architectural win-bucket prompts; full synthesis in benchmarks repo
+- [x] Three benchmark repositories: hono (TypeScript), httpx
+  (Python), cobra (Go) — three-language baseline
+- [x] **Phase 5 reference run (hono)** — 50–71% tool-call reduction
+  on architectural win-bucket prompts; full synthesis in
+  benchmarks repo
+- [x] **Phase 6 reference run (httpx) — v0.2** — cross-repo
+  validation; win-bucket pattern replicates on Python
+- [x] **Phase 7 reference run (cobra) — v0.2** — cross-language
+  validation; c1/h1/p1 architectural-intent invariant confirmed;
+  three v0.3+ findings (Go grep-ability sensitivity, atlas-file
+  visibility, cross-harness asymmetry hypothesis)
 
-**v0.2 in progress:** Adapter quality polish (Stream A) + Go adapter
-via `gopls` with cobra benchmark target + cross-repo httpx reference
-run (Stream B). See [`v0.2-SCOPE.md`](v0.2-SCOPE.md) for stream-level
-scope.
+**v0.2 shipped (2026-04-25):** Adapter quality polish (Stream A) +
+Go adapter via `gopls` (ADR-14) with cobra benchmark target +
+cross-repo httpx reference run + cross-language cobra reference
+run (Stream B). Three-language baseline established. Three v0.3+
+investigation findings logged in benchmarks-repo Phase 7
+synthesis. See [`v0.2-SCOPE.md`](v0.2-SCOPE.md) for the original
+stream-level scope and the Phase 6/7 synthesis docs above for
+empirical findings.
 
 **Deferred to future versions (see [ROADMAP.md](ROADMAP.md) for specifics):**
 - Claim source enrichment: docstrings, READMEs (v0.3)
