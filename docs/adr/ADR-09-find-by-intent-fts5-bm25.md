@@ -296,6 +296,15 @@ These are captured here as forward pointers, not as commitments.
 None are scheduled; each is evidence-gated against real benchmark
 or dogfood data:
 
+- **BM25 extension to `get_symbol_context` — DELIVERED in
+  [ADR-16](ADR-16-bm25-symbol-context.md) (v0.3 Theme 1.2 Fix 3).**
+  This ADR's BM25 + FTS5 ranking primitives are reused by
+  `get_symbol_context`'s intent block when an optional caller-
+  provided query is present. ADR-16 documents the tiebreaker
+  chain difference (no name-overlap step, since per-symbol claims
+  share a name), the two-layer flag/query gating, and the
+  multi-symbol composition rule. Phase 6 §5.1 muddy-bundle
+  evidence was the trigger.
 - **Faceted search input** — `severity_filter` and `source_filter`
   as narrowing parameters.
 - **Raw FTS5 MATCH syntax** — `raw_query: bool` escape hatch for

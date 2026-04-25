@@ -25,6 +25,13 @@ export interface ServerRuntimeContext {
    * hotness threshold (ADR-11). One knob, one meaning.
    */
   gitRecentCommits: number;
+  /**
+   * Mirrors `config.mcp.symbolContextBM25` (ADR-16, v0.3 Theme 1.2
+   * Fix 3). When true, `get_symbol_context` BM25-ranks the intent
+   * block IF the caller passes a `query` parameter. Falls back to
+   * v0.2 deterministic ordering otherwise. Defaults to false.
+   */
+  symbolContextBM25?: boolean;
 }
 
 export interface CreateServerOptions {

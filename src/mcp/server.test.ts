@@ -947,6 +947,252 @@ describe("MCP server with runtime context — get_symbol_context multi-symbol (A
   });
 });
 
+// ---------------------------------------------------------------------------
+// v0.3 Theme 1.2 Fix 3 — BM25 ranking on get_symbol_context (ADR-16)
+//
+// Handler-level integration tests. Unit-level BM25 behavior is in
+// src/queries/symbol-context.test.ts (the load-bearing canaries live
+// there). These tests verify the handler correctly threads the
+// `query` input parameter and the `symbolContextBM25` server flag
+// through to buildBundle.
+// ---------------------------------------------------------------------------
+
+describe("MCP server — get_symbol_context BM25 query parameter (ADR-16)", () => {
+  let client: Client;
+  let server: ReturnType<typeof createServer>;
+  let db: ReturnType<typeof openDatabase>;
+
+  async function setupServer(symbolContextBM25: boolean) {
+    db = openDatabase(":memory:");
+    const sym: AtlasSymbol = {
+      id: "sym:ts:src/orders/processor.ts:OrderProcessor",
+      name: "OrderProcessor",
+      kind: "class",
+      path: "src/orders/processor.ts",
+      line: 42,
+      signature: "class OrderProcessor",
+      language: "typescript",
+      fileSha: "abc",
+    };
+    upsertSymbols(db, [sym]);
+    insertClaims(db, [
+      {
+        source: "ADR-07",
+        sourcePath: "docs/adr/ADR-07.md",
+        sourceSha: "s",
+        severity: "hard",
+        claim: "off-target streaming claim",
+        symbolIds: [sym.id],
+      },
+      {
+        source: "ADR-07",
+        sourcePath: "docs/adr/ADR-07.md",
+        sourceSha: "s",
+        severity: "hard",
+        claim: "payment idempotency must be enforced",
+        symbolIds: [sym.id],
+      },
+    ]);
+    server = createServer({
+      name: "ContextAtlas",
+      version: "0.0.1-test",
+      context: {
+        db,
+        adapters: new Map([["typescript", stubAdapter({})]]),
+        gitRecentCommits: 5,
+        symbolContextBM25,
+      },
+    });
+    client = new Client(
+      { name: "test-client", version: "0.0.1" },
+      { capabilities: {} },
+    );
+    const [clientTransport, serverTransport] =
+      InMemoryTransport.createLinkedPair();
+    await Promise.all([
+      server.connect(serverTransport),
+      client.connect(clientTransport),
+    ]);
+  }
+
+  afterEach(async () => {
+    await client.close();
+    await server.close();
+    db.close();
+  });
+
+  it("flag-on + query: BM25 ranking activates; on-target claim ranks first", async () => {
+    await setupServer(true);
+    const result = await client.request(
+      {
+        method: "tools/call",
+        params: {
+          name: TOOL_NAMES.getSymbolContext,
+          arguments: {
+            symbol: "OrderProcessor",
+            query: "payment idempotency",
+          },
+        },
+      },
+      CallToolResultSchema,
+    );
+    const text = (result.content[0] as { text: string }).text;
+    // BM25 ranks "payment idempotency must be enforced" first (matches
+    // both query tokens). The off-target streaming claim sorts last.
+    const idempotencyIdx = text.indexOf("payment idempotency must be enforced");
+    const streamingIdx = text.indexOf("off-target streaming claim");
+    expect(idempotencyIdx).toBeGreaterThan(-1);
+    expect(streamingIdx).toBeGreaterThan(-1);
+    expect(idempotencyIdx).toBeLessThan(streamingIdx);
+  });
+
+  it("flag-on but no query: falls back to v0.2 ordering (insertion order)", async () => {
+    // Two-layer gating: server flag on but caller didn't pass query →
+    // fallback. This is the load-bearing fallback rule that prevents
+    // existing v0.2 callers from seeing different output when an
+    // admin flips the flag on.
+    await setupServer(true);
+    const result = await client.request(
+      {
+        method: "tools/call",
+        params: {
+          name: TOOL_NAMES.getSymbolContext,
+          arguments: { symbol: "OrderProcessor" },
+        },
+      },
+      CallToolResultSchema,
+    );
+    const text = (result.content[0] as { text: string }).text;
+    // v0.2 insertion order: streaming claim first (claim id = 1).
+    const streamingIdx = text.indexOf("off-target streaming claim");
+    const idempotencyIdx = text.indexOf("payment idempotency must be enforced");
+    expect(streamingIdx).toBeGreaterThan(-1);
+    expect(idempotencyIdx).toBeGreaterThan(-1);
+    expect(streamingIdx).toBeLessThan(idempotencyIdx);
+  });
+
+  it("flag-off + query: query is silently ignored (no BM25 path)", async () => {
+    // Two-layer gating: caller passed query but server flag off →
+    // query has no effect. v0.2 ordering wins.
+    await setupServer(false);
+    const result = await client.request(
+      {
+        method: "tools/call",
+        params: {
+          name: TOOL_NAMES.getSymbolContext,
+          arguments: {
+            symbol: "OrderProcessor",
+            query: "payment idempotency",
+          },
+        },
+      },
+      CallToolResultSchema,
+    );
+    const text = (result.content[0] as { text: string }).text;
+    // Same as flag-on-no-query: insertion order wins.
+    const streamingIdx = text.indexOf("off-target streaming claim");
+    const idempotencyIdx = text.indexOf("payment idempotency must be enforced");
+    expect(streamingIdx).toBeLessThan(idempotencyIdx);
+  });
+
+  it("flag-on + empty query string: empty trimmed query treated as absent", async () => {
+    await setupServer(true);
+    const result = await client.request(
+      {
+        method: "tools/call",
+        params: {
+          name: TOOL_NAMES.getSymbolContext,
+          arguments: { symbol: "OrderProcessor", query: "   " },
+        },
+      },
+      CallToolResultSchema,
+    );
+    const text = (result.content[0] as { text: string }).text;
+    // Whitespace-only query → trimmed to "" → handler treats as
+    // absent → BM25 path doesn't activate → v0.2 ordering.
+    const streamingIdx = text.indexOf("off-target streaming claim");
+    const idempotencyIdx = text.indexOf("payment idempotency must be enforced");
+    expect(streamingIdx).toBeLessThan(idempotencyIdx);
+  });
+
+  it("non-string query rejected with InvalidParams", async () => {
+    await setupServer(true);
+    await expect(
+      client.request(
+        {
+          method: "tools/call",
+          params: {
+            name: TOOL_NAMES.getSymbolContext,
+            arguments: { symbol: "OrderProcessor", query: 42 },
+          },
+        },
+        CallToolResultSchema,
+      ),
+    ).rejects.toThrow(/'query' must be a string/);
+  });
+
+  it("multi-symbol input with query: query applies uniformly across batch (ADR-15 §3 + ADR-16)", async () => {
+    // Per ADR-15 §3 (uniform per-symbol options), the query parameter
+    // applies to every symbol in the batch. ADR-16 inherits this rule.
+    await setupServer(true);
+    upsertSymbols(db, [
+      {
+        id: "sym:ts:src/billing/retry.ts:RetryBudget",
+        name: "RetryBudget",
+        kind: "class",
+        path: "src/billing/retry.ts",
+        line: 1,
+        language: "typescript",
+        fileSha: "def",
+      },
+    ]);
+    insertClaims(db, [
+      {
+        source: "ADR-08",
+        sourcePath: "docs/adr/ADR-08.md",
+        sourceSha: "s",
+        severity: "hard",
+        claim: "off-topic claim",
+        symbolIds: ["sym:ts:src/billing/retry.ts:RetryBudget"],
+      },
+      {
+        source: "ADR-08",
+        sourcePath: "docs/adr/ADR-08.md",
+        sourceSha: "s",
+        severity: "hard",
+        claim: "payment idempotency on retry",
+        symbolIds: ["sym:ts:src/billing/retry.ts:RetryBudget"],
+      },
+    ]);
+    const result = await client.request(
+      {
+        method: "tools/call",
+        params: {
+          name: TOOL_NAMES.getSymbolContext,
+          arguments: {
+            symbol: ["OrderProcessor", "RetryBudget"],
+            query: "payment idempotency",
+          },
+        },
+      },
+      CallToolResultSchema,
+    );
+    const text = (result.content[0] as { text: string }).text;
+    // Both sub-bundles render with BM25 applied. RetryBudget's
+    // "payment idempotency on retry" should rank ahead of its
+    // "off-topic claim" sibling.
+    expect(text).toMatch(/--- get_symbol_context: OrderProcessor \(1 of 2\) ---/);
+    expect(text).toMatch(/--- get_symbol_context: RetryBudget \(2 of 2\) ---/);
+    // Within RetryBudget's slot, idempotency claim ranks above off-topic.
+    const retryStart = text.indexOf("RetryBudget (2 of 2)");
+    const offTopic = text.indexOf("off-topic claim", retryStart);
+    const onTopic = text.indexOf("payment idempotency on retry", retryStart);
+    expect(onTopic).toBeGreaterThan(-1);
+    expect(offTopic).toBeGreaterThan(-1);
+    expect(onTopic).toBeLessThan(offTopic);
+  });
+});
+
 describe("MCP server with runtime context — find_by_intent", () => {
   let client: Client;
   let server: ReturnType<typeof createServer>;

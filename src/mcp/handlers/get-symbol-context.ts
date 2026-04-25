@@ -60,6 +60,15 @@ export interface HandlerDeps {
    * `config.git.recentCommits`. Passed through to `buildBundle`.
    */
   gitRecentCommits: number;
+  /**
+   * BM25 ranking opt-in (v0.3 Theme 1.2 Fix 3, ADR-16). When true,
+   * `get_symbol_context` ranks the intent block via FTS5 BM25 if
+   * the caller passes a `query` parameter. Mirrors
+   * `config.mcp.symbolContextBM25`. Defaults to false; flag-off
+   * is byte-equivalent to v0.2 ranking (severity → source →
+   * claim_id), guarded by the v0.2-equivalence canary tests.
+   */
+  symbolContextBM25?: boolean;
 }
 
 export function createGetSymbolContextHandler(
@@ -138,6 +147,14 @@ async function resolveSingle(
       include: args.include,
       maxRefs: args.maxRefs,
       gitRecentCommits: deps.gitRecentCommits,
+      // ADR-16: BM25 path activates only when both the server flag is
+      // on AND the caller provided a query. Either condition absent
+      // falls through to v0.2 deterministic ranking (severity → source
+      // → claim_id), preserving byte-equivalence with pre-Step-6
+      // bundles. Both fallback rules guarded by canary tests.
+      ...(deps.symbolContextBM25 === true && args.query !== undefined
+        ? { bm25Query: args.query }
+        : {}),
     },
   );
   return { kind: "bundle", input, bundle };
@@ -339,6 +356,14 @@ interface ParsedArgs {
   include: readonly BundleSignal[];
   maxRefs: number;
   format: "compact" | "json";
+  /**
+   * Optional BM25 query string (ADR-16). When present and the
+   * server-side flag is on, the intent block is BM25-ranked against
+   * this query. When absent, falls back to deterministic v0.2
+   * ordering. Per ADR-15 §3, applies uniformly across the
+   * multi-symbol batch (no per-symbol query overrides).
+   */
+  query?: string;
 }
 
 const ALL_SIGNAL_VALUES: readonly BundleSignal[] = [
@@ -369,6 +394,21 @@ function parseArgs(rawArgs: unknown): ParsedArgs {
       ? args.file_hint
       : undefined;
 
+  // ADR-16: optional `query` parameter for BM25 ranking. Empty/whitespace
+  // strings normalize to undefined so callers get the v0.2 fallback path
+  // rather than a degenerate empty-query BM25 call.
+  let query: string | undefined;
+  if (args.query !== undefined) {
+    if (typeof args.query !== "string") {
+      throw new McpError(
+        ErrorCode.InvalidParams,
+        `get_symbol_context: 'query' must be a string when provided; got ${typeof args.query}.`,
+      );
+    }
+    const trimmed = args.query.trim();
+    if (trimmed.length > 0) query = trimmed;
+  }
+
   const parsed: ParsedArgs = {
     symbols,
     inputWasArray,
@@ -378,6 +418,7 @@ function parseArgs(rawArgs: unknown): ParsedArgs {
     format,
   };
   if (fileHint !== undefined) parsed.fileHint = fileHint;
+  if (query !== undefined) parsed.query = query;
   return parsed;
 }
 

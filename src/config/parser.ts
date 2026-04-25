@@ -45,6 +45,7 @@ const TOP_LEVEL_KEYS = [
   "atlas",
   "source",
   "extraction",
+  "mcp",
 ] as const;
 const TOP_LEVEL_KEY_SET = new Set<string>(TOP_LEVEL_KEYS);
 
@@ -141,6 +142,7 @@ function validate(
   const atlas = validateAtlas(parsed.atlas, configPath);
   const source = validateSource(parsed.source, configPath);
   const extraction = validateExtraction(parsed.extraction, configPath);
+  const mcp = validateMcp(parsed.mcp, configPath);
 
   const out: ContextAtlasConfig = {
     version: 1,
@@ -153,6 +155,7 @@ function validate(
   };
   if (source !== undefined) out.source = source;
   if (extraction !== undefined) out.extraction = extraction;
+  if (mcp !== undefined) out.mcp = mcp;
   return out;
 }
 
@@ -484,6 +487,37 @@ function validateExtraction(
 
   // Section present but empty — treat as if section were absent.
   // No point in landing an extraction record with no fields set.
+  if (Object.keys(out).length === 0) return undefined;
+  return out;
+}
+
+function validateMcp(
+  raw: unknown,
+  configPath: string,
+): ContextAtlasConfig["mcp"] | undefined {
+  if (raw === undefined) return undefined;
+  if (!isObject(raw)) {
+    throw cfgError(
+      configPath,
+      `Invalid 'mcp': expected object, got ${describeType(raw)}.`,
+    );
+  }
+  rejectUnknownKeys(raw, new Set(["symbol_context_bm25"]), "mcp.", configPath);
+
+  const out: NonNullable<ContextAtlasConfig["mcp"]> = {};
+
+  const bm25 = raw.symbol_context_bm25;
+  if (bm25 !== undefined) {
+    if (typeof bm25 !== "boolean") {
+      throw cfgError(
+        configPath,
+        `Invalid 'mcp.symbol_context_bm25': expected boolean, got ${describeType(bm25)}. ` +
+          "See ADR-16 for the BM25-on-get_symbol_context contract.",
+      );
+    }
+    out.symbolContextBM25 = bm25;
+  }
+
   if (Object.keys(out).length === 0) return undefined;
   return out;
 }

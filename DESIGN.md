@@ -145,7 +145,8 @@ batch of symbols (multi-symbol mode, ADR-15).
   "file_hint": "src/orders/processor.ts",  // optional, disambiguates (uniform across batch)
   "depth": "summary" | "standard" | "deep", // default: standard
   "include": ["refs", "intent", "git", "types", "tests"], // optional filter
-  "max_refs": 50                            // cap on references
+  "max_refs": 50,                           // cap on references
+  "query": "stream lifecycle response state" // optional, ADR-16: BM25-rank intent claims
 }
 ```
 
@@ -182,6 +183,21 @@ Duplicate input strings are dropped via `.trim()`-normalized
 exact-string-match dedup before resolution. Single-string input
 preserves the legacy single-bundle output shape (no envelope, no
 delimiters) — `["Foo"]` and `"Foo"` produce different shapes by design.
+
+**Optional BM25 query ranking (ADR-16).** When the server's
+`mcp.symbol_context_bm25` config flag is enabled AND the caller passes
+a `query` parameter, claims in the intent block are FTS5
+BM25-ranked against the query — same primitives as `find_by_intent`
+([ADR-09](docs/adr/ADR-09-find-by-intent-fts5-bm25.md)). The sort
+chain is BM25 → severity (hard > soft > context) → source → claim_id.
+Claims that don't match any query token still surface in the bundle
+but sort to the end via a `+Infinity` sentinel — `get_symbol_context`'s
+"give me everything attached to this symbol" contract is preserved;
+BM25 only re-orders, never filters. **Two-layer gating:** flag-off OR
+query-absent both fall back to v0.2 deterministic ordering (severity
+→ source → claim_id), preserving byte-equivalence for existing
+callers. Multi-symbol mode applies the same query uniformly to every
+symbol in the batch (per ADR-15 §3 uniform-options rule).
 
 Compact output:
 
@@ -356,6 +372,8 @@ atlas:
 extraction:                              # optional; v0.2 + v0.3 knobs
   budget_warn_usd: 1.50                  # USD warn threshold (v0.2 Stream A #2)
   narrow_attribution: drop               # claim-attribution rule (v0.3 Fix 2)
+mcp:                                     # optional; v0.3 query-time knobs
+  symbol_context_bm25: true              # BM25 ranking on get_symbol_context (ADR-16)
 ```
 
 Seven sections required (`extraction` is optional). No inheritance, no
@@ -394,6 +412,23 @@ Pipeline knobs surfaced after v0.2 reference runs.
     evidence + decides the v0.3 ship default after Step 6's BM25
     work (Fix 3) lands. Stream D (Step 15) re-measures the chosen
     configuration; non-default configs may stay flag-accessible.
+
+### `mcp` section (optional)
+
+Server-side query-time knobs. Affect how the MCP server ranks /
+composes responses from an already-extracted atlas; do not affect
+extraction.
+
+- **`symbol_context_bm25`** (v0.3 Theme 1.2 Fix 3 — ADR-16). When
+  `true`, `get_symbol_context` BM25-ranks the intent block IF the
+  caller passes a `query` parameter. Falls back to v0.2 deterministic
+  ordering otherwise. **Two-layer gating** (flag + query): both
+  required for BM25 to activate. Defaults to absent (false).
+  v0.2-equivalence canary tests in
+  [`src/queries/symbol-context.test.ts`](src/queries/symbol-context.test.ts)
+  protect the flag-absent path against silent regressions. See
+  [ADR-16](docs/adr/ADR-16-bm25-symbol-context.md) for the full
+  decision record + Phase 6 §5.1 motivation.
 
 ## Extraction Pipeline
 

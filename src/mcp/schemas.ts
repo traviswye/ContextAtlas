@@ -100,6 +100,18 @@ const getSymbolContextTool: Tool = {
         default: 50,
         description: "Upper bound on reference count included in the bundle.",
       },
+      query: {
+        type: "string",
+        description:
+          "Optional natural-language query string. When the server's " +
+          "mcp.symbol_context_bm25 flag is enabled (ADR-16), claims " +
+          "in the intent block are BM25-ranked against this query — " +
+          "same ranking primitives as find_by_intent (ADR-09). When " +
+          "the flag is off, or when this parameter is omitted, claims " +
+          "fall back to deterministic v0.2 ordering (severity → source → " +
+          "claim_id). Backward-compatible: existing callers see no " +
+          "behavioral change.",
+      },
       format: {
         type: "string",
         enum: ["compact", "json"],

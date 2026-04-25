@@ -480,6 +480,69 @@ describe("loadConfig — source block (ADR-08 runtime)", () => {
       narrowAttribution: "drop",
     });
   });
+
+  // ---------------------------------------------------------------
+  // mcp section (v0.3 Theme 1.2 Fix 3 — ADR-16)
+  // ---------------------------------------------------------------
+
+  it("mcp.symbol_context_bm25 = true → parses to camelCase field", () => {
+    writeCfg(
+      "version: 1\nlanguages: [typescript]\nadrs: { path: docs/adr/ }\n" +
+        "mcp:\n  symbol_context_bm25: true\n",
+    );
+    expect(loadConfig(tmp).mcp).toEqual({ symbolContextBM25: true });
+  });
+
+  it("mcp.symbol_context_bm25 = false → parses (explicit-off form)", () => {
+    writeCfg(
+      "version: 1\nlanguages: [typescript]\nadrs: { path: docs/adr/ }\n" +
+        "mcp:\n  symbol_context_bm25: false\n",
+    );
+    expect(loadConfig(tmp).mcp).toEqual({ symbolContextBM25: false });
+  });
+
+  it("mcp section absent → cfg.mcp is undefined (v0.2 baseline)", () => {
+    writeCfg(
+      "version: 1\nlanguages: [typescript]\nadrs: { path: docs/adr/ }\n",
+    );
+    expect(loadConfig(tmp).mcp).toBeUndefined();
+  });
+
+  it("mcp section empty → cfg.mcp is undefined (no zombie record)", () => {
+    writeCfg(
+      "version: 1\nlanguages: [typescript]\nadrs: { path: docs/adr/ }\n" +
+        "mcp: {}\n",
+    );
+    expect(loadConfig(tmp).mcp).toBeUndefined();
+  });
+
+  it("mcp.symbol_context_bm25 non-boolean → rejected with actionable error", () => {
+    writeCfg(
+      "version: 1\nlanguages: [typescript]\nadrs: { path: docs/adr/ }\n" +
+        "mcp:\n  symbol_context_bm25: yes\n",
+    );
+    expect(() => loadConfig(tmp)).toThrow(
+      /Invalid 'mcp\.symbol_context_bm25'.*expected boolean/,
+    );
+  });
+
+  it("unknown key under mcp → rejected with actionable error", () => {
+    writeCfg(
+      "version: 1\nlanguages: [typescript]\nadrs: { path: docs/adr/ }\n" +
+        "mcp:\n  bogus: 1\n",
+    );
+    expect(() => loadConfig(tmp)).toThrow(
+      /Unknown key 'mcp\.bogus'.*Valid keys at this level: symbol_context_bm25/,
+    );
+  });
+
+  it("mcp as non-object → rejected with type error", () => {
+    writeCfg(
+      "version: 1\nlanguages: [typescript]\nadrs: { path: docs/adr/ }\n" +
+        "mcp: just-a-string\n",
+    );
+    expect(() => loadConfig(tmp)).toThrow(/Invalid 'mcp'/);
+  });
 });
 
 function captureError(fn: () => unknown): Error {

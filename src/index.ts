@@ -196,7 +196,9 @@ export async function main(): Promise<void> {
 
   // 6. Construct the server WITH context. gitRecentCommits comes from
   //    config — same knob used during extraction for the "recent N" and
-  //    hotness threshold (ADR-11).
+  //    hotness threshold (ADR-11). symbolContextBM25 (ADR-16) is the
+  //    Step 6 Fix 3 flag — defaults false; when true, get_symbol_context
+  //    BM25-ranks claims against an optional caller-provided query.
   const server = createServer({
     name: "ContextAtlas",
     version,
@@ -204,6 +206,9 @@ export async function main(): Promise<void> {
       db,
       adapters,
       gitRecentCommits: config.git.recentCommits,
+      ...(config.mcp?.symbolContextBM25 === true
+        ? { symbolContextBM25: true }
+        : {}),
     },
   });
 

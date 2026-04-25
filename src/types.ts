@@ -287,4 +287,22 @@ export interface ContextAtlasConfig {
     budgetWarnUsd?: number;
     narrowAttribution?: "drop" | "drop-with-fallback";
   };
+  /**
+   * Optional MCP-server query-time knobs (v0.3 Theme 1.2 Fix 3).
+   * These affect how the MCP server ranks/composes responses from
+   * an already-extracted atlas; they do not affect extraction.
+   *
+   * `symbolContextBM25`: when true, `get_symbol_context` ranks the
+   * intent (claim) section using FTS5 BM25 IF the caller provides
+   * a `query` parameter — same ranking primitive as `find_by_intent`
+   * (ADR-09), extended to per-symbol claim subsets per ADR-16.
+   * Absent (default) preserves v0.2 deterministic ranking
+   * (severity → source → claim_id). Even with the flag on, an
+   * absent `query` parameter falls back to v0.2 ordering — the flag
+   * activates the BM25 path, but the caller's query string drives
+   * the actual re-ranking.
+   */
+  mcp?: {
+    symbolContextBM25?: boolean;
+  };
 }
