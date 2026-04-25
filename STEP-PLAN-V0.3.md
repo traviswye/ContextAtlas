@@ -881,7 +881,7 @@ shipped.
 - Ship-criteria verification: [each criterion with evidence]
 ```
 
-### Step 5 shipped — 2026-04-25 (commit SHA TBD)
+### Step 5 shipped — 2026-04-25 (7e1956a + b025d3d)
 - **Scope.** Theme 1.2 Fix 2 — claim-attribution narrowing
   flag (`narrow_attribution`) targeting the Phase 6 §5.1
   muddy-bundle mechanism. Three-state enum (absent | `drop`
