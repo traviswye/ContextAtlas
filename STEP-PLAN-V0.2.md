@@ -2,16 +2,15 @@
 
 **Status:** Active execution plan for v0.2. See `## Revision history`
 (bottom of document) for material scope/plan changes during execution.
-**Last revised:** 2026-04-24 — Step 9 shipped (GoAdapter against
-gopls v0.21.1, 996 LOC across 6 commits — storage migration v4 +
-atlas schema v1.2 + Symbol.parentId + LanguageCode extension +
-adapter skeleton + listSymbols/getSymbolDetails/getDiagnostics +
-findReferences/getTypeInfo + conformance wiring + broken.go
-fixture). All 14 shared conformance tests pass against the Go
-fixture; 48 Go-specific integration tests verify ADR-14
-decisions end-to-end. Final LOC lands at ADR-14's 1000 upper
-bound exactly — original estimate was correct; no calibration
-amendment. Step 11 (Go reference run against cobra) unblocks.
+**Last revised:** 2026-04-25 — Step 11 shipped (cobra reference
+run: 24/24 clean, $7.19 cost, 12-min wall clock; three-language
+baseline established across hono/httpx/cobra). Three v0.3+
+investigation findings logged in research/phase-7: Go
+grep-ability paradigm sensitivity (§5.1, positive calibration);
+c6 atlas-file-visibility benchmark methodology issue (§5.2,
+v0.3+ backlog candidate); cross-harness asymmetry hypothesis
+(§5.3, beta-ca-vs-beta consistently stronger than ca-vs-alpha
+across all three targets). Step 12 (v0.2 ship gate) queues next.
 
 **What this document is:** The execution-level plan for v0.2 — step
 order, per-step ship criteria, dependencies, and progress tracking.
@@ -650,14 +649,24 @@ efficiency pattern replicates cross-language. Per
 [v0.2-SCOPE.md Stream B #6](v0.2-SCOPE.md).
 
 **Ship criteria.**
-- [ ] Go benchmark target atlas extracted and committed with
+- [x] Go benchmark target atlas extracted and committed with
   provenance note.
-- [ ] Extraction cost captured via step 2's cost tracking; numbers
+      (`atlases/cobra/atlas.json` — 678 symbols / 143 claims.
+      Benchmarks commit `545a73d`. Sentinel "Command" present.)
+- [x] Extraction cost captured via step 2's cost tracking; numbers
   within expected envelope (~$2–3 per Go target per v0.2 cost
   envelope).
-- [ ] Reference run artifacts in `runs/reference/<target>/`:
+      (See benchmarks commit `545a73d` provenance note for the
+      extraction cost; matrix run cost separate at $7.19 — see
+      next criterion.)
+- [x] Reference run artifacts in `runs/reference/<target>/`:
   summary, manifest, per-cell traces (24 cells).
-- [ ] Synthesis note at
+      (`runs/reference/cobra/` promoted from `runs/<timestamp>/cobra`
+      via benchmarks commit `fef62b5`. 24/24 cells clean — 0
+      errors, 0 retries, 0 cap trips. Total $7.19 against $18
+      ceiling — 60% headroom; cleanest single run in the v0.1/v0.2
+      series.)
+- [x] Synthesis note at
   `research/phase-7-go-reference-run.md` (or next available phase
   number): matrix table (6 prompts × 4 conditions), efficiency
   delta tables (CA vs Alpha, Beta-CA vs Beta), win/tie/trick
@@ -665,11 +674,21 @@ efficiency pattern replicates cross-language. Per
   ~200–300 LOC — shorter than Phase 5 analysis (skip per-prompt
   deep dives), structurally parallel (executive summary +
   methodology + findings).
-- [ ] Win-bucket efficiency pattern compared to hono + httpx
+      (`research/phase-7-cobra-reference-run.md`, benchmarks
+      commit `f82292b`. 540 LOC — beyond the 200–300 initial
+      estimate, but content is load-bearing: three investigation
+      findings (§5.1, §5.2, §5.3) elevate the run beyond simple
+      replication and warrant the depth.)
+- [x] Win-bucket efficiency pattern compared to hono + httpx
   findings. If pattern fails to replicate on Go, trigger rescope
   per v0.2-SCOPE.md Rescope conditions ("Stream B benchmark fails
   to replicate Phase 5's efficiency pattern").
-- [ ] v0.2-SCOPE.md Success Criterion 2b ("Go reference run
+      (§6 cross-language comparison: c1 win mechanism replicates
+      cleanly across all three languages — hono h1, httpx p1,
+      cobra c1 all show CA architectural-intent advantage. c4
+      Go-specific loss explained by paradigm sensitivity (§5.1),
+      not adapter quality. NO rescope triggered.)
+- [x] v0.2-SCOPE.md Success Criterion 2b ("Go reference run
   artifacts committed") satisfied.
 
 **Key decisions.**
@@ -762,6 +781,122 @@ measurement.
 - Notable decisions: [if any surfaced during execution]
 - Ship-criteria verification: [each criterion with evidence]
 ```
+
+### Step 11 shipped — 2026-04-25 (benchmarks commits 7674070, 3d5d92f, 545a73d, fef62b5, f82292b; main-repo commit <this commit>)
+- Scope: Extract cobra atlas via the Step 9 GoAdapter; run MVP-scale
+  reference matrix; verify win-bucket efficiency pattern replicates
+  cross-language. Per v0.2-SCOPE.md Stream B #6.
+- Outcome: **Three-language baseline established (hono / httpx /
+  cobra).** 24/24 matrix cells ran clean — 0 errors, 0 retries,
+  0 cap trips. Total $7.19 against $18 ceiling (60% headroom;
+  cleanest single run in the v0.1/v0.2 series). 12-min wall
+  clock. Win-bucket pattern replicates: c1 (commands-as-data,
+  ADR-01) is a clean architectural-intent win matching hono h1
+  and httpx p1. NO rescope triggered.
+- Notable decisions:
+  - **Three investigation findings elevated the run beyond simple
+    replication**, each with a different v0.3+ implication:
+    - **§5.1 Go grep-ability ceiling.** Alpha's c4 trace used a
+      single regex-OR Grep call to retrieve three target symbols
+      simultaneously; CA fragmented the same retrieval into three
+      `get_symbol_context` calls + a `find_by_intent`, adding
+      structural overhead. Mechanism: Go's exported-symbol naming
+      convention (`CapitalCase`, descriptive, dispersed across
+      small symbols in flat package layout) means knowledgeable
+      Grep retrieves multiple related symbols in one regex
+      disjunction. TypeScript class-heavy and Python module-heavy
+      codebases place related behavior in larger units, making
+      single-symbol fetches more effective. ContextAtlas's
+      value-add is *language-paradigm-sensitive*. Positive
+      calibration finding for v0.2/v0.3 — not an adapter quality
+      issue; would not be fixed by re-extraction. v0.3 implication:
+      a multi-symbol `get_symbol_context` call shape (or batched
+      `find_by_intent` with explicit symbol disjunction) would
+      close most of the gap.
+    - **§5.2 c6 measurement artifact — atlas-file-visibility.**
+      Beta's c6 trace shows it never read the cobra source;
+      instead it spent 7 calls trying to interrogate the atlas
+      itself (`ls atlases/cobra/`, three failed `sqlite3
+      index.db`, then Read+grep+Read on `atlas.json`). The
+      apparent beta-ca "win" on c6 is therefore not a CA tool
+      effect — it is a beta-condition confusion artifact. When
+      the benchmarks workspace contains visible
+      `atlases/<repo>/`, the beta condition (no MCP wired) cannot
+      use them productively but apparently *tries to* on prompts
+      whose target symbol has a generic name (`Execute` vs hono's
+      `Hono.fetch` and httpx's `Client.get`). Categorization:
+      benchmark methodology issue, not a ContextAtlas issue.
+      Filed as v0.3+ backlog candidate at
+      `research/atlas-file-visibility-benchmark-methodology.md`
+      (note still to be authored); recommendation is trace-time
+      filter as v0.3 starting point with clean-workspace mode as
+      longer-term direction.
+    - **§5.3 Cross-harness asymmetry hypothesis.** Across all
+      three targets, beta-ca-vs-beta delta is strictly stronger
+      than ca-vs-alpha delta. Cobra: c1 −47% vs −27%, c3 −66% vs
+      +12%, c4 −22% vs +41%. Hypothesis: Claude Code CLI's
+      default tool-use is heavy on Bash and Read; CA's MCP tools
+      displace those calls effectively, producing larger-magnitude
+      wins. SDK harness's tighter 4-tool baseline already
+      constrains exploration so marginal value of CA's bundle
+      delivery is smaller. Frame: hypothesis from cobra data, not
+      a confirmed cross-target finding — but consistent across
+      hono, httpx, cobra in retrospect. Worth tracking through v0.3
+      reference runs across more targets. Implications for how CA
+      value is communicated externally if confirmed: "CA delivers
+      larger gains in CLI harnesses than in SDK harnesses" is a
+      different message from "CA delivers gains uniformly."
+  - **Step 11 infra commit (`7674070`) ran clean on first
+    real-world use.** MCP preflight guard from Step 7 passed at
+    matrix launch; no permission block; cobra whitelist in
+    extract-script worked first try. Live validation of both
+    Step-7-derived prerequisites.
+  - **`scripts/run-reference.ts` preflight ran inconclusive on
+    one of the self-test pre-flights, caught by the
+    inconclusive-path warning rather than treated as a pass —
+    proceeded to matrix; matrix's first beta-ca cell confirmed
+    no permission block.** Inconclusive-path warning handling
+    worked as designed.
+  - **Win-bucket pattern survives but cobra's c4 loss (+41%
+    cost) is the first measured win-bucket cell where CA is
+    net-negative on cost across the three baselines.** Phase 5
+    hono had no win-bucket losses; Phase 6 httpx p4 was a win-
+    bucket loss attributed to claim-attribution ranking
+    precision. Cobra c4's loss is a *different* mechanism (Go
+    grep-ability) with different v0.3 implications. Three
+    targets, three different sub-mechanisms exposed by win-bucket
+    cells — each grounded in its own measurement, each pointing
+    at a different v0.3 lever.
+- Ship-criteria verification:
+  - All 6 criteria [x]. v0.2-SCOPE.md Success Criterion 2b
+    satisfied.
+  - Atlas at `atlases/cobra/atlas.json` (678 symbols / 143
+    claims). Sentinel "Command" present per the extract-script's
+    SUPPORTED whitelist.
+  - Reference artifacts at `runs/reference/cobra/` — 24 per-cell
+    JSONs + run-manifest.json + summary.md.
+  - Synthesis at `research/phase-7-cobra-reference-run.md` —
+    540 LOC. Beyond the 200–300 initial estimate but justified by
+    the three investigation findings; comparable to Phase 5's
+    848 LOC (post-amendments) and longer than Phase 6's 593 LOC.
+  - Three-language win-bucket replication: c1 / h1 / p1 all
+    clean architectural-intent wins.
+- Tests: N/A — Step 11 is measurement + analysis. Step 9's 659
+  passing main-repo tests + Step 10's 197 passing benchmarks-
+  repo tests carry forward unchanged.
+- Next steps:
+  - **Step 12 (v0.2 ship gate) queues next.** README headline-
+    results refresh, ROADMAP v0.2-shipped update, CLAUDE.md
+    Current Version block, version tag v0.2, final test pass.
+  - **v0.3+ backlog items added during Step 11:**
+    - `research/atlas-file-visibility-benchmark-methodology.md`
+      — to be authored from §5.2; trace-time filter
+      recommendation as starting point.
+    - Multi-symbol `get_symbol_context` call shape — from §5.1
+      Go grep-ability finding; closes the paradigm-sensitivity
+      gap on flat-package languages.
+    - Cross-harness asymmetry tracking — from §5.3; v0.3
+      reference runs should include the comparison explicitly.
 
 ### Step 9 shipped — 2026-04-24 (main-repo commits 5eeb7ef, f17f4f1, 8a39d6f, 1a2a3c0, dfff473, d53d067, <this commit>)
 - Scope: Build GoAdapter against gopls; pass the existing
