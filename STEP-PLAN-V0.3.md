@@ -881,6 +881,85 @@ shipped.
 - Ship-criteria verification: [each criterion with evidence]
 ```
 
+### Step 3 shipped — 2026-04-25 (commit SHA TBD)
+- **Scope.** Theme 1.1 — multi-symbol API ADR-N draft.
+  ADR-15 locks the API surface decisions for the multi-symbol
+  `get_symbol_context` call shape (Phase 7 §5.1 grep-ceiling
+  closure target).
+- **Outcome.** ADR-15 committed at
+  `docs/adr/ADR-15-multi-symbol-context.md` — 521 LOC. Eight
+  H3 Decision subsections cover tool-shape (extend existing
+  per Open Question #2 → Option B), schema + cap (10
+  symbols, `MAX_SYMBOLS_PER_CALL`), uniform per-symbol
+  options, output format (named delimiters + JSON envelope),
+  partial-failure semantics (per-symbol ERR sub-bundles;
+  whole-call `isError` only when all failed), disambiguation
+  per-symbol, adapter-missing per-symbol, order + dedup
+  (input-string-keyed with `.trim()`). All four ADR-13/14
+  voice criteria met: rejected alternatives with specific
+  reasoning, rendered examples in §4/§5/§6, evidence-grounded
+  claims (verified cobra `Command.go:128-146` hook fields),
+  Phase 7 §5.1 cited 5×.
+- **Notable decisions.**
+  - **Open Question #2 resolved → Option B (extend existing
+    tool, not new tool).** Rationale: MCP tool selection by
+    name not input shape; three-primitive framing in
+    CLAUDE.md is load-bearing; backward compat is free with
+    `oneOf` first alternative being literal current shape.
+  - **Cap = 10** (adjustable sub-decision). Grounded in
+    verified cobra `Command` 10-hook-field cluster as the
+    exact-fit upper bound; Phase 7 c4's 3-symbol case as
+    ~3× headroom calibration.
+  - **Per-symbol partial-failure inlining over whole-call
+    `isError`.** Whole-call failure forfeits the c4 use case
+    directly — the grep-OR analogue produces partial matches,
+    so CA's multi-symbol response must too or it's a
+    strictly weaker substitute.
+  - **Byte-equivalence test as ship-blocker** (Revision 3).
+    Backward compat is a verifiable test criterion, not a
+    claimed property; existing single-symbol golden-output
+    tests must pass unchanged after Step 4.
+  - **`.trim()`-normalized exact-string-match dedup**
+    (Refinement 2). Input-layer concern, not
+    resolution-layer. Edge cases enumerated with
+    bidirectional → arrows in §8.
+- **Calibration note (refines Step 2's ADR LOC envelope).**
+  ADR drafting steps with full
+  Decision/Rationale/Consequences/Limitations/Non-goals
+  structure **plus rendered examples** in load-bearing
+  decisions are **450-550 LOC**, not 350-450. Step 3 actual:
+  521 LOC. STEP-PLAN-V0.3 estimate of 250-400 was
+  substantially low; future ADR-drafting steps should budget
+  450-550 LOC for full structure with examples. Calibration
+  data accumulates: Step 2 (schema-bump-with-tests-and-docs)
+  +439 LOC, Step 3 (full-structure-ADR-with-examples) 521
+  LOC. Both came in above their original v0.3-SCOPE
+  estimates. Pattern: estimates need ~30-40% inflation when
+  the step includes empirical-grounding discipline (verified
+  references, rendered examples, named rejected
+  alternatives).
+- **Verification discipline applied (v0.2 retrospective
+  pattern).** Cobra hook field names verified against actual
+  `command.go` source before committing the cap-evidence
+  claim. Catch: `oneOf` not yet used in ContextAtlas's own
+  schemas (verified via grep), so Revision 1's Option B was
+  ruled out and Option C (softer claim) was taken instead.
+  Pre-commit verification prevented two unverifiable claims
+  from landing.
+- **Ship-criteria verification.**
+  - ADR-15 committed at expected path with full
+    Context/Decision/Rationale/Consequences/Limitations/Non-goals
+    sections (mirrors ADR-13/14).
+  - Decision §1 explicitly resolves Open Question #2 with
+    rejected-alternative reasoning.
+  - Frontmatter symbols list: 3 existing
+    (`getSymbolContextTool`, `createGetSymbolContextHandler`,
+    `parseArgs`) + 1 forward-declared
+    (`MAX_SYMBOLS_PER_CALL`, flagged in note callout, same
+    pattern ADR-13/14 used for `PyrightAdapter`/`GoAdapter`).
+  - Cross-references to v0.3-SCOPE.md Stream A item 2,
+    Open Question #2, Phase 7 §5.1 all present.
+
 ### Step 2 shipped — 2026-04-25 (14a0356)
 - **Scope.** Theme 1.3 — atlas schema v1.3 +
   `generator.contextatlas_commit_sha` provenance field.
