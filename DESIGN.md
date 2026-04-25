@@ -1,6 +1,8 @@
 # ContextAtlas: Design Document
 
-**Status:** v0.1 shipped (Phase 5 validated); v0.2 in progress.
+**Status:** v0.1 + v0.2 shipped (2026-04-25). Three-language baseline
+validated (hono / httpx / cobra) via Phase 5/6/7 reference runs in
+the [benchmarks repo](https://github.com/traviswye/ContextAtlas-benchmarks).
 Architectural reference, not a scope document — v0.2 scope lives in
 [`v0.2-SCOPE.md`](v0.2-SCOPE.md); version-arc context in
 [`ROADMAP.md`](ROADMAP.md).
@@ -400,10 +402,10 @@ Schema:
 
 ```jsonc
 {
-  "version": "1.0",
-  "generated_at": "2026-04-21T14:32:00Z",
+  "version": "1.2",
+  "generated_at": "2026-04-25T03:06:25Z",
   "generator": {
-    "contextatlas_version": "0.0.1",
+    "contextatlas_version": "0.2.0",
     "extraction_model": "claude-opus-4-7"
   },
   "source_shas": {
@@ -418,6 +420,16 @@ Schema:
       "path": "src/orders/processor.ts",
       "line": 42,
       "signature": "class OrderProcessor extends BaseProcessor<Order>",
+      "file_sha": "..."
+    },
+    {
+      "id": "sym:go:kinds.go:Shape.Area",
+      "name": "Shape.Area",
+      "kind": "method",
+      "path": "kinds.go",
+      "line": 56,
+      "signature": "func() float64",
+      "parent_id": "sym:go:kinds.go:Shape",
       "file_sha": "..."
     }
   ],
@@ -449,13 +461,24 @@ Key properties of atlas.json:
   changes require major version bumps and automatic migration.
 - **Fully loadable.** No streaming, no chunking for MVP. Even a large
   atlas loads in one pass.
-- **Optional fields use omit-when-empty.** `signature` on symbols and
-  `rationale` / `excerpt` on claims are omitted from the JSON when
-  their value is empty, `null`, or `undefined`. Importers treat missing
-  keys as absent. This convention is part of the round-trip invariant:
-  any new optional field added later MUST follow the same rule, and no
-  field may be added that requires preserving a distinction between
-  absent, `null`, and empty string — round-trip collapses those states.
+- **Optional fields use omit-when-empty.** `signature` and `parent_id`
+  on symbols and `rationale` / `excerpt` on claims are omitted from
+  the JSON when their value is empty, `null`, or `undefined`. Importers
+  treat missing keys as absent. This convention is part of the
+  round-trip invariant: any new optional field added later MUST follow
+  the same rule, and no field may be added that requires preserving a
+  distinction between absent, `null`, and empty string — round-trip
+  collapses those states.
+- **`parent_id` (atlas schema v1.2+).** Optional back-pointer for
+  symbols flattened from a nested-child shape to top-level — currently
+  used by the Go adapter ([ADR-14](docs/adr/ADR-14-go-adapter-gopls.md))
+  to preserve the interface → method relationship after flattening
+  Go interface methods from gopls's documentSymbol children to
+  sibling top-level entries (e.g., `Shape.Area` carries
+  `parent_id: "sym:go:kinds.go:Shape"`). v1.0 / v1.1 atlases import
+  cleanly with `parent_id` undefined on every symbol; v1.2 atlases
+  round-trip the field. Same additive-bump pattern ADR-11 used for
+  the 1.0 → 1.1 git-signal addition.
 
 ### index.db — local derived cache
 
@@ -584,10 +607,16 @@ interface LanguageAdapter {
 ```
 
 **Shipped in v0.1:** TypeScript (via typescript-language-server) and
-Python (via Pyright, ADR-13).
+Python (via Pyright, [ADR-13](docs/adr/ADR-13-python-adapter-pyright.md)).
 
-**v0.2 in progress:** Go (via `gopls`), per Stream B of
-[`v0.2-SCOPE.md`](v0.2-SCOPE.md).
+**Shipped in v0.2:** Go (via `gopls`,
+[ADR-14](docs/adr/ADR-14-go-adapter-gopls.md)) — three-language
+baseline established. ADR-14 documents the gopls-specific runtime
+prerequisites (PATH-resolved `go` binary, length-matched
+`workspace/configuration` response) and structural decisions
+(receiver-encoded struct method names preserved verbatim, interface
+methods flattened with `parent_id` back-pointer, iota const block
+members surfaced as flat top-level constants).
 
 **Future (by demand):** .NET (OmniSharp), Java (Eclipse JDT LS), Rust
 (rust-analyzer). Each is a separate contributor-friendly surface
@@ -676,8 +705,11 @@ Sub-100ms per `get_symbol_context` call on typical hardware.
 
 Full methodology in RUBRIC.md. Brief outline:
 
-- **Targets:** honojs/hono (TS, 186 source files), encode/httpx (Python,
-  23 source files), ContextAtlas itself (TS, meta/dogfood).
+- **Targets:** honojs/hono (TypeScript, 186 source files), encode/httpx
+  (Python, 23 source files), spf13/cobra (Go, 19 source files). Three
+  external targets establish the cross-language baseline; ContextAtlas
+  itself is dogfooded during development but is not part of the
+  measured matrix.
 - **Prompts:** 24 prompts across 6 task buckets (localize, trace,
   understand constraints, impact analysis, bug hypothesis, implement
   within constraints).
@@ -730,7 +762,11 @@ v2 concern.
 
 ## Versioning
 
-This document tracks the shipped architecture; v0.1 shipped, v0.2 in
-progress. Material changes to the tool interface, storage schema, or
-config schema will bump the minor version and be documented in a
-CHANGELOG.
+This document tracks the shipped architecture; v0.1 + v0.2 shipped
+(2026-04-25). Material changes to the tool interface, storage schema,
+or config schema bump the minor version. Atlas schema versioning is
+additive within minor versions (v0.2 bumped atlas schema 1.1 → 1.2
+following ADR-11's pattern). Per-version release notes start with v0.3;
+v0.1 + v0.2 historical record lives in
+[`STEP-PLAN-V0.2.md`](STEP-PLAN-V0.2.md) progress logs and the
+benchmarks-repo Phase 5/6/7 synthesis docs.
