@@ -881,6 +881,140 @@ shipped.
 - Ship-criteria verification: [each criterion with evidence]
 ```
 
+### Step 6 shipped — 2026-04-25 (commit SHA TBD)
+- **Scope.** Theme 1.2 Fix 3 — BM25 ranking on
+  `get_symbol_context` (ADR-16) + Path 1 unit-level
+  spot-check + ADR-16 fresh ADR.
+- **Outcome — main repo.** Implementation at
+  [`44f043c`](https://github.com/traviswye/ContextAtlas/commit/44f043c):
+  schema (`query` parameter) + handler (two-layer gating) +
+  `sortClaimsByBM25` helper + `mcp.symbol_context_bm25`
+  config flag + `ServerRuntimeContext.symbolContextBM25`
+  plumbing through `createServer`. ADR-16 (327 LOC, fresh
+  ADR per Travis call) + ADR-09 back-link (~5 LOC). 2 ship-
+  blocker canaries in `src/queries/symbol-context.test.ts`
+  (parallel role to Step 4 `BYTE_EQUIVALENCE_EXPECTED` +
+  Step 5 v0.2-equivalence canary; canary discipline now
+  forms a 3-data-point pattern). 742/742 tests passing
+  (was 723; +19 new). +1213/-5 across 13 files.
+- **Outcome — benchmarks repo.** Evidence note appended at
+  [`research/v0.3-stream-a-spot-check.md`](../ContextAtlas-benchmarks/research/v0.3-stream-a-spot-check.md)
+  (Fix 3 section, ~390 LOC append) + reproduction script at
+  [`scripts/spot-check-step6-bm25.mjs`](../ContextAtlas-benchmarks/scripts/spot-check-step6-bm25.mjs)
+  (~165 LOC). Commit `e81dbe2` in benchmarks repo. Cross-
+  repo separation per Phase 5/6/7 + Step 5 pattern.
+- **Spot-check empirical findings (Path 1, n=1, $0 cost):**
+  - BM25 with query shifts top INTENT for **every** probe
+    combination (8/8 — all 4 symbols × both atlases).
+  - **7 of 8 probe combinations are cross-severity
+    promotion.** BM25 promotes context-severity claims
+    above multiple hard-severity claims based on query
+    relevance. This is chain α (ADR-16 Decision §2)
+    doing its designed work — *not* the Phase 6 §5.1
+    within-tied-severity scenario.
+  - 1 of 8 (ResponseNotRead on Step 5 atlas) is within-
+    severity reordering — BM25 winner severity=hard,
+    displacing a different hard claim ordered first by
+    v0.2's claim_id tiebreaker.
+  - Step 5 Fix 2 + Step 6 Fix 3 compose well. Fix 2
+    narrows attribution to per-symbol-relevant subsets;
+    Fix 3 ranks within those subsets by query relevance.
+    BoundSyncStream queries get the BoundSyncStream-
+    specific claim, etc.
+  - **Implementation-vs-activation gap surfaced
+    explicitly** (Travis Q2 push back). BM25 mechanism
+    works; current ca-agent doesn't pass query
+    parameters; F3-on without client-side activation
+    engineering is dead code. Stream D measurement of F3
+    conditional on activation work between Step 7 ship
+    and Stream D execution.
+  - **Two Step 7 design questions surfaced**: (1) chain α
+    aggressive cross-severity behavior (ADR-16 already
+    chose this; evidence confirms it fires aggressively;
+    docs should surface "BM25 may promote lower-severity-
+    but-more-relevant claims"); (2) activation matters
+    more than implementation (three options: ship default-
+    on with activation work, flag-accessible-only, defer).
+- **Notable decisions.**
+  - **Fresh ADR-16 vs ADR-09 amendment** (Travis call): new
+    ADR-16 chosen for clean architectural separation. Fresh
+    ADRs land at 300-500 LOC range per Step 3 calibration;
+    ADR-16 at 327 LOC is leaner than ADR-15 (521 LOC)
+    because the architectural surface is smaller (one
+    decision + tiebreakers vs ADR-15's 8 decision
+    subsections).
+  - **Two-layer gating** (server flag + caller query). Either
+    alone is insufficient; both required for BM25 path to
+    activate. Preserves byte-equivalent v0.2 behavior for
+    existing callers regardless of how flag propagates.
+  - **Tiebreaker chain α** (BM25 dominates, severity is
+    tiebreaker). Differs from ADR-09's chain (no name-
+    overlap step — degenerate for per-symbol claims).
+    Empirical evidence (7-of-8 cross-severity promotion)
+    confirms chain α fires as designed.
+  - **POSITIVE_INFINITY sentinel** for unmatched claims.
+    Preserves "all claims attached to symbol surface" rule;
+    BM25 re-orders, never filters. Total count parity
+    verified in every probe.
+- **Calibration data (refines Steps 2/3/4/5 cumulative
+  pattern).**
+  - **Production code** at +227 LOC (estimate ≤290; within
+    Step 4/5 30-40% inflation pattern).
+  - **Test code** at +618 LOC (estimate ≤1150; well within
+    Step 4/5 100-130% inflation pattern).
+  - **ADR-16 at 327 LOC.** Pause-threshold cue I set (120)
+    was wrong-sized — that was for an ADR-09 amendment
+    subsection. Once the architectural choice changed to
+    fresh ADR (mid-survey, after Travis approval), the
+    threshold should have been recalibrated against
+    Step 3's ADR-15 baseline (521 LOC). **Discipline
+    observation:** when an architectural choice changes
+    mid-survey, recalculate pause thresholds against the
+    closest comparable prior step BEFORE setting them.
+    Don't inherit thresholds from a different scope.
+  - **`symbol-context.ts` change at +108 LOC** (vs ≤100
+    pause threshold). Honest +8 LOC overage; the 70-LOC
+    `sortClaimsByBM25` helper IS the chain α
+    implementation, not padding.
+- **Spot-check methodology — Path 1 unit-level only.**
+  - **$0 cost.** Local Node script against existing Step 5
+    atlas substrates + a fresh import from Phase 6 baseline
+    atlas. No API spend.
+  - **Path 2 (cell-level) deferred to Stream D.** Reason:
+    structural finding that current ca-agent doesn't pass
+    query parameters → cell-level measurement would need
+    harness modification + activation engineering, both
+    out of Step 6 scope. Stream D is the rigorous
+    measurement vehicle.
+  - **Combined Step 5 + Step 6 spot-check spend: $3.5663**
+    (all attributable to Step 5; Step 6 added zero).
+- **Verification disciplines exercised.**
+  - **Severity-precision verification before evidence-note
+    publication** (Travis verification ask). Initial
+    framing claimed BM25 was "differentiating tied-severity
+    claims"; verification probe revealed the position-10
+    claim was severity=context, NOT severity=hard. Reframed
+    note honestly: 7-of-8 cross-severity promotion vs
+    1-of-8 within-severity reordering. Specificity
+    distinguishes the note as evidence, not narrative.
+    Same discipline as Step 3 ADR-15 cobra hook fields +
+    Step 5 Phase 6 baseline citations.
+  - **3-data-point canary discipline.** v0.2-equivalence
+    canary at `src/queries/symbol-context.test.ts` joins
+    Step 4 BYTE_EQUIVALENCE_EXPECTED + Step 5 v0.2-
+    equivalence canary as the now-discoverable pattern.
+    Comment explicitly cross-references both prior canaries.
+- **Step 6 ship-criteria verification.**
+  - Feature flag `mcp.symbolContextBM25` defaults off ✓
+  - MCP tool-interface change: optional `query` parameter ✓
+  - ADR-16 amendment ⇒ fresh ADR (Travis call) ✓
+  - Tests cover (a) flag-off behavior unchanged, (b)
+    flag-on with query ranks claims, (c) flag-on without
+    query falls back to deterministic order ✓
+  - Spot-check measurement on Phase 6 p4-stream-lifecycle
+    with cost data + scratch-note publication ✓
+  - No regression in main-repo test suite (742/742) ✓
+
 ### Step 5 shipped — 2026-04-25 (7e1956a + b025d3d)
 - **Scope.** Theme 1.2 Fix 2 — claim-attribution narrowing
   flag (`narrow_attribution`) targeting the Phase 6 §5.1
