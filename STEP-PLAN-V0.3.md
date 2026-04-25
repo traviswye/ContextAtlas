@@ -881,7 +881,7 @@ shipped.
 - Ship-criteria verification: [each criterion with evidence]
 ```
 
-### Step 4 shipped — 2026-04-25 (commit SHA TBD)
+### Step 4 shipped — 2026-04-25 (45cfa13)
 - **Scope.** Theme 1.1 — multi-symbol API implementation
   per ADR-15. Schema + handler + tests + DESIGN.md
   amendment in a single commit.
