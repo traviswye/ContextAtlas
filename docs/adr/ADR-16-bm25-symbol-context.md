@@ -325,3 +325,65 @@ refactors.
   of v0.3 scope. Stream D measures whether the implementation is
   worth shipping; activation engineering is a Stream D follow-up
   (or v0.4 work) gated on that evidence.
+
+## Amendment (2026-04-26): production-vs-benchmark activation distinction
+
+Non-revisionist. The Limitations section above stays unchanged. This
+block clarifies a framing distinction surfaced during Step 7
+alignment-check dialogue (preceding ROADMAP `f33113b`'s "What
+ContextAtlas Is FOR" subsection).
+
+**The conflation in the original framing.** The "Implementation vs
+activation gap" Limitation cited the synthetic ca-agent in
+`ContextAtlas-benchmarks` as evidence that `get_symbol_context` is
+called without a query string. That observation is empirically
+correct — Phase 6 ca traces show shape `{ symbol: "content" }`;
+the ca-agent in
+[`../../../ContextAtlas-benchmarks/src/harness/ca-agent.ts`](../../../ContextAtlas-benchmarks/src/harness/ca-agent.ts)
+adapts allowlisted MCP tools via `adaptAllowlistedMcpTools` without
+query-parameter synthesis. But the original framing extended the
+activation gap as universal across all MCP clients, including Claude
+Code in production. That extension was unwarranted.
+
+**Two distinct caller contexts:**
+
+- **Synthetic ca-agent (benchmarks repo) — measurement substrate.**
+  Reads `tools/list`, adapts tools via `adaptAllowlistedMcpTools`,
+  defers to the alpha-agent loop's tool-use decisions. Does NOT
+  synthesize queries from user prompts. **Empirically verified
+  activation gap** — Phase 6 trace shape confirms.
+- **Claude Code (production target) — actual deployment.** Reads
+  MCP tool descriptions, has its own tool-selection reasoning,
+  adapts parameter usage based on description hints. **Empirically
+  unverified** for Fix 3, qualitatively different from synthetic
+  ca-agent behavior because Claude Code's tool-use reasoning is
+  not the alpha-agent loop.
+
+**Production target = beta-ca.** Among the four benchmark conditions
+(alpha / ca / beta / beta-ca), ContextAtlas's production deployment
+is beta-ca: Claude Code with CA MCP connected. Alpha / ca / beta
+triangulate around beta-ca; they are measurement substrates, not
+parallel production targets. See ROADMAP "What ContextAtlas Is FOR"
+subsection for the broader production-orientation framing.
+
+**Implications for Step 7 + Stream D.** Step 7's Decision B
+(ship default-on / Reading 3 / defer) should be evaluated through
+the production lens, not the synthetic-harness lens. Stream D's
+Fix 3 measurement carries methodological caveat: aggregate metrics
+across all four conditions would mask Fix 3's effect because the
+ca condition cannot exercise the activation path by construction.
+Production-relevant Fix 3 evidence comes from beta-ca specifically;
+ca measurements would show Fix 3 ≈ baseline regardless of whether
+Fix 3 helps in production.
+
+**Framing source.** [`ROADMAP.md`](../../ROADMAP.md) "What
+ContextAtlas Is FOR" subsection (committed at `f33113b`) is the
+canonical reference for the production-tool-vs-research-experiment
+framing this amendment applies to Fix 3 specifically.
+
+**Non-goal of this amendment.** Reopening any ADR-16 architectural
+decision (chain α, two-layer gating, schema). The chain α choice
+was made before the Step 6 spot-check ran; the 7-of-8 cross-severity-
+promotion evidence confirmed but did not change it. Future
+reconsideration follows ROADMAP rescope conditions, not
+amendment-here.
