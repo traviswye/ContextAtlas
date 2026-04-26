@@ -10,6 +10,24 @@ The goal: LLM agents reason **with** architectural context, not around its absen
 
 Both axes matter. Efficiency wins on some prompts, quality wins on others, and the benchmark methodology is designed to surface both independently — a tool that halves tool-call counts without moving answer quality is a different result from one that improves answer quality at equal call cost, and both results count.
 
+In product terms: ContextAtlas is the MCP server that sits under Claude Code, helping it work better on the real user repo it's connected to. This is a production tool for developers, not a research experiment — the benchmark methodology exists to ensure the tool actually delivers value to users.
+
+## What ContextAtlas Is FOR
+
+ContextAtlas is a production tool for developers. Specifically: an MCP server that sits under Claude Code, helping it work better on the real user repo it's connected to. Every Claude Code session starts with zero context about the repo — ContextAtlas provides curated architectural context (claims keyed to symbols, with structural facts from LSP and git signals) so Claude Code's reasoning is grounded rather than rediscovered.
+
+The "life improvements for Claude" this tool targets:
+
+- **Token-burn reduction.** A single `get_symbol_context` call returns what 12+ primitive tool calls (grep, find-references, read-file, git-blame) would have returned, fused. Claude Code spends fewer tokens on discovery and more on reasoning.
+- **Architectural context surfacing.** Decisions captured in ADRs, design docs, and commit messages — invisible to Claude Code today — surface alongside code structure. Claude Code respects architectural constraints rather than discovering them after a user catches a violation.
+- **Session-to-session continuity.** Atlas state lives in `atlas.json`, committed alongside code. New sessions inherit the team's accumulated architectural knowledge instead of starting fresh.
+
+**This is a production tool, not a research experiment on Claude technology.** The benchmark repo ([ContextAtlas-benchmarks](https://github.com/traviswye/ContextAtlas-benchmarks)) is measurement instrumentation for improving the developer tool — its purpose is to better the main repo, not to publish a research artifact. Methodology serves production utility, not vice versa.
+
+The methodology rigor is load-bearing for the goal. v0.1-v0.3 maintained reference runs, ship-blocker canaries, evidence-gated decisions, and multi-instance critique loops precisely because that discipline produces the developer tool — it ensures the tool actually delivers value rather than shipping plausible-sounding improvements that don't hold up under measurement. It's not separate from the goal; it's how the goal gets achieved.
+
+The test question for scope and technical decisions is: *does this make ContextAtlas more useful as the MCP server under a developer's Claude Code on their real user repo?* Methodology is the means; the developer tool is the end. When token-burn-reduction conflicts with measurement-purity, or when feature-shipping conflicts with rigorous-validation, the developer tool's utility on real user repos is the resolving criterion.
+
 ## Guiding Principles
 
 These invariants carry across every version. They constrain scope and shape decisions:
@@ -44,6 +62,24 @@ ContextAtlas implements signal fusion across four layers, each deterministic and
 ¹ Per-language adapter. Additional adapters (Go, Rust, C#, etc.) are representative future scope, not committed; each would ship in its own version.
 
 Layer 1 provides correctness — the LSP truth of the code as it exists. Layer 2 provides conceptual bridging — connecting queries to code by similarity rather than keyword match. Layer 3 provides intent — why this code exists and what constraints govern it. Layer 4 provides recency and change patterns — what moves together, what's hot, what's been touched recently. The LLM handles reasoning and explanation; the layers handle structure and facts.
+
+**What this means in a real Claude Code session.** When a developer asks Claude Code "why does OrderProcessor have to be idempotent?", the four layers compose into a single response: Layer 1 surfaces the symbol's location and type signature; Layer 3 surfaces ADR-07's "must be idempotent" constraint and its rationale; Layer 4 surfaces recent commits about the idempotency bug fix in the retry path; Layer 2 (post-MVP) surfaces conceptually-similar idempotent patterns elsewhere in the codebase. All four arrive in one MCP call. Without ContextAtlas, Claude Code rediscovers each signal via separate primitive tool calls — typically 10-15 of them, sometimes more — and synthesizes the result itself, burning tokens on discovery rather than on reasoning about the user's actual question. The layered architecture exists to collapse that discovery cost; the developer tool's value is the collapse.
+
+## Key efficiency unlocks
+
+ContextAtlas commits to a set of efficiency unlocks across the version arc. Each addresses a specific cost developers and Claude Code currently pay; each maps to a target version with current implementation status.
+
+| Unlock | Description | Target | Status |
+|---|---|---|---|
+| Intent registry keyed to symbols | Architectural claims (ADRs, docs, commit messages) parsed into structured records, keyed to LSP symbols. Claude Code asks about a symbol; gets the design intent in the same response. | v0.1 | **Shipped** |
+| Signal fusion at query time, not ingest time | Each signal source (LSP, ADRs, git, docs) stays independent at storage. Queries compose across sources. New sources join the fusion without reshaping existing data. | v0.1 | **Shipped** |
+| LLM-native compact output format | Dense, stable, structured format optimized for token density. ~40-60% savings vs JSON on the same content (per ADR-04). | v0.1 | **Shipped** |
+| Cross-session caching with SHA-based invalidation | Atlas claims cached per-file via `source_shas`; incremental reindex re-extracts only changed files. Unchanged code = zero re-extraction work. Atlas itself functions as the cross-session/cross-developer cache (committed artifact per ADR-06). | v0.1 (SHA-diff gating per ADR-12) | **Shipped** |
+| Task-shaped bundle queries | One MCP call returns what would have taken 12+ primitive calls — `why_does_this_fail(symbol, error)`, `onboard_to_feature(feature)`, `audit_change(diff)`. The headline efficiency-collapse story. | v0.5 | Planned |
+| Progressive disclosure with stable IDs | First response is summary with IDs; Claude Code pulls detail by ID when needed. Avoids returning 500-element lists verbatim. | v0.5 | Planned |
+| Hot-path learning | Top-N queries across sessions cached as pre-computed bundles. Claude Code gets cached answer in one call instead of 15 discovery calls. | v0.6+ | Planned |
+
+Each unlock targets a specific token-burn or architectural-context cost. The version arc is a deliberate sequencing — substrate first (v0.1-v0.4 build the layers), efficiency-collapse second (v0.5 ships task-shaped queries on the substrate), learning-based optimization third (v0.6+ refines from real usage). v1.0 ships when the substrate + efficiency-collapse + learning are operating coherently together.
 
 ## Versions
 
@@ -177,24 +213,39 @@ Python adapter and conformance test suite shipped in v0.1 (commits 701dba3 → 6
 
 ---
 
-### v0.5 — Task-shaped bundle queries [PLANNED]
+### v0.5 — Task-shaped bundle queries + ADR-crafting pipeline [PLANNED]
 
-**Delivers:**
+v0.5 ships two related user-experience improvements — both make ContextAtlas more useful on the typical user repo.
+
+**Deliverable A — Task-shaped bundle queries:**
+
 - `why_does_this_fail(symbol, error)` — returns relevant symbols + recent commits + related ADRs + failing tests, pre-correlated
 - `onboard_to_feature(feature_name)` — minimum context pack to edit a feature safely
 - `audit_change(diff_or_branch)` — architectural review of a proposed change
 - Progressive disclosure with stable IDs — summaries first, detail on demand by ID
 
+**Deliverable B — Pipeline-driven ADR generation for repos without ADR culture:**
+
+Most user repos — IC developer side projects, small open-source libraries, internal tools — don't have curated ADR culture. v0.1-v0.4 ContextAtlas requires either ADRs (best case) or docstrings (v0.3 fallback) for architectural-intent extraction; on repos with neither, the tool's architectural-context value is marginal.
+
+v0.5's ADR-crafting pipeline closes that gap. When a user installs ContextAtlas on a repo without ADRs, an opt-in pipeline asks Claude to draft architectural decisions inferred from code patterns, commit history, and naming conventions. The user reviews drafts; accepted drafts become committed ADRs that ContextAtlas then indexes via the standard v0.1+ pipeline. v0.1's `adrs.path` config already supports externalized ADR locations (corporate teams often have ADRs in a separate docs repo); v0.5's pipeline composes with this so drafted ADRs can land at the configured path.
+
+The motivation is production-utility: without this, ContextAtlas is most useful on repos with rich ADR culture — a small fraction of real user repos. The pipeline is what makes the tool useful on the typical user repo, including IC developer side projects and open-source projects without strong documentation discipline.
+
 **Validates:**
-- Task-shaped bundles deliver the efficiency collapse the thesis predicts (one tool call replaces 12+ primitive calls)
-- The abstraction "task" is expressible in MCP tool schemas cleanly
-- Agents adapt tool-use patterns when given task-shaped options
+
+- Task-shaped bundles deliver the efficiency collapse the thesis predicts (one tool call replaces 12+ primitive calls).
+- ADR-crafting pipeline broadens ContextAtlas's user-base from "repos with ADR culture" to "repos with code, commits, and naming conventions" — closer to all user repos.
+- The abstraction "task" is expressible in MCP tool schemas cleanly.
 
 **Scope boundaries:**
+
 - Each task is a thin composite over existing primitives. No new substrate.
 - Task registry is small and curated. Not a general task-definition framework.
+- ADR-crafting pipeline is opt-in per repo, never automatic. User reviews and approves drafts.
+- Pipeline targets "repos without ADRs"; repos with existing ADRs use the standard v0.1+ extraction path unchanged.
 
-**Why this is where the headline wins land:** Per the thesis, "every tool call has fixed overhead, so the win is doing more per call, not calling faster." v0.5 is where ContextAtlas shifts from "primitive MCP server" to "task-level assistant."
+**Why this is where the headline wins land:** Per the thesis, "every tool call has fixed overhead, so the win is doing more per call, not calling faster." v0.5 ships the task-level wins (Deliverable A) and broadens the user-base (Deliverable B). v0.5 is where ContextAtlas shifts from "primitive MCP server with ADR dependency" to "task-level assistant for any repo."
 
 ---
 
@@ -292,3 +343,9 @@ These are architectural choices that will need answering as later versions appro
 8. **Agent learning over time.** v0.6+ mentions claim capture from agent sessions as a backlog item. The broader question is what the atlas learns from usage. Is it entirely human-curated? Agent-proposed with human promotion? Automatic inclusion with periodic review? The answer affects how ContextAtlas positions relative to static documentation tools — a tool that gets smarter with use is different from a tool that's frozen at extraction time.
 
 Tracked here, not committed to a version. Each gets its own ADR when approached.
+
+---
+
+## Revision history
+
+- **2026-04-25 — Phase A realignment.** Added "What ContextAtlas Is FOR" subsection capturing canonical product-positioning anchor (production tool for developers, not research experiment); added Vision tagline integration; added "Key efficiency unlocks" subsection consolidating the 7-item efficiency-collapse list across versions; expanded v0.5 section to include ADR-crafting pipeline as second deliverable alongside task-shaped queries; added developer-tool framing paragraph to Architectural Layers section. Realignment surfaced during Step 7 alignment check; framing source is Travis's anchor statement: *"The benchmark repo should only be used as a tool to better our main repo, whose ultimate goal is to be a production tool for developers to use with Claude Code to enable life improvements for Claude (the token burn, architectural context, etc)."* Non-revisionist amendments — existing content preserved.
