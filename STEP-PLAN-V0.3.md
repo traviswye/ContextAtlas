@@ -915,7 +915,7 @@ shipped.
 - Ship-criteria verification: [each criterion with evidence]
 ```
 
-### Step 7 shipped — 2026-04-26 (commit SHAs stamped post-commit per Step 5/6 precedent)
+### Step 7 shipped — 2026-04-26 (abb18d3; benchmarks eaed204)
 - **Scope.** Stream A finalization. Theme 1.2 fix-selection
   decision per [`v0.3-SCOPE.md`](v0.3-SCOPE.md) Stream A
   item 1 + Open Question #1, plus Theme 1.1 (multi-symbol API)
@@ -1076,8 +1076,8 @@ shipped.
   - **Phase A:** ROADMAP refresh `f33113b`.
   - **Phase B:** main-repo `0bf5e2d`; benchmarks-repo
     `a5808eb`.
-  - **Phase 3 (Step 7 documentation):** SHAs stamped
-    post-commit per Step 5/6 precedent.
+  - **Phase 3 (Step 7 documentation):** main `abb18d3`;
+    benchmarks `eaed204`.
   - **Step 5 evidence:** main-repo `7e1956a` + `b025d3d`;
     benchmarks-repo `68e3d1e`.
   - **Step 6 evidence:** main-repo `44f043c` + `144c576`;
