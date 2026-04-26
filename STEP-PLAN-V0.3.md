@@ -1027,9 +1027,19 @@ shipped.
     Code with CA MCP against a real repo (NRFI / career-ops /
     ContextAtlas itself / OpenSCAD); ~30 min, ~$0-2 spend;
     tests production-target query-passing behavior
-    empirically. Evidence note shipped as benchmarks-repo
-    `177bdb5` (`research/v0.3-dogfood-evidence-2026-04-26.md`);
-    closes bridging task definitively.
+    empirically. Round 1+2 evidence (explanation-task shape)
+    shipped as benchmarks-repo `177bdb5`
+    (`research/v0.3-dogfood-evidence-2026-04-26.md`). Round 3
+    evidence (code-change-task shape, A/B trial on
+    MCP-availability) shipped as benchmarks-repo `5c7b6bd`
+    (`research/v0.3-round-3-dogfood-evidence-2026-04-26.md`);
+    selected Arm B's index-time dual-form approach for Theme
+    1.4.6 fix landing at main `cb6df70`. Theme 1.4 backlog
+    extension (items 1.4.4-1.4.10, with 1.4.5 + 1.4.6 marked
+    CLOSED) at benchmarks `a98c63d`. Round 3 dogfood cycle
+    closes within Step 7 closure scope; Round 4 protocol
+    (Layer 3 BM25-on test) captured as proposal in Round 3
+    evidence note Section 10(c), not executed.
   - **(e) Step 14/15 ship-criterion addition follow-on**
     (Deliverable 3). Stream D commits to measuring
     cross-severity promotion frequency at scale + grep-
