@@ -1027,7 +1027,9 @@ shipped.
     Code with CA MCP against a real repo (NRFI / career-ops /
     ContextAtlas itself / OpenSCAD); ~30 min, ~$0-2 spend;
     tests production-target query-passing behavior
-    empirically.
+    empirically. Evidence note shipped as benchmarks-repo
+    `177bdb5` (`research/v0.3-dogfood-evidence-2026-04-26.md`);
+    closes bridging task definitively.
   - **(e) Step 14/15 ship-criterion addition follow-on**
     (Deliverable 3). Stream D commits to measuring
     cross-severity promotion frequency at scale + grep-
