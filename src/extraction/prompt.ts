@@ -92,7 +92,7 @@ export const EXTRACTION_MODEL = "claude-opus-4-7";
  * Observed during validation: substantial ADRs produced ~3000 output
  * tokens; this leaves headroom.
  */
-export const EXTRACTION_MAX_TOKENS = 8000;
+export const EXTRACTION_MAX_TOKENS = 16000;
 
 /**
  * Shape of the expected JSON output from the model. Use this for
