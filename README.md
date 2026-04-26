@@ -169,18 +169,36 @@ npm install -g contextatlas
   Python projects additionally require Pyright on the PATH — configured
   similarly in step 9 of development.
 
-Configure ContextAtlas as an MCP server in your Claude Code settings:
+Configure ContextAtlas as an MCP server in your Claude Code settings.
+Choose based on whether `contextatlas` is on your PATH:
+
+**Option A — global binary on PATH** (e.g., installed via
+`npm install -g` or `npm link`):
 
 ```json
 {
   "mcpServers": {
     "contextatlas": {
-      "command": "contextatlas",
-      "args": ["serve"]
+      "command": "contextatlas"
     }
   }
 }
 ```
+
+**Option B — direct dist invocation** (no global install needed):
+
+```json
+{
+  "mcpServers": {
+    "contextatlas": {
+      "command": "node",
+      "args": ["/absolute/path/to/contextatlas/dist/index.js"]
+    }
+  }
+}
+```
+
+The MCP server runs on default no-arg invocation.
 
 Create `.contextatlas.yml` in your repo root:
 
