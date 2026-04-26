@@ -48,6 +48,13 @@ export const MAX_LIMIT = 50;
  * runs to single spaces, trim. Unicode letters/digits are preserved
  * via `\p{L}` / `\p{N}` so non-ASCII claim text doesn't get garbled.
  *
+ * Underscore (`_`) and hyphen (`-`) are also preserved so that
+ * identifier-shaped query terms — `narrow_attribution`,
+ * `find-by-intent` — survive as single tokens. The FTS5 tokenizer
+ * (ADR-17) is configured with these as token characters; a sanitizer
+ * that stripped them would defeat that, splitting the query before
+ * it reached the index.
+ *
  * Exported for direct unit testing; callers typically go through
  * {@link findByIntent}.
  */
@@ -56,11 +63,25 @@ export function sanitizeQuery(input: string): {
   tokens: string[];
 } {
   const cleaned = input
-    .replace(/[^\p{L}\p{N}\s]/gu, " ")
+    .replace(/[^\p{L}\p{N}\s_-]/gu, " ")
     .replace(/\s+/g, " ")
     .trim();
   const tokens = cleaned.length > 0 ? cleaned.split(" ") : [];
   return { cleaned, tokens };
+}
+
+/**
+ * FTS5 MATCH grammar treats `-` as the AND-NOT operator between
+ * terms; an unquoted bareword like `find-by-intent` parses as
+ * `find NOT by NOT intent` and errors on the column resolution.
+ * Quoting the token forces phrase semantics — the `-` becomes a
+ * literal character inside the phrase, matching the indexed token.
+ *
+ * Underscores need no escaping (FTS5 grammar has no special meaning
+ * for `_`), so we quote only when a token actually contains `-`.
+ */
+function escapeForMatch(token: string): string {
+  return token.includes("-") ? `"${token}"` : token;
 }
 
 /**
@@ -72,12 +93,15 @@ export function sanitizeQuery(input: string): {
  * lets BM25 boost contiguous occurrences; the OR-joined suffix
  * catches scattered-token matches. One MATCH call, BM25 handles
  * the ordering.
+ *
+ * Tokens containing `-` are individually quoted so FTS5's NOT
+ * operator doesn't swallow them (see {@link escapeForMatch}).
  */
 export function buildMatchQuery(tokens: readonly string[]): string | null {
   if (tokens.length === 0) return null;
   const phrase = `"${tokens.join(" ")}"`;
   if (tokens.length === 1) return phrase;
-  const orTerms = tokens.join(" OR ");
+  const orTerms = tokens.map(escapeForMatch).join(" OR ");
   return `${phrase} OR ${orTerms}`;
 }
 

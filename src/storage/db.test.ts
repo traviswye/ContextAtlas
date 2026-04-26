@@ -77,6 +77,46 @@ describe("openDatabase", () => {
     db.close();
   });
 
+  it("claims_fts uses ADR-17 identifier-aware tokenizer (tokenchars '_-')", () => {
+    const db = openDatabase(":memory:");
+    const row = db
+      .prepare("SELECT sql FROM sqlite_master WHERE name = 'claims_fts'")
+      .get() as { sql: string };
+    // The migration-v5 schema must declare tokenchars '_' '-' so
+    // identifier-shaped names index as single tokens. A regression
+    // here re-introduces the silent-search-miss bug.
+    expect(row.sql).toContain("tokenize=");
+    expect(row.sql).toMatch(/tokenchars\s*'_-'/);
+    db.close();
+  });
+
+  it("claims_fts indexes identifier tokens AND their split form (ADR-17 dual-form)", () => {
+    const db = openDatabase(":memory:");
+    db.prepare(
+      "INSERT INTO claims (source, source_path, source_sha, severity, claim, rationale, excerpt) " +
+        "VALUES ('T', 't.md', 's', 'hard', 'narrow_attribution flag controls find-by-intent ranking', 'r', 'e')",
+    ).run();
+
+    db.exec("CREATE VIRTUAL TABLE cv USING fts5vocab(claims_fts, row);");
+    const terms = db
+      .prepare(
+        "SELECT term FROM cv WHERE term IN ('narrow_attribution', 'narrow', 'attribution', 'find-by-intent', 'find', 'intent')",
+      )
+      .all() as { term: string }[];
+    const present = new Set(terms.map((t) => t.term));
+
+    // Intact identifier tokens — proves tokenchars are honored.
+    expect(present.has("narrow_attribution")).toBe(true);
+    expect(present.has("find-by-intent")).toBe(true);
+    // Split sub-tokens — proves the trigger concats the split form
+    // so natural-language queries still reach identifier content.
+    expect(present.has("narrow")).toBe(true);
+    expect(present.has("attribution")).toBe(true);
+    expect(present.has("find")).toBe(true);
+    expect(present.has("intent")).toBe(true);
+    db.close();
+  });
+
   it("symbols table has the migration-v4 parent_id column (ADR-14)", () => {
     const db = openDatabase(":memory:");
     const cols = db

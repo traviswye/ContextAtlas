@@ -157,6 +157,96 @@ const MIGRATIONS: Migration[] = [
       `);
     },
   },
+  {
+    // ADR-17: identifier-aware FTS5 tokenizer. Default `unicode61`
+    // treats `_` and `-` as token separators, so `narrow_attribution`
+    // and `find-by-intent` get split on both index and query sides.
+    // The phrase-boost intent of ADR-09's MATCH grammar is then
+    // defeated: a query for `narrow_attribution` becomes
+    // `"narrow attribution" OR narrow OR attribution`, which buries
+    // the canonical claim beneath every claim that happens to mention
+    // both words elsewhere.
+    //
+    // Fix has two halves:
+    //   1. Tokenizer adds `_` and `-` as token characters, so an
+    //      indexed `narrow_attribution` is one token (lowercased).
+    //   2. Triggers concat a split form of each text column (`_`/`-`
+    //      replaced by spaces). The FTS index then holds both the
+    //      intact identifier token AND the component words — natural-
+    //      language queries like `"narrow attribution"` continue to
+    //      match identifier-bearing content via the split half.
+    //
+    // External content (content='claims') keeps the base table the
+    // source of truth; the dual-form text only lives inside the FTS
+    // index. SELECT-ing columns from claims_fts still returns the
+    // original claim/rationale/excerpt verbatim.
+    version: 5,
+    apply(db) {
+      db.exec(`
+        DROP TRIGGER IF EXISTS claims_fts_ai;
+        DROP TRIGGER IF EXISTS claims_fts_ad;
+        DROP TRIGGER IF EXISTS claims_fts_au;
+        DROP TABLE IF EXISTS claims_fts;
+
+        CREATE VIRTUAL TABLE claims_fts USING fts5(
+          claim,
+          rationale,
+          excerpt,
+          content='claims',
+          content_rowid='id',
+          tokenize="unicode61 tokenchars '_-'"
+        );
+
+        -- Triggers index the original text concatenated with a split
+        -- form so identifier tokens AND their component words both
+        -- appear in the index. NULLs collapse to '' so COALESCE keeps
+        -- the trigger total over rationale/excerpt safe.
+        CREATE TRIGGER claims_fts_ai AFTER INSERT ON claims BEGIN
+          INSERT INTO claims_fts(rowid, claim, rationale, excerpt)
+          VALUES (
+            new.id,
+            new.claim || ' ' || REPLACE(REPLACE(new.claim, '_', ' '), '-', ' '),
+            COALESCE(new.rationale, '') || ' ' || REPLACE(REPLACE(COALESCE(new.rationale, ''), '_', ' '), '-', ' '),
+            COALESCE(new.excerpt, '') || ' ' || REPLACE(REPLACE(COALESCE(new.excerpt, ''), '_', ' '), '-', ' ')
+          );
+        END;
+        CREATE TRIGGER claims_fts_ad AFTER DELETE ON claims BEGIN
+          INSERT INTO claims_fts(claims_fts, rowid, claim, rationale, excerpt)
+          VALUES(
+            'delete', old.id,
+            old.claim || ' ' || REPLACE(REPLACE(old.claim, '_', ' '), '-', ' '),
+            COALESCE(old.rationale, '') || ' ' || REPLACE(REPLACE(COALESCE(old.rationale, ''), '_', ' '), '-', ' '),
+            COALESCE(old.excerpt, '') || ' ' || REPLACE(REPLACE(COALESCE(old.excerpt, ''), '_', ' '), '-', ' ')
+          );
+        END;
+        CREATE TRIGGER claims_fts_au AFTER UPDATE ON claims BEGIN
+          INSERT INTO claims_fts(claims_fts, rowid, claim, rationale, excerpt)
+          VALUES(
+            'delete', old.id,
+            old.claim || ' ' || REPLACE(REPLACE(old.claim, '_', ' '), '-', ' '),
+            COALESCE(old.rationale, '') || ' ' || REPLACE(REPLACE(COALESCE(old.rationale, ''), '_', ' '), '-', ' '),
+            COALESCE(old.excerpt, '') || ' ' || REPLACE(REPLACE(COALESCE(old.excerpt, ''), '_', ' '), '-', ' ')
+          );
+          INSERT INTO claims_fts(rowid, claim, rationale, excerpt)
+          VALUES (
+            new.id,
+            new.claim || ' ' || REPLACE(REPLACE(new.claim, '_', ' '), '-', ' '),
+            COALESCE(new.rationale, '') || ' ' || REPLACE(REPLACE(COALESCE(new.rationale, ''), '_', ' '), '-', ' '),
+            COALESCE(new.excerpt, '') || ' ' || REPLACE(REPLACE(COALESCE(new.excerpt, ''), '_', ' '), '-', ' ')
+          );
+        END;
+
+        -- Backfill the rebuilt FTS index from existing claims rows.
+        INSERT INTO claims_fts(rowid, claim, rationale, excerpt)
+        SELECT
+          id,
+          claim || ' ' || REPLACE(REPLACE(claim, '_', ' '), '-', ' '),
+          COALESCE(rationale, '') || ' ' || REPLACE(REPLACE(COALESCE(rationale, ''), '_', ' '), '-', ' '),
+          COALESCE(excerpt, '') || ' ' || REPLACE(REPLACE(COALESCE(excerpt, ''), '_', ' '), '-', ' ')
+        FROM claims;
+      `);
+    },
+  },
 ];
 
 export const LATEST_SCHEMA_VERSION = MIGRATIONS.reduce(

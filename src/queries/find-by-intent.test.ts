@@ -350,3 +350,251 @@ describe("findByIntent — end-to-end against FTS5", () => {
     expect(matches[0]?.name).toBe("Foo");
   });
 });
+
+// ---------------------------------------------------------------------------
+// ADR-17 — identifier-aware tokenizer
+//
+// The default unicode61 tokenizer split `_` and `-` as separators, which
+// shredded identifier-shaped names into common-word fragments. A query
+// for `narrow_attribution` ranked behind any claim that happened to
+// mention "narrow" and "attribution" elsewhere because the OR-fallback
+// in buildMatchQuery dominated the phrase boost. ADR-17 reconfigures
+// the tokenizer with `tokenchars '_-'` and indexes a split-form copy
+// of the text alongside the original so natural-language queries still
+// reach identifier-bearing content.
+// ---------------------------------------------------------------------------
+
+describe("sanitizeQuery — ADR-17 identifier-shaped tokens", () => {
+  it("preserves snake_case as a single token", () => {
+    expect(sanitizeQuery("narrow_attribution")).toEqual({
+      cleaned: "narrow_attribution",
+      tokens: ["narrow_attribution"],
+    });
+  });
+
+  it("preserves kebab-case as a single token", () => {
+    expect(sanitizeQuery("find-by-intent")).toEqual({
+      cleaned: "find-by-intent",
+      tokens: ["find-by-intent"],
+    });
+  });
+
+  it("preserves dotted-then-underscored mixes as expected (dot still strips)", () => {
+    // Dots remain separators — "a.b_c" yields ["a", "b_c"]. This is the
+    // pre-existing behavior; only `_` and `-` were added to the keep-set.
+    expect(sanitizeQuery("extraction.narrow_attribution")).toEqual({
+      cleaned: "extraction narrow_attribution",
+      tokens: ["extraction", "narrow_attribution"],
+    });
+  });
+
+  it("camelCase still survives as one token (letters aren't separators)", () => {
+    expect(sanitizeQuery("LspClient")).toEqual({
+      cleaned: "LspClient",
+      tokens: ["LspClient"],
+    });
+  });
+});
+
+describe("buildMatchQuery — ADR-17 hyphen escaping", () => {
+  it("quotes a single kebab-case token to escape FTS5's NOT operator", () => {
+    // FTS5's MATCH grammar treats `-` between barewords as AND-NOT;
+    // unquoted `find-by-intent` would parse as `find NOT by NOT intent`
+    // and error on column resolution. Quoting forces phrase semantics.
+    expect(buildMatchQuery(["find-by-intent"])).toBe('"find-by-intent"');
+  });
+
+  it("quotes hyphenated tokens inside the OR-fallback list", () => {
+    expect(buildMatchQuery(["per-symbol", "claims"])).toBe(
+      '"per-symbol claims" OR "per-symbol" OR claims',
+    );
+  });
+
+  it("leaves snake_case tokens unquoted (no FTS5 grammar conflict)", () => {
+    expect(buildMatchQuery(["narrow_attribution"])).toBe(
+      '"narrow_attribution"',
+    );
+  });
+});
+
+describe("findByIntent — ADR-17 regression: identifier-shaped queries", () => {
+  let db: DatabaseInstance;
+  beforeEach(() => {
+    db = openDatabase(":memory:");
+  });
+  afterEach(() => db.close());
+
+  it("snake_case query hits the canonical claim and outranks unrelated word-overlap noise", () => {
+    // The bug: a query for `narrow_attribution` (sanitized to two
+    // tokens, MATCH'd as `"narrow attribution" OR narrow OR
+    // attribution`) silently lost the canonical claim under any other
+    // claim that happened to mention `narrow` and `attribution`
+    // elsewhere. Post-fix: the identifier survives sanitization as a
+    // single token and the index holds it as a single token, so the
+    // canonical claim is the strongest hit.
+    seedSymbol(db, "sym:ts:a.ts:NarrowFlag", "NarrowFlag", "a.ts");
+    seedSymbol(db, "sym:ts:b.ts:Noise", "Noise", "b.ts");
+    seedClaim(db, {
+      source: "ADR-X",
+      severity: "hard",
+      claim:
+        "v0.3 ships extraction.narrow_attribution as drop-with-fallback default-on; opt-out is explicit narrow_attribution: off.",
+      symbolId: "sym:ts:a.ts:NarrowFlag",
+    });
+    seedClaim(db, {
+      source: "ADR-Y",
+      severity: "hard",
+      claim:
+        "Symbol attribution must narrow to direct call sites, not transitive references.",
+      symbolId: "sym:ts:b.ts:Noise",
+    });
+    seedClaim(db, {
+      source: "ADR-Z",
+      severity: "soft",
+      claim:
+        "Attribution cardinality should narrow under high-fanout symbols.",
+      symbolId: "sym:ts:b.ts:Noise",
+    });
+
+    const matches = findByIntent(db, {
+      query: "narrow_attribution",
+      limit: 5,
+    });
+    expect(matches.length).toBeGreaterThan(0);
+    // The canonical claim ranks first; unrelated word-overlap noise
+    // does not bury it.
+    expect(matches[0]?.name).toBe("NarrowFlag");
+    expect(matches[0]?.matchedIntent.source).toBe("ADR-X");
+  });
+
+  it("kebab-case query hits the canonical claim", () => {
+    seedSymbol(db, "sym:ts:a.ts:KebabFeature", "KebabFeature", "a.ts");
+    seedSymbol(db, "sym:ts:b.ts:Other", "Other", "b.ts");
+    seedClaim(db, {
+      source: "ADR-X",
+      severity: "hard",
+      claim:
+        "The find-by-intent tool is a thin composite over the claims table.",
+      symbolId: "sym:ts:a.ts:KebabFeature",
+    });
+    seedClaim(db, {
+      source: "ADR-Y",
+      severity: "context",
+      claim:
+        "Find the right symbol by intent rather than name when exploring.",
+      symbolId: "sym:ts:b.ts:Other",
+    });
+
+    const matches = findByIntent(db, { query: "find-by-intent", limit: 5 });
+    expect(matches.length).toBeGreaterThan(0);
+    expect(matches[0]?.name).toBe("KebabFeature");
+  });
+
+  it("snake_case query matches identifier-bearing content as a single index token (raw FTS5 contract)", () => {
+    // Lower-level invariant: the FTS5 index actually stores the
+    // identifier as a token. If the tokenizer were ever reverted to
+    // unicode61 default, the token wouldn't exist and this would fail.
+    seedSymbol(db, "sym:ts:a.ts:Flag", "Flag", "a.ts");
+    seedClaim(db, {
+      source: "ADR-X",
+      severity: "hard",
+      claim: "narrow_attribution flag controls extraction grouping",
+      symbolId: "sym:ts:a.ts:Flag",
+    });
+
+    // fts5vocab exposes the actual token list. Confirm the intact
+    // token is present (proves tokenizer config) AND the split tokens
+    // are present (proves dual-form indexing).
+    db.exec("CREATE VIRTUAL TABLE cv USING fts5vocab(claims_fts, row);");
+    const terms = db
+      .prepare(
+        "SELECT term FROM cv WHERE term IN ('narrow_attribution', 'narrow', 'attribution')",
+      )
+      .all() as { term: string }[];
+    const termSet = new Set(terms.map((t) => t.term));
+    expect(termSet.has("narrow_attribution")).toBe(true);
+    expect(termSet.has("narrow")).toBe(true);
+    expect(termSet.has("attribution")).toBe(true);
+  });
+});
+
+describe("findByIntent — ADR-17 canary: natural-language queries do not regress", () => {
+  let db: DatabaseInstance;
+  beforeEach(() => {
+    db = openDatabase(":memory:");
+  });
+  afterEach(() => db.close());
+
+  it("natural-language phrase query still matches identifier-bearing content", () => {
+    // Dual-form indexing's purpose: a user typing "narrow attribution"
+    // (no underscore) should still find a claim that uses the
+    // identifier form `narrow_attribution`. Without the split-form
+    // half of the indexed text, the intact-token-only index would
+    // miss this.
+    seedSymbol(db, "sym:ts:a.ts:Flag", "Flag", "a.ts");
+    seedClaim(db, {
+      source: "ADR-X",
+      severity: "hard",
+      claim:
+        "narrow_attribution flag controls extraction grouping for ADR-09",
+      symbolId: "sym:ts:a.ts:Flag",
+    });
+
+    const matches = findByIntent(db, {
+      query: "narrow attribution",
+      limit: 5,
+    });
+    expect(matches).toHaveLength(1);
+    expect(matches[0]?.name).toBe("Flag");
+  });
+
+  it("phrase ranks above scattered-token matches (BM25 invariant preserved)", () => {
+    // Re-asserts the ADR-09 contract under the new tokenizer: an
+    // adjacent phrase outranks documents where the same words appear
+    // scattered.
+    seedSymbol(db, "sym:ts:a.ts:Alpha", "Alpha", "a.ts");
+    seedSymbol(db, "sym:ts:b.ts:Beta", "Beta", "b.ts");
+    seedClaim(db, {
+      source: "ADR-1",
+      severity: "hard",
+      claim: "must handle payment idempotency correctly",
+      symbolId: "sym:ts:a.ts:Alpha",
+    });
+    seedClaim(db, {
+      source: "ADR-2",
+      severity: "hard",
+      claim: "payment flow has stages; idempotency of writes matters",
+      symbolId: "sym:ts:b.ts:Beta",
+    });
+    const matches = findByIntent(db, {
+      query: "payment idempotency",
+      limit: 5,
+    });
+    expect(matches).toHaveLength(2);
+    expect(matches[0]?.name).toBe("Alpha");
+    expect(matches[1]?.name).toBe("Beta");
+  });
+
+  it("multi-word natural-language query matches partial overlap claims", () => {
+    seedSymbol(db, "sym:ts:a.ts:NormPath", "NormPath", "a.ts");
+    seedSymbol(db, "sym:ts:b.ts:OtherSym", "OtherSym", "b.ts");
+    seedClaim(db, {
+      source: "ADR-1",
+      severity: "hard",
+      claim: "Path normalization is required at every ingest boundary",
+      symbolId: "sym:ts:a.ts:NormPath",
+    });
+    seedClaim(db, {
+      source: "ADR-2",
+      severity: "soft",
+      claim: "Boundaries between layers must be enforced.",
+      symbolId: "sym:ts:b.ts:OtherSym",
+    });
+    const matches = findByIntent(db, {
+      query: "path normalization",
+      limit: 5,
+    });
+    expect(matches.length).toBeGreaterThan(0);
+    expect(matches[0]?.name).toBe("NormPath");
+  });
+});

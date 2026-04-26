@@ -224,11 +224,24 @@ None of these replaces the "no query-time LLM" bound.
   The BM25 ranking is per-claim with no diversity post-processing.
   Diversity/clustering heuristics are post-MVP and evidence-gated
   like embeddings — ship if benchmarks show it matters.
-- **Tokenizer behavior — verified during step-8 dogfood, shipped
-  as-is.** FTS5's default `unicode61` tokenizer lowercases and
-  splits on non-letter-or-digit characters. Empirical check
-  against the main-repo atlas produced these reproducible results
-  (query → top-3 by name):
+- **Tokenizer behavior — superseded by [ADR-17](ADR-17-fts5-identifier-aware-tokenizer.md)
+  (v0.3+).** The v0.1 evidence below documented that the default
+  `unicode61` tokenizer ranked natural-language and camelCase
+  queries sensibly. The follow-up missing case — snake_case
+  (`narrow_attribution`) and kebab-case (`find-by-intent`)
+  identifiers — was discovered during v0.3 dogfood: those shapes
+  were silently buried under noise because `_` and `-` were
+  separators. ADR-17 changes the tokenizer to keep `_` and `-`
+  inside tokens and adds dual-form indexing so natural-language
+  queries still reach identifier-bearing content. The v0.1
+  evidence below remains valid for the queries it tested but no
+  longer reflects the shipped tokenizer config.
+
+  **v0.1 dogfood evidence (default tokenizer, historical):** FTS5's
+  default `unicode61` tokenizer lowercases and splits on
+  non-letter-or-digit characters. Empirical check against the
+  main-repo atlas produced these reproducible results (query →
+  top-3 by name):
 
   | Query                          | Top-3 result names                 |
   |--------------------------------|-------------------------------------|
@@ -309,8 +322,14 @@ or dogfood data:
   as narrowing parameters.
 - **Raw FTS5 MATCH syntax** — `raw_query: bool` escape hatch for
   sophisticated callers (non-default, opt-in).
-- **Custom tokenizer** — if camelCase identifier queries prove
-  weak in practice; scope is ~20 lines.
+- **Custom tokenizer — DELIVERED in
+  [ADR-17](ADR-17-fts5-identifier-aware-tokenizer.md) (v0.3+).**
+  Tokenizer reconfigured with `tokenchars '_-'` plus dual-form
+  indexing in the FTS columns. The trigger for the change was not
+  camelCase (which already worked under the default tokenizer) but
+  snake_case and kebab-case identifiers, which were silently buried
+  under word-overlap noise. CamelCase splitting remains a v0.4+
+  candidate if benchmark evidence emerges.
 - **Diversity / clustering heuristics** — if top-N clustering
   becomes a real complaint from benchmark results.
 - **Embedding-based re-ranking** — last-resort option after
