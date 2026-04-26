@@ -199,6 +199,25 @@ query-absent both fall back to v0.2 deterministic ordering (severity
 callers. Multi-symbol mode applies the same query uniformly to every
 symbol in the batch (per ADR-15 §3 uniform-options rule).
 
+**Caller caveat — cross-severity promotion (ADR-16 §Decision 2
+chain α).** When BM25 ranking is active (server flag enabled +
+caller passes `query`), the chain α design (BM25 dominates;
+severity is tiebreaker, not primary sort) may promote
+context-severity claims above hard-severity claims for
+query-relevance reasons. Step 6 spot-check
+([`research/v0.3-stream-a-spot-check.md`](../ContextAtlas-benchmarks/research/v0.3-stream-a-spot-check.md))
+measured 7-of-8 probe combinations exhibiting this cross-severity
+promotion (main-repo `144c576`; benchmarks `e81dbe2`). For
+example: a query `"response stream lifecycle"` against a bundle
+with one context-severity claim describing the lifecycle and
+three hard-severity claims about general response constraints —
+BM25 may surface the lifecycle claim first because it BM25-
+matches the query. Callers should treat top-INTENT under BM25
+as "most-relevant-to-this-query" rather than "most-severe-
+constraint-overall." See [ADR-16 §Decision 2](docs/adr/ADR-16-bm25-symbol-context.md)
+for the chain α rationale and the soft-chain-α future alternative
+flagged in Step 7.
+
 Compact output:
 
 ```
@@ -408,10 +427,34 @@ Pipeline knobs surfaced after v0.2 reference runs.
     frontmatter inheritance for that claim only. Addresses the `drop`
     regression risk; cheap insurance.
   - CLI flag `--narrow-attribution=<value>` overrides at invocation
-    time. Step 5 ships flag opt-in only; Step 7 reads spot-check
-    evidence + decides the v0.3 ship default after Step 6's BM25
-    work (Fix 3) lands. Stream D (Step 15) re-measures the chosen
-    configuration; non-default configs may stay flag-accessible.
+    time.
+
+  **Step 7 ship default (Pattern 2 retention).** v0.3 ships
+  `drop-with-fallback` as default-on per [STEP-PLAN-V0.3 Step 7
+  progress log](STEP-PLAN-V0.3.md). The "Absent (default)" semantics
+  above describe the pre-Step-7 schema; the Step 7 decision flips
+  the absent-value behavior to `drop-with-fallback`-equivalent.
+  Opt-out for v0.2-equivalent attribution: explicit
+  `extraction.narrow_attribution: off` (the `off` schema value +
+  config-default flip implementation lands bundled with Step 14
+  atlas re-extraction — until then, the schema described above is
+  current shipped state). Pattern 2 commits maintenance of all
+  flag-off codepaths through v0.3-v0.5+ until Stream D + dogfood +
+  production evidence supports retirement.
+
+  **Narrowing risk (post-Step 7 default-on caveat).**
+  `drop-with-fallback` recovers zero-symbol cases but does NOT
+  recover partial-loss cases. Concrete example: claim X attaches
+  to {A, B, C, D, E} under v0.2 attribution. Under
+  `drop-with-fallback` default-on, X now attaches to {A, B} only.
+  The missing {C, D, E} aren't recovered because the fallback rule
+  fires only when a claim resolves to zero symbols; X still
+  resolves to ≥1 symbol so fallback doesn't trigger. Users wanting
+  full v0.2 attribution behavior must explicitly opt out via
+  `extraction.narrow_attribution: off`. Step 5 spot-check evidence
+  (main-repo `b025d3d`; benchmarks `68e3d1e`) measured this
+  trade-off as net-positive on the p4-stream-lifecycle cell;
+  Stream D Step 14/15 re-measures at scale.
 
 ### `mcp` section (optional)
 

@@ -713,6 +713,12 @@ this time. Per [`v0.3-SCOPE.md`](v0.3-SCOPE.md) Stream D item 1.
 - [ ] Provenance notes in each atlas's commit message:
   contextatlas commit SHA, extraction model, atlas schema v1.3,
   Stream A chosen-fix configuration.
+- [ ] **Stream A configuration carry-forward.** Fix 2 ships
+  default `drop-with-fallback` per Step 7 Pattern 2; Fix 3 ships
+  flag-accessible-only per Step 7 Reading 3 (default off). Re-
+  extraction encodes Step 7 ship default; flag retention
+  validates rollback path stays available. See Step 7 progress
+  log entry for decision rationale.
 - [ ] Total extraction cost recorded (~$3–6 per scope doc).
 - [ ] Benchmarks repo's `verify-pinned-repos.mjs` passes
   (target SHAs unchanged from v0.2).
@@ -782,6 +788,34 @@ step. Per [`v0.3-SCOPE.md`](v0.3-SCOPE.md) Stream D items 2-5
   into Phase 8 if findings shape v0.3 narrative.
 - [ ] Total matrix cost recorded against v0.3-SCOPE.md envelope
   (~$15–25).
+- [ ] **Cross-severity promotion frequency tracked metric** (Step 7
+  5(c) follow-on). Stream D commits to per-cell/per-bundle
+  measurement of chain α behavior. Aggregate metrics don't
+  surface this — explicit measurement required. Step 6 spot-
+  check baseline: 7-of-8 (~87.5%) under one query.
+  Investigation triggers (informs but does not automate ADR-16
+  §Decision 2 revisit): (i) Stream D base rate materially
+  differs from spot-check baseline in either direction (>20pp)
+  — investigate why, document finding; (ii) Production users
+  report top-INTENT misleading them on severity-load-bearing
+  decisions — investigate user impact, document finding;
+  (iii) Both signals together — recommend reopening ADR-16
+  §Decision 2 with full evidence base. Threshold values are
+  initial; refined against Stream D evidence in Step 16 ship
+  gate.
+- [ ] **Theme 1.1 (Step 4) grep-ceiling closure validation**
+  (Step 7 5(e) follow-on; Phase 7 §5.1 finding). Stream D
+  cross-references whether multi-symbol `get_symbol_context`
+  API closes Phase 7 §5.1's grep-ceiling finding on cobra (and
+  analogous patterns on hono/httpx). Phase 8 synthesis
+  documents "closed" vs "remaining gap" as an explicit finding
+  under §"Theme 1.1 multi-symbol API exercise" — closure or
+  persistence is the finding regardless.
+- [ ] **Pattern 2 maintenance carry-forward** (Step 7 5(b)
+  commitment). Flag retention across both Theme 1.2 fixes
+  maintained through v0.3 ship + Stream D measurement + v0.4
+  dogfood + v0.5+. Retirement evidence-gated; cost bounded
+  per-release but accumulates.
 
 **Key decisions.**
 - Phase 8 length per the v0.2 retrospective lesson: synthesis
@@ -880,6 +914,176 @@ shipped.
 - Notable decisions: [if any surfaced during execution]
 - Ship-criteria verification: [each criterion with evidence]
 ```
+
+### Step 7 shipped — 2026-04-26 (commit SHAs stamped post-commit per Step 5/6 precedent)
+- **Scope.** Stream A finalization. Theme 1.2 fix-selection
+  decision per [`v0.3-SCOPE.md`](v0.3-SCOPE.md) Stream A
+  item 1 + Open Question #1, plus Theme 1.1 (multi-symbol API)
+  lock confirmation + flag-pattern decision (Pattern 1 retire
+  vs Pattern 2 retain) across both fixes.
+- **Outcome — decisions locked.** Six decisions captured;
+  confidence levels stated by Travis at Phase 2 dialogue
+  close. Production-tool lens (ROADMAP `f33113b` "What
+  ContextAtlas Is FOR") was decisive across A and B.
+  - **A: A1 — Ship Fix 2 default-on with Pattern 2 retention** (85%).
+    Step 5 evidence has three independent strengths (atlas-
+    level 17→0 zero-symbol recovery, cell efficiency,
+    attribution clarity). Production users get cleaner bundles
+    immediately under default-on. 15% uncertainty: single-cell
+    evidence; Stream D may surface counter-evidence on cells
+    without muddy-bundle pattern (Pattern 2 is the hedge).
+  - **B: B2 — Reading 3, Fix 3 ships flag-accessible-only,
+    default off** (70%). Activation gap load-bearing:
+    production-target Claude Code activation under updated
+    tool description empirically unverified (per ADR-16
+    amendment `0bf5e2d`); shipping default-on would be
+    shipping a bet. 30% uncertainty: B1 might be defensible
+    if Claude Code's natural query-passing behavior is good
+    (likely but unverified).
+  - **C: N/A.** B = Reading 3 means no v0.3 activation work;
+    no Step 7.5 insertion.
+  - **E: Dogfood test under Travis's Claude Code on a real
+    repo, deferred to between Step 7 and Step 8** (75%).
+    Production-target empirical test (~30 min, ~$0-2 spend)
+    replaces the synthetic Path A/B/C verification framework.
+    Tests "does Claude Code naturally pass query parameters
+    and use bundles effectively in real session." NOT a new
+    STEP-PLAN step — bridging task before Stream B begins.
+  - **F: F2 — Pattern 2 across both fixes** (90%). Indefinite
+    maintenance until evidence-justified retirement. First
+    external release wants rollback insurance over flag-
+    retirement cleanliness.
+  - **D: Theme 1.1 multi-symbol API (Step 4) confirmed locked
+    + Stream D grep-ceiling cross-reference** (95%). Mechanical
+    confirmation. Stream D Step 14/15 should explicitly
+    cross-reference whether the multi-symbol API closes
+    Phase 7 §5.1's grep-ceiling finding on cobra (captured
+    in Deliverable 3).
+- **Phase A+B realignment as Step 7 precondition.** Phase 2
+  dialogue convergence on A1 + B2 depended on production-
+  target framing being canonical before decisions were
+  weighed. Three commits established that ground state
+  (work belonged to Phase A+B, not Phase 3 — recorded here
+  as precondition):
+  - **Phase A** — ROADMAP refresh `f33113b` (+63/-6 LOC):
+    "What ContextAtlas Is FOR" subsection + revision history
+    preserving Travis's anchor statement verbatim.
+  - **Phase B Fix 1+3** — main-repo `0bf5e2d` (+88 LOC):
+    ADR-16 amendment block (synthetic ca-agent vs Claude
+    Code production-activation distinction) + v0.3-SCOPE.md
+    "User-facing goal" subsection (tie-break rule: ROADMAP
+    wins; this document gets amended to follow).
+  - **Phase B Fix 2** — benchmarks-repo `a5808eb` (+34 LOC):
+    Step 6 evidence note caveat anchoring the Five Facts as
+    one substrate among several.
+  - Production-tool lens made A obvious (real users get
+    cleaner bundles under default-on) and made B converge on
+    Reading 3 (production-target activation empirically
+    unverified).
+- **Three-factor discipline (Decision B).** Per Phase 2
+  dialogue pre-commitment, three factors discussed
+  independently before aggregating to a B reading:
+  - **Chain α (cross-severity promotion 7-of-8).** ADR-16
+    Decision §2 chain α design fires aggressively per Step 6
+    empirical evidence. Mechanism works, behavior documented;
+    contract implication genuine — production-target Claude
+    Code may trust top-INTENT more than the synthetic
+    ca-agent does. Medium pull toward Reading 3.
+  - **Activation gap (synthetic vs production unverified).**
+    ADR-16 amendment `0bf5e2d` distinguishes synthetic
+    ca-agent activation (verified gap) from Claude Code
+    production activation (qualitatively different,
+    empirically unverified). Shipping default-on is shipping
+    a bet on production behavior. **High pull toward Reading 3
+    — load-bearing factor.**
+  - **Single-query-string scope.** Step 6 spot-check tested
+    one query (`"response stream lifecycle read state"`);
+    generalization unknown. Medium pull toward Reading 3.
+  - **Aggregation.** All three factors pull same direction;
+    activation gap load-bearing. Convergence on Reading 3 is
+    outcome of disciplined aggregation, not a priori choice.
+- **Notable decisions / framing implications.**
+  - **(a) Production-tool lens decisive.** Phase A+B
+    realignment work (`f33113b` / `0bf5e2d` / `a5808eb`)
+    made A obvious and made B converge on Reading 3.
+    Without that lens, B might have gone B1 (default-on) on
+    synthetic-harness evidence alone.
+  - **(b) Pattern 2 indefinite-maintenance commitment.**
+    Both fixes carry flag-off codepaths through v0.3 / v0.4
+    / v0.5+ until Stream D + dogfood + production evidence
+    supports retirement. Cost bounded per-release but
+    accumulates.
+  - **(c) Soft-chain-α flagged as future architectural
+    alternative to chain α** (BM25 reorders within severity
+    tiers; severity dominates across tiers). Trigger
+    conditions for revisit: Stream D measures cross-severity
+    promotion frequency >X% (X to be defined in Deliverable 3
+    Step 14/15 ship-criterion addition), OR production users
+    report top-INTENT misleading them on severity-load-
+    bearing decisions. Either signal warrants reopening
+    ADR-16 §Decision 2.
+  - **(d) Dogfood test as bridging task** between Step 7
+    and Step 8 — NOT a new STEP-PLAN step. Travis runs Claude
+    Code with CA MCP against a real repo (NRFI / career-ops /
+    ContextAtlas itself / OpenSCAD); ~30 min, ~$0-2 spend;
+    tests production-target query-passing behavior
+    empirically.
+  - **(e) Step 14/15 ship-criterion addition follow-on**
+    (Deliverable 3). Stream D commits to measuring
+    cross-severity promotion frequency at scale + grep-
+    ceiling closure cross-reference for Phase 7 §5.1.
+    Pattern 2 maintenance cost noted as ongoing through
+    v0.3-v0.5+.
+- **Step 7 ship-criteria verification.** Each criterion from
+  §402-417 of plan mapped against decisions:
+  - [x] Decision documented: A1 + B2 + C-N/A + E-deferred +
+    F2 + D-confirm; rationale cites Step 5 + Step 6 evidence.
+  - [x with deviation] "Feature flag retired" default
+    **deliberately deviated from under Pattern 2.** Rationale:
+    first external release wants rollback insurance over
+    flag-retirement cleanliness. **Cost honesty:** Pattern 2
+    commits v0.3-through-v0.5+ to maintaining flag-off
+    codepaths until evidence-justified retirement. The cost
+    is bounded per-release but accumulates; retirement
+    deferred until Stream D evidence supports the new default
+    behavior.
+  - [N/A] Rescope condition not invoked — both fixes ship in
+    some form; Fix 2 default-on, Fix 3 flag-accessible-only.
+  - [x] Stream A scope completion confirmed: Fix 1 (Step 1) +
+    Theme 1.3 (Step 2) + Theme 1.1 (Step 4) + Theme 1.2
+    decision (this step) all shipped. Pattern 2 retention
+    layered atop.
+  - [x] Spot-check note ready for Phase 8 promotion at
+    Step 16; Deliverable 5 (theme decision note in benchmarks
+    repo) consolidates Step 5 + Step 6 spot-check rationale +
+    Step 7 decision into single canonical reference.
+- **Calibration notes (Phase A+B + Step 7 dialogue).**
+  - **Phase A** ROADMAP refresh: +63/-6 LOC (Step 1 ADR-scope
+    range).
+  - **Phase B Fix 1** ADR-16 amendment: +62 LOC.
+  - **Phase B Fix 3** v0.3-SCOPE.md "User-facing goal":
+    +26 LOC.
+  - **Phase B Fix 2** Step 6 evidence note caveat: +34 LOC.
+  - **Pattern observed across all three Phase B fixes:** each
+    amendment ran 15-30% over pre-look estimate because
+    content traced to load-bearing functions (Travis
+    observation, confirmed across all four Phase A+B
+    amendments).
+  - **Step 7 dialogue itself:** multi-instance critical-mode
+    iteration to Pass 4 lock + Phase 2 dialogue with three-
+    factor discipline + Phase 3 documentation (this entry).
+- **Cross-references / commit map.**
+  - **Phase A:** ROADMAP refresh `f33113b`.
+  - **Phase B:** main-repo `0bf5e2d`; benchmarks-repo
+    `a5808eb`.
+  - **Phase 3 (Step 7 documentation):** SHAs stamped
+    post-commit per Step 5/6 precedent.
+  - **Step 5 evidence:** main-repo `7e1956a` + `b025d3d`;
+    benchmarks-repo `68e3d1e`.
+  - **Step 6 evidence:** main-repo `44f043c` + `144c576`;
+    benchmarks-repo `e81dbe2`.
+  - **Spot-check note:** [`research/v0.3-stream-a-spot-check.md`](../ContextAtlas-benchmarks/research/v0.3-stream-a-spot-check.md).
+  - **Theme decision note (Deliverable 5):** [`research/v0.3-theme-1-2-fix-selection-decision.md`](../ContextAtlas-benchmarks/research/v0.3-theme-1-2-fix-selection-decision.md) (NEW; pending).
 
 ### Step 6 shipped — 2026-04-25 (44f043c + 144c576; benchmarks e81dbe2)
 - **Scope.** Theme 1.2 Fix 3 — BM25 ranking on
