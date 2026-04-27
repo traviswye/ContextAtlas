@@ -915,6 +915,152 @@ shipped.
 - Ship-criteria verification: [each criterion with evidence]
 ```
 
+### Step 9 shipped — 2026-04-26 (bb5efbe; benchmarks bb49e95 + 1b2c3ff)
+- **Scope.** Stream B prompt drafting + calibration. Draft
+  docstring-extraction prompt; calibrate against 13 docstring
+  examples surfaced in Step 8 probe; decide single-prompt vs
+  dual-prompt (with ADR-02 amendment if dual). Per
+  [`v0.3-SCOPE.md`](v0.3-SCOPE.md) Stream B item 5.
+- **Outcome — H1 single shared prompt selected.** Calibration
+  evidence supported H1 (extending `EXTRACTION_PROMPT` with
+  docstring-aware sections) over H2 (dual ADR + docstring-tuned
+  prompts). Failure modes during calibration (Sample #5 enum
+  over-extraction; Sample #10 prose-hard misfire) were
+  prompt-refinement-tractable, not architectural. Two
+  refinements applied during calibration (enum-of-valid-values
+  explicit skip example; API-documentation vs assertion
+  distinction in prose-hard severity guidance). ADR-02
+  amendment NOT required — single-prompt-extended is within
+  existing extraction prompt scope.
+- **Aggregate calibration metrics.** 10 strict PASS / 2 OVER
+  (acceptable) / 1 UNDER (acceptable); 0 misfires
+  post-refinement; JSON parse 100%; severity discipline 100%.
+  Cost: $0.4462 (committed `results.json`) / ~$0.55 total
+  Anthropic spend including overwritten pre-refinement #5+#10
+  entries. Within plan's $1-2 envelope.
+- **Step 9 ship-criteria verification.** All six criteria
+  from §484-507 of plan mapped against decisions:
+  - [x] Prompt drafted in `src/extraction/prompt.ts` —
+    EXTRACTION_PROMPT extended in-place per H1 design
+    (no separate `docstring-prompt.ts` file; single shared
+    prompt handles ADR + docstring inputs).
+  - [x] Calibration run: 13 docstring examples processed; 100%
+    JSON parse success.
+  - [x] Severity inference validated: mechanical hard
+    (`@deprecated`, `Deprecated:`) correctly produced hard;
+    soft signals correctly produced soft; default context held.
+  - [x] Decision: H1 single shared prompt; rationale
+    documented in calibration evidence note.
+  - [x] ADR-02 amendment NOT required — single-prompt-extended
+    is within existing extraction prompt scope. (Ship criterion
+    is conditional: "If dual-prompt: ADR-02 amendment block
+    landed." Single-prompt path → criterion N/A.)
+  - [x] Calibration results captured in
+    [`research/v0.3-docstring-prompt-calibration.md`](../ContextAtlas-benchmarks/research/v0.3-docstring-prompt-calibration.md).
+- **Methodological observations.**
+  - **(a) Pre-registration iteration documented.** Sample #10
+    pre-registered initially as severity=hard from "requires"
+    prose; corrected pre-emptively to severity=context after
+    re-reading recognized API documentation pattern. Reframed
+    from detection-success to over-detection discipline test.
+    Pre-registration itself iterates based on careful reading;
+    not fire-and-forget.
+  - **(b) Coverage gap surfaced.** No sample tests prose-hard
+    severity unambiguously on cobra/hono/httpx Step 8 probe set.
+    True prose-hard ("Implementations MUST handle nil context")
+    absent from these libraries' docstring conventions.
+    Captured as Step 10/11 sample-selection informer + Step 14/15
+    reference-run-criteria input.
+  - **(c) Five open questions deferred to Steps 10/11.**
+    AST-level Python deprecation (warnings.warn detection);
+    module-level Python SymbolId shape; TS extraction path
+    (tsserver hover vs direct AST); pipeline batching
+    architecture; symbol_candidates cross-reference resolution.
+    See calibration evidence note §10.
+- **Cross-references / commit map.**
+  - **Phase A (refined H1 prompt landed).** main `bb5efbe`
+    (`src/extraction/prompt.ts` +33 LOC; `CLAUDE.md` +5 LOC;
+    tests 757/757 pass).
+  - **Phase B Commit 1 (calibration harness).** benchmarks
+    `bb49e95` (`scripts/v0.3-step9-calibration.{mjs,samples.json,results.json}`
+    + `.gitignore`; 873 insertions across 4 files).
+  - **Phase B Commit 2 (calibration evidence note).** benchmarks
+    `1b2c3ff` (`research/v0.3-docstring-prompt-calibration.md`;
+    652 LOC).
+  - **Step 9 plan (this stamp).** main TBD post-Phase C.
+  - **Step 8 probe (upstream).** main `2ecd098` (see Step 8
+    shipped entry below).
+
+### Step 8 shipped — 2026-04-26 (2ecd098)
+_Note: Step 8 progress log stamp was missed at probe-doc commit
+time (`2ecd098`); this entry is back-stamped during Phase C of
+Step 9 closure. Substrate state described below reflects the
+original Step 8 ship state (`2ecd098`), not the back-stamp time._
+
+- **Scope.** Stream B probe: cross-language docstring surface
+  examination across hono / httpx / cobra at Phase 5/6/7
+  pinned SHAs. Inform Stream B contract design + decide
+  language implementation order. Per
+  [`v0.3-SCOPE.md`](v0.3-SCOPE.md) Stream B item 0.
+- **Outcome — Stream B sub-decision: Path A (Go-first) locked.**
+  Probe evidence supports Default Path A per v0.3-SCOPE: gopls
+  hover provides richest single-call surface (bundles doc
+  comment + signature + methods + pkg.go.dev link); contract
+  designed against this surface retrofits cleanly to TS
+  (tsserver hover available) and Python (degrades to direct
+  `ast.get_docstring()` parse). Lowest-common-denominator
+  contract analysis favors Go-first; ADR-14 / v0.2 retrospective
+  precedent reinforces. No probe finding rules out Path A.
+- **Per-language docstring samples.** 22 samples captured (7 TS
+  + 7 Python + 8 Go) covering structured-field availability,
+  severity-inference signals, and symbol-attribution semantics.
+  13 selected for Step 9 calibration per discipline-justified
+  selection criteria; remaining 9 reserve for Step 10/11 if
+  needed.
+- **Major findings.**
+  - **(a) Python deprecation asymmetry.** Python communicates
+    deprecation runtime-only via `warnings.warn(DeprecationWarning)`;
+    static docstring extraction cannot detect. Severity
+    inference must default to soft/context for Python
+    docstrings; hard-severity must come from a separate signal
+    (AST-level detection, out of probe scope; flagged for Step 9
+    contract input).
+  - **(b) pyright hover does NOT surface docstrings.** Per
+    ADR-13 + empirical pyright-probe-findings.md confirmation.
+    Python extraction path is direct AST parse via
+    `ast.get_docstring()` (only path); asymmetric vs Go gopls
+    and TS tsserver. Implementation scaffolding distinct;
+    Step 10/11 inheritance.
+  - **(c) Lowest-common-denominator contract favors Go-first.**
+    Free-form prose + optional mechanical signals composes
+    across all three languages without requiring features any
+    language lacks. Path A (Go-first) per ADR-14 precedent.
+- **Step 8 ship-criteria verification.** All five criteria
+  from §450-465 of plan mapped against decisions:
+  - [x] Probe artifacts in `docs/adr/docstring-probe-findings.md`
+    (mirrors `pyright-probe-findings.md` and
+    `gopls-probe-findings.md` pattern; 836 LOC).
+  - [x] Per-language sample: 5-10 docstrings each from hono /
+    httpx / cobra (delivered 7/7/8 respectively).
+  - [x] Per-language analysis: structured fields, claim shape,
+    severity inference signals — all documented in §1-§7 of
+    probe.
+  - [x] **Stream B sub-decision: Path A (Go-first)** recorded
+    in §10 with rationale.
+  - [ ] Probe-findings doc cross-referenced from Steps 9, 10,
+    11, 12 step bodies — Step 9 inheritance landed (calibration
+    evidence note §10 + §11 reference probe); Steps 10/11/12
+    cross-references pending those step begins per ship
+    criterion 5 inheritance discipline.
+- **Cross-references / commit map.**
+  - **Step 8 probe artifact.** main `2ecd098`
+    (`docs/adr/docstring-probe-findings.md`; 836 LOC).
+  - **Step 8 plan (this stamp).** main TBD post-Phase C
+    (bundled with Step 9 shipped entry).
+  - **Probe substrate.** Three pinned benchmark targets —
+    hono `cf2d2b7e`, httpx `26d48e0`, cobra `88b30ab` — same
+    SHAs Phase 5/6/7 reference runs used.
+
 ### Step 7 shipped — 2026-04-26 (abb18d3; benchmarks eaed204)
 - **Scope.** Stream A finalization. Theme 1.2 fix-selection
   decision per [`v0.3-SCOPE.md`](v0.3-SCOPE.md) Stream A
