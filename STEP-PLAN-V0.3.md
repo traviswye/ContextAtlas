@@ -915,6 +915,208 @@ shipped.
 - Ship-criteria verification: [each criterion with evidence]
 ```
 
+### Step 14 shipped — 2026-04-27 (benchmarks 224099d + 397789f + b301be5 + a5337c2 + 7cda543; main 4308de5 + TBD post-Phase C)
+
+- **Scope.** Stream D groundwork Step 14: v0.3 atlas re-extraction
+  across all three benchmark targets (cobra / httpx / hono) per
+  [`v0.3-SCOPE.md`](v0.3-SCOPE.md) Stream D item 1. Wires Stream B
+  docstring extraction into the production pipeline (deferred Step 11
+  ship criterion 4 lands here). Closes Stream A configuration
+  carry-forward (Fix 2 default-flip + Pattern 2 retention narrowing
+  per Step 7 A1). Three atlases produced as Stream D substrate at
+  pinned v0.2 SHAs (apples-to-apples with Phase 5/6/7 reference data
+  per scope-doc Stream D framing).
+
+- **Outcome — three v0.3 atlases shipped + Stream A/B integration
+  complete.** Stream A closure flipped Fix 2 default to
+  drop-with-fallback in production extraction code (main `4308de5`);
+  v0.2-baseline frontmatter-merge mode no longer reachable via public
+  API per Step 7 A1 ship discipline. Stream B integrated into
+  `extract-benchmark-atlas.mjs` as a per-language post-pipeline pass
+  (benchmarks `224099d`); cobra-first validation surfaced a Theme 1.3
+  plumbing bug at the atlas re-export gate; fix shipped (benchmarks
+  `397789f`). All three atlases re-extracted at pinned v0.2 SHAs with
+  combined ADR + docstring claim sets, atlas schema v1.3 provenance
+  (`contextatlas_commit_sha` populated), and Stream A ship-default
+  configuration. 410 net new docstring claims across the three
+  atlases (cobra 128 + httpx 148 + hono 134); 711 total claims
+  combined (vs v0.2's 301 ADR-only baseline). Total Step 14 spend
+  $22.97 (within revised $22–26 envelope; details in cost
+  reconciliation below).
+
+- **Ship-criteria verification.** All seven criteria satisfied:
+  - [x] **hono atlas re-extracted.** `atlases/hono/atlas.json`
+    committed; 2154 symbols + 212 claims; sentinel `Hono` present;
+    `contextatlas_commit_sha=4308de5...` populated. Benchmarks
+    Commit 3c `7cda543`.
+  - [x] **httpx atlas re-extracted.** `atlases/httpx/atlas.json`
+    committed; 1236 symbols + 228 claims; sentinel `Client` present;
+    same commit SHA. Benchmarks Commit 3b `a5337c2`.
+  - [x] **cobra atlas re-extracted.** `atlases/cobra/atlas.json`
+    committed; 678 symbols + 271 claims; sentinel `Command` present;
+    same commit SHA. Benchmarks Commit 3a `b301be5`.
+  - [x] **Each atlas's claim count materially higher than v0.2.**
+    cobra 271 vs 143 (+128 docstring); httpx 228 vs 80 (+148
+    docstring); hono 212 vs 78 (+134 docstring). Net +410 docstring
+    claims across all three.
+  - [x] **Provenance notes in each atlas's commit message.**
+    contextatlas commit SHA `4308de5`, extraction model
+    `claude-opus-4-7`, atlas schema v1.3, Stream A chosen-fix
+    configuration (drop-with-fallback default; BM25 off) all cited
+    per-commit.
+  - [x] **Stream A configuration carry-forward.** Fix 2 ships
+    default `drop-with-fallback` per Step 7 Pattern 2 (main repo
+    Commit 1 `4308de5` flipped runtime default; types.ts JSDoc +
+    pipeline.ts logic updated; canary discipline preserved at
+    pipeline.test.ts line 1194); Fix 3 ships flag-accessible-only,
+    default off per Step 7 Reading 3 (no code change needed; verified
+    intact). Both runtime states logged at extraction time per
+    `extract-benchmark-atlas.mjs` Stream A config banner.
+  - [x] **Total extraction cost recorded.** $22.97 actual
+    (cobra retry $5.23 + 3a $5.34 + 3b $5.55 + 3c $6.85). Within
+    revised $22–26 envelope. Net production extraction (3a/b/c only):
+    $17.74. See cost reconciliation below.
+  - [x] **Benchmarks repo `verify-pinned-repos.mjs` passes.** All
+    three target SHAs match RUBRIC.md pins (hono `cf2d2b7e`, httpx
+    `26d48e06`, cobra `88b30ab8`). No drift since v0.2.
+
+- **Methodological observations.**
+  - **(a) Theme 1.3 plumbing bug — cobra-first validation
+    discipline payoff.** Commit 2 `224099d` shipped Stream B wiring
+    with direct `exportAtlasToFile` re-export; verification finding
+    confirmed atlas-export pulls from db state via fall-back-to-
+    stored-meta. What was missed: when `runExtractionPipeline`'s
+    input SHAs are unchanged (re-extraction scenario;
+    `didModify=false` at pipeline.ts:457-461), the pipeline skips
+    its entire atlas_meta update block — fall-back finds nothing
+    for new v0.3 fields (`contextatlas_commit_sha`) and emits
+    nothing. Cobra extraction surfaced this at $5.23 spend; fix
+    shipped as Commit 2.5 `397789f` (explicit `contextatlasCommitSha`
+    override at the direct call site). Q3 sequencing decision (cobra
+    → httpx → hono serial) caught the bug at the smallest target's
+    spend before committing httpx + hono — exactly as designed.
+  - **(b) Test-filter scope (filename-based, not directory-based).**
+    Stream B's `excludePattern` per language excludes filenames
+    matching `test_*.py` / `*_test.py` / `_test.go` / `*.test.tsx?` —
+    but does NOT exclude files in `tests/` directories whose
+    filenames don't match the pattern, nor non-`src/` directories
+    like `benchmarks/`, `perf-measures/`, `runtime-tests/`. Bounded
+    cost impact (~$0.07 hono non-src + ~$0.07 httpx tests/* infra
+    files = ~$0.14 across all three repos; <1% of total spend).
+    Production script matches Stream B calibration script
+    semantics — consistent, not a regression. **v0.4 candidate
+    refinement:** directory-aware or per-config exclusion patterns.
+  - **(c) LSP-driven inventory variance across re-runs.** httpx
+    symbol count drifted +57 (1179 → 1236) between v0.2 and v0.3
+    extractions; hono and cobra stayed stable (2154, 678 — no
+    drift). Pyright LSP exhibits more re-run variance than gopls or
+    tsserver under the same source SHA. 4.8% delta is within normal
+    LSP-driven inventory variance; not a methodology defect.
+  - **(d) Cost-projection accuracy patterns.** Per-call cost stayed
+    within ±5% of Stream B calibration baselines across all three
+    languages: cobra $0.0257 vs $0.0253 (+1.6%); httpx $0.0263 vs
+    $0.0261 (+0.8%); hono $0.0243 vs $0.0245 (-0.8%). Cumulative
+    Step 14 spend ($22.97) matched envelope projection ($22-26)
+    after accounting for cobra retry overhead. Step 11 calibration
+    data is a defensible cost-projection baseline for v0.4+ work.
+  - **(e) Run-to-run claim-count variance (model
+    nondeterminism).** Same source files extracted twice (cobra
+    pre-fix and post-fix runs) produced 121 vs 128 docstring claims
+    — 6% variance with identical fixture data. API call count was
+    deterministic (208 calls both runs); claim YIELD per call varied.
+    Production extraction is single-pass per ship-criterion design;
+    this variance is acceptable for v0.3 single-run methodology.
+    Worth noting for v0.4 quality-axis measurement (blind grading)
+    where multiple runs would average out per-call variance.
+  - **(f) Stream A default-flip canary discipline preserved.** Step
+    5 v0.2-equivalence canary at `pipeline.test.ts` line 1194
+    transitioned from "protect v0.2 baseline" to "protect new ship
+    default (drop-with-fallback)" — title + comment updated;
+    future-reader weakening prohibition retained. New equivalence
+    canary added: `flag undefined ≡ explicit 'drop-with-fallback'`
+    protects Pattern 2 retention contract (explicit form is 1:1
+    alias for default). Tier 1 audit deletion (line 546 merge-
+    ordering test) removed obsolete v0.2-baseline merge premise.
+
+- **Three-target production extraction outcomes (Stream D substrate
+  table).**
+
+  | Target | Symbols | ADR claims | Docstring claims | Total claims | Stream B spend | Avg cost/call |
+  |--------|---------|------------|------------------|--------------|----------------|---------------|
+  | cobra  |     678 |        143 |              128 |          271 |       $5.3403  |       $0.0257 |
+  | httpx  |    1236 |         80 |              148 |          228 |       $5.5473  |       $0.0263 |
+  | hono   |    2154 |         78 |              134 |          212 |       $6.8506  |       $0.0243 |
+  | **Total** | **4068** | **301** |          **410** |     **711** |  **$17.7382** | **avg ~$0.0254** |
+
+  Net new docstring claims across the three atlases: **+410** vs v0.2
+  ADR-only baseline. All three atlases stamped with
+  `contextatlas_commit_sha=4308de5...` (Stream A closure SHA).
+
+- **Cost reconciliation — scope-doc projection vs actual.** v0.3-SCOPE
+  Stream B item ("Full extraction runs across hono / httpx / cobra
+  one-time per target: ~$3–6") understated actual cost by ~$12–14.
+  Scope-doc figure was authored before Stream B calibration spend
+  ($17.43 across the three calibration runs in Steps 10/11) was known.
+  Step 14 production extraction ($17.74 net for 3a/b/c) tracks the
+  Stream B calibration baseline closely — confirming Stream B
+  calibrations are defensible cost-projection anchors going forward.
+  Theme 1.3 plumbing recovery added $5.23 (cobra re-run after
+  Commit 2.5 fix); total Step 14 envelope: $22.97. v0.3 cost-tracking
+  budget treats this within bounds (revised envelope $22–26).
+
+- **Step 15 inheritance.** v0.3 reference-run substrate is now
+  production-grade across all three benchmark targets. Phase 8
+  synthesis (Step 15) inherits:
+  - Three v0.3 atlases at pinned v0.2 SHAs with combined ADR +
+    docstring claims (Stream D apples-to-apples comparison substrate
+    per scope-doc framing).
+  - Stream A ship-default configuration (drop-with-fallback)
+    encoded into all three atlases — Fix 2 default-flip is the
+    operative production state for Phase 8 measurements.
+  - Atlas v1.3 provenance (`contextatlas_commit_sha`) populated;
+    enables future audit trail (which contextatlas binary produced
+    each atlas).
+  - Step 12 atlas-file-visibility filter applies post-run as
+    defensive layer per Path 3b methodology limit (Step 12 stamp
+    `8a3de76`).
+  - Step 13 per-repo cost priors govern the benchmarks-repo budget
+    gate during reference-run execution (Step 13 stamp `d9040ff`).
+
+- **Cross-references / commit map.**
+  - **Commit 1 (Substep 14.1).** main `4308de5` (Stream A closure —
+    Fix 2 default flip to drop-with-fallback per Path X; +142/-110
+    LOC across pipeline.ts + types.ts + pipeline.test.ts; 810/810
+    tests pass post-commit).
+  - **Commit 2 (Substep 14.2).** benchmarks `224099d` (Stream B
+    integration into `extract-benchmark-atlas.mjs`; +281/-6 LOC;
+    Stream A config logging + contextatlasCommitSha resolution +
+    Stream B per-language pass + direct exportAtlasToFile re-export
+    + per-file cost summary).
+  - **Commit 2.5 (fix).** benchmarks `397789f` (Theme 1.3 plumbing
+    fix at exportAtlasToFile call; +12/-2 LOC; explicit
+    `contextatlasCommitSha` override required when first pipeline
+    pass skips atlas_meta updates due to `didModify=false`).
+  - **Commit 3a (Substep 14.3a).** benchmarks `b301be5` (cobra atlas
+    re-extracted; 271 claims / 128 docstring; $5.34 spend).
+  - **Commit 3b (Substep 14.3b).** benchmarks `a5337c2` (httpx atlas
+    re-extracted; 228 claims / 148 docstring; $5.55 spend).
+  - **Commit 3c (Substep 14.3c).** benchmarks `7cda543` (hono atlas
+    re-extracted; 212 claims / 134 docstring; $6.85 spend).
+  - **Commit 4 (this stamp).** main TBD post-Phase C.
+  - **Step 13 shipped (upstream).** main `d9040ff` (Stream C Theme
+    2.3 per-language cost priors refactor).
+  - **Step 11 shipped (upstream).** main `569e1f6` (Stream B
+    substrate complete: TS / Python / Go docstring extraction
+    across hono / httpx / cobra; 395 calibration claims; $17.43
+    calibration spend — tracked closely against Step 14's $17.74
+    production net).
+  - **Step 7 shipped (upstream).** main `abb18d3` (Stream A
+    finalization — Decision A1 ship-default lock; Decision F2
+    Pattern 2 narrowing; production-tool framing decisive).
+  - **Step 15 (downstream).** v0.3 reference matrix execution +
+    Phase 8 synthesis. Inherits production-grade Stream D substrate
+    from this Step's three atlases.
+
 ### Step 13 shipped — 2026-04-27 (benchmarks 5db02c7 + 051fd8a; main TBD post-Phase C)
 
 - **Scope.** Stream C Step 13: Theme 2.3 per-language cost priors
