@@ -505,6 +505,16 @@ export class PyrightAdapter implements LanguageAdapter {
     return this.diagnosticsByUri.get(uriKey) ?? [];
   }
 
+  async getDocstring(_id: SymbolId): Promise<string | null> {
+    // Stub for Step 11 Python work. Pyright hover does NOT surface
+    // docstrings (per ADR-13 line 91 + pyright-probe-findings.md);
+    // Python extraction path is direct AST parse via
+    // `ast.get_docstring()` per Step 8 §8.3. Implementation deferred
+    // to Step 11; returns null until then so the docstring extraction
+    // pipeline simply produces zero claims for Python files.
+    return null;
+  }
+
   async getTypeInfo(id: SymbolId): Promise<TypeInfo> {
     const empty: TypeInfo = { extends: [], implements: [], usedByTypes: [] };
     const parsed = parseSymbolId(id);

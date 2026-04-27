@@ -56,6 +56,9 @@ function makeStubAdapter(
     async getDiagnostics(_path: string): Promise<Diagnostic[]> {
       return [];
     },
+    async getDocstring(_id: SymbolId): Promise<string | null> {
+      return null;
+    },
   };
 }
 

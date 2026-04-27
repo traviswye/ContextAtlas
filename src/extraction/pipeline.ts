@@ -43,6 +43,7 @@ import type {
   ContextAtlasConfig,
   LanguageAdapter,
   LanguageCode,
+  SymbolId,
 } from "../types.js";
 
 import { type ExtractionClient } from "./anthropic-client.js";
@@ -714,3 +715,216 @@ export function roundTripAtlas(db: DatabaseInstance): string {
  * Re-export for caller convenience when constructing a mock client.
  */
 export type { ExtractionClient } from "./anthropic-client.js";
+
+// ===========================================================================
+// Docstring extraction (v0.3 Stream B / Step 10)
+// ===========================================================================
+//
+// Per Step 8 probe (Path A Go-first locked) + Step 9 calibration (H1
+// single-prompt design validated; cost $0.4462/13 calls; severity
+// discipline 100% post-refinement). The extraction function is
+// additive — does NOT modify runExtractionPipeline; callers (Step 14
+// atlas re-extraction; live calibration in Substep 10.5) invoke it
+// directly per source file.
+//
+// Per-symbol API call shape (matches calibration substrate). Step 9
+// open question (d) — pipeline batching vs per-symbol — resolved as
+// per-symbol for Step 10; revisit conditional on Python/TS pressure
+// in Step 11.
+
+export interface DocstringExtractionResult {
+  /** Number of claims written to the database. */
+  claimsWritten: number;
+  /** Number of symbols listSymbols returned for this file. */
+  symbolsProcessed: number;
+  /**
+   * Number of exported symbols (per language convention) considered
+   * for docstring extraction. Subset of symbolsProcessed.
+   */
+  symbolsExported: number;
+  /**
+   * Number of symbols that had a non-null/non-empty docstring and
+   * triggered an extraction API call. Subset of symbolsExported.
+   */
+  symbolsWithDocstring: number;
+  /** Cumulative count of unresolved symbol_candidates across all claims. */
+  unresolvedCandidates: number;
+  /** Number of API calls made (one per symbolsWithDocstring). */
+  apiCalls: number;
+  /** Token usage across all API calls. */
+  totalUsage: UsageInfo;
+  /** Per-symbol errors (API failures, etc.). Pipeline continues on error. */
+  errors: Array<{ symbolId: SymbolId; error: string }>;
+}
+
+/**
+ * Extract architectural claims from docstrings in a single source file.
+ *
+ * For each exported symbol with a non-empty docstring: query the
+ * adapter's `getDocstring`, send to the extraction API (which uses
+ * `EXTRACTION_PROMPT` per Step 9 H1 design), and persist resulting
+ * claims with `source: "docstring:<relPath>"` + two-channel
+ * attribution:
+ *   - **Provenance channel (always)**: documented symbol's `SymbolId`
+ *     attached to every claim emitted from its docstring.
+ *   - **Cross-reference channel**: claim's `symbol_candidates` resolved
+ *     via the existing `resolveCandidates` path (same code path as
+ *     ADR claims).
+ *
+ * Idempotent at file granularity: existing claims for `relPath` are
+ * cleared before extraction (matches `writeClaimsForFile` discipline).
+ *
+ * Per Step 10 ship criterion 6 + Step 9 open question (d): per-symbol
+ * single-call API shape; not batched. Step 11 may revisit per-language.
+ */
+export async function extractDocstringsForFile(
+  db: DatabaseInstance,
+  adapter: LanguageAdapter,
+  relPath: string,
+  fileSha: string,
+  inventory: SymbolInventory,
+  anthropicClient: ExtractionClient,
+): Promise<DocstringExtractionResult> {
+  const result: DocstringExtractionResult = {
+    claimsWritten: 0,
+    symbolsProcessed: 0,
+    symbolsExported: 0,
+    symbolsWithDocstring: 0,
+    unresolvedCandidates: 0,
+    apiCalls: 0,
+    totalUsage: ZERO_USAGE,
+    errors: [],
+  };
+
+  // Idempotency: clear existing claims for this file before extracting.
+  // Matches writeClaimsForFile pattern. Source field is "docstring:<relPath>"
+  // for docstring claims (per v0.3-SCOPE Stream B item 4) but
+  // sourcePath remains the actual file path; deleteClaimsBySourcePath
+  // uses sourcePath, so this clears both ADR-and-docstring claims if
+  // somehow co-located in the same file (not a real scenario today).
+  deleteClaimsBySourcePath(db, relPath);
+
+  const symbols = await adapter.listSymbols(relPath);
+  for (const sym of symbols) {
+    result.symbolsProcessed++;
+    // Filter unexported per v0.3-SCOPE Stream B item 3 (only doc
+    // comments preceding exported declarations). Filter location is
+    // pipeline-level per Step 10 scoping question (f): adapter exposes
+    // raw documentation; pipeline applies scope filter.
+    if (!isExportedSymbol(sym.name, sym.language)) continue;
+    result.symbolsExported++;
+
+    let docstring: string | null;
+    try {
+      docstring = await adapter.getDocstring(sym.id);
+    } catch (err) {
+      result.errors.push({ symbolId: sym.id, error: String(err) });
+      continue;
+    }
+    if (!docstring || docstring.trim().length === 0) continue;
+    result.symbolsWithDocstring++;
+
+    result.apiCalls++;
+    let extracted;
+    try {
+      extracted = await anthropicClient.extract(docstring);
+    } catch (err) {
+      result.errors.push({ symbolId: sym.id, error: String(err) });
+      continue;
+    }
+    result.totalUsage = addUsage(result.totalUsage, extracted.usage);
+    if (!extracted.result) continue;
+
+    for (const ec of extracted.result.claims) {
+      const writeOutcome = writeDocstringClaim(
+        db,
+        relPath,
+        fileSha,
+        sym.id,
+        ec,
+        inventory,
+      );
+      result.claimsWritten += writeOutcome.claimsWritten;
+      result.unresolvedCandidates += writeOutcome.unresolved;
+    }
+  }
+
+  // Pin source SHA for the file so atlas-import / diff machinery
+  // recognizes this file's claims as current.
+  setSourceSha(db, relPath, fileSha);
+
+  return result;
+}
+
+/**
+ * Per-language exported-symbol check.
+ *
+ * Go: first character uppercase (godoc convention). For
+ * interface-method-flattened names like "Shape.Area", check the
+ * trailing component (matches listSymbols' shape per ADR-14
+ * §Decision 4).
+ *
+ * TypeScript / Python: deferred to Step 11 (returns true permissively
+ * for now; both adapters' `getDocstring` returns null until Step 11
+ * implementation, so no docstring claims are produced for those
+ * languages regardless of this check).
+ */
+function isExportedSymbol(name: string, language: LanguageCode): boolean {
+  if (language === "go") {
+    const trailing = name.includes(".") ? name.split(".").pop() ?? name : name;
+    return /^[A-Z]/.test(trailing);
+  }
+  // Step 11 inheritance: refine per-language as TS/Python implementations land.
+  return true;
+}
+
+/**
+ * Write a single docstring-derived claim with two-channel attribution.
+ *
+ * Channel A (provenance): `documentedSymbolId` is always included in
+ * the claim's `symbolIds`. This is the new dimension docstring
+ * extraction adds vs ADR extraction — for ADRs, every claim's
+ * candidates are inferred from prose; for docstrings, the documented
+ * symbol is known a priori from LSP provenance.
+ *
+ * Channel B (cross-references): `symbol_candidates` resolved via the
+ * existing `resolveCandidates` path against the symbol inventory —
+ * same code as ADR claims. Cross-language references (rare for Go
+ * docstrings; more common in Python / TS) flow through this channel.
+ *
+ * Both channels deduplicate via `Set` — if the documented symbol
+ * appears in candidates too, it's only written once.
+ */
+function writeDocstringClaim(
+  db: DatabaseInstance,
+  relPath: string,
+  fileSha: string,
+  documentedSymbolId: SymbolId,
+  extracted: {
+    symbol_candidates: string[];
+    claim: string;
+    severity: "hard" | "soft" | "context";
+    rationale: string;
+    excerpt: string;
+  },
+  inventory: SymbolInventory,
+): { claimsWritten: number; unresolved: number } {
+  const resolved = resolveCandidates(inventory, extracted.symbol_candidates);
+  const symbolIds = Array.from(
+    new Set([documentedSymbolId, ...resolved.symbolIds]),
+  );
+
+  const claim: NewClaim = {
+    source: `docstring:${relPath}`,
+    sourcePath: relPath,
+    sourceSha: fileSha,
+    severity: extracted.severity,
+    claim: extracted.claim,
+    rationale: extracted.rationale,
+    excerpt: extracted.excerpt,
+    symbolIds,
+  };
+  insertClaim(db, claim);
+
+  return { claimsWritten: 1, unresolved: resolved.unresolved.length };
+}

@@ -477,6 +477,77 @@ export class GoAdapter implements LanguageAdapter {
     });
   }
 
+  async getDocstring(id: SymbolId): Promise<string | null> {
+    const parsed = parseSymbolId(id);
+    if (!parsed || !this.rootPath) return null;
+    const { absPath } = this.resolveFile(parsed.path);
+    if (!existsSync(absPath)) return null;
+    await this.ensureOpen(absPath);
+
+    // Locate the symbol's precise position via documentSymbol.
+    // selectionRange.start lands on the identifier itself (not on the
+    // surrounding declaration syntax) — critical for hover accuracy
+    // per Substep 10.1 spike finding (Sample #4 receiver-vs-method
+    // disambiguation). We MUST use the LSP-provided position rather
+    // than re-derive it from a name string match against source text.
+    const symbols = await this.client.request<LspDocumentSymbol[] | null>(
+      "textDocument/documentSymbol",
+      { textDocument: { uri: toFileUri(absPath) } },
+      this.options.requestTimeoutMs ?? 30_000,
+    );
+    if (!symbols || !Array.isArray(symbols)) return null;
+
+    // Search top-level + interface-method-flattened entries (matches
+    // listSymbols' shape per ADR-14 §Decision 4).
+    const findPosition = (
+      syms: readonly LspDocumentSymbol[],
+      parentName?: string,
+    ): LspPosition | null => {
+      for (const sym of syms) {
+        const fullName = parentName ? `${parentName}.${sym.name}` : sym.name;
+        if (fullName === parsed.name) return sym.selectionRange.start;
+        // Recurse into interface-method children (kind 11) only;
+        // matches listSymbols' flattening.
+        if (sym.kind === 11 && sym.children) {
+          const childMatch = findPosition(sym.children, sym.name);
+          if (childMatch) return childMatch;
+        }
+      }
+      return null;
+    };
+    const position = findPosition(symbols);
+    if (!position) return null;
+
+    // Hover for the docstring text. gopls returns markdown with three
+    // sections separated by `\n---\n` per Substep 10.1 spike:
+    //   ```go
+    //   <signature block>
+    //   ```
+    //   ---
+    //   <doc-comment prose>           ← extraction target
+    //   ---
+    //   <metadata: pkg.go.dev link, methods on type>
+    const hover = await this.client.request<{
+      contents?: { kind?: string; value?: string } | string;
+    } | null>(
+      "textDocument/hover",
+      {
+        textDocument: { uri: toFileUri(absPath) },
+        position,
+      },
+      this.options.requestTimeoutMs ?? 30_000,
+    );
+    if (!hover || !hover.contents) return null;
+    const value =
+      typeof hover.contents === "object" &&
+      "value" in hover.contents &&
+      typeof hover.contents.value === "string"
+        ? hover.contents.value
+        : null;
+    if (!value) return null;
+    return parseDocstringFromGoplsHover(value);
+  }
+
   async getTypeInfo(id: SymbolId): Promise<TypeInfo> {
     const empty: TypeInfo = { extends: [], implements: [], usedByTypes: [] };
     const parsed = parseSymbolId(id);
@@ -622,6 +693,46 @@ export class GoAdapter implements LanguageAdapter {
 // ---------------------------------------------------------------------------
 // Free helpers
 // ---------------------------------------------------------------------------
+
+/**
+ * Extract the doc-comment prose section from gopls hover output.
+ *
+ * gopls hover returns a three-section markdown structure (verified
+ * empirically across 7 cobra symbols spanning surface-shape diversity
+ * during Substep 10.1 spike — packages, types, vars, functions, methods,
+ * deprecation markers, build-tag-aware vars):
+ *
+ * ```
+ * ```go
+ * <signature block>
+ * ```
+ * ---
+ * <doc-comment prose, multi-paragraph supported via blank lines>
+ * ---
+ * <metadata: pkg.go.dev link, methods on type, package path>
+ * ```
+ *
+ * Section 2 (between the two `\n---\n` separators) is the doc-comment
+ * prose — the load-bearing extraction target. Returns null when:
+ *   - Fewer than 2 sections exist (no `---` separator → likely no docstring)
+ *   - Section 2 is empty/whitespace-only (signature-only hover)
+ *
+ * Type/struct hover signature blocks are LONG (~200 LOC for cobra's
+ * `type Command struct`) but the `\n---\n` split is content-agnostic
+ * and remains reliable. See Step 10 docstring-probe-findings spike
+ * notes in the v0.3 commit ladder for substantive findings.
+ */
+export function parseDocstringFromGoplsHover(
+  hoverValue: string,
+): string | null {
+  const sections = hoverValue.split("\n---\n");
+  if (sections.length < 2) return null;
+  const docSection = sections[1];
+  if (docSection === undefined) return null;
+  const trimmed = docSection.trim();
+  if (trimmed.length === 0) return null;
+  return trimmed;
+}
 
 function resolveGoplsBin(explicit?: string): string {
   return explicit ?? process.env.CONTEXTATLAS_GOPLS_BIN ?? "gopls";

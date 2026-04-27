@@ -200,6 +200,28 @@ export interface LanguageAdapter {
    * excluded from `extends`, empty arrays are valid returns.
    */
   getTypeInfo(id: SymbolId): Promise<TypeInfo>;
+  /**
+   * Return the doc-comment / docstring text attached to a symbol, or
+   * null if no docstring is present (or the symbol is not found).
+   *
+   * Per v0.3 Stream B (Step 8 probe / Step 9 calibration / Step 10
+   * implementation): used by the extraction pipeline's docstring path.
+   * Adapter implementations decide their substrate (gopls hover for
+   * Go; tsserver hover or compiler-API JSDoc for TS; direct AST parse
+   * via `ast.get_docstring()` for Python — pyright hover does NOT
+   * surface docstrings per ADR-13).
+   *
+   * Returns null on:
+   *   - Symbol not found in adapter's symbol surface
+   *   - Symbol has no docstring
+   *   - Docstring text is empty/whitespace-only
+   *
+   * The returned string is the comment-syntax-stripped prose (no
+   * JSDoc block delimiters, no leading per-line markers like `* `
+   * or `// `, no Python triple-quote wrappers) — matches the input
+   * shape Step 9 calibration validated against EXTRACTION_PROMPT.
+   */
+  getDocstring(id: SymbolId): Promise<string | null>;
 
   initialize(rootPath: string): Promise<void>;
   shutdown(): Promise<void>;

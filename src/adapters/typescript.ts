@@ -386,6 +386,19 @@ export class TypeScriptAdapter implements LanguageAdapter {
     });
   }
 
+  async getDocstring(_id: SymbolId): Promise<string | null> {
+    // Stub for Step 11 TypeScript work. Two implementation paths
+    // identified per Step 8 §8.2: (a) tsserver `textDocument/hover`
+    // (returns formatted markdown including JSDoc tags), or (b) direct
+    // AST parse via `ts.getJSDocCommentsAndTags()`. Path A leans
+    // preferred for adapter-as-LSP-only design; calibration verifies
+    // tsserver hover preserves enough JSDoc tag granularity for
+    // severity inference (`@deprecated` detection). Implementation
+    // deferred to Step 11; returns null until then so the docstring
+    // extraction pipeline simply produces zero claims for TS files.
+    return null;
+  }
+
   async getTypeInfo(id: SymbolId): Promise<TypeInfo> {
     const empty: TypeInfo = { extends: [], implements: [], usedByTypes: [] };
     const parsed = parseSymbolId(id);
