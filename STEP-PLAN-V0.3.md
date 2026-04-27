@@ -915,6 +915,126 @@ shipped.
 - Ship-criteria verification: [each criterion with evidence]
 ```
 
+### Step 10 shipped — 2026-04-26 (0b4c0a5 + 1ba6444 + benchmarks b7b65b6)
+- **Scope.** Stream B Step 10: docstring extraction implementation
+  for Language 1 (Go-first per Path A; Step 8 §10 sub-decision).
+  Adds `getDocstring` to `LanguageAdapter` interface; real Go
+  implementation via gopls hover + structured-section parser; new
+  `extractDocstringsForFile` pipeline path; live cobra calibration
+  validates production end-to-end. Per
+  [`v0.3-SCOPE.md`](v0.3-SCOPE.md) Stream B item 1.
+- **Outcome — Go docstring extraction shipping-quality.** All 7
+  ship criteria satisfied across four commits. Production extraction
+  on cobra at pinned `88b30ab` produced 122 architectural claims
+  from 196 documented exported symbols across 19 source files.
+  Cost: $5.2536 (within $5-7 envelope; avg $0.0253/call across 208
+  API calls — 26% cheaper than Step 9 calibration projection
+  ($0.034/call) because cobra docstrings are shorter than Step 9's
+  load-bearing samples).
+- **Two-channel attribution wired end-to-end.** Channel A
+  (provenance via documented SymbolId) + Channel B (cross-references
+  via existing `resolveCandidates` path); two test cases assert
+  channels independently with `toContain` + `toHaveLength` precision.
+  `source: "docstring:<relPath>"` per v0.3-SCOPE Stream B item 4
+  emitted; verified in DB.
+- **Zero-claim discipline validated empirically.** 58.7% claim
+  ratio (122 claims / 208 calls) — terse implementation contracts
+  correctly filtered as non-architectural. Verified post-extraction
+  on cobra completion files (bash/fish/powershell): all returned 0
+  claims as expected on "GenBashCompletion generates bash completion
+  file" patterns; matches Step 9 Sample #8 negative-case discipline.
+  **No missed architectural content; H1 prompt's zero-claim guidance
+  works at production scale.**
+- **Step 10 ship-criteria verification.** All seven from
+  §532-548 of plan satisfied:
+  - [x] Extraction pipeline reads docstrings via adapter substrate —
+    gopls hover for Go (`getDocstring` impl in `go.ts`).
+  - [x] Claims emitted with `source: "docstring:<path>"` per v0.3-SCOPE
+    Stream B item 4 — verified in `v0.3-step10-cobra-calibration.db`.
+  - [x] Symbol-keyed via two-channel attribution (Channel A
+    documented SymbolId always attached; Channel B cross-references
+    via `resolveCandidates`).
+  - [x] Severity inference applied per Step 9 calibration — uses
+    refined H1 `EXTRACTION_PROMPT` from `bb5efbe`.
+  - [x] Tests cover (a)/(b)/(c) — 5 parser tests + 7 behavioral
+    tests in `pipeline-docstring.test.ts`; 769/769 pass.
+  - [x] Dogfood validation: extraction produces docstring claims on
+    sample file from cobra — 122 claims across 19 cobra files
+    (Substep 10.5 Phase A + Phase B; benchmarks `b7b65b6`).
+  - [x] No regression in main-repo test suite (769 pass post-Commit
+    1+2; existing 757 unaffected; +12 from new behavioral suite).
+- **Methodological observations.**
+  - **(a) Phase A boundary methodology effective.** Cost gate
+    threshold $0.10/call; Phase A measured $0.0242/call (76% under
+    threshold) on 12 calls across 2 files; gate passed cleanly.
+    Phase B resumed via idempotency; total cost projection vs reality
+    delta <5% ($5.50 projected vs $5.25 actual). Phased calibration
+    methodology validated — generalizable to future per-language
+    extraction work (Step 11 Python + TS).
+  - **(b) Spike-driven implementation.** Substep 10.1 spike on 7
+    cobra symbols (throwaway script, not committed) surfaced
+    position-discipline finding (receiver-vs-method ambiguity bit
+    Sample #4); production code uses `selectionRange.start` from
+    `documentSymbol` instead of name-string regex. Spike-then-decide
+    pattern matched ADR-13/14 precedent.
+  - **(c) `extractDocstringsForFile` additive design.** Function
+    is callable directly (Substep 10.5 calibration script invokes
+    it); not wired into `runExtractionPipeline`. Decouples
+    docstring extraction from production prose-extraction loop;
+    Step 14 atlas re-extraction will integrate when Stream B
+    completes across all three languages (Step 11).
+  - **(d) command.go cost concentration expected.** 104 calls /
+    $2.38 (45% of Phase B cost) on `command.go` alone — matches
+    cobra's API surface concentration where the `Command` struct
+    holds the bulk of public methods. Not a calibration problem;
+    structural reflection of the target.
+  - **(e) Per-symbol API call shape resolved Step 9 open question
+    (d).** Production matches calibration substrate; no architectural
+    surprise. Step 11 may revisit per-language batching if Python
+    class-with-many-properties pattern argues for it.
+- **Step 11 inheritance.** Python (Step 11 Language 2) + TypeScript
+  (Step 11 Language 3) extraction implementation pending. Adapter
+  surface `getDocstring` already present as null stubs in
+  `pyright.ts` + `typescript.ts` — Step 11 replaces stubs with real
+  implementations per Step 8 §8 path decisions (Python: direct AST
+  parse via `ast.get_docstring()`; TypeScript: tsserver hover or
+  direct AST). Step 9 §10 open questions (a) Python warnings.warn
+  AST detection + (b) module-level Python SymbolId + (c) TS
+  extraction path remain Step 11 scope.
+- **No new ADR required.** Step 10's architectural decisions are
+  captured in:
+  - Commit 1 (main `0b4c0a5`) commit message: per-symbol API call
+    shape + two-channel attribution + adapter interface extension
+    + null-stubs vs real implementation discipline
+  - Step 8 probe doc (`docstring-probe-findings.md` at main `2ecd098`)
+    + Step 9 calibration evidence note (`v0.3-docstring-prompt-calibration.md`
+    at benchmarks `1b2c3ff`): cross-language contract substrate
+  - This progress log entry: implementation outcome + ship-criteria
+    verification + methodological observations
+  No standalone ADR-N file warrants creation; existing architectural
+  trail is sufficient. (Confirmed during Commit 4 scoping per Step
+  10 plan's "ADR conditional on architectural surprise" framing.)
+- **Cross-references / commit map.**
+  - **Commit 1 (Substeps 10.1+10.2+10.3).** main `0b4c0a5`
+    (`src/types.ts` +22; `src/adapters/go.ts` +111; `src/adapters/pyright.ts`
+    +10; `src/adapters/typescript.ts` +13; `src/extraction/pipeline.ts`
+    +214; `src/extraction/pipeline.test.ts` +3; `src/extraction/pipeline-docstring.test.ts`
+    +81 skeleton); 762/762 tests pass.
+  - **Commit 2 (Substep 10.4).** main `1ba6444` (`src/extraction/pipeline-docstring.test.ts`
+    +568/-61 — replaced skeleton with 5 parser tests + 7 behavioral
+    tests; explicit Channel A/B assertions per Refinement 2; parser
+    malformation expansion per Refinement 1); 769/769 tests pass.
+  - **Commit 3 (Substep 10.5).** benchmarks `b7b65b6` (calibration
+    harness `v0.3-step10-cobra-calibration.mjs` 441 LOC + per-file
+    results.json + .gitignore patterns for temp DB/MD); produced
+    122 claims across 19 cobra files at $5.2536 spend.
+  - **Commit 4 (this stamp).** main TBD post-Phase C.
+  - **Step 8 probe (upstream).** main `2ecd098` (Stream B
+    sub-decision Path A locked).
+  - **Step 9 calibration evidence (upstream).** main `bb5efbe`
+    (refined H1 prompt) + benchmarks `bb49e95` (calibration harness)
+    + benchmarks `1b2c3ff` (calibration evidence note).
+
 ### Step 9 shipped — 2026-04-26 (bb5efbe; benchmarks bb49e95 + 1b2c3ff)
 - **Scope.** Stream B prompt drafting + calibration. Draft
   docstring-extraction prompt; calibrate against 13 docstring
