@@ -505,14 +505,34 @@ export class PyrightAdapter implements LanguageAdapter {
     return this.diagnosticsByUri.get(uriKey) ?? [];
   }
 
-  async getDocstring(_id: SymbolId): Promise<string | null> {
-    // Stub for Step 11 Python work. Pyright hover does NOT surface
-    // docstrings (per ADR-13 line 91 + pyright-probe-findings.md);
-    // Python extraction path is direct AST parse via
-    // `ast.get_docstring()` per Step 8 §8.3. Implementation deferred
-    // to Step 11; returns null until then so the docstring extraction
-    // pipeline simply produces zero claims for Python files.
-    return null;
+  async getDocstring(id: SymbolId): Promise<string | null> {
+    const parsed = parseSymbolId(id);
+    if (!parsed || !this.rootPath) return null;
+    const absPath = this.toAbs(parsed.path);
+    if (!existsSync(absPath)) return null;
+
+    // Pyright hover does NOT surface docstrings (per ADR-13 line 91 +
+    // pyright-probe-findings.md). Python extraction path is direct
+    // text-based parse per Step 8 §8.3 + Step 11 Decision D (custom
+    // text/regex parser; CLAUDE.md "minimize deps" — no Python
+    // interpreter dep, no JS-based Python AST library dep).
+    const sourceText = safeReadFile(absPath);
+    if (sourceText.length === 0) return null;
+
+    // Module-level synthetic SymbolId per v0.3-SCOPE Stream B item 2 +
+    // Step 9 §10(b) Decision B locked at Step 11 scoping:
+    // `sym:py:<path>:<module>` reserved name.
+    if (parsed.name === "<module>") {
+      return parsePythonModuleDocstring(sourceText);
+    }
+
+    // Class/function/method-level — locate the declaration line via
+    // listSymbols (pyright's documentSymbol response stamps line as
+    // selectionRange.start.line + 1).
+    const symbols = await this.listSymbols(parsed.path);
+    const sym = symbols.find((s) => s.name === parsed.name);
+    if (!sym) return null;
+    return parsePythonBodyDocstring(sourceText, sym.line);
   }
 
   async getTypeInfo(id: SymbolId): Promise<TypeInfo> {
@@ -1254,4 +1274,248 @@ export function extractCallableSignatureLine(
 
 function escapeRegex(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+// ---------------------------------------------------------------------------
+// Python docstring extraction (v0.3 Stream B / Step 11)
+// ---------------------------------------------------------------------------
+//
+// Per Step 11 Decision D: custom text-based parser implementing PEP 257
+// SUBSET (verified during Step 11 scoping that pyright is JS-only and
+// Python is NOT a runtime requirement; no Python subprocess option
+// exists). Parser handles common cases; edge cases beyond subset are
+// calibration-driven discovery during Substep 11.3 httpx live calibration.
+//
+// Subset coverage:
+//   - Module-level docstrings (with shebang, encoding declaration, comment,
+//     blank-line, and `from __future__ import` skip per PEP 236)
+//   - Class-level docstrings
+//   - Function-level docstrings (including methods, async functions)
+//   - Decorator stack handling (symbol's declLine points at the def/class
+//     line per LSP convention; decorators above are skipped naturally)
+//   - Multi-line declaration signatures (colon-end detected via paren
+//     nesting tracking; ignores #-line-comments)
+//   - Triple-quoted strings: `"""..."""` and `'''...'''`
+//   - String prefixes: `r`, `b`, `f`, `R`, `B`, `F`, and combinations
+//   - PEP 257 dedent applied to multi-line docstrings
+//   - Property getter/setter (per Step 8 §7): treated separately per
+//     LSP symbol shape — each gets its own SymbolId; setter docstring
+//     when present binds to setter SymbolId
+//
+// Edge cases NOT handled (calibration-driven hardening if rate >X%):
+//   - Triple-quoted strings containing the same triple-quote internally
+//     via escape sequences (e.g., `"""contains \\""" embedded"""`)
+//   - Mixed tabs/spaces indentation
+//   - Inline single-line def signatures (e.g., `def f(): pass`)
+//   - String concatenation as docstring (e.g., `"part1" "part2"`)
+//   - Docstrings inside conditional `if TYPE_CHECKING:` blocks
+
+/**
+ * Parse a Python module-level docstring from source text per PEP 257.
+ *
+ * Returns the docstring text (PEP 257 dedented) if the file's first
+ * statement (after shebang, encoding declaration, comment lines, blank
+ * lines, and `from __future__ import` statements) is a triple-quoted
+ * string. Otherwise returns null.
+ *
+ * Module-level docstring keyed via the synthetic SymbolId
+ * `sym:py:<path>:<module>` per v0.3-SCOPE Stream B item 2.
+ */
+export function parsePythonModuleDocstring(
+  sourceText: string,
+): string | null {
+  const lines = sourceText.split(/\r?\n/);
+  let i = 0;
+
+  // Skip shebang (`#!...`) — only valid on line 1.
+  if (i < lines.length && lines[i]?.startsWith("#!")) i++;
+
+  // Skip encoding declarations (PEP 263; line 1 or 2; pattern
+  // `# -*- coding: ... -*-` or `# coding: ...`). Allow up to first 2
+  // lines as PEP 263 specifies.
+  let encodingChecked = 0;
+  while (i < lines.length && encodingChecked < 2) {
+    const line = lines[i] ?? "";
+    if (/^\s*#.*coding[:=]/i.test(line)) {
+      i++;
+    }
+    encodingChecked++;
+    if (!(/^\s*#.*coding[:=]/i.test(lines[i - 1] ?? ""))) break;
+  }
+
+  // Skip blank lines and comment-only lines.
+  while (i < lines.length && /^\s*(#|$)/.test(lines[i] ?? "")) i++;
+
+  // Skip `from __future__ import` statements (single-line and
+  // parenthesized multi-line). Per PEP 236, these may precede the
+  // module docstring.
+  while (i < lines.length) {
+    const line = lines[i] ?? "";
+    if (!/^\s*from\s+__future__\s+import\b/.test(line)) break;
+    // Track paren nesting to skip multi-line imports.
+    let nesting =
+      (line.match(/\(/g) || []).length - (line.match(/\)/g) || []).length;
+    i++;
+    while (nesting > 0 && i < lines.length) {
+      const cont = lines[i] ?? "";
+      nesting +=
+        (cont.match(/\(/g) || []).length - (cont.match(/\)/g) || []).length;
+      i++;
+    }
+    // Skip blank/comment after the import.
+    while (i < lines.length && /^\s*(#|$)/.test(lines[i] ?? "")) i++;
+  }
+
+  if (i >= lines.length) return null;
+  return extractTripleQuotedDocstring(lines, i, 0);
+}
+
+/**
+ * Parse a Python class/function/method-level docstring from source
+ * text given the 1-indexed line number of the declaration.
+ *
+ * `declLine` is expected to point at `class Name(...)` /
+ * `def name(...)` / `async def name(...)` (matches LSP
+ * `selectionRange.start.line + 1` convention from pyright's
+ * documentSymbol response). Decorators above this line are skipped
+ * naturally since parsing starts AT the declaration line.
+ *
+ * Multi-line signatures (long parameter lists spanning many lines)
+ * are handled via paren-nesting tracking to find the colon ending the
+ * signature.
+ *
+ * Returns the docstring text (PEP 257 dedented) or null when no
+ * docstring is present.
+ */
+export function parsePythonBodyDocstring(
+  sourceText: string,
+  declLine: number,
+): string | null {
+  const lines = sourceText.split(/\r?\n/);
+  if (declLine < 1 || declLine > lines.length) return null;
+
+  // Find the colon ending the declaration signature. Track paren/bracket
+  // nesting; ignore #-line comments. Quoted strings inside def/class
+  // signatures are rare enough that we don't track them here (subset
+  // limitation; documented above).
+  let nesting = 0;
+  let colonLine = -1;
+  for (let lineIdx = declLine - 1; lineIdx < lines.length; lineIdx++) {
+    const line = lines[lineIdx] ?? "";
+    const code = line.replace(/#.*$/, "");
+    let found = false;
+    for (let j = 0; j < code.length; j++) {
+      const ch = code[j];
+      if (ch === "(" || ch === "[" || ch === "{") nesting++;
+      else if (ch === ")" || ch === "]" || ch === "}") nesting--;
+      else if (ch === ":" && nesting === 0) {
+        colonLine = lineIdx;
+        found = true;
+        break;
+      }
+    }
+    if (found) break;
+  }
+  if (colonLine < 0) return null; // Malformed declaration; no colon found.
+
+  // Body starts on the next line after the colon. Skip blank lines.
+  let bodyStart = colonLine + 1;
+  while (
+    bodyStart < lines.length &&
+    (lines[bodyStart] ?? "").trim().length === 0
+  ) {
+    bodyStart++;
+  }
+  if (bodyStart >= lines.length) return null;
+
+  // Body indentation is whatever leading whitespace the first body line
+  // has. PEP 8 requires it to exceed the decl indent; we accept any
+  // and dedent the docstring relative to its own indent level.
+  const bodyIndent = (lines[bodyStart] ?? "").match(/^[\t ]*/)?.[0]
+    .length ?? 0;
+  return extractTripleQuotedDocstring(lines, bodyStart, bodyIndent);
+}
+
+/**
+ * Extract a triple-quoted string starting at `lines[startLine]`,
+ * expecting the opening triple-quote at column `expectedIndent`
+ * (after optional `r`/`b`/`f` string prefix).
+ *
+ * Handles single-line (`"""text"""`) and multi-line forms; applies
+ * PEP 257 dedent to multi-line docstrings (minimum-indent of inner
+ * non-blank lines stripped, content trimmed).
+ *
+ * Returns null when the line at startLine doesn't begin with a
+ * triple-quoted string, or when the closing triple-quote is missing
+ * (unterminated string).
+ */
+function extractTripleQuotedDocstring(
+  lines: readonly string[],
+  startLine: number,
+  expectedIndent: number,
+): string | null {
+  const firstLine = lines[startLine] ?? "";
+  const indentMatch = firstLine.match(/^[\t ]*/);
+  const indent = indentMatch ? indentMatch[0] : "";
+  // For multi-line body docstrings, accept indent matching expectedIndent.
+  // For module-level (expectedIndent=0), require exactly 0 indent.
+  if (indent.length !== expectedIndent) return null;
+
+  const stripped = firstLine.slice(indent.length);
+  // Match optional string prefix (r, b, f, R, B, F + combinations) +
+  // triple-quote.
+  const prefixMatch = stripped.match(/^([rRbBfF]{0,2})("""|''')/);
+  if (!prefixMatch) return null;
+  const triple = prefixMatch[2]!;
+  const prefixLen = prefixMatch[0].length;
+  const sameLineRest = stripped.slice(prefixLen);
+
+  // Single-line case: closing triple on the same line.
+  const sameLineCloseIdx = sameLineRest.indexOf(triple);
+  if (sameLineCloseIdx >= 0) {
+    return sameLineRest.slice(0, sameLineCloseIdx).trim();
+  }
+
+  // Multi-line case: scan forward for the closing triple.
+  let endLine = startLine + 1;
+  let endChar = -1;
+  while (endLine < lines.length) {
+    const idx = (lines[endLine] ?? "").indexOf(triple);
+    if (idx >= 0) {
+      endChar = idx;
+      break;
+    }
+    endLine++;
+  }
+  if (endChar < 0) return null; // Unterminated docstring.
+
+  // Collect content lines: first-line-after-opening, full middle lines,
+  // last-line-up-to-closing.
+  const contentLines: string[] = [];
+  contentLines.push(sameLineRest);
+  for (let j = startLine + 1; j < endLine; j++) {
+    contentLines.push(lines[j] ?? "");
+  }
+  contentLines.push((lines[endLine] ?? "").slice(0, endChar));
+
+  // PEP 257 dedent: minimum indent of inner non-blank lines (excluding
+  // the first line which is post-opening-triple). Strip that indent
+  // from each inner line.
+  const innerLines = contentLines.slice(1).filter(
+    (l) => l.trim().length > 0,
+  );
+  const minIndent =
+    innerLines.length > 0
+      ? Math.min(
+          ...innerLines.map((l) => l.match(/^[\t ]*/)?.[0].length ?? 0),
+        )
+      : 0;
+  const dedented = [
+    contentLines[0],
+    ...contentLines
+      .slice(1)
+      .map((l) => (l.length >= minIndent ? l.slice(minIndent) : l)),
+  ];
+
+  return dedented.join("\n").trim();
 }

@@ -874,7 +874,20 @@ function isExportedSymbol(name: string, language: LanguageCode): boolean {
     const trailing = name.includes(".") ? name.split(".").pop() ?? name : name;
     return /^[A-Z]/.test(trailing);
   }
-  // Step 11 inheritance: refine per-language as TS/Python implementations land.
+  if (language === "python") {
+    // Module-level synthetic SymbolId per v0.3-SCOPE Stream B item 2 +
+    // Step 11 Decision B (locked at scoping): always treated as exported.
+    if (name === "<module>") return true;
+    const trailing = name.includes(".") ? name.split(".").pop() ?? name : name;
+    // Dunder methods (start AND end with __) are public API per Python
+    // convention (e.g., __init__, __str__, __enter__).
+    if (trailing.startsWith("__") && trailing.endsWith("__")) return true;
+    // PEP 8: leading underscore = "private" convention. Filters single-
+    // underscore prefixed names (`_helper`) and double-underscore name-
+    // mangled names (`__name_mangled`, single-trailing).
+    return !trailing.startsWith("_");
+  }
+  // Step 11 Commit 4 inheritance: refine for TypeScript when impl lands.
   return true;
 }
 

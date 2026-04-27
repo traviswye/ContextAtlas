@@ -21,6 +21,10 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { parseDocstringFromGoplsHover } from "../adapters/go.js";
+import {
+  parsePythonModuleDocstring,
+  parsePythonBodyDocstring,
+} from "../adapters/pyright.js";
 import { listAllClaims } from "../storage/claims.js";
 import { type DatabaseInstance, openDatabase } from "../storage/db.js";
 import { upsertSymbols } from "../storage/symbols.js";
@@ -210,6 +214,113 @@ describe("parseDocstringFromGoplsHover (parser unit tests)", () => {
       "trailing metadata",
     ].join("\n");
     expect(parseDocstringFromGoplsHover(hoverValue)).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Section 1b: Python parser unit tests (Step 11 Commit 1 skeleton)
+// ---------------------------------------------------------------------------
+//
+// Skeleton tests for v0.3 Stream B Step 11 Commit 1: covers happy
+// paths for module-level + body-level docstring parsing per PEP 257
+// subset. Full behavioral coverage (parser edge cases + extractor
+// integration with PyrightAdapter mock) lands in Commit 2 (Substep 11.2).
+
+describe("parsePythonModuleDocstring (parser unit tests)", () => {
+  it("happy path — extracts module docstring after shebang + encoding + imports", () => {
+    const source = [
+      "#!/usr/bin/env python",
+      "# -*- coding: utf-8 -*-",
+      "",
+      "from __future__ import annotations",
+      "",
+      '"""Module purpose: defines the public interface for the foo subsystem."""',
+      "",
+      "import os",
+    ].join("\n");
+    expect(parsePythonModuleDocstring(source)).toBe(
+      "Module purpose: defines the public interface for the foo subsystem.",
+    );
+  });
+
+  it("returns null when first statement is not a docstring", () => {
+    const source = [
+      "from __future__ import annotations",
+      "",
+      "import os",
+      "",
+      "MAX_SIZE = 100  # not a docstring",
+    ].join("\n");
+    expect(parsePythonModuleDocstring(source)).toBeNull();
+  });
+
+  it("preserves multi-paragraph structure with PEP 257 dedent", () => {
+    const source = [
+      '"""',
+      "First paragraph describing the module.",
+      "",
+      "Second paragraph with more detail.",
+      '"""',
+      "",
+      "import os",
+    ].join("\n");
+    const result = parsePythonModuleDocstring(source);
+    expect(result).toContain("First paragraph");
+    expect(result).toContain("Second paragraph");
+    expect(result).toMatch(/First paragraph describing the module\.\n\nSecond paragraph/);
+  });
+});
+
+describe("parsePythonBodyDocstring (parser unit tests)", () => {
+  it("happy path — class with single-line docstring", () => {
+    const source = [
+      "class Foo:",
+      '    """Foo represents a thing."""',
+      "    def method(self): pass",
+    ].join("\n");
+    expect(parsePythonBodyDocstring(source, 1)).toBe("Foo represents a thing.");
+  });
+
+  it("function with multi-line docstring + decorator", () => {
+    const source = [
+      "@property",
+      "def name(self) -> str:",
+      '    """',
+      "    The display name of this object.",
+      "",
+      "    Computed lazily on first access.",
+      '    """',
+      "    return self._name",
+    ].join("\n");
+    // Decorator on line 1; symbol's declLine points at `def name` line 2
+    // (per LSP selectionRange convention).
+    const result = parsePythonBodyDocstring(source, 2);
+    expect(result).toContain("The display name of this object.");
+    expect(result).toContain("Computed lazily on first access.");
+  });
+
+  it("returns null when function has no docstring", () => {
+    const source = [
+      "def foo(x: int) -> int:",
+      "    return x + 1",
+    ].join("\n");
+    expect(parsePythonBodyDocstring(source, 1)).toBeNull();
+  });
+
+  it("multi-line signature with paren nesting (colon detection)", () => {
+    const source = [
+      "def request(",
+      "    method: str,",
+      "    url: str,",
+      "    *,",
+      "    timeout: float = 5.0,",
+      ") -> Response:",
+      '    """Send an HTTP request and return the Response."""',
+      "    pass",
+    ].join("\n");
+    expect(parsePythonBodyDocstring(source, 1)).toBe(
+      "Send an HTTP request and return the Response.",
+    );
   });
 });
 
