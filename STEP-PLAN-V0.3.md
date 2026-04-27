@@ -915,6 +915,115 @@ shipped.
 - Ship-criteria verification: [each criterion with evidence]
 ```
 
+### Step 13 shipped — 2026-04-27 (benchmarks 5db02c7 + 051fd8a; main TBD post-Phase C)
+
+- **Scope.** Stream C Step 13: Theme 2.3 per-language cost priors
+  refactor per [`v0.3-SCOPE.md`](v0.3-SCOPE.md) Stream C item 3.
+  Refactors `COST_PRIORS_V0_1` in benchmarks-repo
+  `src/harness/run.ts` to per-repo dimension; seeds from Phase 5/6/7
+  reference-run cell data; documents the calibration pattern in
+  RUBRIC.md; updates stale forward-looking budget-projection
+  references in research notes. Standalone harness-code change with
+  methodology-doc tagalong; no upstream dependencies.
+
+- **Outcome — per-repo cost priors shipped, calibration pattern
+  documented.** `COST_PRIORS_V0_1` → `COST_PRIORS_V0_3` with shape
+  `Record<"hono"|"httpx"|"cobra", Record<Bucket, Record<Condition,
+  number>>>`. Per-repo seeding: hono preserved at v0.1 partial-run
+  values per ship criterion 1; httpx + cobra calibrated from full
+  Phase 6/7 reference-run data using the established methodology
+  (×1.20 buffer over win-bucket averages; tie at 65% of win, trick
+  at 45%, held_out at 80%). New `lookupCostPrior(repoName, bucket,
+  condition)` helper provides two-layer fallback (unseeded repoName
+  → hono priors; unseeded bucket/condition → $0.30). Budget-gate
+  lookup site updated to use helper via `input.repoName`. RUBRIC.md
+  amendment + two doc updates document the calibration pattern and
+  align stale forward-looking projections to the revised $115–150
+  envelope.
+
+- **Ship-criteria verification.** All four criteria satisfied:
+  - [x] **`src/harness/run.ts` cost-priors refactored.** Per-language
+    bucket scales seeded from Phase 5/6/7 data: hono (TS-baseline)
+    at current values; httpx (Python) calibrated against Phase 6;
+    cobra (Go) at ~$0.30/cell empirical anchor (~$0.38/cell with
+    methodology buffer). Benchmarks Commit 1 `5db02c7`.
+  - [x] **RUBRIC.md amendment.** New §"Per-language cost priors
+    (calibration pattern)" subsection within §"Methodology
+    Hardening (v0.3+)". Documents calibration anchor + buffer +
+    bucket scaling + per-repo seeding rationale + fallback
+    semantics. Benchmarks Commit 2 `051fd8a`.
+  - [x] **Step-13 (downstream future-step) budget projection
+    updated to $115–150.** Two stale forward-looking references
+    updated in `research/budget-prompt-enhancement.md` and
+    `research/v0.3-backlog-inventory.md` using the
+    "(revised from earlier $176–210 per Phase 7 §7)" pattern;
+    historical-anchor references in v0.2-SCOPE.md and
+    `research/phase-5-reference-run.md` deliberately preserved per
+    ship-criterion's "previously cited" temporal scoping.
+    Benchmarks Commit 2 `051fd8a`.
+  - [x] **Benchmarks-repo test suite passes.** 216/216 post-Commit 1
+    (was 209/209 pre-Commit 1; +7 new tests covering per-repo
+    lookup correctness, unseeded-repoName TS-baseline fallback,
+    unseeded-bucket/condition fallback, and integration via the
+    budget-gate path with `repoName: "httpx"`).
+
+- **Methodological observations.**
+  - **(a) RepoName-keyed dimension over Language-keyed.** Type
+    signature uses `"hono" | "httpx" | "cobra"` literal union,
+    matching the existing `DispatchOptions.repoName` API. Promoting
+    to a separate `Language` type was deferred as premature
+    abstraction — the 1:1 mapping holds while only one TS repo
+    exists; a second TS target would justify the abstraction at
+    that point.
+  - **(b) Methodology consistency across repos.** All three repos
+    apply the same calibration: observed win-bucket averages ×
+    1.20 buffer; tie at 65% of win, trick at 45%, held_out at 80%.
+    Same scaling pattern as the existing v0.1 hono priors. Adding
+    new target repos in future versions follows the same pattern,
+    keeping the priors table defensible rather than ad-hoc.
+  - **(c) hono observed-vs-prior gap acknowledged.** Ship criterion
+    1 directed preservation of v0.1 partial-run values; full
+    Phase 5 data subsequently showed observed win-alpha at $1.5730
+    vs prior $0.70 — current hono priors materially undershoot
+    full-Phase-5 reality. Recalibration was out of scope per scope
+    doc; gap documented in `run.ts` header methodology block so
+    future readers don't read it as drift.
+  - **(d) Two-layer fallback for forward-compat.** Adding a fourth
+    target repo (e.g., a Django Python target) before its priors
+    are calibrated will fall back to hono (TS-baseline) priors at
+    the budget gate rather than crashing or returning $0. Bucket/
+    condition fallback to $0.30 preserved from v0.1 for defense
+    against schema drift on those dimensions.
+  - **(e) cobra blended figure reconciled.** Empirical anchor is
+    $0.30/cell (Phase 7 §7); methodology-buffered prior blends to
+    ~$0.38/cell. The scope doc's "$0.30/cell blended per Phase 7"
+    framing is the descriptive empirical anchor, not a target the
+    buffered priors must hit exactly. Reconciliation made explicit
+    in the RUBRIC subsection.
+
+- **Cross-references / commit map.**
+  - **Commit 1 (Substep 13.1).** benchmarks `5db02c7` (per-repo
+    cost priors refactor: `COST_PRIORS_V0_3` constant +
+    `lookupCostPrior` helper + budget-gate lookup-site update + 7
+    new tests; 216/216 pass post-commit; +182/-25 LOC).
+  - **Commit 2 (Substep 13.2).** benchmarks `051fd8a` (RUBRIC.md
+    amendment ~38 LOC adding §"Per-language cost priors"
+    subsection within §"Methodology Hardening (v0.3+)"; two
+    forward-looking budget-projection doc updates in
+    `research/budget-prompt-enhancement.md` and
+    `research/v0.3-backlog-inventory.md`; +49/-6 LOC across 3
+    files).
+  - **Commit 3 (this stamp).** main TBD post-Phase C.
+  - **Step 12 shipped (upstream).** main `8a3de76` (Stream C Theme
+    2.1 atlas-file-visibility filter + methodology decision lock
+    Path 3b; Rescope Condition #4 triggered + path locked;
+    methodology limit documented).
+  - **Step 14 (downstream).** v0.3 atlas re-extraction; budget
+    projections now use per-repo priors (Step 14 cost rolls up
+    from cobra Go priors specifically; previously rolled up from
+    TS-baseline blended hono+httpx ~$0.61/cell which overshot
+    cobra's ~$0.30/cell).
+
 ### Step 12 shipped — 2026-04-27 (benchmarks 537589b + 0851c69; main TBD post-Phase C)
 
 - **Scope.** Stream C Step 12: Theme 2.1 atlas-file-visibility
