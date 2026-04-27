@@ -1,11 +1,26 @@
 /**
  * Extraction prompt for ContextAtlas.
  *
- * This prompt was validated pre-scaffolding on 12 production-grade
- * documents (10 substantial ADRs from hono + httpx, 2 README files),
- * achieving 100% JSON parse success and accurate severity classification
- * on 169 extracted claims. Cost: $2.89 total. See the hackathon pre-work
- * notes for the full validation run.
+ * Validated on two empirical bases:
+ *
+ * 1. Pre-scaffolding ADR validation: 12 production-grade documents
+ *    (10 substantial ADRs from hono + httpx, 2 README files), 100%
+ *    JSON parse success, accurate severity classification on 169
+ *    extracted claims. Cost: $2.89. See hackathon pre-work notes.
+ *
+ * 2. v0.3 Step 9 docstring calibration: 13 docstring samples across
+ *    TypeScript (hono), Python (httpx), and Go (cobra) per Step 8
+ *    probe selection. 11/13 PASS, 2 mild over-extractions, 1 mild
+ *    under-extraction; JSON parse 100%; severity discipline 100%.
+ *    Cost: $0.45. See ContextAtlas-benchmarks/research/
+ *    v0.3-docstring-prompt-calibration.md.
+ *
+ * The prompt handles two input shapes via H1 (single shared prompt)
+ * design: ADR documents (long-form architectural prose) and
+ * docstrings (per-symbol short prose). Per Step 9 evidence, the H1
+ * design produced shipping-quality output without architectural
+ * switch to dual prompts (H2). ADR-02 amendment NOT required —
+ * single-prompt-extended is within "extraction prompt" scope.
  *
  * What's expected to evolve during implementation:
  *   - How this prompt is called (function signatures, streaming options)
@@ -44,32 +59,42 @@
  *   These types are deliberately separate. Do not merge them.
  */
 
-export const EXTRACTION_PROMPT = `You are extracting architectural claims from a document.
+export const EXTRACTION_PROMPT = `You are extracting architectural claims from the input below.
 
-Given the document below, extract all architectural constraints, preferences, and contextual information. Output strictly valid JSON matching this exact schema:
+Given the input, extract architectural constraints, preferences, and contextual information present in the prose. Output strictly valid JSON matching this exact schema:
 
 {
   "claims": [
     {
-      "symbol_candidates": ["string array of class/function/module names referenced"],
+      "symbol_candidates": ["string array of class/function/module names referenced in the prose"],
       "claim": "concise statement of the constraint or fact",
       "severity": "hard" | "soft" | "context",
-      "rationale": "why this matters, from the document",
-      "excerpt": "short verbatim quote from the document supporting this claim"
+      "rationale": "why this matters, from the input",
+      "excerpt": "short verbatim quote from the input supporting this claim"
     }
   ]
 }
 
 Severity taxonomy:
-- "hard": explicit constraint, violation is a bug. Signaled by "must", "never", "always", "required", "not allowed".
-- "soft": preference or recommendation. Signaled by "should", "prefer", "avoid", "generally", "recommended".
-- "context": background information or rationale, no rule. Descriptions of why things exist or how they work.
+- "hard": explicit constraint, violation is a bug. Signaled by:
+  - Mechanical markers: "@deprecated" tag (JSDoc), "Deprecated:" line prefix (godoc), ".. deprecated::" directive (Sphinx)
+  - Prose patterns: "must", "MUST", "never", "always", "required", "not allowed" — but only when the prose asserts a constraint on the consumer (e.g., "Implementations MUST handle nil context"). API documentation describing how a library works (e.g., "Cobra requires you to define X") is descriptive, not assertive — default to context.
+- "soft": preference or recommendation. Signaled by "should", "prefer", "avoid", "generally", "recommended", "Notice that...", or descriptive cautions ("can be dangerous", "may cause"). Imperative procedural guidance ("Set this to X") is also soft.
+- "context": background information or rationale; no rule asserted. Descriptions of why things exist, how they work, or what something is. DEFAULT category for descriptive prose without imperatives.
 
-Only extract architectural claims. Ignore YAML frontmatter, installation instructions, changelogs, deployment steps, and other non-architectural content.
+When mechanical severity signals are absent — for example, Python docstrings often communicate deprecation only via runtime warnings.warn() calls, not in the docstring text itself — do not over-extract hard severity from descriptive prose. Default to context unless prose contains explicit recommendation language.
+
+Skip non-architectural content: YAML frontmatter, license headers, installation instructions, changelogs, deployment steps, version markers, and pure type-shape annotations (e.g., "@param T - The type of X", "@returns Response" without architectural rationale, "method must be one of GET, OPTIONS, HEAD, POST, PUT, PATCH, or DELETE" — enum-of-valid-values is type-shape, not architectural). However: "@param verify - Either True to use SSL context with default CA bundle, False to disable verification" IS architectural — the parameter encodes a security default, not just a type.
+
+If the input contains no architectural claims — for example, a terse implementation contract like "Check if the client is closed" or pure behavioral description without architectural rationale — output {"claims": []}. Do not invent claims to fill output.
+
+For symbol_candidates: extract class/function/module/package names referenced in the prose. For inputs that are docstrings attached to a specific symbol, the documented symbol itself need NOT appear in symbol_candidates (provenance carries that); include only OTHER symbols mentioned.
+
+For external documentation references (Markdown reference links like [Authentication][0] with URL definitions, JSDoc {@link URL} tags, "See also: ..." prose): preserve the human-readable label in the claim text but do not include URLs that would be meaningless out of their original context.
 
 Output ONLY the JSON object. No prose, no markdown fencing, no commentary.
 
-Document:
+Input:
 ---
 `;
 

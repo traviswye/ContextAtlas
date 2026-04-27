@@ -49,13 +49,19 @@ These are decisions already made. Do not relitigate them.
 - **Extraction model:** `claude-opus-4-7` at default effort. Not extended
   thinking. See DESIGN.md section on extraction pipeline.
 - **Pre-drafted extraction prompt:** `src/extraction/prompt.ts` holds
-  the `EXTRACTION_PROMPT` constant — validated pre-scaffolding on 12
-  production-grade documents (100% JSON parse success, 169 claims
-  extracted correctly across hono and httpx ADRs). The extraction
-  pipeline imports from this file; do not duplicate the prompt
-  elsewhere. The prompt content, severity taxonomy, and model choice
-  are frozen per ADR-02; call signatures, error handling, and output
-  validation around it evolve with the pipeline.
+  the `EXTRACTION_PROMPT` constant — validated on two empirical bases:
+  (1) pre-scaffolding ADR validation on 12 production-grade documents
+  (100% JSON parse success, 169 claims extracted correctly across
+  hono and httpx ADRs); (2) v0.3 Step 9 docstring calibration on 13
+  samples across TypeScript / Python / Go (11/13 PASS; JSON parse
+  100%; severity discipline 100%; cost $0.45). The prompt handles
+  ADR + docstring inputs via H1 (single shared prompt) design.
+  The extraction pipeline imports from this file; do not duplicate
+  the prompt elsewhere. The prompt content, severity taxonomy, and
+  model choice are frozen per ADR-02; call signatures, error
+  handling, and output validation around it evolve with the
+  pipeline. Refinements within the prompt require calibration
+  evidence parallel to v0.3 Step 9.
 
 ## Current Version
 
