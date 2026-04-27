@@ -915,6 +915,148 @@ shipped.
 - Ship-criteria verification: [each criterion with evidence]
 ```
 
+### Step 12 shipped — 2026-04-27 (benchmarks 537589b + 0851c69; main TBD post-Phase C)
+
+- **Scope.** Stream C Step 12: Theme 2.1 atlas-file-visibility
+  filter + methodology decision lock per
+  [`v0.3-SCOPE.md`](v0.3-SCOPE.md) Stream C item 1. Implements
+  trace-time post-run pass detecting cells where any condition's
+  trace references v0.2-committed atlas artifacts; backwards-applies
+  to Phase 5/6/7 reference data; evaluates Rescope Condition #4
+  threshold; locks methodology path forward.
+
+- **Outcome — Rescope Condition #4 triggered, Path 3b locked.**
+  Backwards-apply on 71 v0.2 reference cells produced 23.94% overall
+  contamination rate (cobra 16.67%, hono 30.43%, httpx 25.00%); all
+  three targets exceed the >10% threshold defined at v0.3-SCOPE
+  Rescope Condition #4. Path 3b selected: **defer clean-workspace
+  mode to v0.4 as conditional future work; v0.3 ships with
+  trace-time filter as working solution + documented methodology
+  limit on the Beta-vs-Beta+CA comparison.** Decision rationale +
+  supporting artifacts at
+  [`../ContextAtlas-benchmarks/research/atlas-file-visibility-benchmark-methodology.md`](../ContextAtlas-benchmarks/research/atlas-file-visibility-benchmark-methodology.md)
+  (forward-looking) and
+  [`../ContextAtlas-benchmarks/research/v0.2-beta-contamination-retrospective.md`](../ContextAtlas-benchmarks/research/v0.2-beta-contamination-retrospective.md)
+  (v0.2 retrospective implications).
+
+- **Ship-criteria verification.** All six criteria satisfied:
+  - [x] **Trace-time filter shipped.** Implementation at
+    `src/harness/atlas-visibility-filter.ts` (benchmarks Commit 1
+    `537589b`).
+  - [x] **Filter produces structured output.** Per-cell evidence
+    + aggregate metrics (`AtlasVisibilityFilterResult` shape:
+    `contaminatedCells[]` + `totalCellsAnalyzed` +
+    `contaminationRate`); benchmarks Commit 1.
+  - [x] **Methodology note authored.**
+    `research/atlas-file-visibility-benchmark-methodology.md`
+    (~270 LOC; benchmarks Commit 2 `0851c69`).
+  - [x] **RUBRIC.md amendment.** New §"Methodology Hardening
+    (v0.3+)" section with three subsections (filter /
+    Beta-vs-Beta+CA caveat / v0.4 conditional clean-workspace)
+    at `ContextAtlas-benchmarks/RUBRIC.md` between Fairness
+    Rules and Reporting Format (~47 LOC; benchmarks Commit 2
+    `0851c69`).
+  - [x] **Backwards-apply + Rescope #4 evaluation.** All 71
+    v0.2 cells processed; threshold exceeded on all three
+    targets; Path 3b selected. Script + raw per-cell evidence
+    at `scripts/v0.3-step12-backwards-apply.mjs` +
+    `-results.json` (benchmarks Commit 2 `0851c69`).
+  - [x] **Benchmarks-repo test suite passes.** 209/209
+    post-Commit 1 (was 197 pre-Commit 1; +12 from filter test
+    suite covering Phase 7 §5.2 ground truth + edge cases).
+
+- **Methodological observations.**
+  - **(a) Filter design.** Trace-time post-run pass; args-only
+    matching scope (not `result_preview`, not agent thoughts);
+    regex matches paths under `atlases/<repo>/` for four
+    artifact filenames (`atlas.json`, `index.db`,
+    `index.db-shm`, `index.db-wal`); cross-platform separators
+    (forward + backslash); case-insensitive `atlases` directory
+    marker. Rationale documented in methodology note §"Filter
+    design / Args-only matching scope."
+  - **(b) Per-condition contamination concentration.** Of 17
+    flagged cells: 15 in `beta` (88%), 2 in `beta-ca` (12%;
+    both single-evidence, likely incidental), 0 in `alpha` or
+    `ca`. The concentration is structural — v0.2 workspace
+    setup invited beta agents to grep raw atlas files (no MCP
+    server declared in beta condition); alpha + ca conditions
+    don't have atlas files in their measurement workspace at
+    all. Not noise.
+  - **(c) Rescope discipline.** Rescope Condition #4
+    pre-authorized two paths: (a) absorb-in-v0.3
+    (clean-workspace re-run of v0.2 + v0.3 reference data;
+    ~$30+ extra spend), OR (b) defer-to-v0.4-with-methodology-
+    limit. Path (b) selected per project anchor framing:
+    "production-tool framing > methodology-rigor framing"
+    ([`v0.3-SCOPE.md`](v0.3-SCOPE.md) §"User-facing goal" +
+    [`ROADMAP.md`](ROADMAP.md) §"What ContextAtlas Is FOR").
+  - **(d) Bias-direction analysis as defensibility
+    foundation.** Beta agents partially closed the
+    Beta-vs-Beta+CA gap by accessing atlas content via raw
+    file reads instead of via MCP routing. Direction:
+    published v0.2 deltas understate the clean-workspace
+    counterfactual (conservative bias; not over-claims).
+    Production-tool sharing context tolerates conservative
+    bias; research-publication framing would not. v0.3 ships
+    under production-tool framing.
+  - **(e) Stream D headlines unaffected.** All three Phase 8
+    minimum findings (Theme 1.2 fix validation on Phase 6
+    p4-stream-lifecycle, Stream B docstring source value,
+    Theme 1.1 multi-symbol API exercise) measure
+    atlas-precision improvements via MCP routing — i.e., on
+    CA / beta-ca substrate where contamination is structurally
+    absent. Headlines retain full pre-registered rigor; only
+    the supporting Beta-vs-Beta+CA comparison carries the
+    documented caveat.
+  - **(f) v0.4 clean-workspace conditionality.** NOT
+    pre-committed as a guaranteed v0.4 deliverable. Conditional
+    on v0.4 quality-axis measurement (blind grading) evidence
+    showing beta substrate distortion materially affects
+    findings. If v0.4 grading scores output correctness without
+    contamination-driven distortion, clean-workspace work may
+    never be necessary. Avoids creating a v0.4 commitment that
+    may turn out unnecessary.
+
+- **v0.2 retrospective addendum surfaced as separable concern.**
+  `research/v0.2-beta-contamination-retrospective.md` (benchmarks
+  Commit 2 `0851c69`) documents the v0.2 Phase 5/6/7 published-
+  claims caveat: Beta-vs-Beta+CA evidence carries the contamination
+  caveat (conservative bias direction means underlying claim is not
+  over-stated, but the evidence base relies on the bias-direction
+  reading rather than clean measurement); Alpha-vs-CA +
+  CA-vs-Beta+CA structurally clean. Bounded scope: research note,
+  not re-run. Decoupled from v0.3 ship gate.
+
+- **Step 14 inheritance.** v0.3 reference runs (Stream D) proceed
+  under the original v0.2-equivalent workspace setup
+  (`atlases/<repo>/` committed; same arrangement that produced the
+  Phase 5/6/7 reference data). Trace-time filter applies post-run
+  as defensive layer (catches drift; flags any new contamination
+  patterns). Phase 8 synthesis carries Beta-vs-Beta+CA contamination
+  caveat per RUBRIC §"Methodology Hardening (v0.3+)" /
+  "Beta-vs-Beta+CA reporting under v0.3 documented limit." Headline
+  findings (Theme 1.2 / Stream B / Theme 1.1) computed on
+  uncontaminated CA / beta-ca substrate.
+
+- **Cross-references / commit map.**
+  - **Commit 1 (Substep 12.1).** benchmarks `537589b` (filter
+    implementation `src/harness/atlas-visibility-filter.ts` + 12-case
+    test suite `atlas-visibility-filter.test.ts`; +12 tests; 209/209
+    pass post-commit).
+  - **Commit 2 (Substep 12.2).** benchmarks `0851c69` (methodology
+    note ~270 LOC + RUBRIC amendment ~47 LOC + retrospective
+    addendum ~190 LOC + backwards-apply script + raw per-cell
+    results JSON; 5 files; 1546 insertions).
+  - **Commit 3 (this stamp).** main TBD post-Phase C.
+  - **Step 11 shipped (upstream).** main `569e1f6` (Stream B
+    substrate complete: TS / Python / Go docstring extraction
+    across hono / httpx / cobra; 395 architectural claims; $17.43
+    calibration spend).
+  - **Step 14 (downstream).** Inherits methodology limit + trace-
+    time filter; v0.3 reference runs with caveated Beta-vs-Beta+CA
+    reporting + Phase 8 synthesis citing methodology note inline
+    on the Beta-vs-Beta+CA comparison.
+
 ### Step 11 shipped — 2026-04-26 (ab3a455 + 41680c9 + fa0583d + 46ddf0d + 2000abd + main TBD; benchmarks 2b6e69d + eeee579)
 
 - **Scope.** Stream B Step 11: docstring extraction implementation
