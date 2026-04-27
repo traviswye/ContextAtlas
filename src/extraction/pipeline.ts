@@ -631,33 +631,34 @@ function writeClaimsForFile(
   let unresolved = 0;
   const claimUnresolved: UnresolvedClaimDetail[] = [];
   for (const ec of extracted) {
-    // Attribution merge — three modes per v0.3 Fix 2:
-    //   - undefined (baseline): frontmatter first (author-declared
-    //     authoritative intent), then model candidates (inferred).
-    //     Frontmatter inheritance applies to every claim from the
-    //     same file.
-    //   - "drop": claim-specific candidates only. Drops frontmatter
-    //     inheritance entirely; isolates Phase 6 §5.1's mechanism
-    //     check.
-    //   - "drop-with-fallback": same as "drop", but recovers if the
-    //     claim would otherwise resolve to zero symbols (zero-claim
-    //     fallback to frontmatter inheritance).
+    // Attribution narrowing per v0.3 Step 7 A1 ship default
+    // (drop-with-fallback). Two effective modes:
+    //   - undefined / "drop-with-fallback" (default): claim-specific
+    //     candidates only; if that resolves to zero symbols AND
+    //     frontmatter has resolvable entries, fall back to
+    //     frontmatter (preserves get_symbol_context visibility for
+    //     vague claims).
+    //   - "drop": claim-specific candidates only; no fallback. Pure
+    //     narrowing; zero-symbol claims stay invisible to
+    //     get_symbol_context (Option A regression risk).
+    // The legacy v0.2 baseline (frontmatter merged into every claim
+    // from the same file) is no longer reachable via this API —
+    // Pattern 2 retention applies to the "drop" vs "drop-with-fallback"
+    // axis, not to a config-level v0.2 baseline. Rollback to v0.2
+    // baseline is at the version-pin / codepath level.
     // resolveCandidates dedupes within its result, so shared names
     // don't double-resolve.
-    const merged =
-      narrowAttribution === undefined
-        ? [...frontmatterResolvable, ...ec.symbol_candidates]
-        : ec.symbol_candidates;
+    const merged = ec.symbol_candidates;
     const resolved = resolveCandidates(inventory, merged);
     let symbolIds = resolved.symbolIds;
     const unres = resolved.unresolved;
-    // Option E (drop-with-fallback): zero-symbol fallback. Only
-    // fires when narrowAttribution === "drop-with-fallback" AND the
-    // claim resolved to no symbols AND frontmatter has resolvable
-    // entries to fall back to. The fallback symbols are already
-    // resolved upstream, so unres is unaffected.
+    // Zero-symbol fallback fires for both undefined (new default)
+    // AND explicit "drop-with-fallback". Only "drop" suppresses the
+    // fallback — that's the pure-narrowing mode where zero-symbol
+    // claims stay invisible. Fallback symbols are already resolved
+    // upstream, so unres is unaffected.
     if (
-      narrowAttribution === "drop-with-fallback" &&
+      narrowAttribution !== "drop" &&
       symbolIds.length === 0 &&
       frontmatterResolvable.length > 0
     ) {

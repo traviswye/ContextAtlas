@@ -455,10 +455,13 @@ describe("runExtractionPipeline", () => {
     expect(result.claimsWritten).toBe(1);
   });
 
-  it("merges frontmatter 'symbols:' hints into every claim from that source", async () => {
-    // ADR frontmatter declares Foo as governed; the model's claim
-    // doesn't mention Foo in symbol_candidates at all, yet the stored
-    // claim should still link to Foo via the frontmatter hint.
+  it("frontmatter 'symbols:' recovers claims that resolve to zero symbols (Path X fallback)", async () => {
+    // Under v0.3 Step 7 A1 default (drop-with-fallback), frontmatter
+    // is no longer merged into every claim. Instead, frontmatter
+    // resolves only as a fallback when the claim's own candidates
+    // resolve to zero symbols. The model returns empty
+    // symbol_candidates here, so the fallback fires and the claim
+    // links to Foo via frontmatter recovery.
     writeFileSync(
       pathJoin(tmp, "docs", "adr", "ADR-99.md"),
       "---\nid: ADR-99\nsymbols:\n  - Foo\n---\nSome architectural claim body.",
@@ -541,60 +544,6 @@ describe("runExtractionPipeline", () => {
     const claims = listAllClaims(db);
     expect(claims).toHaveLength(1);
     expect(claims[0]?.symbolIds).toEqual(["sym:ts:src/x.ts:Real"]);
-  });
-
-  it("frontmatter symbols come BEFORE model candidates in the merged order", async () => {
-    writeFileSync(
-      pathJoin(tmp, "docs", "adr", "ADR-97.md"),
-      "---\nid: ADR-97\nsymbols:\n  - Authoritative\n---\nBody.",
-    );
-    writeFileSync(
-      pathJoin(tmp, "src", "x.ts"),
-      "export class Authoritative {}\nexport class Inferred {}",
-    );
-    const adapter = adapterForSrc({
-      "x.ts": [
-        {
-          id: "sym:ts:src/x.ts:Authoritative",
-          name: "Authoritative",
-          kind: "class",
-          path: "src/x.ts",
-          line: 1,
-          language: "typescript",
-        },
-        {
-          id: "sym:ts:src/x.ts:Inferred",
-          name: "Inferred",
-          kind: "class",
-          path: "src/x.ts",
-          line: 2,
-          language: "typescript",
-        },
-      ],
-    });
-    const client = makeStubClient([
-      {
-        claims: [
-          makeClaim({
-            claim: "x",
-            symbol_candidates: ["Inferred"], // model picked only Inferred
-          }),
-        ],
-      },
-    ]);
-    await runExtractionPipeline({
-      repoRoot: tmp,
-      config: baseConfig(),
-      db,
-      anthropicClient: client,
-      adapters: new Map([["typescript", adapter]]),
-    });
-    const claims = listAllClaims(db);
-    // Author-declared Authoritative comes first; model-inferred Inferred follows.
-    expect(claims[0]?.symbolIds).toEqual([
-      "sym:ts:src/x.ts:Authoritative",
-      "sym:ts:src/x.ts:Inferred",
-    ]);
   });
 
   it("reports unresolved symbol candidates without failing", async () => {
@@ -1191,20 +1140,27 @@ describe("runExtractionPipeline — narrow_attribution (v0.3 Fix 2)", () => {
     return { adapter, client };
   }
 
-  it("flag undefined (baseline): both claims inherit frontmatter — Phase 6 §5.1 baseline", async () => {
-    // Step 5 v0.2-equivalence canary. Parallel role to Step 4's
-    // BYTE_EQUIVALENCE_EXPECTED (src/mcp/server.test.ts) which guards
-    // the ADR-15 single-string output contract. This test guards the
-    // Fix 2 narrow_attribution flag-undefined contract: when the flag
-    // is absent, claim attribution must match v0.2 baseline exactly
-    // (frontmatter symbols inherit as per-claim baseline merged with
-    // model candidates). Any divergence here means the Fix 2
-    // implementation broke baseline behavior — which would silently
-    // corrupt every existing user's atlas on next re-extraction.
-    // Ship-blocker for Step 5; future readers MUST NOT weaken this
-    // assertion during refactors. Canary discipline established by
-    // Step 4 (ADR-15) and continued here makes regression-protection
-    // a discoverable pattern across v0.3 work.
+  it("flag undefined (Step 7 A1 ship default): drop-with-fallback semantics — Phase 6 §5.1 mechanism resolved", async () => {
+    // v0.3 Step 7 A1 ship-default canary. Originally a Step 5
+    // v0.2-equivalence canary protecting the v0.2 baseline
+    // (frontmatter merged into every claim). v0.3 Step 7 Decision
+    // A1 deliberately moves the production default forward to
+    // drop-with-fallback semantics — Phase 6 §5.1's muddy-bundle
+    // mechanism is resolved by the new default, and the v0.2
+    // baseline is no longer reachable via the public API. This
+    // canary's role transitions from "protect v0.2 baseline" to
+    // "protect new ship default": when narrowAttribution is
+    // undefined, claim attribution must behave identically to
+    // explicit "drop-with-fallback" (claim-specific candidates
+    // only, with frontmatter fallback when claim resolves to zero
+    // symbols). Any divergence here means the Fix 2 default-flip
+    // regressed.
+    //
+    // Ship-blocker for Step 14 Stream A closure; future readers
+    // MUST NOT weaken this assertion during refactors. Canary
+    // discipline established by Step 4 (ADR-15) and continued here
+    // makes regression-protection a discoverable pattern across
+    // v0.3 work.
     const { adapter, client } = setupFixture();
     await runExtractionPipeline({
       repoRoot: tmp,
@@ -1212,19 +1168,19 @@ describe("runExtractionPipeline — narrow_attribution (v0.3 Fix 2)", () => {
       db,
       anthropicClient: client,
       adapters: new Map([["typescript", adapter]]),
-      // narrowAttribution: undefined (default)
+      // narrowAttribution: undefined (Step 7 A1 ship default)
     });
     const claims = listAllClaims(db);
     expect(claims).toHaveLength(2);
     const claimA = claims.find((c) => c.claim === "claim-A specific")!;
     const claimB = claims.find((c) => c.claim === "claim-B vague")!;
-    // Baseline: both claims inherit BaseFoo + BaseBar from frontmatter.
-    // Claim A also gets SpecificClass via model candidate.
-    expect(claimA.symbolIds.sort()).toEqual([
-      "sym:ts:src/x.ts:BaseBar",
-      "sym:ts:src/x.ts:BaseFoo",
-      "sym:ts:src/x.ts:SpecificClass",
-    ]);
+    // New default: claim A resolves to SpecificClass via its own
+    // candidate (length > 0; fallback does NOT fire). Claim B
+    // resolves to zero symbols from its empty model candidates;
+    // fallback fires and recovers BaseFoo + BaseBar from
+    // frontmatter. v0.2 baseline merge into claim A is no longer
+    // reachable.
+    expect(claimA.symbolIds).toEqual(["sym:ts:src/x.ts:SpecificClass"]);
     expect(claimB.symbolIds.sort()).toEqual([
       "sym:ts:src/x.ts:BaseBar",
       "sym:ts:src/x.ts:BaseFoo",
@@ -1331,5 +1287,71 @@ describe("runExtractionPipeline — narrow_attribution (v0.3 Fix 2)", () => {
     const claims = listAllClaims(db);
     expect(claims).toHaveLength(1);
     expect(claims[0]?.symbolIds).toEqual([]);
+  });
+
+  it("flag undefined ≡ explicit 'drop-with-fallback' (Step 14 Stream A closure equivalence)", async () => {
+    // Step 14 Stream A closure equivalence canary. The Step 7 A1
+    // ship default makes undefined narrowAttribution semantically
+    // identical to explicit "drop-with-fallback". This test
+    // protects that contract: any future refactor that diverges
+    // these two paths breaks the Pattern 2 retention story (the
+    // explicit form is meant to be a 1:1 alias for the default,
+    // kept for symmetry with rollback discipline).
+    //
+    // Run both paths on identical fixtures and assert the resulting
+    // claim attributions match exactly.
+    async function runWith(narrow: "drop-with-fallback" | undefined) {
+      const innerDb = openDatabase(":memory:");
+      const innerTmp = mkdtempSync(pathJoin(tmpdir(), "ca-pipeline-eq-"));
+      mkdirSync(pathJoin(innerTmp, "docs", "adr"), { recursive: true });
+      mkdirSync(pathJoin(innerTmp, "src"), { recursive: true });
+      mkdirSync(pathJoin(innerTmp, ".contextatlas"), { recursive: true });
+      writeFileSync(
+        pathJoin(innerTmp, "docs", "adr", "ADR-99.md"),
+        "---\nid: ADR-99\nsymbols:\n  - BaseFoo\n  - BaseBar\n---\nBody.",
+      );
+      writeFileSync(
+        pathJoin(innerTmp, "src", "x.ts"),
+        "export class BaseFoo {}\nexport class BaseBar {}\nexport class SpecificClass {}",
+      );
+      const adapter = makeStubAdapter("typescript", [".ts"], (absPath) =>
+        absPath.endsWith("x.ts")
+          ? [
+              { id: "sym:ts:src/x.ts:BaseFoo", name: "BaseFoo", kind: "class", path: "src/x.ts", line: 1, language: "typescript" },
+              { id: "sym:ts:src/x.ts:BaseBar", name: "BaseBar", kind: "class", path: "src/x.ts", line: 2, language: "typescript" },
+              { id: "sym:ts:src/x.ts:SpecificClass", name: "SpecificClass", kind: "class", path: "src/x.ts", line: 3, language: "typescript" },
+            ]
+          : [],
+      );
+      const client = makeStubClient([
+        {
+          claims: [
+            makeClaim({ claim: "claim-A specific", symbol_candidates: ["SpecificClass"] }),
+            makeClaim({ claim: "claim-B vague", symbol_candidates: [] }),
+          ],
+        },
+      ]);
+      // Use the same baseConfig but pin atlas/cache paths into innerTmp
+      // so the run can write its outputs without colliding with the
+      // describe-block's tmp.
+      const cfg = baseConfig();
+      await runExtractionPipeline({
+        repoRoot: innerTmp,
+        config: cfg,
+        db: innerDb,
+        anthropicClient: client,
+        adapters: new Map([["typescript", adapter]]),
+        ...(narrow !== undefined ? { narrowAttribution: narrow } : {}),
+      });
+      const out = listAllClaims(innerDb)
+        .map((c) => ({ claim: c.claim, symbolIds: [...c.symbolIds].sort() }))
+        .sort((a, b) => a.claim.localeCompare(b.claim));
+      innerDb.close();
+      rmSync(innerTmp, { recursive: true, force: true });
+      return out;
+    }
+    const undefResult = await runWith(undefined);
+    const explicitResult = await runWith("drop-with-fallback");
+    expect(undefResult).toEqual(explicitResult);
   });
 });

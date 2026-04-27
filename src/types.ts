@@ -293,16 +293,25 @@ export interface ContextAtlasConfig {
    *
    * `narrowAttribution`: claim-attribution narrowing rule (v0.3
    * Theme 1.2 Fix 2; targets Phase 6 §5.1 muddy-bundle mechanism).
-   * Absent (default) preserves v0.2 baseline (frontmatter symbols
-   * inherited as per-claim baseline). Two on-states ship behind
-   * this flag for Step 7 evaluation:
+   *
+   * **Default (Step 7 A1 ship): drop-with-fallback semantics.**
+   * Absent / undefined falls through to the same behavior as
+   * explicit `"drop-with-fallback"`. The legacy v0.2-baseline
+   * frontmatter-merge mode is no longer reachable via this API —
+   * rollback to that mode is at the version/codepath level
+   * (Pattern 2 retention applies to the `"drop"` vs
+   * `"drop-with-fallback"` axis, not to a config-level v0.2
+   * baseline).
+   *
+   * Two explicit values supported:
    *   - `"drop"`: drop frontmatter inheritance entirely; claims
-   *     attach only to model-extracted candidates. Cleanest
-   *     experimental knob; Phase 6 §5.1's mechanism check.
-   *   - `"drop-with-fallback"`: drop, but fall back to merging
-   *     frontmatter when a claim resolves to zero symbols.
-   *     Recovers Option A's "claim attaches to no symbols → invisible
-   *     to get_symbol_context" regression risk.
+   *     attach only to model-extracted candidates. Pure-drop mode;
+   *     zero-symbol claims stay invisible to `get_symbol_context`
+   *     (Option A regression risk).
+   *   - `"drop-with-fallback"`: identical to the default. Kept for
+   *     explicit configurability + symmetry with Pattern 2 flag-
+   *     retention discipline.
+   *
    * CLI flag `--narrow-attribution=<value>` overrides config.
    */
   extraction?: {
