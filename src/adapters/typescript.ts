@@ -386,17 +386,55 @@ export class TypeScriptAdapter implements LanguageAdapter {
     });
   }
 
-  async getDocstring(_id: SymbolId): Promise<string | null> {
-    // Stub for Step 11 TypeScript work. Two implementation paths
-    // identified per Step 8 §8.2: (a) tsserver `textDocument/hover`
-    // (returns formatted markdown including JSDoc tags), or (b) direct
-    // AST parse via `ts.getJSDocCommentsAndTags()`. Path A leans
-    // preferred for adapter-as-LSP-only design; calibration verifies
-    // tsserver hover preserves enough JSDoc tag granularity for
-    // severity inference (`@deprecated` detection). Implementation
-    // deferred to Step 11; returns null until then so the docstring
-    // extraction pipeline simply produces zero claims for TS files.
-    return null;
+  async getDocstring(id: SymbolId): Promise<string | null> {
+    const parsed = parseSymbolId(id);
+    if (!parsed || !this.rootPath) return null;
+    const absPath = this.toAbs(parsed.path);
+    if (!existsSync(absPath)) return null;
+    await this.ensureOpen(absPath);
+
+    // Find the symbol's precise position via documentSymbol.
+    // selectionRange.start lands on the identifier itself — critical
+    // for hover accuracy per Step 10 Sample #4 lesson (receiver-vs-
+    // method disambiguation; production code MUST use LSP-provided
+    // position, not name-string regex).
+    const symbols = await this.client.request<LspDocumentSymbol[] | null>(
+      "textDocument/documentSymbol",
+      { textDocument: { uri: toFileUri(absPath) } },
+      this.options.requestTimeoutMs ?? 30_000,
+    );
+    if (!symbols || !Array.isArray(symbols)) return null;
+    const target = findSymbolByName(symbols, parsed.name);
+    if (!target) return null;
+
+    // Hover at the identifier position. Per Substep 11.0 spike on hono:
+    // tsserver hover returns markdown with signature in ```typescript
+    // fence, then description prose, then *@tag* italic-formatted
+    // JSDoc tags. Empty-hover edge case (Sample #3 unexported call-
+    // signature interfaces) handled gracefully — null docstring → 0
+    // claims via existing pipeline filter (Step 10 Commit 1 verified
+    // at pipeline.ts:821).
+    const hover = await this.client.request<{
+      contents?: { kind?: string; value?: string } | string;
+    } | null>(
+      "textDocument/hover",
+      {
+        textDocument: { uri: toFileUri(absPath) },
+        position: target.selectionRange.start,
+      },
+      this.options.requestTimeoutMs ?? 30_000,
+    );
+    if (!hover || !hover.contents) return null;
+    const value =
+      typeof hover.contents === "string"
+        ? hover.contents
+        : typeof hover.contents === "object" &&
+            "value" in hover.contents &&
+            typeof hover.contents.value === "string"
+          ? hover.contents.value
+          : null;
+    if (!value) return null;
+    return parseDocstringFromTsserverHover(value);
   }
 
   async getTypeInfo(id: SymbolId): Promise<TypeInfo> {
@@ -954,4 +992,85 @@ function containsPosition(
   if (pos.line === range.end.line && pos.character > range.end.character)
     return false;
   return true;
+}
+
+// ---------------------------------------------------------------------------
+// JSDoc / docstring extraction (v0.3 Stream B / Step 11)
+// ---------------------------------------------------------------------------
+
+/**
+ * Extract the JSDoc prose section from tsserver hover output.
+ *
+ * Per Substep 11.0 spike findings on hono symbols, tsserver hover
+ * returns markdown with three structural elements:
+ *
+ * ```
+ * ```typescript
+ * <signature block>
+ * ```
+ * <description prose>
+ *
+ * *@tag* — content
+ * *@tag* — content
+ * ```
+ *
+ * Unlike gopls hover (`\n---\n` section separators), tsserver uses
+ * inline markdown formatting. The parser:
+ *   1. Strips the leading ```typescript ... ``` code fence
+ *   2. Returns the remaining prose (description + tag lines)
+ *   3. Normalizes `*@tagname*` italic markup back to JSDoc-raw form
+ *      `@tagname` so refined H1 EXTRACTION_PROMPT recognizes the
+ *      mechanical severity signals (`@deprecated` calibrated as
+ *      hard-severity per Step 9 Sample #4)
+ *
+ * Returns null when:
+ *   - Hover content is signature-only (no description after fence)
+ *   - Content is empty/whitespace-only
+ *
+ * Empty-hover edge case (Substep 11.0 Sample #3 — unexported call-
+ * signature interface) is handled at the adapter boundary
+ * (`getDocstring` returns null before reaching this parser); this
+ * function defensively also returns null on signature-only input.
+ */
+export function parseDocstringFromTsserverHover(
+  hoverValue: string,
+): string | null {
+  const trimmed = hoverValue.trim();
+  if (trimmed.length === 0) return null;
+
+  // Strip the leading ```typescript ... ``` code fence section.
+  // Match through the closing ``` and any trailing whitespace.
+  const fenceMatch = trimmed.match(/^```typescript\n[\s\S]*?\n```\s*/);
+  let afterFence: string;
+  if (fenceMatch) {
+    afterFence = trimmed.slice(fenceMatch[0].length).trim();
+  } else {
+    // Defensive: hover without typescript code fence (unusual but
+    // possible — e.g., bare description-only hover for some symbols).
+    // Treat the whole value as description.
+    afterFence = trimmed;
+  }
+
+  if (afterFence.length === 0) return null;
+  return normalizeTsdocTagSyntax(afterFence);
+}
+
+/**
+ * Normalize tsserver's hover-rendered JSDoc tag formatting back to
+ * raw JSDoc syntax.
+ *
+ * tsserver hover renders `@deprecated`, `@param`, `@returns`, etc.
+ * with markdown italic prefixes (`*@deprecated*`) — this is
+ * presentation-layer markdown, not JSDoc-raw form. The refined H1
+ * EXTRACTION_PROMPT (Step 9 calibration) detects mechanical severity
+ * signals via raw JSDoc-form tags; converting tsserver's
+ * `*@deprecated*` back to `@deprecated` preserves that signal at the
+ * prompt boundary.
+ *
+ * Per-line regex matches `*@tagname*` at line start (after optional
+ * preceding markdown content). Tag content after the closing `*` is
+ * left unchanged.
+ */
+function normalizeTsdocTagSyntax(text: string): string {
+  return text.replace(/^\*@(\w+)\*/gm, "@$1");
 }

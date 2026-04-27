@@ -25,6 +25,7 @@ import {
   parsePythonModuleDocstring,
   parsePythonBodyDocstring,
 } from "../adapters/pyright.js";
+import { parseDocstringFromTsserverHover } from "../adapters/typescript.js";
 import { listAllClaims } from "../storage/claims.js";
 import { type DatabaseInstance, openDatabase } from "../storage/db.js";
 import { upsertSymbols } from "../storage/symbols.js";
@@ -381,6 +382,88 @@ describe("parsePythonBodyDocstring (parser unit tests)", () => {
       "    return 42",
     ].join("\n");
     expect(parsePythonBodyDocstring(source, 1)).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Section 1c: TypeScript parser unit tests (Step 11 Commit 5 skeleton)
+// ---------------------------------------------------------------------------
+//
+// Skeleton tests for v0.3 Stream B Step 11 Commit 5: covers
+// parseDocstringFromTsserverHover happy path, tag normalization
+// (*@tagname* → @tagname for refined H1 EXTRACTION_PROMPT mechanical
+// severity signal alignment), and edge cases (empty/whitespace,
+// signature-only, no-fence defensive). Full behavioral coverage
+// (extractor integration with TypeScriptAdapter mock) lands in
+// Commit 6 (Substep 11.5).
+
+describe("parseDocstringFromTsserverHover (parser unit tests)", () => {
+  it("happy path — strips code fence, preserves description", () => {
+    const hover = [
+      "```typescript",
+      "interface ExecutionContext",
+      "```",
+      "Interface for the execution context in a web worker.",
+    ].join("\n");
+    expect(parseDocstringFromTsserverHover(hover)).toBe(
+      "Interface for the execution context in a web worker.",
+    );
+  });
+
+  it("normalizes *@deprecated* and *@returns* — mechanical severity preservation", () => {
+    const hover = [
+      "```typescript",
+      "const createBunWebSocket: <T>() => CreateWebSocket<T>",
+      "```",
+      "",
+      "*@deprecated* — Import `upgradeWebSocket` directly instead.",
+      "*@returns* — A function to create a WebSocket handler.",
+    ].join("\n");
+    const result = parseDocstringFromTsserverHover(hover);
+    expect(result).toContain("@deprecated — Import");
+    expect(result).toContain("@returns — A function");
+    expect(result).not.toContain("*@deprecated*");
+    expect(result).not.toContain("*@returns*");
+  });
+
+  it("normalizes *@template* and *@param* tags", () => {
+    const hover = [
+      "```typescript",
+      "interface Get<E extends Env>",
+      "```",
+      "Interface for getting context variables.",
+      "",
+      "*@template* `E` — Environment type.",
+    ].join("\n");
+    const result = parseDocstringFromTsserverHover(hover);
+    expect(result).toContain("@template `E` — Environment type.");
+    expect(result).not.toContain("*@template*");
+  });
+
+  it("returns null for empty/whitespace-only hover", () => {
+    expect(parseDocstringFromTsserverHover("")).toBeNull();
+    expect(parseDocstringFromTsserverHover("   \n  ")).toBeNull();
+  });
+
+  it("returns null for signature-only hover (no description after fence)", () => {
+    const hover = "```typescript\ninterface Foo\n```";
+    expect(parseDocstringFromTsserverHover(hover)).toBeNull();
+  });
+
+  it("defensive: returns content when no typescript code fence present", () => {
+    // Edge case: tsserver may return bare prose for some symbol shapes.
+    // Parser falls through to treating whole content as description.
+    const hover = "Some description without a fence.";
+    expect(parseDocstringFromTsserverHover(hover)).toBe(
+      "Some description without a fence.",
+    );
+  });
+
+  it("export-surface sentinel: parseDocstringFromTsserverHover is exported", () => {
+    // Verifies the parser helper is exported and available for
+    // behavioral tests in Commit 6 (Substep 11.5). Replaces the
+    // null-stub-replacement signal once Commit 5 ships.
+    expect(typeof parseDocstringFromTsserverHover).toBe("function");
   });
 });
 
