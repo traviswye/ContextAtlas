@@ -356,6 +356,35 @@ export class PyrightAdapter implements LanguageAdapter {
         }
       }
     }
+
+    // (Step 11 Commit 2) Module-level synthetic symbol per v0.3-SCOPE
+    // Stream B item 2 + Step 9 §10(b) Decision B locked at Step 11
+    // scoping. Pyright's documentSymbol does NOT emit a module-level
+    // symbol naturally; without synthesis, module-level docstrings
+    // would be invisible to the docstring-extraction pipeline.
+    //
+    // Synthetic SymbolId shape: `sym:py:<relPath>:<module>` where
+    // `<module>` is the literal reserved name (angle brackets included
+    // — Python identifiers can't contain `<`/`>`, so collision-free).
+    //
+    // Synthesis happens for any file with non-whitespace content.
+    // Empty `__init__.py` files (truly empty) get no synthesis; those
+    // with content (re-exports, helpers, even just a docstring) do.
+    // Cost: when synthesized but no module docstring exists, the
+    // docstring-extraction pipeline calls `getDocstring` once and
+    // gets null back — no API call, no claim, minor overhead.
+    if (sourceText.trim().length > 0) {
+      const moduleSymbol: AtlasSymbol = {
+        id: this.symbolId(relPath, "<module>"),
+        name: "<module>",
+        kind: "module",
+        path: relPath,
+        line: 1,
+        language: "python",
+      };
+      out.unshift(moduleSymbol);
+    }
+
     return out;
   }
 

@@ -637,4 +637,29 @@ describe("PyrightAdapter", () => {
       expect(exit?.kind).toBe("method");
     });
   });
+
+  // -------------------------------------------------------------------------
+  // Step 11 Commit 2 — module-level synthetic symbol synthesis
+  // (v0.3-SCOPE Stream B item 2 + Step 9 §10(b) Decision B)
+  // -------------------------------------------------------------------------
+  describe("module-level synthetic symbol synthesis", () => {
+    it("listSymbols prepends a synthetic <module> symbol on non-empty Python files", async () => {
+      const symbols = await adapter.listSymbols(SAMPLE);
+      const moduleSym = symbols.find((s) => s.name === "<module>");
+      expect(moduleSym).toBeDefined();
+      expect(moduleSym?.kind).toBe("module");
+      expect(moduleSym?.line).toBe(1);
+      expect(moduleSym?.language).toBe("python");
+      expect(moduleSym?.path).toBe("sample.py");
+      expect(moduleSym?.id).toBe(
+        `sym:${LANG_CODES.python}:sample.py:<module>`,
+      );
+    });
+
+    it("synthetic <module> is first in the symbol array (prepended)", async () => {
+      const symbols = await adapter.listSymbols(SAMPLE);
+      expect(symbols.length).toBeGreaterThan(0);
+      expect(symbols[0]?.name).toBe("<module>");
+    });
+  });
 });
