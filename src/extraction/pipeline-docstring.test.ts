@@ -459,6 +459,83 @@ describe("parseDocstringFromTsserverHover (parser unit tests)", () => {
     );
   });
 
+  it("multi-line description preserved as multi-paragraph", () => {
+    const hover = [
+      "```typescript",
+      "function foo()",
+      "```",
+      "First paragraph of description.",
+      "",
+      "Second paragraph with more detail.",
+    ].join("\n");
+    const result = parseDocstringFromTsserverHover(hover);
+    expect(result).toContain("First paragraph of description.");
+    expect(result).toContain("Second paragraph with more detail.");
+    expect(result).toMatch(/First paragraph of description\.\n\nSecond paragraph/);
+  });
+
+  it("@example code block in description preserved", () => {
+    const hover = [
+      "```typescript",
+      "field env: E['Bindings']",
+      "```",
+      "`.env` can get bindings in Cloudflare Workers.",
+      "",
+      "*@example*",
+      "```ts",
+      "app.get('*', async c => { const counter = c.env.COUNTER })",
+      "```",
+    ].join("\n");
+    const result = parseDocstringFromTsserverHover(hover);
+    expect(result).toContain("`.env` can get bindings");
+    expect(result).toContain("@example");
+    expect(result).toContain("app.get('*', async c =>");
+  });
+
+  it("@see {@link URL} cross-reference preserved", () => {
+    const hover = [
+      "```typescript",
+      "field foo: string",
+      "```",
+      "Some description.",
+      "",
+      "*@see* {@link https://hono.dev/docs/api/context#env}",
+    ].join("\n");
+    const result = parseDocstringFromTsserverHover(hover);
+    expect(result).toContain("@see");
+    expect(result).toContain("{@link https://hono.dev/docs/api/context#env}");
+  });
+
+  it("tag-only hover (no description after fence, only @tag lines)", () => {
+    const hover = [
+      "```typescript",
+      "function bar()",
+      "```",
+      "",
+      "*@deprecated* — Use baz instead.",
+    ].join("\n");
+    const result = parseDocstringFromTsserverHover(hover);
+    expect(result).toBe("@deprecated — Use baz instead.");
+  });
+
+  it("multiple tags with mixed separator styles preserved", () => {
+    const hover = [
+      "```typescript",
+      "function process<T>(input: T): T",
+      "```",
+      "Process input through transformation pipeline.",
+      "",
+      "*@template* `T` — Input type.",
+      "*@param* `input` — Value to transform.",
+      "*@returns* — Transformed value.",
+    ].join("\n");
+    const result = parseDocstringFromTsserverHover(hover);
+    expect(result).toContain("@template `T`");
+    expect(result).toContain("@param `input`");
+    expect(result).toContain("@returns");
+    expect(result).not.toContain("*@");
+  });
+
   it("export-surface sentinel: parseDocstringFromTsserverHover is exported", () => {
     // Verifies the parser helper is exported and available for
     // behavioral tests in Commit 6 (Substep 11.5). Replaces the
@@ -1159,18 +1236,17 @@ describe("extractDocstringsForFile (Python behavioral)", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Section 4: Multi-language conformance precursor (Step 11 Commit 3)
+// Section 4: Multi-language conformance — Go + Python + TS (Step 11 Commit 6)
 // ---------------------------------------------------------------------------
 //
-// Single-test precursor for Step 11 Commit 8 cross-language conformance
-// suite. Verifies Go + Python adapters compose correctly through the
-// same extractDocstringsForFile pipeline path: per-language adapter
-// substrate differs; pipeline routes by language; both languages'
-// claims appear with correct source markers in shared atlas DB.
-//
-// TS adapter joins this suite at Commit 8 once Commit 5 (TS impl) lands.
+// Full cross-language conformance suite per Step 11 ship criterion 4.
+// Verifies all three adapters (Go / Python / TypeScript) compose
+// correctly through the same extractDocstringsForFile pipeline path:
+// per-language adapter substrate differs; pipeline routes by language;
+// all three languages' claims appear with correct source markers in
+// shared atlas DB. Replaces Commit 3's two-language precursor.
 
-describe("multi-language conformance precursor (Go + Python)", () => {
+describe("multi-language conformance (Go + Python + TS)", () => {
   let db: DatabaseInstance;
 
   beforeEach(() => {
@@ -1181,12 +1257,13 @@ describe("multi-language conformance precursor (Go + Python)", () => {
     db.close();
   });
 
-  it("Go + Python adapters produce correct claims composing in same atlas", async () => {
-    // Shared inventory spanning both languages
+  it("Go + Python + TS adapters produce correct claims composing in same atlas", async () => {
+    // Shared inventory spanning all three languages (Step 11 ship criterion 4)
     const goSym = makeSymbol("GoFunc", "lib.go", "sha-go", "go");
     const pySym = makeSymbol("PyClass", "lib.py", "sha-py", "python");
-    upsertSymbols(db, [goSym, pySym]);
-    const inventory = makeInventory([goSym, pySym]);
+    const tsSym = makeSymbol("TsInterface", "lib.ts", "sha-ts", "typescript");
+    upsertSymbols(db, [goSym, pySym, tsSym]);
+    const inventory = makeInventory([goSym, pySym, tsSym]);
 
     const goAdapter = makeStubAdapter({
       language: "go",
@@ -1199,6 +1276,12 @@ describe("multi-language conformance precursor (Go + Python)", () => {
       extensions: [".py"],
       symbolsByPath: new Map([["lib.py", [pySym]]]),
       docstringsBySymbolId: new Map([[pySym.id, "PyClass describes Python things."]]),
+    });
+    const tsAdapter = makeStubAdapter({
+      language: "typescript",
+      extensions: [".ts"],
+      symbolsByPath: new Map([["lib.ts", [tsSym]]]),
+      docstringsBySymbolId: new Map([[tsSym.id, "TsInterface describes TypeScript things."]]),
     });
 
     const client = makeStubClient({
@@ -1231,6 +1314,20 @@ describe("multi-language conformance precursor (Go + Python)", () => {
             ],
           },
         ],
+        [
+          "TsInterface describes TypeScript things.",
+          {
+            claims: [
+              {
+                symbol_candidates: [],
+                claim: "TsInterface operates in TypeScript land",
+                severity: "context",
+                rationale: "typescript documentation",
+                excerpt: "TsInterface describes TypeScript things",
+              },
+            ],
+          },
+        ],
       ]),
     });
 
@@ -1238,16 +1335,350 @@ describe("multi-language conformance precursor (Go + Python)", () => {
     // language; each call uses its own adapter)
     await extractDocstringsForFile(db, goAdapter, "lib.go", "sha-go", inventory, client);
     await extractDocstringsForFile(db, pyAdapter, "lib.py", "sha-py", inventory, client);
+    await extractDocstringsForFile(db, tsAdapter, "lib.ts", "sha-ts", inventory, client);
 
-    // Both languages' claims present, with correct source markers
+    // All three languages' claims present, with correct source markers
     const claims = listAllClaims(db);
-    expect(claims).toHaveLength(2);
+    expect(claims).toHaveLength(3);
 
     const claimsBySource = new Map(claims.map((c) => [c.source, c]));
     expect(claimsBySource.has("docstring:lib.go")).toBe(true);
     expect(claimsBySource.has("docstring:lib.py")).toBe(true);
+    expect(claimsBySource.has("docstring:lib.ts")).toBe(true);
 
     expect(claimsBySource.get("docstring:lib.go")?.symbolIds).toContain(goSym.id);
     expect(claimsBySource.get("docstring:lib.py")?.symbolIds).toContain(pySym.id);
+    expect(claimsBySource.get("docstring:lib.ts")?.symbolIds).toContain(tsSym.id);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Section 5: extractDocstringsForFile — TypeScript behavioral tests (Step 11 Commit 6)
+// ---------------------------------------------------------------------------
+//
+// Mirrors Step 10 Commit 2 (Go) + Step 11 Commit 3 (Python) behavioral
+// patterns with language: "typescript" + TS-shaped symbols. Mock
+// adapter bypasses parser; parser unit-tested in Section 1c. Real
+// TypeScriptAdapter integration validated by Commit 7 hono live
+// calibration.
+//
+// Test #2 is LOAD-BEARING for Decision A (Path A tsserver hover):
+// validates that *@deprecated* normalization at the adapter boundary
+// (Commit 5's normalizeTsdocTagSyntax) preserves mechanical severity
+// signal through the full pipeline to the EXTRACTION_PROMPT's
+// @deprecated hard-severity detection (Step 9 Sample #4 calibration).
+
+describe("extractDocstringsForFile (TypeScript behavioral)", () => {
+  let db: DatabaseInstance;
+
+  beforeEach(() => {
+    db = openDatabase(":memory:");
+  });
+
+  afterEach(() => {
+    db.close();
+  });
+
+  // Test #1 — Happy path with cross-references; Channel A + B both present.
+  it("happy path: documented TS interface produces claim with Channel A + Channel B both attached", async () => {
+    const documented = makeSymbol("MyInterface", "src/lib.ts", "sha-lib", "typescript");
+    const crossRef = makeSymbol("Logger", "src/log.ts", "sha-log", "typescript");
+    upsertSymbols(db, [documented, crossRef]);
+    const inventory = makeInventory([documented, crossRef]);
+
+    const docstringText = "MyInterface uses Logger for diagnostic recording.";
+    const adapter = makeStubAdapter({
+      language: "typescript",
+      extensions: [".ts"],
+      symbolsByPath: new Map([["src/lib.ts", [documented]]]),
+      docstringsBySymbolId: new Map([[documented.id, docstringText]]),
+    });
+    const client = makeStubClient({
+      responsesByDocstring: new Map([
+        [
+          docstringText,
+          {
+            claims: [
+              {
+                symbol_candidates: ["Logger"],
+                claim: "MyInterface records diagnostics via Logger",
+                severity: "context",
+                rationale: "behavioral relationship",
+                excerpt: "uses Logger for diagnostic recording",
+              },
+            ],
+          },
+        ],
+      ]),
+    });
+
+    const result = await extractDocstringsForFile(
+      db, adapter, "src/lib.ts", "sha-lib", inventory, client,
+    );
+
+    expect(result.claimsWritten).toBe(1);
+    const claims = listAllClaims(db);
+    expect(claims).toHaveLength(1);
+    const claim = claims[0]!;
+    expect(claim.symbolIds).toContain(documented.id);  // Channel A
+    expect(claim.symbolIds).toContain(crossRef.id);    // Channel B
+    expect(claim.symbolIds).toHaveLength(2);
+    expect(claim.source).toBe("docstring:src/lib.ts");
+  });
+
+  // Test #2 — @deprecated mechanical extraction E2E (LOAD-BEARING for Decision A).
+  // Validates *@deprecated* → @deprecated normalization at adapter boundary
+  // preserves severity=hard signal through full pipeline.
+  it("@deprecated mechanical extraction E2E: normalized tag preserves severity=hard through pipeline", async () => {
+    const documented = makeSymbol("createBunWebSocket", "src/adapter/bun/websocket.ts", "sha-bun", "typescript");
+    upsertSymbols(db, [documented]);
+    const inventory = makeInventory([documented]);
+
+    // Mock returns adapter-normalized docstring (post-normalizeTsdocTagSyntax).
+    // The *@deprecated* → @deprecated conversion happens in Commit 5's
+    // adapter parser; mock simulates the adapter's normalized output that
+    // would be sent to the extraction prompt.
+    const docstringText = [
+      "@deprecated — Import `upgradeWebSocket` and `websocket` directly from `hono/bun` instead.",
+      "@returns — A function to create a Bun WebSocket handler.",
+    ].join("\n");
+    const adapter = makeStubAdapter({
+      language: "typescript",
+      extensions: [".ts"],
+      symbolsByPath: new Map([["src/adapter/bun/websocket.ts", [documented]]]),
+      docstringsBySymbolId: new Map([[documented.id, docstringText]]),
+    });
+    const client = makeStubClient({
+      responsesByDocstring: new Map([
+        [
+          docstringText,
+          {
+            claims: [
+              {
+                symbol_candidates: [],
+                claim: "createBunWebSocket is deprecated; import upgradeWebSocket and websocket from hono/bun directly",
+                severity: "hard",  // ← LOAD-BEARING: @deprecated → severity=hard
+                rationale: "mechanical deprecation marker",
+                excerpt: "@deprecated — Import `upgradeWebSocket` and `websocket` directly",
+              },
+            ],
+          },
+        ],
+      ]),
+    });
+
+    const result = await extractDocstringsForFile(
+      db, adapter, "src/adapter/bun/websocket.ts", "sha-bun", inventory, client,
+    );
+
+    expect(result.claimsWritten).toBe(1);
+    const claims = listAllClaims(db);
+    expect(claims).toHaveLength(1);
+    const claim = claims[0]!;
+    // Verify Decision A's @deprecated normalization preserved through pipeline
+    expect(claim.severity).toBe("hard");
+    expect(claim.symbolIds).toContain(documented.id);
+    expect(claim.source).toBe("docstring:src/adapter/bun/websocket.ts");
+  });
+
+  // Test #3 — No docstring → 0 claims (graceful).
+  // Per Substep 11.0 spike Sample #3 (unexported call-signature interface):
+  // tsserver returns empty hover; getDocstring returns null; pipeline filters.
+  it("empty hover: TS symbol with no JSDoc produces zero claims (Sample #3 pattern)", async () => {
+    const sym = makeSymbol("InternalInterface", "src/lib.ts", "sha-lib", "typescript");
+    upsertSymbols(db, [sym]);
+    const inventory = makeInventory([sym]);
+
+    const adapter = makeStubAdapter({
+      language: "typescript",
+      extensions: [".ts"],
+      symbolsByPath: new Map([["src/lib.ts", [sym]]]),
+      docstringsBySymbolId: new Map([[sym.id, null]]),
+    });
+    const client = makeStubClient({ responsesByDocstring: new Map() });
+
+    const result = await extractDocstringsForFile(
+      db, adapter, "src/lib.ts", "sha-lib", inventory, client,
+    );
+
+    expect(result.claimsWritten).toBe(0);
+    expect(result.symbolsExported).toBe(1);
+    expect(result.symbolsWithDocstring).toBe(0);
+    expect(result.apiCalls).toBe(0);
+  });
+
+  // Test #4 — Empty/whitespace docstring → 0 claims (graceful).
+  it("empty docstring: whitespace-only docstring text produces zero claims", async () => {
+    const sym = makeSymbol("Foo", "src/lib.ts", "sha-lib", "typescript");
+    upsertSymbols(db, [sym]);
+    const inventory = makeInventory([sym]);
+
+    const adapter = makeStubAdapter({
+      language: "typescript",
+      extensions: [".ts"],
+      symbolsByPath: new Map([["src/lib.ts", [sym]]]),
+      docstringsBySymbolId: new Map([[sym.id, "   \n  "]]),
+    });
+    const client = makeStubClient({ responsesByDocstring: new Map() });
+
+    const result = await extractDocstringsForFile(
+      db, adapter, "src/lib.ts", "sha-lib", inventory, client,
+    );
+
+    expect(result.claimsWritten).toBe(0);
+    expect(result.symbolsWithDocstring).toBe(0);
+    expect(result.apiCalls).toBe(0);
+  });
+
+  // Test #5 — Multi-symbol TS file: aggregation across class + function + interface.
+  it("multi-symbol TS: aggregates correctly across class + function + interface", async () => {
+    const cls = makeSymbol("Client", "src/lib.ts", "sha-lib", "typescript");
+    const func = makeSymbol("createClient", "src/lib.ts", "sha-lib", "typescript");
+    const iface = makeSymbol("ClientOptions", "src/lib.ts", "sha-lib", "typescript");
+    const noDoc = makeSymbol("InternalHelper", "src/lib.ts", "sha-lib", "typescript");
+    upsertSymbols(db, [cls, func, iface, noDoc]);
+    const inventory = makeInventory([cls, func, iface, noDoc]);
+
+    const adapter = makeStubAdapter({
+      language: "typescript",
+      extensions: [".ts"],
+      symbolsByPath: new Map([["src/lib.ts", [cls, func, iface, noDoc]]]),
+      docstringsBySymbolId: new Map([
+        [cls.id, "Client docstring."],
+        [func.id, "createClient docstring."],
+        [iface.id, "ClientOptions docstring."],
+        [noDoc.id, null],  // No docstring
+      ]),
+    });
+    const client = makeStubClient({
+      responsesByDocstring: new Map([
+        ["Client docstring.", { claims: [{ symbol_candidates: [], claim: "Client desc", severity: "context", rationale: "doc", excerpt: "Client docstring" }] }],
+        ["createClient docstring.", { claims: [{ symbol_candidates: [], claim: "createClient desc", severity: "context", rationale: "doc", excerpt: "createClient docstring" }] }],
+        ["ClientOptions docstring.", { claims: [{ symbol_candidates: [], claim: "ClientOptions desc", severity: "context", rationale: "doc", excerpt: "ClientOptions docstring" }] }],
+      ]),
+    });
+
+    const result = await extractDocstringsForFile(
+      db, adapter, "src/lib.ts", "sha-lib", inventory, client,
+    );
+
+    expect(result.symbolsProcessed).toBe(4);
+    expect(result.symbolsExported).toBe(4);  // All TS symbols permissive (no name-based filter)
+    expect(result.symbolsWithDocstring).toBe(3);  // 3 with-doc; noDoc null
+    expect(result.apiCalls).toBe(3);
+    expect(result.claimsWritten).toBe(3);
+  });
+
+  // Test #6 — Hierarchical attribution: interface with method-level JSDoc.
+  // Per Step 8 §7: TS interface methods carry their own JSDoc; listSymbols
+  // returns each as separate symbol (mock simulates this); each gets
+  // independent extraction with claim attached to its own SymbolId.
+  it("hierarchical attribution: interface + method-JSDoc symbols extract independently", async () => {
+    const iface = makeSymbol("ExecutionContext", "src/context.ts", "sha-ctx", "typescript");
+    const method = makeSymbol("ExecutionContext.waitUntil", "src/context.ts", "sha-ctx", "typescript");
+    upsertSymbols(db, [iface, method]);
+    const inventory = makeInventory([iface, method]);
+
+    const adapter = makeStubAdapter({
+      language: "typescript",
+      extensions: [".ts"],
+      symbolsByPath: new Map([["src/context.ts", [iface, method]]]),
+      docstringsBySymbolId: new Map([
+        [iface.id, "Interface for execution context in a web worker."],
+        [method.id, "Extends the lifetime of the event callback until the promise is settled.\n\n@param `promise` — A promise to wait for."],
+      ]),
+    });
+    const client = makeStubClient({
+      responsesByDocstring: new Map([
+        [
+          "Interface for execution context in a web worker.",
+          {
+            claims: [
+              {
+                symbol_candidates: [],
+                claim: "ExecutionContext describes the web-worker execution environment",
+                severity: "context",
+                rationale: "interface-level documentation",
+                excerpt: "execution context in a web worker",
+              },
+            ],
+          },
+        ],
+        [
+          "Extends the lifetime of the event callback until the promise is settled.\n\n@param `promise` — A promise to wait for.",
+          {
+            claims: [
+              {
+                symbol_candidates: [],
+                claim: "ExecutionContext.waitUntil extends event-callback lifetime to a promise",
+                severity: "context",
+                rationale: "method-level documentation with @param",
+                excerpt: "Extends the lifetime of the event callback",
+              },
+            ],
+          },
+        ],
+      ]),
+    });
+
+    const result = await extractDocstringsForFile(
+      db, adapter, "src/context.ts", "sha-ctx", inventory, client,
+    );
+
+    expect(result.claimsWritten).toBe(2);  // One per symbol
+    const claims = listAllClaims(db);
+    expect(claims).toHaveLength(2);
+
+    // Each claim attached to its own symbol (independent extraction)
+    const ifaceClaim = claims.find((c) => c.symbolIds.includes(iface.id) && !c.symbolIds.includes(method.id));
+    const methodClaim = claims.find((c) => c.symbolIds.includes(method.id) && !c.symbolIds.includes(iface.id));
+    expect(ifaceClaim).toBeDefined();
+    expect(methodClaim).toBeDefined();
+    expect(ifaceClaim!.claim).toContain("ExecutionContext describes");
+    expect(methodClaim!.claim).toContain("waitUntil extends");
+  });
+
+  // Test #7 — Provenance only (Channel A alone; Channel B empty).
+  it("provenance only: empty symbol_candidates yields claim with documented symbol alone (Channel A)", async () => {
+    const sym = makeSymbol("MyType", "src/lib.ts", "sha-lib", "typescript");
+    const otherInInventory = makeSymbol("Other", "src/other.ts", "sha-other", "typescript");
+    upsertSymbols(db, [sym, otherInInventory]);
+    const inventory = makeInventory([sym, otherInInventory]);
+
+    const adapter = makeStubAdapter({
+      language: "typescript",
+      extensions: [".ts"],
+      symbolsByPath: new Map([["src/lib.ts", [sym]]]),
+      docstringsBySymbolId: new Map([[sym.id, "Self-contained documentation."]]),
+    });
+    const client = makeStubClient({
+      responsesByDocstring: new Map([
+        [
+          "Self-contained documentation.",
+          {
+            claims: [
+              {
+                symbol_candidates: [],
+                claim: "MyType is self-describing",
+                severity: "context",
+                rationale: "doc",
+                excerpt: "Self-contained",
+              },
+            ],
+          },
+        ],
+      ]),
+    });
+
+    const result = await extractDocstringsForFile(
+      db, adapter, "src/lib.ts", "sha-lib", inventory, client,
+    );
+
+    expect(result.claimsWritten).toBe(1);
+    const claims = listAllClaims(db);
+    expect(claims).toHaveLength(1);
+    expect(claims[0]!.symbolIds).toContain(sym.id);     // Channel A present
+    expect(claims[0]!.symbolIds).toHaveLength(1);       // Channel B empty
+    expect(claims[0]!.symbolIds).not.toContain(otherInInventory.id);
   });
 });
