@@ -915,6 +915,197 @@ shipped.
 - Ship-criteria verification: [each criterion with evidence]
 ```
 
+### Step 11 shipped — 2026-04-26 (ab3a455 + 41680c9 + fa0583d + 46ddf0d + 2000abd + main TBD; benchmarks 2b6e69d + eeee579)
+
+- **Scope.** Stream B Step 11: docstring extraction implementation
+  for Languages 2 + 3 (Python + TypeScript) per Step 8 §10 Path A
+  (Go-first) sub-decision; cross-language conformance pass per
+  Step 11 ship criterion 3. Per
+  [`v0.3-SCOPE.md`](v0.3-SCOPE.md) Stream B items 1/2/3 + closing
+  conformance note. Mechanical extension of Step 10's contract-
+  defining work — adapter substrate differs per language, pipeline
+  shape settled.
+
+- **Outcome — Stream B implementation complete across all three
+  languages.** 395 architectural claims extracted via three live
+  calibrations: 122 Go (Step 10 cobra) + 140 Python (Step 11 httpx)
+  + 133 TypeScript (Step 11 hono). Total Stream B calibration
+  spend: $17.43 ($5.25 cobra + $5.43 httpx + $6.75 hono). Cost
+  efficiency consistent across languages: $0.0245-$0.0261/call.
+  Five module-level claims (Python only; Go + TS have no synthesis
+  analog per Decision B + Commit 5 scoping). All three benchmark
+  targets exercised end-to-end through unified
+  `extractDocstringsForFile` pipeline path.
+
+- **Per-language summary.**
+  - **Python (httpx).** 23 files / 208 calls / 140 claims / $5.43.
+    691 symbols processed; 626 exported (90.6%); 198 with-doc
+    (~32% parser coverage). 5 module-level claims validate
+    Commit 2 PyrightAdapter synthesis end-to-end. Spike-verified
+    working as designed (Commit 4): 5/5 zero-doc samples
+    confirmed legitimately undocumented.
+  - **TypeScript (hono).** 186 files / 276 calls / 133 claims /
+    $6.75. 1529 symbols processed; permissive filter so all
+    exported. 276 with-doc (~18% parser coverage). 81.9%
+    combined not-extracted rate triggered Decision A revisit
+    auto-warning; spike-verified working as designed (Commit 7):
+    10/10 zero-doc samples confirmed structural (hono's type-
+    heavy + React-derived JSX architecture).
+
+- **Step 11 ship-criteria verification.** All eight criteria from
+  §574-593 of plan mapped:
+  - [x] Language 2 (Python) docstring extraction shipped — same
+    shape as Step 10 contract; reads via PyrightAdapter custom
+    text-based parser per Decision D; emits claims with
+    `source: "docstring:<path>"`. Commits 1+2+3+4.
+  - [x] Language 3 (TypeScript) docstring extraction shipped —
+    same shape; reads via TypeScriptAdapter tsserver hover Path A
+    per Decision A; tsserver hover output normalized
+    (`*@deprecated*` → `@deprecated`) at adapter boundary to
+    preserve mechanical severity signal alignment with refined
+    H1 prompt's Step 9 calibration. Commits 5+6+7.
+  - [x] Cross-language conformance — Section 4 in
+    `pipeline-docstring.test.ts` verifies all three adapters
+    compose through shared `extractDocstringsForFile` pipeline
+    path; per-language adapter substrate differs; no per-language
+    special-casing in pipeline itself. Commit 6.
+  - [ ] Multi-language atlas extraction in single run — Step 14
+    inheritance. All three adapter substrates ready; pipeline
+    path unified; integration into `runExtractionPipeline`
+    deferred per Step 10 Commit 1 additive-design discipline.
+  - [x] Tests cover all three languages composing in same atlas
+    extraction run — full conformance suite verifies Go + Python
+    + TS sequentially through shared pipeline path; behavioral
+    suites independently validate per-language extraction
+    (21 behavioral tests across three languages); parser unit
+    tests independently validate per-language parsers (29 tests).
+    Commits 3+6.
+  - [x] Dogfood validation: extraction produces docstring claims
+    on a sample file from each remaining repo —
+    httpx (Commit 4 benchmarks `2b6e69d`) + hono (Commit 7
+    benchmarks `eeee579`).
+  - [x] Stream B scope completion confirmed: TS / Python / Go all
+    shipping docstring claims (395 total claims across three
+    languages; cost-efficient $17.43 spend; methodology validated
+    three times).
+  - [x] No regression in main-repo test suite — 810/810 pass
+    post-Commit 6; +41 new tests across Step 11 vs pre-Step-11
+    baseline of 769 from Step 10 Commit 2.
+
+- **Methodological observations.**
+  - **(a) Module-level symbol synthesis architecture.** Commit 2
+    placed synthesis at the adapter boundary
+    (`PyrightAdapter.listSymbols` per Option B at scoping);
+    pyright doesn't emit module-level symbols naturally per
+    ADR-13 + Step 8 §8.3 finding. Decision B locked
+    `sym:py:<path>:<module>` reserved-name SymbolId convention.
+    Validated end-to-end at Commit 4 with 5 module-level claims
+    on httpx production code. Pattern reusable for v0.4 if other
+    languages adopt module-level documentation conventions.
+  - **(b) Decision A — Path A tsserver hover — locked via
+    Substep 11.0 spike on 6 hono symbols.** Spike empirically
+    verified `*@tagname*` mechanical granularity preservation
+    (severity inference signal). Commit 5 implementation added
+    `normalizeTsdocTagSyntax` adapter-boundary helper to convert
+    tsserver's hover-rendered `*@deprecated*` back to raw
+    `@deprecated` form for refined H1 prompt's Step 9 Sample #4
+    calibrated severity detection. Validated at scale during
+    Commit 7 calibration; 81.9% combined not-extracted rate
+    verified structural via 10-symbol spike (10/10 WAD). No Path
+    B (`typescript` devDep→dep + direct AST via
+    `ts.getJSDocCommentsAndTags`) fallback warranted.
+  - **(c) Calibration-spike discipline.** Both httpx (Commit 4)
+    and hono (Commit 7) calibrations triggered low-coverage
+    auto-warnings; both resolved via post-calibration spikes
+    confirming working-as-designed. Pattern: when calibration
+    surfaces unexpected metric, investigate via 5-10-sample
+    source inspection before declaring bug or filing v0.4
+    backlog. 15/15 across both spikes (5 httpx + 10 hono);
+    zero parser bugs identified.
+  - **(d) Phased calibration cost discipline reused three
+    times.** Step 10 cobra established the pattern; Step 11
+    reused it for httpx + hono. $0.10/call cost gate held across
+    all three calibrations (cobra $0.0253, httpx $0.0261, hono
+    $0.0245 averages). Cost projection variance ranged from -5%
+    (cobra; cost projection accurate) to +35% (httpx; under-
+    projected by symbol density). Methodology absorbs variance
+    gracefully — gate fires before runaway, not after.
+  - **(e) Parser coverage variance pattern.** Consistent across
+    all three languages: implementation-heavy + type-heavy files
+    lack docstrings; conceptual API surface heavily documented.
+    cobra zero-claim completion files (Step 10 finding); httpx
+    12 of 23 files <30% (Commit 4); hono 81.9% combined not-
+    extracted (Commit 7) concentrated in `types.ts` (123 symbols
+    0.8%) + JSX machinery. Ratio insights: cobra's library-grade
+    upper-bound coverage (~85-95%) is outlier; httpx + hono
+    represent typical production-code distribution. Stream B's
+    value-prop on real-world repos rests on the load-bearing API
+    surface being documented (which it consistently is across
+    all three calibrations) rather than on uniform high coverage.
+
+- **Step 9 §10 deferred questions resolved.**
+  - **(a) Python `warnings.warn` AST detection** (deferred at
+    Step 11 scoping per Decision C): out of Stream B docstring
+    scope; v0.4 backlog Theme item. Captured in Commit 1 commit
+    message rationale.
+  - **(b) Module-level Python SymbolId shape** (locked at Step 11
+    scoping per Decision B): `sym:py:<path>:<module>` reserved-
+    name convention. Validated end-to-end (Commit 4 produced 5
+    module-level claims on httpx).
+  - **(c) TS extraction path** (locked at Step 11 scoping per
+    Decision A): Path A (tsserver hover). Validated at scale
+    (Commit 7); no Path B fallback warranted.
+
+- **Step 14 inheritance.** Multi-language atlas extraction in a
+  single run (ship criterion 4) is the bridge to Step 14 atlas
+  re-extraction. All three language adapters are production-ready
+  (`getDocstring` implemented + tested + calibrated); pipeline
+  path is language-agnostic; integration into
+  `runExtractionPipeline` is the remaining wiring. Step 14
+  inherits this work as a contract-stable substrate.
+
+- **No new ADR required.** Step 11's architectural decisions are
+  captured in:
+  - Commit 1 (main `ab3a455`) commit message: Decision D custom-
+    parser path + PEP 257 subset acknowledgement
+  - Commit 2 (main `41680c9`) commit message: module synthesis
+    Option B + Decision B convention
+  - Commit 5 (main `46ddf0d`) commit message: Path A locked +
+    `normalizeTsdocTagSyntax` design
+  - Commits 4 + 7 (benchmarks `2b6e69d` + `eeee579`) commit
+    messages: calibration evidence + spike-verified WAD findings
+    (parser coverage variance is structural, not Decision A bug)
+  - This progress log entry: implementation outcome + ship-
+    criteria verification + methodological observations
+
+- **Cross-references / commit map.**
+  - **Commit 1 (Substep 11.1).** main `ab3a455` (Python parser +
+    `getDocstring` impl; +397 LOC across 3 files; 776 tests
+    pass).
+  - **Commit 2 (Substep 11.1.5).** main `41680c9` (Python
+    module-level synthesis; +54 LOC; 778 tests pass).
+  - **Commit 3 (Substep 11.2).** main `fa0583d` (Python
+    behavioral + 2-lang conformance precursor; +471 LOC; 791
+    tests pass).
+  - **Commit 4 (Substep 11.3).** benchmarks `2b6e69d` (live httpx
+    calibration; harness 482 LOC + results 416 LOC; 140 claims;
+    5 module-level; $5.43; spike-verified WAD).
+  - **Commit 5 (Substep 11.4).** main `46ddf0d` (TS impl +
+    skeleton parser tests; +213 LOC; 798 tests pass).
+  - **Commit 6 (Substep 11.5).** main `2000abd` (TS behavioral +
+    3-lang conformance; +447 LOC; 810 tests pass).
+  - **Commit 7 (Substep 11.6).** benchmarks `eeee579` (live hono
+    calibration; harness 507 LOC + results 3350 LOC; 133 claims;
+    $6.75; spike-verified WAD).
+  - **Commit 8 (this stamp).** main TBD post-Phase C.
+  - **Step 10 shipped (upstream).** main `30f41d0` (Stream B
+    Language 1 — Go cobra implementation).
+  - **Step 9 calibration evidence (upstream).** main `bb5efbe`
+    (refined H1 prompt) + benchmarks `1b2c3ff` (calibration
+    evidence note).
+  - **Step 8 probe (upstream).** main `2ecd098` (Stream B
+    sub-decision Path A locked).
+
 ### Step 10 shipped — 2026-04-26 (0b4c0a5 + 1ba6444 + benchmarks b7b65b6)
 - **Scope.** Stream B Step 10: docstring extraction implementation
   for Language 1 (Go-first per Path A; Step 8 §10 sub-decision).
