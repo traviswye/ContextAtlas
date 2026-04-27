@@ -269,6 +269,31 @@ describe("parsePythonModuleDocstring (parser unit tests)", () => {
     expect(result).toContain("Second paragraph");
     expect(result).toMatch(/First paragraph describing the module\.\n\nSecond paragraph/);
   });
+
+  it("module without shebang/encoding/imports — first statement is docstring", () => {
+    const source = [
+      '"""Simplest module docstring."""',
+      "",
+      "from os import path",
+    ].join("\n");
+    expect(parsePythonModuleDocstring(source)).toBe(
+      "Simplest module docstring.",
+    );
+  });
+
+  it("parenthesized multi-line __future__ import before module docstring", () => {
+    const source = [
+      "from __future__ import (",
+      "    annotations,",
+      "    division,",
+      ")",
+      "",
+      '"""Module docstring after multi-line future import."""',
+    ].join("\n");
+    expect(parsePythonModuleDocstring(source)).toBe(
+      "Module docstring after multi-line future import.",
+    );
+  });
 });
 
 describe("parsePythonBodyDocstring (parser unit tests)", () => {
@@ -321,6 +346,41 @@ describe("parsePythonBodyDocstring (parser unit tests)", () => {
     expect(parsePythonBodyDocstring(source, 1)).toBe(
       "Send an HTTP request and return the Response.",
     );
+  });
+
+  it("triple-single-quote variant (''') extracts content", () => {
+    const source = [
+      "class Foo:",
+      "    '''Foo described with single triple-quotes.'''",
+    ].join("\n");
+    expect(parsePythonBodyDocstring(source, 1)).toBe(
+      "Foo described with single triple-quotes.",
+    );
+  });
+
+  it("string prefix variants (r/f) extract content correctly", () => {
+    const sourceR = [
+      "def foo():",
+      '    r"""Raw docstring with \\n preserved."""',
+    ].join("\n");
+    expect(parsePythonBodyDocstring(sourceR, 1)).toBe(
+      "Raw docstring with \\n preserved.",
+    );
+    const sourceF = [
+      "def bar():",
+      '    f"""F-string docstring (rare but allowed)."""',
+    ].join("\n");
+    expect(parsePythonBodyDocstring(sourceF, 1)).toBe(
+      "F-string docstring (rare but allowed).",
+    );
+  });
+
+  it("returns null when first body statement is not a string", () => {
+    const source = [
+      "def foo():",
+      "    return 42",
+    ].join("\n");
+    expect(parsePythonBodyDocstring(source, 1)).toBeNull();
   });
 });
 
@@ -695,5 +755,416 @@ describe("extractDocstringsForFile (behavioral)", () => {
     expect(claim.symbolIds).toHaveLength(1); // Channel B empty; total = 1
     // Verify other inventory symbol NOT spuriously included
     expect(claim.symbolIds).not.toContain(otherInInventory.id);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Section 3: extractDocstringsForFile — Python behavioral tests (Step 11 Commit 3)
+// ---------------------------------------------------------------------------
+//
+// Mirrors Step 10 Commit 2 (Go behavioral suite) pattern with language:
+// "python" + Python-shaped symbols. Mock adapter bypasses parser per
+// Step 11 Commit 3 scoping Open Question 1; parser unit-tested in
+// Section 1b. Real PyrightAdapter integration validated by Commit 4
+// httpx live calibration.
+
+describe("extractDocstringsForFile (Python behavioral)", () => {
+  let db: DatabaseInstance;
+
+  beforeEach(() => {
+    db = openDatabase(":memory:");
+  });
+
+  afterEach(() => {
+    db.close();
+  });
+
+  // Test #1 — Happy path with cross-references; Channel A + B both present.
+  it("happy path: documented Python class produces claim with Channel A + Channel B both attached", async () => {
+    const documented = makeSymbol("MyClass", "src/module.py", "sha-mod", "python");
+    const crossRef = makeSymbol("Logger", "src/log.py", "sha-log", "python");
+    upsertSymbols(db, [documented, crossRef]);
+    const inventory = makeInventory([documented, crossRef]);
+
+    const docstringText = "MyClass uses Logger for diagnostic recording.";
+    const adapter = makeStubAdapter({
+      language: "python",
+      extensions: [".py"],
+      symbolsByPath: new Map([["src/module.py", [documented]]]),
+      docstringsBySymbolId: new Map([[documented.id, docstringText]]),
+    });
+    const client = makeStubClient({
+      responsesByDocstring: new Map([
+        [
+          docstringText,
+          {
+            claims: [
+              {
+                symbol_candidates: ["Logger"],
+                claim: "MyClass records diagnostics via Logger",
+                severity: "context",
+                rationale: "behavioral relationship",
+                excerpt: "uses Logger for diagnostic recording",
+              },
+            ],
+          },
+        ],
+      ]),
+    });
+
+    const result = await extractDocstringsForFile(
+      db, adapter, "src/module.py", "sha-mod", inventory, client,
+    );
+
+    expect(result.claimsWritten).toBe(1);
+    const claims = listAllClaims(db);
+    expect(claims).toHaveLength(1);
+    const claim = claims[0]!;
+    expect(claim.symbolIds).toContain(documented.id); // Channel A
+    expect(claim.symbolIds).toContain(crossRef.id);   // Channel B
+    expect(claim.symbolIds).toHaveLength(2);
+    expect(claim.source).toBe("docstring:src/module.py");
+  });
+
+  // Test #2 — Module-level synthesis E2E (LOAD-BEARING for Commit 2 architecture).
+  it("module-level synthesis E2E: <module> SymbolId produces claim attached to module symbol", async () => {
+    const moduleSym: AtlasSymbol = {
+      id: "sym:py:src/module.py:<module>",
+      name: "<module>",
+      kind: "module",
+      path: "src/module.py",
+      line: 1,
+      language: "python",
+      fileSha: "sha-mod",
+    };
+    upsertSymbols(db, [moduleSym]);
+    const inventory = makeInventory([moduleSym]);
+
+    const docstringText = "Module purpose: defines the public interface.";
+    const adapter = makeStubAdapter({
+      language: "python",
+      extensions: [".py"],
+      symbolsByPath: new Map([["src/module.py", [moduleSym]]]),
+      docstringsBySymbolId: new Map([[moduleSym.id, docstringText]]),
+    });
+    const client = makeStubClient({
+      responsesByDocstring: new Map([
+        [
+          docstringText,
+          {
+            claims: [
+              {
+                symbol_candidates: [],
+                claim: "Module defines the public interface for foo subsystem",
+                severity: "context",
+                rationale: "module-level scope statement",
+                excerpt: "defines the public interface",
+              },
+            ],
+          },
+        ],
+      ]),
+    });
+
+    const result = await extractDocstringsForFile(
+      db, adapter, "src/module.py", "sha-mod", inventory, client,
+    );
+
+    expect(result.claimsWritten).toBe(1);
+    const claims = listAllClaims(db);
+    expect(claims).toHaveLength(1);
+    expect(claims[0]!.symbolIds).toContain(moduleSym.id);
+    expect(claims[0]!.symbolIds).toHaveLength(1);
+    expect(claims[0]!.source).toBe("docstring:src/module.py");
+    // Verify isExportedSymbol("<module>", "python") returned true
+    // (otherwise we'd have apiCalls === 0 and claimsWritten === 0).
+    expect(result.symbolsExported).toBe(1);
+    expect(result.apiCalls).toBe(1);
+  });
+
+  // Test #3 — No docstring → 0 claims (graceful).
+  it("no docstring: Python class without docstring produces zero claims", async () => {
+    const sym = makeSymbol("MyClass", "src/module.py", "sha-mod", "python");
+    upsertSymbols(db, [sym]);
+    const inventory = makeInventory([sym]);
+
+    const adapter = makeStubAdapter({
+      language: "python",
+      extensions: [".py"],
+      symbolsByPath: new Map([["src/module.py", [sym]]]),
+      docstringsBySymbolId: new Map([[sym.id, null]]),
+    });
+    const client = makeStubClient({ responsesByDocstring: new Map() });
+
+    const result = await extractDocstringsForFile(
+      db, adapter, "src/module.py", "sha-mod", inventory, client,
+    );
+
+    expect(result.claimsWritten).toBe(0);
+    expect(result.symbolsExported).toBe(1);
+    expect(result.symbolsWithDocstring).toBe(0);
+    expect(result.apiCalls).toBe(0);
+  });
+
+  // Test #4 — Underscore-private filter (Python-specific exported logic).
+  it("underscore-private filter: _helper symbol skipped before extraction call", async () => {
+    const exported = makeSymbol("PublicClass", "src/lib.py", "sha-lib", "python");
+    const privateSym = makeSymbol("_private_helper", "src/lib.py", "sha-lib", "python");
+    upsertSymbols(db, [exported, privateSym]);
+    const inventory = makeInventory([exported, privateSym]);
+
+    const adapter = makeStubAdapter({
+      language: "python",
+      extensions: [".py"],
+      symbolsByPath: new Map([["src/lib.py", [exported, privateSym]]]),
+      docstringsBySymbolId: new Map([
+        [exported.id, "Public class description."],
+        [privateSym.id, "should never reach extraction"],
+      ]),
+    });
+    const client = makeStubClient({
+      responsesByDocstring: new Map([
+        [
+          "Public class description.",
+          {
+            claims: [
+              {
+                symbol_candidates: [],
+                claim: "PublicClass is documented",
+                severity: "context",
+                rationale: "documentation",
+                excerpt: "Public class description",
+              },
+            ],
+          },
+        ],
+      ]),
+    });
+
+    const result = await extractDocstringsForFile(
+      db, adapter, "src/lib.py", "sha-lib", inventory, client,
+    );
+
+    expect(result.symbolsProcessed).toBe(2);
+    expect(result.symbolsExported).toBe(1); // Only PublicClass
+    expect(result.apiCalls).toBe(1);
+    expect(listAllClaims(db)).toHaveLength(1);
+  });
+
+  // Test #5 — Dunder method allow.
+  it("dunder method allow: __init__ with docstring extracted (passes isExportedSymbol)", async () => {
+    const init = makeSymbol("MyClass.__init__", "src/lib.py", "sha-lib", "python");
+    upsertSymbols(db, [init]);
+    const inventory = makeInventory([init]);
+
+    const adapter = makeStubAdapter({
+      language: "python",
+      extensions: [".py"],
+      symbolsByPath: new Map([["src/lib.py", [init]]]),
+      docstringsBySymbolId: new Map([[init.id, "Initialize MyClass with default state."]]),
+    });
+    const client = makeStubClient({
+      responsesByDocstring: new Map([
+        [
+          "Initialize MyClass with default state.",
+          {
+            claims: [
+              {
+                symbol_candidates: [],
+                claim: "MyClass.__init__ initializes default state",
+                severity: "context",
+                rationale: "constructor documentation",
+                excerpt: "Initialize MyClass with default state",
+              },
+            ],
+          },
+        ],
+      ]),
+    });
+
+    const result = await extractDocstringsForFile(
+      db, adapter, "src/lib.py", "sha-lib", inventory, client,
+    );
+
+    expect(result.symbolsExported).toBe(1); // Dunder NOT filtered as private
+    expect(result.apiCalls).toBe(1);
+    expect(result.claimsWritten).toBe(1);
+  });
+
+  // Test #6 — Multi-symbol Python file: aggregation + filter composition.
+  it("multi-symbol Python: aggregates correctly across class + function + private + dunder", async () => {
+    const cls = makeSymbol("PublicClass", "src/lib.py", "sha-lib", "python");
+    const func = makeSymbol("public_func", "src/lib.py", "sha-lib", "python");
+    const priv = makeSymbol("_private", "src/lib.py", "sha-lib", "python");
+    const dunder = makeSymbol("PublicClass.__str__", "src/lib.py", "sha-lib", "python");
+    upsertSymbols(db, [cls, func, priv, dunder]);
+    const inventory = makeInventory([cls, func, priv, dunder]);
+
+    const adapter = makeStubAdapter({
+      language: "python",
+      extensions: [".py"],
+      symbolsByPath: new Map([["src/lib.py", [cls, func, priv, dunder]]]),
+      docstringsBySymbolId: new Map([
+        [cls.id, "PublicClass docstring."],
+        [func.id, "public_func docstring."],
+        [priv.id, "should never reach"],
+        [dunder.id, "String representation."],
+      ]),
+    });
+    const client = makeStubClient({
+      responsesByDocstring: new Map([
+        ["PublicClass docstring.", { claims: [{ symbol_candidates: [], claim: "PublicClass desc", severity: "context", rationale: "doc", excerpt: "PublicClass docstring" }] }],
+        ["public_func docstring.", { claims: [{ symbol_candidates: [], claim: "public_func desc", severity: "context", rationale: "doc", excerpt: "public_func docstring" }] }],
+        ["String representation.", { claims: [{ symbol_candidates: [], claim: "__str__ desc", severity: "context", rationale: "doc", excerpt: "String representation" }] }],
+      ]),
+    });
+
+    const result = await extractDocstringsForFile(
+      db, adapter, "src/lib.py", "sha-lib", inventory, client,
+    );
+
+    expect(result.symbolsProcessed).toBe(4);
+    expect(result.symbolsExported).toBe(3); // cls + func + dunder; _private filtered
+    expect(result.apiCalls).toBe(3);
+    expect(result.claimsWritten).toBe(3);
+    expect(listAllClaims(db)).toHaveLength(3);
+  });
+
+  // Test #7 — Provenance only (Channel A alone; Channel B empty).
+  it("provenance only: empty symbol_candidates yields claim with documented symbol alone (Channel A)", async () => {
+    const sym = makeSymbol("MyClass", "src/lib.py", "sha-lib", "python");
+    const otherInInventory = makeSymbol("Other", "src/other.py", "sha-other", "python");
+    upsertSymbols(db, [sym, otherInInventory]);
+    const inventory = makeInventory([sym, otherInInventory]);
+
+    const adapter = makeStubAdapter({
+      language: "python",
+      extensions: [".py"],
+      symbolsByPath: new Map([["src/lib.py", [sym]]]),
+      docstringsBySymbolId: new Map([[sym.id, "Self-contained documentation."]]),
+    });
+    const client = makeStubClient({
+      responsesByDocstring: new Map([
+        [
+          "Self-contained documentation.",
+          {
+            claims: [
+              {
+                symbol_candidates: [],
+                claim: "MyClass is self-describing",
+                severity: "context",
+                rationale: "doc",
+                excerpt: "Self-contained",
+              },
+            ],
+          },
+        ],
+      ]),
+    });
+
+    const result = await extractDocstringsForFile(
+      db, adapter, "src/lib.py", "sha-lib", inventory, client,
+    );
+
+    expect(result.claimsWritten).toBe(1);
+    const claims = listAllClaims(db);
+    expect(claims).toHaveLength(1);
+    expect(claims[0]!.symbolIds).toContain(sym.id); // Channel A present
+    expect(claims[0]!.symbolIds).toHaveLength(1);   // Channel B empty
+    expect(claims[0]!.symbolIds).not.toContain(otherInInventory.id);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Section 4: Multi-language conformance precursor (Step 11 Commit 3)
+// ---------------------------------------------------------------------------
+//
+// Single-test precursor for Step 11 Commit 8 cross-language conformance
+// suite. Verifies Go + Python adapters compose correctly through the
+// same extractDocstringsForFile pipeline path: per-language adapter
+// substrate differs; pipeline routes by language; both languages'
+// claims appear with correct source markers in shared atlas DB.
+//
+// TS adapter joins this suite at Commit 8 once Commit 5 (TS impl) lands.
+
+describe("multi-language conformance precursor (Go + Python)", () => {
+  let db: DatabaseInstance;
+
+  beforeEach(() => {
+    db = openDatabase(":memory:");
+  });
+
+  afterEach(() => {
+    db.close();
+  });
+
+  it("Go + Python adapters produce correct claims composing in same atlas", async () => {
+    // Shared inventory spanning both languages
+    const goSym = makeSymbol("GoFunc", "lib.go", "sha-go", "go");
+    const pySym = makeSymbol("PyClass", "lib.py", "sha-py", "python");
+    upsertSymbols(db, [goSym, pySym]);
+    const inventory = makeInventory([goSym, pySym]);
+
+    const goAdapter = makeStubAdapter({
+      language: "go",
+      extensions: [".go"],
+      symbolsByPath: new Map([["lib.go", [goSym]]]),
+      docstringsBySymbolId: new Map([[goSym.id, "GoFunc does Go things."]]),
+    });
+    const pyAdapter = makeStubAdapter({
+      language: "python",
+      extensions: [".py"],
+      symbolsByPath: new Map([["lib.py", [pySym]]]),
+      docstringsBySymbolId: new Map([[pySym.id, "PyClass describes Python things."]]),
+    });
+
+    const client = makeStubClient({
+      responsesByDocstring: new Map([
+        [
+          "GoFunc does Go things.",
+          {
+            claims: [
+              {
+                symbol_candidates: [],
+                claim: "GoFunc operates in Go land",
+                severity: "context",
+                rationale: "go documentation",
+                excerpt: "GoFunc does Go things",
+              },
+            ],
+          },
+        ],
+        [
+          "PyClass describes Python things.",
+          {
+            claims: [
+              {
+                symbol_candidates: [],
+                claim: "PyClass operates in Python land",
+                severity: "context",
+                rationale: "python documentation",
+                excerpt: "PyClass describes Python things",
+              },
+            ],
+          },
+        ],
+      ]),
+    });
+
+    // Run extraction sequentially per file (pipeline routes per adapter
+    // language; each call uses its own adapter)
+    await extractDocstringsForFile(db, goAdapter, "lib.go", "sha-go", inventory, client);
+    await extractDocstringsForFile(db, pyAdapter, "lib.py", "sha-py", inventory, client);
+
+    // Both languages' claims present, with correct source markers
+    const claims = listAllClaims(db);
+    expect(claims).toHaveLength(2);
+
+    const claimsBySource = new Map(claims.map((c) => [c.source, c]));
+    expect(claimsBySource.has("docstring:lib.go")).toBe(true);
+    expect(claimsBySource.has("docstring:lib.py")).toBe(true);
+
+    expect(claimsBySource.get("docstring:lib.go")?.symbolIds).toContain(goSym.id);
+    expect(claimsBySource.get("docstring:lib.py")?.symbolIds).toContain(pySym.id);
   });
 });
