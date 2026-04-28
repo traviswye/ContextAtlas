@@ -645,12 +645,23 @@ Key properties of atlas.json:
   binary) or when SHA resolution fails. Earlier-version atlases
   import cleanly with the field absent.
 - **Claim `source` field format.** Identifies where the claim was
-  extracted from. Markdown intent sources (ADRs, design docs) use a
-  bare identifier (e.g., `"ADR-07"`); structured docstrings extracted
-  from source code (v0.3 Stream B) use the prefixed form
-  `"docstring:<path>"` (e.g., `"docstring:src/orders/processor.ts"`)
-  to distinguish in-code intent from prose-document intent. Both
-  forms carry `source_path` + `source_sha` for provenance.
+  extracted from. Three shapes:
+  - **Markdown intent** (ADRs, design docs) — bare identifier
+    (e.g., `"ADR-07"`).
+  - **Structured docstrings** extracted from source code (v0.3
+    Stream B) — `"docstring:<path>"` (e.g.,
+    `"docstring:src/orders/processor.ts"`).
+  - **Commit-message intent** (v0.4 Stream A) — `"commit:<sha>"`
+    (e.g., `"commit:a1b2c3d4..."`). Architectural-intent claims
+    extracted from filtered git commit messages; per-repo
+    integration gated on Q3 threshold (≥30 claims/repo on at
+    least 2 of 3 repos AND any single repo above 50). User
+    augmentation via `extraction.commit_message_filter` config
+    array.
+
+  All three forms carry `source_path` + `source_sha` for
+  provenance; for commit-message claims, `source_path == source`
+  and `source_sha == commit SHA`.
 
 ### index.db — local derived cache
 

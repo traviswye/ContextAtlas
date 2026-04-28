@@ -336,6 +336,26 @@ export interface ContextAtlasConfig {
      * `excludePattern` (camelCase) per parser convention.
      */
     excludePattern?: string[];
+    /**
+     * User-augmented architectural-intent regex patterns for
+     * commit-message extraction (v0.4 Step 4 / Stream A).
+     *
+     * AUGMENT-ONLY in v0.4: user patterns ADD to the default-set
+     * (`src/extraction/commit-message-extractor.ts`
+     * `DEFAULT_SUBJECT_PREFIX_PATTERNS` + `DEFAULT_BODY_ANYWHERE_
+     * PATTERNS`); defaults always apply. Empty
+     * `commit_message_filter: []` means no augmentation; defaults
+     * still apply. For zero augmentation the YAML key can be
+     * omitted entirely.
+     *
+     * User patterns are tested against `subject + "\n" + body[:200]`
+     * surface. They use case-insensitive matching by default
+     * (regex flag `i` applied at compile time).
+     *
+     * YAML key is `commit_message_filter` (snake_case); TS field is
+     * `commitMessageFilter` (camelCase) per parser convention.
+     */
+    commitMessageFilter?: string[];
   };
   /**
    * Optional MCP-server query-time knobs (v0.3 Theme 1.2 Fix 3).

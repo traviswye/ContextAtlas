@@ -455,7 +455,12 @@ function validateExtraction(
   }
   rejectUnknownKeys(
     raw,
-    new Set(["budget_warn_usd", "narrow_attribution", "exclude_pattern"]),
+    new Set([
+      "budget_warn_usd",
+      "narrow_attribution",
+      "exclude_pattern",
+      "commit_message_filter",
+    ]),
     "extraction.",
     configPath,
   );
@@ -504,6 +509,37 @@ function validateExtraction(
       patterns.push(pattern);
     }
     out.excludePattern = patterns;
+  }
+
+  const commitFilter = raw.commit_message_filter;
+  if (commitFilter !== undefined) {
+    if (!Array.isArray(commitFilter)) {
+      throw cfgError(
+        configPath,
+        `Invalid 'extraction.commit_message_filter': expected array of regex patterns, got ${describeType(commitFilter)}.`,
+      );
+    }
+    const patterns: string[] = [];
+    for (const pattern of commitFilter) {
+      if (typeof pattern !== "string" || pattern.length === 0) {
+        throw cfgError(
+          configPath,
+          `Invalid entry in 'extraction.commit_message_filter': expected non-empty regex string, got ${describeType(pattern)}.`,
+        );
+      }
+      try {
+        new RegExp(pattern, "i");
+      } catch (err) {
+        throw cfgError(
+          configPath,
+          `Invalid regex in 'extraction.commit_message_filter': '${pattern}'. ${
+            err instanceof Error ? err.message : String(err)
+          }`,
+        );
+      }
+      patterns.push(pattern);
+    }
+    out.commitMessageFilter = patterns;
   }
 
   // Section present but empty — treat as if section were absent.
