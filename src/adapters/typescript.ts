@@ -592,12 +592,16 @@ export class TypeScriptAdapter implements LanguageAdapter {
     const existing = this.diagnosticsByUri.get(uriKey);
     if (existing) return existing;
 
-    // Otherwise wait up to 1s for the push notification.
+    // Otherwise wait up to 5s for the push notification.
+    // tsserver cold-start parse + first publishDiagnostics push can take
+    // ~1.3s on Node 22 / typescript-language-server 4.4.1 / typescript 5.x;
+    // 5s headroom absorbs variance without slowing the fast path (the
+    // listener resolves immediately when diagnostics arrive).
     await new Promise<void>((resolve) => {
       const timeout = setTimeout(() => {
         this.diagnosticsListeners.delete(uriKey);
         resolve();
-      }, 1_000);
+      }, 5_000);
       this.diagnosticsListeners.set(uriKey, () => {
         clearTimeout(timeout);
         this.diagnosticsListeners.delete(uriKey);
