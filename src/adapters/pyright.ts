@@ -45,6 +45,7 @@ import {
   toRelativePath,
 } from "../utils/paths.js";
 
+import { waitForDiagnostics } from "./diagnostics-readiness.js";
 import { LspClient } from "./lsp-client.js";
 
 // ---------------------------------------------------------------------------
@@ -517,20 +518,13 @@ export class PyrightAdapter implements LanguageAdapter {
     const existing = this.diagnosticsByUri.get(uriKey);
     if (existing) return existing;
 
-    // Pyright publishes diagnostics automatically on didOpen (probe §T6),
-    // so the window between didOpen and first diagnostics is short. Wait
-    // up to 1s for the push, then return whatever we have.
-    await new Promise<void>((resolve) => {
-      const timeout = setTimeout(() => {
-        this.diagnosticsListeners.delete(uriKey);
-        resolve();
-      }, 1_000);
-      this.diagnosticsListeners.set(uriKey, () => {
-        clearTimeout(timeout);
-        this.diagnosticsListeners.delete(uriKey);
-        resolve();
-      });
-    });
+    // Pyright publishes diagnostics automatically on didOpen (probe
+    // §T6 + v0.4 Step 1.1b: cold-start at +300ms in probe). Pyright
+    // emits no $/progress for analysis-completion (1.1.409), so
+    // cold-start is absorbed by this per-call ceiling rather than a
+    // separate initialize-time race; 1s is sufficient based on
+    // observed timing across the v0.3 substrate.
+    await waitForDiagnostics(uriKey, this.diagnosticsListeners, 1_000);
     return this.diagnosticsByUri.get(uriKey) ?? [];
   }
 

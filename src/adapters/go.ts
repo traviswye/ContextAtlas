@@ -45,6 +45,11 @@ import {
   toRelativePath,
 } from "../utils/paths.js";
 
+import {
+  waitForDiagnostics,
+  waitForServerReady,
+  type ProgressParams,
+} from "./diagnostics-readiness.js";
 import { LspClient } from "./lsp-client.js";
 
 // ---------------------------------------------------------------------------
@@ -280,6 +285,23 @@ export class GoAdapter implements LanguageAdapter {
       this.options.requestTimeoutMs ?? 60_000,
     );
     this.client.notify("initialized", {});
+
+    // Server-readiness gate (v0.4 Step 1.1b empirical anchor).
+    // gopls fires $/progress BEGIN ("Setting up workspace" /
+    // "Loading packages...") immediately on `initialized` and END
+    // when packages finish loading — typically ~500ms cold. Race
+    // against a 3s ceiling so initialize() returns when the
+    // workspace is loaded rather than at an arbitrary point during
+    // it. No short-circuit needed — gopls's $/progress fires on
+    // workspace setup regardless of file-discovery, and Go projects
+    // by definition have go.mod (the case where workspace setup
+    // fails entirely surfaces as gopls's "no views" cascade, which
+    // the ceiling absorbs and surfaces as empty results downstream).
+    await waitForServerReady(
+      this.client,
+      matchesGoplsColdStartBegin,
+      3_000,
+    );
   }
 
   async shutdown(): Promise<void> {
@@ -439,22 +461,15 @@ export class GoAdapter implements LanguageAdapter {
 
     // If diagnostics already landed via publishDiagnostics (delivered
     // async after didOpen), return them. Otherwise wait briefly for
-    // gopls to finish analysis and emit.
+    // gopls to finish analysis and emit. Cold-start absorbed at
+    // initialize() via $/progress END race (v0.4 Step 1.1b); per-
+    // call ceiling stays tight — probe observed warm gopls
+    // publishDiagnostics around 600ms cold; 1.5s is comfortable
+    // headroom for warm calls.
     const existing = this.diagnosticsByUri.get(uriKey);
     if (existing !== undefined) return existing;
 
-    await new Promise<void>((resolve) => {
-      let settled = false;
-      const settle = (): void => {
-        if (settled) return;
-        settled = true;
-        this.diagnosticsListeners.delete(uriKey);
-        resolve();
-      };
-      this.diagnosticsListeners.set(uriKey, settle);
-      setTimeout(settle, 2_000);
-    });
-
+    await waitForDiagnostics(uriKey, this.diagnosticsListeners, 1_500);
     return this.diagnosticsByUri.get(uriKey) ?? [];
   }
 
@@ -732,6 +747,18 @@ export function parseDocstringFromGoplsHover(
   const trimmed = docSection.trim();
   if (trimmed.length === 0) return null;
   return trimmed;
+}
+
+/**
+ * Match the cold-start `$/progress` BEGIN frame emitted by gopls
+ * when it begins workspace setup. Title text "Setting up
+ * workspace" is gopls-canonical (stable string from gopls source);
+ * prefix-match is defensive against future variants. Step 1.1b
+ * probe captured this title with token shape numeric-string.
+ */
+function matchesGoplsColdStartBegin(p: ProgressParams): boolean {
+  const title = p?.value?.title ?? "";
+  return title.startsWith("Setting up workspace");
 }
 
 function resolveGoplsBin(explicit?: string): string {
