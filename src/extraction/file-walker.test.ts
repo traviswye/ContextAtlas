@@ -235,4 +235,62 @@ describe("walkSourceFiles", () => {
     const files = walkSourceFiles(tmp, [".ts", ".tsx"]);
     expect(files.map((f) => f.relPath).sort()).toEqual(["src/a.ts", "src/b.tsx"]);
   });
+
+  it("v0.4 Step 2 / A4: applies exclude-pattern globs at file-discovery time", () => {
+    // Filename-match exclusion (e.g., src/foo.test.ts).
+    writeFileSync(pathJoin(tmp, "src", "x.test.ts"), "// test file");
+    // Directory-match exclusion (tests/ at root).
+    mkdirSync(pathJoin(tmp, "tests"), { recursive: true });
+    writeFileSync(pathJoin(tmp, "tests", "harness.ts"), "// test harness");
+    // Nested directory match (runtime-tests/ — addressed by **/test/**?
+    // No; need an explicit pattern).
+    mkdirSync(pathJoin(tmp, "src", "runtime-tests"), { recursive: true });
+    writeFileSync(
+      pathJoin(tmp, "src", "runtime-tests", "edge.ts"),
+      "// runtime test",
+    );
+
+    // (a) Filename-match: `**/*.test.ts` excludes x.test.ts only.
+    const filenameOnly = walkSourceFiles(tmp, [".ts", ".tsx"], [
+      "**/*.test.ts",
+    ]);
+    expect(filenameOnly.map((f) => f.relPath).sort()).toEqual([
+      "src/a.ts",
+      "src/b.tsx",
+      "src/runtime-tests/edge.ts",
+      "tests/harness.ts",
+    ]);
+
+    // (b) Directory-match: `**/tests/**` excludes tests/harness.ts only.
+    const dirOnly = walkSourceFiles(tmp, [".ts", ".tsx"], ["**/tests/**"]);
+    expect(dirOnly.map((f) => f.relPath).sort()).toEqual([
+      "src/a.ts",
+      "src/b.tsx",
+      "src/runtime-tests/edge.ts",
+      "src/x.test.ts",
+    ]);
+
+    // (c) User-override scenario: combined defaults + user augmentation
+    //     covers test-files convention + the runtime-tests/ directory
+    //     case the scope-doc named.
+    const combined = walkSourceFiles(tmp, [".ts", ".tsx"], [
+      "**/*.test.ts",
+      "**/tests/**",
+      "**/runtime-tests/**",
+    ]);
+    expect(combined.map((f) => f.relPath).sort()).toEqual([
+      "src/a.ts",
+      "src/b.tsx",
+    ]);
+  });
+
+  it("empty excludePatterns preserves v0.3 behavior (no extra filtering)", () => {
+    writeFileSync(pathJoin(tmp, "src", "x.test.ts"), "// test file");
+    const files = walkSourceFiles(tmp, [".ts", ".tsx"], []);
+    expect(files.map((f) => f.relPath).sort()).toEqual([
+      "src/a.ts",
+      "src/b.tsx",
+      "src/x.test.ts",
+    ]);
+  });
 });

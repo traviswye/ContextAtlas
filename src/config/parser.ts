@@ -455,7 +455,7 @@ function validateExtraction(
   }
   rejectUnknownKeys(
     raw,
-    new Set(["budget_warn_usd", "narrow_attribution"]),
+    new Set(["budget_warn_usd", "narrow_attribution", "exclude_pattern"]),
     "extraction.",
     configPath,
   );
@@ -483,6 +483,27 @@ function validateExtraction(
       );
     }
     out.narrowAttribution = narrow;
+  }
+
+  const exclude = raw.exclude_pattern;
+  if (exclude !== undefined) {
+    if (!Array.isArray(exclude)) {
+      throw cfgError(
+        configPath,
+        `Invalid 'extraction.exclude_pattern': expected array of glob patterns, got ${describeType(exclude)}.`,
+      );
+    }
+    const patterns: string[] = [];
+    for (const pattern of exclude) {
+      if (typeof pattern !== "string" || pattern.length === 0) {
+        throw cfgError(
+          configPath,
+          `Invalid entry in 'extraction.exclude_pattern': expected non-empty string glob, got ${describeType(pattern)}.`,
+        );
+      }
+      patterns.push(pattern);
+    }
+    out.excludePattern = patterns;
   }
 
   // Section present but empty — treat as if section were absent.

@@ -17,6 +17,7 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import { extname, join as pathJoin, resolve as pathResolve } from "node:path";
 
 import { globSync } from "glob";
+import { Minimatch } from "minimatch";
 
 import type { ContextAtlasConfig } from "../types.js";
 import { normalizePath, toRelativePath } from "../utils/paths.js";
@@ -242,12 +243,29 @@ function listMarkdownRecursive(dir: string): string[] {
 // Source code walk (for symbol inventory)
 // ---------------------------------------------------------------------------
 
+/**
+ * Walk source files for symbol-inventory construction.
+ *
+ * `excludePatterns` (v0.4 Step 2 / A4) is an array of minimatch
+ * globs evaluated against repo-relative forward-slash paths. Files
+ * matching ANY pattern are dropped from the result. Patterns are
+ * pre-compiled once before walk for O(n_patterns) per-file check.
+ *
+ * Empty / omitted `excludePatterns` preserves v0.3 behavior (no
+ * extraction-time filtering beyond `SOURCE_EXCLUDE_DIRS`).
+ */
 export function walkSourceFiles(
   repoRoot: string,
   extensions: readonly string[],
+  excludePatterns: readonly string[] = [],
 ): SourceFile[] {
   const absRoot = pathResolve(repoRoot);
   const extSet = new Set(extensions);
+  const matchers = excludePatterns.map(
+    (p) => new Minimatch(p, { dot: true }),
+  );
+  const isExcluded = (relPath: string): boolean =>
+    matchers.some((m) => m.match(relPath));
   const out: SourceFile[] = [];
 
   const walk = (dir: string): void => {
@@ -268,12 +286,14 @@ export function walkSourceFiles(
         try {
           const stat = statSync(full);
           if (!stat.isFile()) continue;
+          const relPath = toRelativePath(
+            normalizePath(full),
+            normalizePath(absRoot),
+          );
+          if (isExcluded(relPath)) continue;
           out.push({
             absPath: full,
-            relPath: toRelativePath(
-              normalizePath(full),
-              normalizePath(absRoot),
-            ),
+            relPath,
             sha: computeFileSha(full),
           });
         } catch {

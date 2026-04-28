@@ -23,6 +23,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { basename } from "node:path";
 import { resolve as pathResolve } from "node:path";
 
+import { computeExcludePatterns } from "../config/exclude-patterns.js";
 import { log } from "../mcp/logger.js";
 import { importAtlasFile } from "../storage/atlas-importer.js";
 import {
@@ -299,11 +300,13 @@ export async function runExtractionPipeline(
   const extensions = Array.from(adapters.values()).flatMap((a) => [
     ...a.extensions,
   ]);
-  const sourceFiles = walkSourceFiles(repoRoot, extensions);
+  const excludePatterns = computeExcludePatterns(deps.config);
+  const sourceFiles = walkSourceFiles(repoRoot, extensions, excludePatterns);
   const inventory = await buildSymbolInventory(adapters, sourceFiles);
   log.info("pipeline: symbol inventory built", {
     sourceFiles: sourceFiles.length,
     symbols: inventory.allSymbols.length,
+    excludePatterns: excludePatterns.length,
   });
 
   // --- Stage 4: upsert symbols ----------------------------------------

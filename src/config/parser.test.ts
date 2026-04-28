@@ -416,7 +416,7 @@ describe("loadConfig — source block (ADR-08 runtime)", () => {
         "extraction:\n  bogus: 1\n",
     );
     expect(() => loadConfig(tmp)).toThrow(
-      /Unknown key 'extraction\.bogus'.*Valid keys at this level: budget_warn_usd, narrow_attribution/,
+      /Unknown key 'extraction\.bogus'.*Valid keys at this level: budget_warn_usd, exclude_pattern, narrow_attribution/,
     );
   });
 
