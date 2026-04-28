@@ -137,6 +137,26 @@ objects (gopls defaults) is sufficient. Reconsider if the
 adapter needs gopls-specific settings
 (`build.buildFlags`, `analyses.*`, etc.) — out of scope for v0.1.
 
+### Initialize-time server-readiness gate
+
+Gopls fires `$/progress` BEGIN immediately on `initialized`
+(token: numeric string; title: `"Setting up workspace"` /
+message: `"Loading packages..."`) and END when packages finish
+loading. The adapter's `initialize()` blocks on a
+`waitForServerReady` race against a 3s ceiling so init returns
+when the workspace is loaded — typically ~500ms cold per Step
+1.1b probe (benchmarks repo
+`research/v0.4-step-1-1b-lsp-readiness-probe.md`).
+
+This is the gopls instance of the cross-cutting pattern locked
+in [ADR-18](ADR-18-lsp-adapter-readiness-pattern.md).
+`getDiagnostics`'s per-call ceiling tightens to 1500ms with cold-
+start absorbed at init time. No short-circuit needed — gopls's
+`$/progress` fires on workspace setup regardless of file-
+discovery, and Go modules have `go.mod` by definition. The "no
+views" cascade case (missing `go.mod`) is absorbed by the ceiling
+and surfaces as empty results downstream.
+
 ### LSP primitive mappings (empirical, per probe findings)
 
 For each adapter method, a direct mapping to a gopls LSP
@@ -147,7 +167,7 @@ request. All methods probed cleanly — no fallback paths needed.
 | `listSymbols(filePath)` | `textDocument/documentSymbol` | §T3, §T3b |
 | `getSymbolDetails(symbolId)` | hover over the symbol's declaration position | §T4 |
 | `findReferences(symbolId)` | `textDocument/references` (rooted in declaration per `textDocument/definition`) | §T0, §T2 |
-| `getDiagnostics(filePath)` | `textDocument/publishDiagnostics` (consumed via notification handler) | §T7 |
+| `getDiagnostics(filePath)` | `textDocument/publishDiagnostics` (consumed via notification handler; per-call ceiling 1500ms with cold-start absorbed at init time — see §Initialize-time server-readiness gate) | §T7 |
 | `getTypeInfo(symbolId)` | `textDocument/implementation` + `textDocument/typeDefinition` combined | §T1, §T1b, Bonus |
 
 No LSP method returned "method not supported" on the core path.
