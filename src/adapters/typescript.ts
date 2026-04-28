@@ -34,6 +34,11 @@ import {
   toRelativePath,
 } from "../utils/paths.js";
 
+import {
+  waitForDiagnostics,
+  waitForServerReady,
+  type ProgressParams,
+} from "./diagnostics-readiness.js";
 import { LspClient } from "./lsp-client.js";
 
 // ---------------------------------------------------------------------------
@@ -202,15 +207,41 @@ export class TypeScriptAdapter implements LanguageAdapter {
     );
     this.client.notify("initialized", {});
 
+    // Server-readiness gate (v0.4 Step 1.1b empirical anchor).
+    // tsserver fires $/progress BEGIN ("Initializing JS/TS
+    // language features…") only when it does real project-load
+    // — i.e., (1) at least one didOpen triggers analysis AND
+    // (2) the workspace has tsconfig.json or jsconfig.json so
+    // tsserver runs in project mode rather than loose-file mode.
+    // Set up the listener BEFORE warmup queues didOpens so the
+    // BEGIN frame is captured. Ceiling 3s = 2.5x v0.3-observed
+    // cold-start (~1.2s); fits comfortably under vitest's 5s
+    // default test timeout.
+    const serverReady = waitForServerReady(
+      this.client,
+      matchesTsserverColdStartBegin,
+      3_000,
+    );
+
     // tsserver only searches reference sites in files it has in its program.
     // Opening a file pulls in its transitive imports, but dependents — files
     // that import the target — won't be searched unless explicitly opened.
     // Walk the workspace once and open every matching source file so that
     // findReferences returns project-wide results.
-    this.warmupProject(absRoot);
+    const opened = this.warmupProject(absRoot);
+
+    // Skip the await in degenerate cases — serverReady's timer
+    // keeps running in the background (~3s) but we don't block.
+    // (a) Zero source files: no didOpen to trigger $/progress.
+    // (b) No tsconfig.json / jsconfig.json: tsserver runs in
+    //     loose-file mode and doesn't emit project-load progress.
+    const hasProjectConfig =
+      existsSync(pathJoin(absRoot, "tsconfig.json")) ||
+      existsSync(pathJoin(absRoot, "jsconfig.json"));
+    if (opened > 0 && hasProjectConfig) await serverReady;
   }
 
-  private warmupProject(rootAbs: string): void {
+  private warmupProject(rootAbs: string): number {
     const extSet = new Set(this.extensions);
     const skipDirs = new Set([
       "node_modules",
@@ -219,6 +250,7 @@ export class TypeScriptAdapter implements LanguageAdapter {
       ".git",
       ".contextatlas",
     ]);
+    let opened = 0;
     const walk = (dir: string): void => {
       let entries;
       try {
@@ -236,6 +268,7 @@ export class TypeScriptAdapter implements LanguageAdapter {
         } else if (entry.isFile() && extSet.has(extname(name))) {
           try {
             this.ensureOpenSync(full);
+            opened++;
           } catch {
             // Skip files we can't read; they simply won't be searched.
           }
@@ -243,6 +276,7 @@ export class TypeScriptAdapter implements LanguageAdapter {
       }
     };
     walk(rootAbs);
+    return opened;
   }
 
   private ensureOpenSync(absPath: string): void {
@@ -592,22 +626,11 @@ export class TypeScriptAdapter implements LanguageAdapter {
     const existing = this.diagnosticsByUri.get(uriKey);
     if (existing) return existing;
 
-    // Otherwise wait up to 5s for the push notification.
-    // tsserver cold-start parse + first publishDiagnostics push can take
-    // ~1.3s on Node 22 / typescript-language-server 4.4.1 / typescript 5.x;
-    // 5s headroom absorbs variance without slowing the fast path (the
-    // listener resolves immediately when diagnostics arrive).
-    await new Promise<void>((resolve) => {
-      const timeout = setTimeout(() => {
-        this.diagnosticsListeners.delete(uriKey);
-        resolve();
-      }, 5_000);
-      this.diagnosticsListeners.set(uriKey, () => {
-        clearTimeout(timeout);
-        this.diagnosticsListeners.delete(uriKey);
-        resolve();
-      });
-    });
+    // Cold-start absorbed at initialize() via $/progress END race
+    // (v0.4 Step 1.1b empirical anchor); per-call ceiling stays
+    // tight. Probe observed warm publishDiagnostics within ~400ms
+    // of post-warmup didOpen; 1.5s is ~3.75x headroom.
+    await waitForDiagnostics(uriKey, this.diagnosticsListeners, 1_500);
     return this.diagnosticsByUri.get(uriKey) ?? [];
   }
 
@@ -667,6 +690,17 @@ export class TypeScriptAdapter implements LanguageAdapter {
 // ---------------------------------------------------------------------------
 // Module-level helpers
 // ---------------------------------------------------------------------------
+
+/**
+ * Match the cold-start `$/progress` BEGIN frame emitted by
+ * typescript-language-server when tsserver starts its initial
+ * project-load pass. Title text uses U+2026 horizontal ellipsis
+ * (`…`); prefix-match is defensive against ASCII variants.
+ */
+function matchesTsserverColdStartBegin(p: ProgressParams): boolean {
+  const title = p?.value?.title ?? "";
+  return title.startsWith("Initializing JS/TS language features");
+}
 
 function resolveTsServerCli(): string {
   const require = createRequire(import.meta.url);
