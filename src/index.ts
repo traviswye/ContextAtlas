@@ -36,6 +36,7 @@ import { LATEST_PROTOCOL_VERSION } from "@modelcontextprotocol/sdk/types.js";
 import { createAdapter } from "./adapters/registry.js";
 import { parseArgs } from "./cli-args.js";
 import { loadConfig } from "./config/parser.js";
+import { runDoctorSubcommand } from "./doctor/runner.js";
 import { runIndexSubcommand } from "./extraction/cli-runner.js";
 import { log } from "./mcp/logger.js";
 import { createServer } from "./mcp/server.js";
@@ -86,6 +87,14 @@ export async function main(): Promise<void> {
       narrowAttributionOverride: parsed.narrowAttribution,
       contextatlasVersion: version,
     });
+    process.exit(result.exitCode);
+  }
+
+  // v0.4 Stream B Step 8 stub. Doctor subcommand reports
+  // diagnostic-only self-check on ContextAtlas configuration + state.
+  // Substantive checks land at STEP-PLAN-V0.4.md Step 8.
+  if (subcommand === "doctor") {
+    const result = await runDoctorSubcommand();
     process.exit(result.exitCode);
   }
 

@@ -79,7 +79,7 @@
  * `main()` as a side effect of importing.
  */
 
-export type Subcommand = "mcp" | "index";
+export type Subcommand = "mcp" | "index" | "doctor";
 
 export interface ParsedArgs {
   /**
@@ -148,7 +148,7 @@ const USAGE =
   "[--narrow-attribution <drop|drop-with-fallback>]  " +
   "(see ADR-08, ADR-11, ADR-12)";
 
-const KNOWN_SUBCOMMANDS: readonly Subcommand[] = ["index"];
+const KNOWN_SUBCOMMANDS: readonly Subcommand[] = ["index", "doctor"];
 
 /**
  * Common mistakes mapped to the right subcommand name. Kept small and

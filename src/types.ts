@@ -317,6 +317,25 @@ export interface ContextAtlasConfig {
   extraction?: {
     budgetWarnUsd?: number;
     narrowAttribution?: "drop" | "drop-with-fallback";
+    /**
+     * v0.4 Step 2 placeholder — directory-aware test-file exclusion.
+     *
+     * Glob patterns to exclude from extraction. v0.3 inherited
+     * filename-based exclusion (`test_*.py`, `*_test.go`,
+     * `*.test.ts(x)`) which misses directory-pattern cases
+     * (`tests/__init__.py`, `runtime-tests/`, `benchmarks/`-style
+     * directories). Step 2 wires directory-aware glob matching at
+     * file-discovery time.
+     *
+     * Final shape (flat array vs per-language record) decided during
+     * Step 2.1 — config schema sub-step. NOT yet wired through the
+     * parser (parser strict-key validation will reject this in YAML
+     * until Step 2 ships).
+     *
+     * Per [`STEP-PLAN-V0.4.md`](../STEP-PLAN-V0.4.md) Step 2 sub-steps
+     * 2.1-2.3 + [`v0.4-SCOPE.md`](../v0.4-SCOPE.md) Stream A A4.
+     */
+    excludePattern?: string[];
   };
   /**
    * Optional MCP-server query-time knobs (v0.3 Theme 1.2 Fix 3).
