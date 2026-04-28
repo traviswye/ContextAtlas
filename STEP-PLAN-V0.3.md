@@ -915,6 +915,348 @@ shipped.
 - Ship-criteria verification: [each criterion with evidence]
 ```
 
+### Step 15 shipped — 2026-04-28 (benchmarks `e0d68fd` + `44fad18` + `7a6c6f9` + `c54b58b` + `36fd535` + `2e15993` + `88668f5`; main TBD post-Phase C)
+
+- **Scope.** Stream D execution + Phase 8 synthesis + Theme 2.2
+  cross-harness comparison + trace-time analysis pass per
+  [`v0.3-SCOPE.md`](v0.3-SCOPE.md) Stream D items 2-5 + Stream C
+  item 2. v0.3 reference matrix executed against three pinned-
+  v0.2-SHA targets (cobra / httpx / hono) using locked pre-
+  registered prompts; apples-to-apples comparison vs Phase 5/6/7
+  baselines. Phase A (per-target reference matrix execution;
+  Travis-owned) + Phase B (Phase 8 synthesis + supplement +
+  RUBRIC amendment + parser implementation; Claude-owned).
+
+- **Outcome — four named findings + Theme 2.2 falsification.**
+  Phase A: 72 cells shipped clean across cobra/httpx/hono
+  (24 each; $32.70 spend; cobra/httpx -3-5% under Phase 5/6/7
+  baselines; hono +27% retry-driven); methodology improvement
+  via 24/24 hono completion (Phase 5 ran 23/24). Phase B:
+  Phase 8 synthesis (~1009 LOC) at
+  [`../ContextAtlas-benchmarks/research/phase-8-v0.3-reference-run.md`](../ContextAtlas-benchmarks/research/phase-8-v0.3-reference-run.md)
+  documents three named findings VALIDATED + Phase 7 §5.3
+  cross-harness hypothesis FALSIFIED. Trace-analysis supplement
+  (~265 LOC) at
+  [`../ContextAtlas-benchmarks/research/phase-8-trace-analysis-supplement.md`](../ContextAtlas-benchmarks/research/phase-8-trace-analysis-supplement.md)
+  computes atlas-file-visibility filter v0.2 → v0.3 comparison
+  (-1.72pp overall; cobra +8.33pp elevated outlier) + chain α
+  firing rate (0.00% under v0.3 BM25-default-off ship config;
+  expected behavior, not regression). Theme 2.2 documented as
+  v0.3+ synthesis-doc convention via RUBRIC.md amendment
+  (Commit 5 `2e15993`).
+
+- **Ship-criteria verification.** All 13 criteria satisfied:
+  - [x] **Three reference matrices clean.** cobra `44fad18` /
+    httpx `7a6c6f9` / hono `c54b58b`; 24/24 cells per target;
+    rescope #3 not triggered.
+  - [x] **MCP preflight passed** for each beta-ca matrix
+    launch (Step 11 main `7674070` infra preserved through
+    all three runs).
+  - [x] **Hibernation prevention** applied before each launch
+    (`powercfg` per v0.2 Step 6 finding).
+  - [x] **Trace-time filter applied.** Step 12 atlas-
+    visibility-filter re-run against v0.3 substrate per Commit
+    6 `88668f5`; per-repo contamination rate recorded in
+    supplement §3.
+  - [x] **Reference artifacts** at
+    `runs/reference/{cobra,httpx,hono}/` (Phase 5/6/7
+    promotion convention; per-cell artifacts + run-manifest
+    + summary.md per repo).
+  - [x] **Phase 8 synthesis** with mandatory minimum-three
+    findings (Commit 4 `36fd535`):
+    Theme 1.2 fix validation on p4-stream-lifecycle (§3);
+    Stream B docstring source value (§4); Theme 1.1 multi-
+    symbol API exercise on cobra c4-subcommand-resolution
+    (§5).
+  - [x] **Theme 2.2 deliverable.** Phase 8 §6 cross-harness
+    comparison (three-ranking presentation; falsification);
+    RUBRIC.md amendment per Commit 5 documenting convention.
+  - [x] **Step 7 spot-check absorbed** into Phase 8 §3
+    Theme 1.2 fix-validation finding (rigorous evidence
+    replaces Step 5/6 spot-check; per Step 7's "spot-check
+    vs Stream D measurement" framing).
+  - [x] **Step 9 prompt-calibration absorbed** where
+    relevant (no Phase 8 narrative required; Stream B
+    extraction shipped at Step 14; Phase 8 §4 measures
+    downstream effect).
+  - [x] **Total matrix cost recorded** ($32.70 across Phase
+    A; vs scope-doc $15-25 envelope per Step 14 cost-
+    reconciliation precedent; details in cost reconciliation
+    below).
+  - [x] **Cross-severity promotion frequency tracked metric.**
+    Commit 6 `88668f5` chain-alpha-parser implementation;
+    v0.3 firing rate 0.00% (BM25-default-off; metric dormant
+    under v0.3 ship config; activation gate v0.4); investigation
+    trigger fires by Δ-rule but resolves to expected behavior.
+  - [x] **Theme 1.1 grep-ceiling closure validation.** Phase 8
+    §5 documents closure on cobra c4-subcommand-resolution
+    with 2 of 3 Phase 7 §5.1-named symbols matching; cross-
+    target evidence on cobra c6 + httpx p4.
+  - [x] **Pattern 2 maintenance carry-forward.** Phase 8 §7.3
+    confirms flag retention across Theme 1.2 (drop /
+    drop-with-fallback axis) + Theme 1.1 (multi-symbol API
+    accepting variant default; single-symbol opt-out) +
+    Fix 3 BM25 (flag-accessible-only; default off);
+    retirement evidence-gated post-v0.5+.
+
+- **Phase 8 synthesis findings — four outcome statements.**
+  - **(a) Theme 1.2 fix VALIDATED on Phase 6
+    p4-stream-lifecycle.** ca achieves task in 6 calls /
+    32.9k tokens (vs v0.2's 14 / 60.8k); -57% calls / -46%
+    tokens. beta-ca calls drop 3→2. Lead INTENT differs from
+    v0.2 — narrower claim attribution surfaces streaming-
+    lifecycle-specific claim instead of v0.2's general non-
+    streaming materialization claim. Phase 6 §5.1 muddy-bundle
+    framing resolved on this cell. Step 14 Commit 1 `4308de5`
+    runtime default flip propagated to v0.3 atlas correctly.
+  - **(b) Stream B docstring source value VALIDATED across
+    all three buckets.** Win-bucket (12 cells): beta-ca -45%
+    to -72% tokens vs beta per-repo average; every cell
+    positive. Tie-bucket (3 cells): beta-ca -66% to -80%; no
+    over-engineering signal. Trick-bucket (3 cells): 2 clean
+    reduction; cobra c6 outlier (+179%) explained by Theme
+    1.1 closure cost per Phase 8 §5, not Stream B regression.
+    Doubling atlas claim density (1.7-2.85× more claims) does
+    NOT degrade per-call efficiency.
+  - **(c) Theme 1.1 multi-symbol API closure VALIDATED on
+    cobra c4-subcommand-resolution.** v0.3 beta-ca uses
+    multi-symbol shape `["EnablePrefixMatching",
+    "commandNameMatches", "legacyArgs"]` — 2 of 3 Phase 7
+    §5.1-named symbols + 1 substituted; structural retrieval
+    pattern matches Phase 7 §5.1's predicted closure. Cross-
+    target generalization on cobra c6 + httpx p4. Pattern 2
+    retention preserves single-symbol-only rollback per
+    ADR-15.
+  - **(d) Theme 2.2 Phase 7 §5.3 hypothesis FALSIFIED on
+    v0.3 substrate.** "CA delivers larger gains in CLI
+    harnesses than in SDK harnesses" hypothesis falsifies
+    under all three ranking framings: cobra (CLI) ranks LAST
+    in absolute (hono > httpx > cobra), MIDDLE in mean
+    relative (hono > cobra > httpx), LAST in median relative
+    (httpx > hono > cobra). cobra never ranks first. Outliers
+    explained not excluded (cobra c6 -179% = Theme 1.1
+    closure success per §5; httpx p1 -489% = beta near-zero
+    baseline artifact). Production-tool implication: CA value
+    robust across harness types; addressable audience broader
+    than Phase 7 §5.3 framing suggested.
+
+- **Trace-analysis supplement findings — two trace-time metrics.**
+  - **Atlas-file-visibility filter (v0.2 → v0.3 comparison).**
+    Overall contamination 23.94% → 22.22% (-1.72pp; flat
+    within ±2pp band). Per-repo non-uniform: cobra +8.33pp
+    (16.67% → 25.00%; INCREASED outlier); httpx -8.33pp
+    (25.00% → 16.67%); hono -5.43pp (30.43% → 25.00%). Cobra
+    elevated treatment per supplement §3.2: plausible cause
+    is ~2× more atlas content surface in v0.3 (271 claims vs
+    v0.2's 143); root-cause investigation deferred as v0.4
+    candidate. Step 12 Path 3b methodology limit unchanged.
+  - **Chain α firing rate.** 0.00% across 32 measurable
+    bundles (36 ca + beta-ca cells; bundles with ≥2 INTENTs
+    per parser semantics). Investigation trigger fires by
+    Δ-magnitude rule (-87.5pp vs Step 6 spot-check baseline
+    87.5%) but resolves to **expected behavior under v0.3
+    ship config**: Step 7 B2 ships BM25 default-off; without
+    BM25, `get_symbol_context` returns INTENTs in natural
+    severity tier order; chain α firing requires BM25 to
+    promote lower-severity above higher-severity, which
+    cannot occur. **No code action required.** Metric
+    activates if BM25 enabled under v0.4 evidence gate.
+
+- **Cross-cutting evidence — three cells with multiple findings.**
+  - **httpx p4-stream-lifecycle: Theme 1.2 + Theme 1.1
+    dual evidence.** Bundle precision improved (Phase 8 §3
+    Theme 1.2 validation cell); v0.3 beta-ca leads with
+    `--- get_symbol_context: ResponseNotRead (1 of 3) ---`
+    showing multi-symbol API also exercised here (Phase 8 §5
+    cross-target). Two API features compounding on one cell:
+    narrower per-claim attribution + broader per-call
+    retrieval combine to deliver more-targeted bundles per
+    call. -33% calls v0.2 → v0.3 in beta-ca on this cell.
+  - **cobra c4-subcommand-resolution: Theme 1.1 primary
+    case.** Phase 7 §5.1 canonical grep-ceiling cell. v0.3
+    beta-ca trace shows multi-symbol API exercise with 2 of
+    3 Phase 7 §5.1-named symbols matching; structural shape
+    matches Phase 7 §5.1's predicted closure. 3 calls /
+    29,813 tokens / 39s — closure pattern absorbing CA-
+    fragmentation overhead Phase 7 §5.1 documented.
+  - **cobra c6-execute-signature: Theme 1.1 closure cost.**
+    beta-ca uses multi-symbol API twice on this cell
+    (`["Execute","ExecuteC","ExecuteContext"]` then
+    `["(*Command).Execute", ...]`); +179% token expansion
+    vs beta is closure SUCCESS for resolving Go method-
+    receiver disambiguation, not Stream B over-engineering
+    (Phase 8 §4.4) or CA regression (Phase 8 §6.4). Drags
+    cobra mean rankings in §6 but underlying behavior is a
+    Theme 1.1 success.
+
+- **Three-target reference matrix outcomes (Phase A summary).**
+
+  | Target | v0.3 cells | v0.3 spend | v0.2 baseline | Δ        | Notes |
+  |--------|----------:|----------:|-------------:|---------:|-------|
+  | cobra  |     24/24 |    $6.85  |       $7.20  |   −4.8%  | clean |
+  | httpx  |     24/24 |    $8.09  |       $8.35  |   −3.1%  | clean |
+  | hono   |     24/24 |   $17.76  |      $13.97  |  +27.2%  | retry-driven; methodology improvement (Phase 5 ran 23/24) |
+  | **Total** | **72/72** | **$32.70** | **$29.51** | **+10.8%** | (vs $25-32 realistic envelope) |
+
+- **Methodological observations.**
+  - **(a) Cobra-first validation discipline payoff #2.**
+    Step 14 Theme 1.3 plumbing fix (caught at $5.23 spend
+    pre-httpx/hono) was the predecessor; Step 15 Commit 0.5
+    stale-string fix (caught at first reference-matrix
+    output before promotion) is the analog. Both surface
+    integration issues at minimum cost. Pattern continues to
+    pay back; worth preserving as v0.4+ discipline.
+  - **(b) Path 3b methodology limit unchanged.** Step 12
+    retrospective preserved through v0.3; clean-workspace
+    mode stays v0.4 conditional per Rescope Condition #4
+    path (b). v0.3 ships under documented methodology limit
+    on the Beta-vs-Beta+CA comparison; bias direction
+    conservative (understatement, not overclaim);
+    Phase 8 §10.1 carries the caveat. Supplement §3.4
+    confirms +8.33pp cobra contamination drift is data,
+    not Path 3b reopen.
+  - **(c) Hono budget-ceiling default $14 → $22 raised
+    preemptively.** Phase 5 hono budget-halted at h6-fetch-
+    signature/beta-ca ($13.97 actual spend; $14 ceiling);
+    v0.3 raised ceiling to $22 to avoid repeat. Result:
+    24/24 cells (vs Phase 5's 23/24); previously-unmeasurable
+    cell becomes Phase 8 substrate. v0.4 candidate per-target
+    ceiling defaults derived from Step 13 priors (~30 LOC
+    plumbing extension; preserves Step 13 RepoName-keyed
+    pattern).
+  - **(d) Test-discipline gap surfaced + fixed in Commit 6.**
+    Commit 0.5 ran `node --check` + `npm run typecheck` but
+    not `npm test`; `summary.test.ts:79` assertion against
+    stale "v0.1 baseline measurement" prose went unnoticed
+    for 5 commits (e0d68fd → 88668f5). Surfaced at full-
+    suite run during Commit 6 verification; one-line
+    assertion update bundled. v0.4 candidate refinement:
+    full `npm test` as standard verification step for any
+    `src/` change, not selective.
+  - **(e) Single-run methodology n=1 acknowledged.** Per-cell
+    variance not bounded under v0.3 single-run framing; v0.4
+    quality-axis measurement (blind grading on multi-run
+    methodology, n=3+ per cell) deferred per scope-doc Stream
+    D. Phase 8 limitations §10.2 carries the caveat. v0.3
+    findings stated as direction-of-effect under documented
+    methodology; magnitude claims hedged accordingly.
+  - **(f) Cost-projection envelope honest documentation.**
+    cobra/httpx within ±5% of Phase 6/7 baselines (-3.1% /
+    -4.8%); hono +27.2% retry-driven (4 retries; 2 cells
+    capped both attempts; ~$3-4 retry overhead). Step 13
+    per-repo cost priors are defensible across cobra/httpx;
+    hono retry-overhead modeling is the load-bearing
+    variance variable v0.4 should address (per-target priors
+    don't currently model retry probability).
+  - **(g) Theme 2.2 falsification reported under pre-
+    registration discipline.** Phase 7 §5.3 hypothesis
+    falsifies on v0.3 substrate; data shapes the v0.3
+    narrative, not the reverse. Falsification is a finding,
+    not a failure — pre-registration means the hypothesis was
+    worth testing rigorously precisely because it would have
+    narrowed addressable audience if confirmed. v0.3
+    production-tool implication: CA value robust across
+    harness types; SDK/library users get equal or larger
+    benefit than CLI users. Phase 8 §6.6 + RUBRIC Theme 2.2
+    amendment carry the convention forward.
+
+- **Cost reconciliation — v0.3 cumulative across Step 14 + Step 15.**
+
+  | Step | Sub-component | Spend | Notes |
+  |------|---------------|------:|-------|
+  | 14 | atlas re-extraction (cobra retry + 3a + 3b + 3c) | $22.97 | Theme 1.3 plumbing recovery overhead $5.23 included |
+  | 15 Phase A | reference matrix execution | $32.70 | cobra $6.85 + httpx $8.09 + hono $17.76 |
+  | 15 Phase B | Commit 6 trace-analysis | $0.00 | post-run computation only; no API calls |
+  | **v0.3 cumulative** |  | **$55.67** | |
+
+  v0.3-SCOPE.md envelope: production-extraction $8-14 +
+  reference-run $15-25 = combined $23-39. Actual $55.67 is
+  +$16.67 over upper-end envelope (+43%). Documented as
+  scope expansion per Step 14 cost-reconciliation precedent;
+  drivers: (1) Stream B production extraction tracked Stream
+  B calibration empirical anchors not scope-doc estimate;
+  (2) Theme 1.3 plumbing fix recovery ($5.23); (3) hono
+  retry overhead ($3-4); (4) +1 cell completion vs Phase 5.
+  No methodology compromise from the overrun — every dollar
+  bought load-bearing data; v0.3 ships within bounds set by
+  honest documentation rather than the original envelope.
+
+- **Step 16 inheritance.** v0.3 Step 16 is the ship gate per
+  v0.3-SCOPE.md success criteria 1-5. Step 15 closure leaves
+  Step 16 with:
+  - All four success criteria satisfiable: Stream A complete
+    (Step 7 + Step 14 Commit 1); Stream B docstring source
+    landed across three languages (Step 11 + Step 14); Stream
+    C methodology hardening complete (Step 12 + Step 13);
+    Stream D Phase 8 reference run committed (Step 15).
+  - Production-tool framing carry-forward via [`ROADMAP.md`](ROADMAP.md)
+    "What ContextAtlas Is FOR" + [`v0.3-SCOPE.md`](v0.3-SCOPE.md)
+    "User-facing goal"; Step 16 evaluates v0.3 against the
+    production-tool framing, not research-rigor framing.
+  - v0.4 candidate observations queued: 8 items from Phase 8
+    §12 + 3 items from supplement §7 (cobra contamination
+    drift root-cause; chain α activation gate; per-target
+    ceiling defaults; test-discipline npm-test standard;
+    multi-run methodology; clean-workspace mode; Theme 1.2
+    Fix 3 BM25 activation; full multi-symbol API usage
+    census; Phase 7 §5.3 hypothesis revisitation; per-target
+    retry-overhead modeling; schema-version detection
+    automation; directory-aware test-file exclusion).
+  - Step 15 cumulative spend ($55.67 across Step 14 + Step
+    15) feeds Step 16's evidence-based v0.3 → v0.4 trigger
+    evaluation per v0.3-SCOPE.md Open Question 4 default
+    preference (a).
+
+- **Cross-references / commit map.**
+  - **Commit 0.5 (Substep 15.0.5).** benchmarks `e0d68fd`
+    (stale version-label fix in `scripts/run-reference.ts:422`
+    + `src/harness/summary.ts:238`; cobra metadata regenerated
+    via `scripts/v0.3-step15-regen-cobra-metadata.mjs`;
+    pre-existing v0.2-era methodology-hygiene gap corrected
+    for v0.3+ runs).
+  - **Commit 1 (Substep 15.1).** benchmarks `44fad18` (cobra
+    reference matrix; 24/24 cells; $6.85; clean).
+  - **Commit 2 (Substep 15.2).** benchmarks `7a6c6f9` (httpx
+    reference matrix; 24/24 cells; $8.09; clean).
+  - **Commit 3 (Substep 15.3).** benchmarks `c54b58b` (hono
+    reference matrix; 24/24 cells; $17.76; methodology
+    improvement vs Phase 5's 23/24).
+  - **Commit 4 (Substep 15.4).** benchmarks `36fd535`
+    (Phase 8 synthesis doc; ~1009 LOC; 12 sections; minimum-
+    three findings + Theme 2.2 falsification + Step 7
+    follow-ons + attention observations + hygiene +
+    limitations + cross-references + v0.4 candidates).
+  - **Commit 5 (Substep 15.5).** benchmarks `2e15993`
+    (RUBRIC.md amendment for Theme 2.2; ~64 LOC; 5th
+    subsection within §"Methodology Hardening (v0.3+)";
+    documents three-ranking presentation + outlier
+    disclosure + hypothesis test framing + first-rigorous-
+    test reference + methodology limit).
+  - **Commit 6 (Substep 15.6).** benchmarks `88668f5`
+    (trace-analysis pass; chain-alpha-parser implementation
+    + 24-case test suite + orchestrator + supplement doc +
+    Phase 8 §7.1 forward-pointer update + summary.test.ts
+    latent fix; +1242/-9 LOC across 7 files).
+  - **Commit 7 (this stamp).** main TBD post-Phase C.
+  - **Step 14 shipped (upstream).** main `6576b47` (v0.3
+    atlas re-extraction; Stream D substrate production-
+    grade; three v0.3 atlases at pinned v0.2 SHAs).
+  - **Step 13 shipped (upstream).** main `d9040ff` (per-
+    language cost priors).
+  - **Step 12 shipped (upstream).** main `8a3de76` (atlas-
+    file-visibility filter + Path 3b methodology lock).
+  - **Step 11 shipped (upstream).** main `569e1f6` (Stream
+    B substrate complete; TS / Python / Go docstring
+    extraction across hono / httpx / cobra).
+  - **Step 7 shipped (upstream).** main `abb18d3` (Stream A
+    finalization — A1 ship-default lock; B2 BM25 default-
+    off lock; F2 Pattern 2 narrowing).
+  - **Step 16 (downstream).** v0.3 ship gate evaluation.
+    Production-tool framing per ROADMAP.md "What
+    ContextAtlas Is FOR"; success criteria 1-5 satisfiable
+    per Step 15 closure; v0.4 candidate observations queued
+    for post-ship cycle.
+
 ### Step 14 shipped — 2026-04-27 (benchmarks 224099d + 397789f + b301be5 + a5337c2 + 7cda543; main 4308de5 + TBD post-Phase C)
 
 - **Scope.** Stream D groundwork Step 14: v0.3 atlas re-extraction
