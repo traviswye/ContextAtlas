@@ -147,11 +147,11 @@ tools (which can't really be committed) and knowledge-graph tools
 
 ## Installation
 
-> **Status:** v0.1 + v0.2 shipped (2026-04-25). Three-language baseline
-> validated on hono (TypeScript), httpx (Python), and cobra (Go) —
-> Phase 5/6/7 reference runs in the
+> **Status:** v0.1 + v0.2 + v0.3 shipped (v0.3 on 2026-04-28). Three-language
+> baseline validated on hono (TypeScript), httpx (Python), and cobra (Go) —
+> Phase 5/6/7/8 reference runs in the
 > [benchmarks repo](https://github.com/traviswye/ContextAtlas-benchmarks).
-> v0.3 (claim source enrichment) queues next. Package not yet published
+> v0.4 planning queues next. Package not yet published
 > to npm; install instructions below describe the intended shape.
 
 ```bash
@@ -330,6 +330,40 @@ finding).
 - **Phase 7 — cobra (Go):**
   [phase-7-cobra-reference-run.md](https://github.com/traviswye/ContextAtlas-benchmarks/blob/main/research/phase-7-cobra-reference-run.md)
 
+### Phase 8 reference run — v0.3 cross-target measurement
+
+Phase 8 (`ContextAtlas-benchmarks/research/phase-8-v0.3-reference-run.md`)
+re-ran the locked pre-registered prompt sets against v0.3-sharpened
+atlases at the same pinned target SHAs as Phase 5/6/7 — apples-to-apples
+comparison. Headline finding: **adding ContextAtlas to a Claude Code
+session reduces token consumption by 45–72% on architectural-intent
+prompts vs Claude Code without ContextAtlas, replicated across all
+three target languages (Go / Python / TypeScript).**
+
+Four named findings:
+- **Theme 1.2 fix VALIDATED** on Phase 6 p4-stream-lifecycle (the
+  canonical "muddy bundle" cell): ca uses 57% fewer calls and 46%
+  fewer tokens vs v0.2.
+- **Stream B docstring source value VALIDATED** across win/tie/trick
+  buckets: −45% to −72% tokens in win-bucket cells; no over-engineering
+  on tie/trick.
+- **Theme 1.1 multi-symbol API closure VALIDATED** on cobra
+  c4-subcommand-resolution (Phase 7 §5.1's grep-ceiling case): beta-ca
+  uses the multi-symbol shape with 2 of 3 named symbols matching;
+  Phase 7's predicted closure pattern realized.
+- **Phase 7 §5.3 cross-harness hypothesis FALSIFIED.** "CA delivers
+  larger gains in CLI harnesses than in SDK harnesses" does not
+  replicate on v0.3 substrate — cobra (CLI) never ranks first across
+  absolute / mean / median framings. Production-tool implication:
+  ContextAtlas isn't CLI-niche; SDK and library users get equal or
+  larger benefit.
+
+Methodology limit per Step 12 Path 3b: Beta-vs-Beta+CA reporting
+carries the documented atlas-file-visibility caveat (bias direction
+conservative — actual CA contribution is likely larger than published
+numbers indicate). v0.3 ships under single-run methodology (n=1 per
+cell); blind-grading quality-axis measurement is v0.4 scope.
+
 ### Quality axis — deferred to step 13
 
 Phase 5 measures efficiency (tool calls, tokens, cost). Correctness
@@ -504,6 +538,26 @@ investigation findings logged in benchmarks-repo Phase 7
 synthesis. See [`v0.2-SCOPE.md`](v0.2-SCOPE.md) for the original
 stream-level scope and the Phase 6/7 synthesis docs above for
 empirical findings.
+
+**v0.3 shipped (2026-04-28):** Stream A atlas precision (Theme 1.2
+narrower attribution + Theme 1.1 multi-symbol API per ADR-15 + Theme
+1.3 atlas schema v1.3 with `contextatlas_commit_sha`); Stream B
+docstring source extraction across TS/Python/Go; Stream C methodology
+hardening (atlas-file-visibility filter + per-language cost priors +
+cross-harness asymmetry comparison convention); Stream D Phase 8
+reference run + supplement. Four named findings (3 VALIDATED + 1
+FALSIFIED). Cumulative spend across Step 14 atlas re-extraction +
+Step 15 reference run: $55.67. See [`v0.3-SCOPE.md`](v0.3-SCOPE.md)
+for original stream-level scope; Phase 8 synthesis docs for empirical
+detail.
+
+**v0.4 candidate observations queued:** quality-axis measurement
+(blind-grading methodology with multi-run n≥3 per cell);
+clean-workspace mode (Step 12 Path 3b conditional); BM25 ranking
+activation (Theme 1.2 Fix 3); per-target ceiling defaults; full
+multi-symbol API usage census; additional reference targets beyond
+hono/httpx/cobra. v0.4 evidence gate per
+[`v0.3-SCOPE.md`](v0.3-SCOPE.md) Open Question 4.
 
 **Deferred to future versions (see [ROADMAP.md](ROADMAP.md) for specifics):**
 - Claim source enrichment: docstrings, READMEs (v0.3)

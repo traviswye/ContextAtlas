@@ -644,6 +644,13 @@ Key properties of atlas.json:
   is not run from a git checkout (e.g., a published `npm install`-ed
   binary) or when SHA resolution fails. Earlier-version atlases
   import cleanly with the field absent.
+- **Claim `source` field format.** Identifies where the claim was
+  extracted from. Markdown intent sources (ADRs, design docs) use a
+  bare identifier (e.g., `"ADR-07"`); structured docstrings extracted
+  from source code (v0.3 Stream B) use the prefixed form
+  `"docstring:<path>"` (e.g., `"docstring:src/orders/processor.ts"`)
+  to distinguish in-code intent from prose-document intent. Both
+  forms carry `source_path` + `source_sha` for provenance.
 
 ### index.db — local derived cache
 

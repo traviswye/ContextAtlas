@@ -65,19 +65,39 @@ These are decisions already made. Do not relitigate them.
 
 ## Current Version
 
-- **Current:** v0.2 shipped 2026-04-25. v0.3 (claim source enrichment +
-  Phase 7 follow-throughs) queues next; not yet started.
+- **Current:** v0.3 shipped 2026-04-28. v0.4 planning queues next;
+  not yet started.
 - **Strategic arc:** [`ROADMAP.md`](ROADMAP.md) covers v0.1 → v1.0.
-- **v0.2 outcome:** Three-language baseline established across hono
-  (TypeScript), httpx (Python), and cobra (Go). Stream A (adapter
-  quality polish) and Stream B (Go adapter via gopls + cobra
-  benchmark + httpx + cobra reference runs) both shipped. v0.2
-  thesis ("works across languages and repos") empirically validated.
-- **Three v0.3+ findings logged during Phase 7:** Go grep-ability
-  paradigm sensitivity (Phase 7 §5.1, positive calibration);
-  atlas-file-visibility benchmark methodology issue (§5.2,
-  v0.3 backlog); cross-harness asymmetry hypothesis (§5.3, worth
-  tracking through v0.3 reference runs).
+- **v0.3 outcome:** Stream A atlas precision (Theme 1.2 narrower
+  attribution per ADR-16 amendment + Theme 1.1 multi-symbol API per
+  ADR-15 + Theme 1.3 atlas schema v1.3 with `contextatlas_commit_sha`);
+  Stream B docstring source extraction across TS/Python/Go; Stream C
+  methodology hardening (atlas-file-visibility filter + per-language
+  cost priors + Theme 2.2 cross-harness comparison convention);
+  Stream D Phase 8 reference run + trace-analysis supplement. Four
+  named findings: Theme 1.2 VALIDATED, Stream B VALIDATED, Theme 1.1
+  VALIDATED, Theme 2.2 FALSIFIED (Phase 7 §5.3 hypothesis falsifies
+  on v0.3 substrate; CA value robust across harness types).
+- **Methodology limits acknowledged in v0.3 ship narrative:** Step
+  12 Path 3b atlas-file-visibility caveat (bias direction
+  conservative); single-run methodology (n=1 per cell); blind-grading
+  quality-axis measurement deferred to v0.4 per scope-doc Stream D
+  framing.
+- **v0.2 outcome (preserved as historical record):** Three-language
+  baseline established across hono (TypeScript), httpx (Python), and
+  cobra (Go). Stream A + Stream B both shipped. v0.2 thesis ("works
+  across languages and repos") empirically validated. Three v0.3+
+  findings (Phase 7 §5.1 / §5.2 / §5.3) all resolved in v0.3 (closed
+  / fix shipped / falsified respectively).
+- **v0.4 candidate observations queued (12-item input):** quality-
+  axis measurement; clean-workspace mode (Path 3b conditional); BM25
+  activation; per-target ceiling defaults; cobra contamination drift
+  root-cause; multi-symbol API usage census; per-target retry-overhead
+  modeling; schema-version detection automation; directory-aware
+  test-file exclusion; chain α activation gate; Phase 7 §5.3
+  hypothesis revisitation under multi-run; test-discipline npm-test
+  standard. Full list in `STEP-PLAN-V0.3.md` Step 16 stamp +
+  `phase-8-v0.3-reference-run.md` §12 + `phase-8-trace-analysis-supplement.md` §7.
 - **Historical references:** `STEP-PLAN-V0.2.md` progress log
   documents the per-step execution arc; `v0.2-SCOPE.md` is the
   scope anchor as shipped (success criteria all satisfied — see

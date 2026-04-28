@@ -166,7 +166,7 @@ Python adapter and conformance test suite shipped in v0.1 (commits 701dba3 → 6
 
 ---
 
-### v0.3 — Claim source enrichment + v0.2 follow-throughs [PLANNED]
+### v0.3 — Claim source enrichment + v0.2 follow-throughs [SHIPPED]
 
 **Delivers (claim source enrichment — original v0.3 scope):**
 - Docstring extraction (JSDoc, docstrings, XML doc comments) as claim source
@@ -192,6 +192,55 @@ Python adapter and conformance test suite shipped in v0.1 (commits 701dba3 → 6
 
 **Rationale:** This version addresses two concerns simultaneously: (1) v0.1's ADR-dependency concern (most real repos have architectural signal scattered across docs / commit messages / PR descriptions, not curated ADRs); (2) Phase 7's paradigm-sensitivity and methodology findings, which surfaced concrete next steps, not abstract directions.
 
+**Status:** Shipped 2026-04-28. All five v0.3-SCOPE.md success
+criteria satisfied via committed artifacts.
+
+**Empirical validation (Phase 8 reference run):**
+- Theme 1.2 fix VALIDATED on Phase 6 p4-stream-lifecycle (ca −57%
+  calls / −46% tokens vs v0.2; lead INTENT in v0.3 bundle differs from
+  v0.2 confirming narrower claim attribution surfaces streaming-
+  lifecycle-specific claim instead of v0.2's general non-streaming
+  materialization claim).
+- Stream B docstring source value VALIDATED across all three buckets
+  (win-bucket beta-ca −45% to −72% tokens vs beta per-repo; no
+  over-engineering on tie/trick).
+- Theme 1.1 multi-symbol API closure VALIDATED on Phase 7 §5.1's
+  cobra c4-subcommand-resolution canonical case (beta-ca uses
+  multi-symbol shape with 2 of 3 named symbols matching; cross-target
+  evidence on cobra c6 + httpx p4).
+- Phase 7 §5.3 cross-harness asymmetry hypothesis FALSIFIED — cobra
+  (CLI) never ranks first across absolute / mean / median framings.
+  Production-tool implication: CA value robust across harness types;
+  addressable audience broader than Phase 7 §5.3 framing suggested.
+
+**Cumulative API spend:** $55.67 (Step 14 atlas re-extraction $22.97
++ Step 15 Phase A reference run $32.70). Vs scope-doc envelope
+$23–39: scope expansion documented honestly per Step 14
+cost-reconciliation precedent.
+
+**Methodology limits acknowledged:** Step 12 Path 3b atlas-file-
+visibility caveat preserved on Beta-vs-Beta+CA comparison (bias
+direction conservative); single-run methodology (n=1 per cell);
+quality-axis measurement deferred to v0.4 per scope-doc Stream D.
+
+**Phase 7 v0.3+ findings resolution:**
+- §5.1 grep-ceiling: closed via Theme 1.1 multi-symbol API.
+- §5.2 atlas-file-visibility: methodology fix shipped (Step 12
+  filter); v0.3 contamination rate 22.22% (vs v0.2's 23.94%; flat
+  within ±2pp); cobra +8.33pp shift documented as v0.4 root-cause
+  candidate.
+- §5.3 cross-harness asymmetry: rigorously tested in Phase 8 §6;
+  FALSIFIED.
+
+**v0.4 candidate observations queued (12-item input for v0.4
+planning):** quality-axis blind-grading methodology; clean-workspace
+mode; BM25 ranking activation; per-target ceiling defaults;
+multi-symbol API usage census; cobra contamination drift root-cause;
+test-discipline npm-test standard; per-target retry-overhead modeling;
+schema-version detection automation; directory-aware test-file
+exclusion; chain α activation gate; Phase 7 §5.3 hypothesis
+revisitation under multi-run.
+
 ---
 
 ### v0.4 — Semantic layer [PLANNED, EVIDENCE-GATED]
@@ -210,6 +259,12 @@ Python adapter and conformance test suite shipped in v0.1 (commits 701dba3 → 6
 - Added only if v0.1/v0.3 benchmarks show BM25 insufficient. If BM25 is "good enough," v0.4 slips or skips.
 
 **Gate:** See [ADR-09](docs/adr/ADR-09-find-by-intent-fts5-bm25.md) for the explicit fallback preference order (sanitizer → filters → tokenizer → embeddings).
+
+v0.3 closure provides v0.4's planning inputs: 12-item candidate
+observation queue (above); evidence-based trigger per
+[`v0.3-SCOPE.md`](v0.3-SCOPE.md) Open Question 4 default preference
+(a) — efficiency + precision measurements suggest a quality
+differential exists that v0.4's blind grading would resolve.
 
 ---
 
