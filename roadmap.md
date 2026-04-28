@@ -90,19 +90,32 @@ Each version expands capability along defined axes. Scope boundaries are deliber
 Versions aren't a strict chain. Some unlock others; some can slip independently:
 
 ```
-v0.1 ──┬── v0.2 (Python breadth)        — independent; can slip without blocking v0.3+
+v0.1 ──┬── v0.2 (language adapter breadth)         — SHIPPED
        │
-       ├── v0.3 (claim enrichment)      — input for v0.4 (more text worth embedding)
-       │                                  input for v0.5 (richer substrate for tasks)
+       ├── v0.3 (claim enrichment + sharpening)    — SHIPPED;
+       │                                             input to v0.4 hardening
        │
-       ├── v0.4 (semantic layer)        — optional; v0.5 doesn't require it if BM25 holds
-       │
-       └── v0.5 (task-shaped queries)   — composes over v0.1–v0.4; headline wins live here
+       └── v0.4 (production-installability)        — IN PROGRESS;
+                                                     substrate hardening +
+                                                     doctor script foundation +
+                                                     bounded validity
 
-v0.6+ (enrichment backlog)              — orthogonal; each graduates to its own version
+v0.5+ (must-ship-before-v1.0; flexible)            — onboarding pipeline (most
+                                                     natural v0.5); task-shaped
+                                                     queries; semantic layer
+                                                     (evidence-gated); remaining
+                                                     claim sources; team workflow
+
+v1.0+ (post-launch enrichment)                     — orthogonal; each graduates
+                                                     to own version
+
+v1.0 (public launch)                               — gates: onboarding pipeline +
+                                                     quality-axis methodology +
+                                                     community evidence +
+                                                     external dogfood
 ```
 
-Practical implication: v0.2 slippage doesn't block v0.3+. v0.4 gates on v0.3 delivering enough text to make embedding worthwhile. v0.5 can ship without v0.4 if benchmark evidence doesn't justify the semantic layer.
+Practical implication: v0.4 in progress; v0.5+ specific version assignments at per-version scope-doc time, not now. v1.0 gates land via v0.99 final pre-launch scope-doc.
 
 ### v0.1 — Serving architecture with hand-authored intent [SHIPPED]
 
@@ -243,103 +256,236 @@ revisitation under multi-run.
 
 ---
 
-### v0.4 — Semantic layer [PLANNED, EVIDENCE-GATED]
+### v0.4 — Production-installability foundation [IN PROGRESS]
 
-**Delivers:**
-- Vector embeddings over claim text (model TBD, evaluated against benchmarks)
-- Semantic search mode in `find_by_intent` — "find code with similar intent" rather than keyword-matched intent
-- Re-ranking combining BM25 + semantic similarity
+**Thesis:** Make ContextAtlas production-usable end-to-end (install
+→ atlas → query → trust the output) for a solo developer on an
+existing TypeScript / Python / Go codebase. v0.3 proved the tool
+*works on three pinned-SHA test repos under controlled conditions*;
+v0.4 hardens the substrate so the same tool *works on a developer's
+actual codebase* across the variance real-world environments
+introduce (Node version drift, LSP server timing, non-standard
+test-file layouts, atlas extraction on recent-not-pinned SHAs).
+
+**Delivers (3 streams; full scope per [`v0.4-SCOPE.md`](v0.4-SCOPE.md)):**
+
+- **Stream A — Substrate hardening + cost transparency + commit-
+  message extraction.** LSP adapter timing-race robustness
+  (bounded-poll pattern); directory-aware test-file exclusion;
+  per-target ceiling defaults via priors-derived defaults; per-
+  target retry-overhead modeling; cobra contamination drift root-
+  cause; commit-message claim source extraction (bimodal-aware
+  threshold); cost-projection disclaimer in 5 user-facing surfaces.
+- **Stream B — Dogfood + doctor script.** ContextAtlas-on-itself
+  extraction + concrete `get_symbol_context` query; doctor script
+  foundation (diagnostic-only; config + atlas + SHA + schema +
+  LSP + extraction-prerequisites checks). Acceptance test: doctor
+  green on contextatlas + cobra HEAD.
+- **Stream C — Bounded validity confirmation.** 5 high-leverage
+  Phase 8 cells re-run at n=2 trials each (10 total trials);
+  trial-variance measurement supports launch-document credibility
+  line. NOT full quality-axis blind-grading methodology (that's
+  v0.5+ scope).
 
 **Validates:**
-- Semantic search adds value beyond BM25 on real queries
-- Benchmark methodology can detect the improvement
+- ContextAtlas survives real-user variance.
+- v0.3 findings replicate within trial variance (bounded validity;
+  not full blind-grading).
+- Production-tool-flavored items ship together as a coherent
+  foundation for v0.5+ onboarding pipeline work.
 
 **Scope boundaries:**
-- Embedding happens at index time, not query time. (Consistent with no-query-time-LLM principle.)
-- Added only if v0.1/v0.3 benchmarks show BM25 insufficient. If BM25 is "good enough," v0.4 slips or skips.
+- Persona-narrowed: solo developer / existing codebase / TS-Python-
+  Go. Other personas (new project; team; additional languages)
+  defer to v0.5+ per explicit deferral discipline.
+- Doctor script is diagnostic-only foundation. Full developer
+  onboarding pipeline (configuration helper; ADR bootstrap;
+  warm-up; lifecycle) is v0.5+ scope.
+- No quality-axis claims published. Bounded validity stream is
+  rigor-for-launch-credibility, not rigor-for-research-paper.
 
-**Gate:** See [ADR-09](docs/adr/ADR-09-find-by-intent-fts5-bm25.md) for the explicit fallback preference order (sanitizer → filters → tokenizer → embeddings).
+**Cost envelope:** $30-50 with $50 ceiling. Detailed in
+[`v0.4-SCOPE.md`](v0.4-SCOPE.md) §"Cost envelope".
 
-v0.3 closure provides v0.4's planning inputs: 12-item candidate
-observation queue (above); evidence-based trigger per
-[`v0.3-SCOPE.md`](v0.3-SCOPE.md) Open Question 4 default preference
-(a) — efficiency + precision measurements suggest a quality
-differential exists that v0.4's blind grading would resolve.
+**Status:** In progress. Scope-doc shipped 2026-04-28 (commit
+`e8b5114`). STEP-PLAN-V0.4.md drafting next session.
+
+**Why this version:** v0.3 proved efficiency + bundle-precision
+improvements; v0.4 hardens substrate so those improvements survive
+real-user variance. Quality-axis blind-grading methodology defers
+to v0.5+ — production-tool framing prioritizes installability
+before research methodology rigor.
 
 ---
 
-### v0.5 — Task-shaped bundle queries + ADR-crafting pipeline [PLANNED]
+### v0.5+ — must-ship-before-v1.0 backlog [FLEXIBLE PLACEMENT]
 
-v0.5 ships two related user-experience improvements — both make ContextAtlas more useful on the typical user repo.
+**Items below MUST ship before v1.0 public launch but specific
+version assignment is flexible.** Per-version scope-docs (v0.5,
+v0.6, v0.7, ...up to v0.99 if needed) decide which items land
+when based on:
 
-**Deliverable A — Task-shaped bundle queries:**
+- v0.4 launch-document drafting surfacing credibility gaps
+- Community evidence accumulation (post-v0.4)
+- External user requests
+- Travis-energy + capacity intersection
 
-- `why_does_this_fail(symbol, error)` — returns relevant symbols + recent commits + related ADRs + failing tests, pre-correlated
-- `onboard_to_feature(feature_name)` — minimum context pack to edit a feature safely
-- `audit_change(diff_or_branch)` — architectural review of a proposed change
-- Progressive disclosure with stable IDs — summaries first, detail on demand by ID
+This section names everything that doesn't ship in v0.4 with
+explicit forward-pointers. v0.4 corrects the v0.3 silent-deferral
+pattern by anchoring deferred work here, not letting it disappear.
 
-**Deliverable B — Pipeline-driven ADR generation for repos without ADR culture:**
+**Production-tool deliverables:**
 
-Most user repos — IC developer side projects, small open-source libraries, internal tools — don't have curated ADR culture. v0.1-v0.4 ContextAtlas requires either ADRs (best case) or docstrings (v0.3 fallback) for architectural-intent extraction; on repos with neither, the tool's architectural-context value is marginal.
+- **Developer onboarding pipeline (full).** End-to-end flow from
+  `npm install` to first useful query. Doctor script foundation
+  lands in v0.4 Stream B; full pipeline is v0.5+. Most natural
+  placement: v0.5 thesis primary. Includes:
+  - Configuration helper (Claude-Code-prompted onboarding;
+    conversational rather than docs-reading)
+  - ADR bootstrap pipeline (formerly v0.5 ROADMAP "ADR-crafting
+    pipeline"; opt-in per-repo; Claude drafts architectural
+    decisions inferred from code patterns + commit history +
+    naming conventions; user reviews + approves drafts)
+  - Warm-up prompt automation (post-setup smoke test)
+  - Lifecycle / continuous-integration patterns (atlas-staleness
+    watching; pre-commit-vs-CI atlas updates; per-session
+    refresh strategies)
+- **Task-shaped bundle queries.** `why_does_this_fail(symbol,
+  error)` — returns relevant symbols + recent commits + related
+  ADRs + failing tests, pre-correlated. `onboard_to_feature(
+  feature_name)` — minimum context pack to edit a feature safely.
+  `audit_change(diff_or_branch)` — architectural review of a
+  proposed change. Progressive disclosure with stable IDs.
+  Originally v0.5 ROADMAP entry; placement flexible per evidence.
+  Strong candidate for v0.6 thesis if semantic layer evidence-
+  gates negative.
+- **Team workflow / git-flow-for-atlases.** Multi-developer
+  collaboration on atlas; merge conflicts; atlas ownership;
+  pre-commit-vs-CI atlas updates. Likely v0.6 once solo-dev
+  workflow proven (post-v0.4).
+- **Claim source enrichment (v0.3-deferred items).** PR-description
+  mining (GitHub/GitLab API integration; opt-in flow); README/
+  `docs/` parsing for architectural claims (overlaps with
+  onboarding pipeline ADR-bootstrap-from-existing-prose work).
 
-v0.5's ADR-crafting pipeline closes that gap. When a user installs ContextAtlas on a repo without ADRs, an opt-in pipeline asks Claude to draft architectural decisions inferred from code patterns, commit history, and naming conventions. The user reviews drafts; accepted drafts become committed ADRs that ContextAtlas then indexes via the standard v0.1+ pipeline. v0.1's `adrs.path` config already supports externalized ADR locations (corporate teams often have ADRs in a separate docs repo); v0.5's pipeline composes with this so drafted ADRs can land at the configured path.
+**Evidence-gated production-tool items:**
 
-The motivation is production-utility: without this, ContextAtlas is most useful on repos with rich ADR culture — a small fraction of real user repos. The pipeline is what makes the tool useful on the typical user repo, including IC developer side projects and open-source projects without strong documentation discipline.
+- **Semantic embedding layer.** Vector embeddings over claim text;
+  semantic search mode in `find_by_intent`; re-ranking combining
+  BM25 + semantic similarity. Per
+  [ADR-09](docs/adr/ADR-09-find-by-intent-fts5-bm25.md) fallback
+  preference order, embeddings are last resort. v0.6 most natural
+  placement *if* v0.4–v0.5 evidence shows BM25-tier ranking
+  insufficient.
+- **Full quality-axis blind-grading methodology.** Multi-run n≥3
+  per cell; correctness scoring rubrics; calibration measurement.
+  v0.4 Stream C is bounded validity (rigor-for-launch-credibility);
+  full methodology is the next escalation. Trigger: post-v0.4
+  launch-document feedback or community evidence demanding rigor.
+- **Clean-workspace mode** (atlas-file-visibility resolution path
+  b). Per Step 12 methodology note. Conditional on quality-axis
+  findings showing beta contamination materially distorts evidence
+  beyond Path 3b's filter correction.
+- **BM25 ranking activation on `get_symbol_context`** (Theme 1.2
+  Fix 3 evidence-gate). Conditional on quality-axis evidence
+  supporting activation.
+- **camelCase splitting in identifier search.** Conditional on
+  user-search-pattern evidence. Per
+  [ADR-17](docs/adr/ADR-17-fts5-identifier-tokenizer.md).
 
-**Validates:**
+**Demand-driven items:**
 
-- Task-shaped bundles deliver the efficiency collapse the thesis predicts (one tool call replaces 12+ primitive calls).
-- ADR-crafting pipeline broadens ContextAtlas's user-base from "repos with ADR culture" to "repos with code, commits, and naming conventions" — closer to all user repos.
-- The abstraction "task" is expressible in MCP tool schemas cleanly.
+- **Additional language support.** Rust, .NET, Java, etc. v0.7+
+  placement; demand-driven per external user request OR Travis
+  personal need.
+- **Additional reference targets** beyond cobra/httpx/hono. Django,
+  Next.js, etc. Phase 8 §6.6 tagged as "post-v0.5 candidates."
 
-**Scope boundaries:**
-
-- Each task is a thin composite over existing primitives. No new substrate.
-- Task registry is small and curated. Not a general task-definition framework.
-- ADR-crafting pipeline is opt-in per repo, never automatic. User reviews and approves drafts.
-- Pipeline targets "repos without ADRs"; repos with existing ADRs use the standard v0.1+ extraction path unchanged.
-
-**Why this is where the headline wins land:** Per the thesis, "every tool call has fixed overhead, so the win is doing more per call, not calling faster." v0.5 ships the task-level wins (Deliverable A) and broadens the user-base (Deliverable B). v0.5 is where ContextAtlas shifts from "primitive MCP server with ADR dependency" to "task-level assistant for any repo."
+**Per-item placement decision:** at per-version scope-doc drafting
+time, not now. v0.4 closure provides input signals (launch-
+document drafting; community evidence; capacity); v0.5+ scope-doc
+selects v0.5 thesis from this backlog using those signals.
 
 ---
 
-### v0.6+ — Enrichment backlog [PLANNED]
+### v1.0+ — Enrichment backlog [POST-LAUNCH]
 
-Not a monolithic version — a holding area for promoted work. Each entry graduates to its own version when benchmark evidence, user feedback, or portfolio demand justifies the build. The "versions do one thing well" rule still applies: v0.6 ships exactly one of these, not all, and the others stay in backlog.
+Distinct from v0.5+ must-ship-before-v1.0 backlog above — items
+below are **post-v1.0 enrichment**. Each becomes its own ADR +
+version when promoted from "tracked" to "planned." Evidence for
+promotion: benchmark shows the gap, user feedback identifies the
+need, or portfolio demand justifies the build. The "versions do
+one thing well" rule still applies.
 
-- **Hot-path caching.** Log query patterns across sessions; pre-compute cached answers for top-N queries.
-- **Claim capture from agent sessions.** When agents derive architectural insights during exploration, capture them as proposed claims for human review and promotion.
-- **Blame/attribution signals** (non-political framing — "recently active contributors to this area" for context, not ownership assertion).
+- **Hot-path caching.** Log query patterns across sessions;
+  pre-compute cached answers for top-N queries.
+- **Claim capture from agent sessions.** When agents derive
+  architectural insights during exploration, capture them as
+  proposed claims for human review and promotion.
+- **Blame/attribution signals** (non-political framing — "recently
+  active contributors to this area" for context, not ownership
+  assertion).
 - **Branch diversity signals** (merge conflict risk surfacing).
-- **LLM-aided commit message classification** at index time (richer risk signals than regex).
+- **LLM-aided commit message classification** at index time
+  (richer risk signals than regex).
 
-Each becomes its own ADR when promoted from "tracked" to "planned." Evidence for promotion: benchmark shows the gap, user feedback identifies the need, or portfolio demand justifies the build.
+These items are NOT v1.0 ship blockers. v1.0 ships when the v0.5+
+must-ship-before-v1.0 backlog is drained sufficient for public
+launch (gate criteria below).
 
 ---
 
-### v1.0 — Thesis realized [PLANNED]
+### v1.0 — Thesis realized + public launch [PLANNED]
 
 **Delivers:**
 - All four architectural layers operating together
 - Task-shaped bundle queries as the primary interface
-- Signal enrichment removes hard dependency on human-authored claims
-- Benchmarks demonstrate meaningful efficiency AND quality improvements vs. baseline agent usage
+- Signal enrichment removes hard dependency on human-authored
+  claims
+- Developer onboarding pipeline (install → guided config → atlas
+  → first useful query) for solo developers and small teams
+- Benchmarks demonstrate meaningful efficiency AND quality
+  improvements vs baseline agent usage (full quality-axis blind-
+  grading methodology landed pre-v1.0)
 - Stable API contract for external consumers
 - Documentation suitable for external adoption
 
 **Validates:**
-- The original thesis: agents with pre-computed multi-layer architectural context perform measurably better than agents rediscovering architecture per query.
+- The original thesis: agents with pre-computed multi-layer
+  architectural context perform measurably better than agents
+  rediscovering architecture per query.
+- ContextAtlas is production-installable on user codebases, not
+  just authors' test repos.
 
-**Ship criteria** (replace "thesis realized" as an abstract target — these are the testable gates for the v0.x → v1.0 transition):
+**Ship criteria** (testable gates for the v0.x → v1.0 transition):
 
-- Four-layer fusion proved on at least two independent repo benchmarks with statistically-meaningful wins on both the efficiency and quality axes
-- At least one external dogfood trial completed — reviewer, friend, or open solicitation. (Full external adoption is a v1.x story, not a v1.0 blocker. The gate is "someone else ran it on their code and reported back," not "ten teams depend on it.")
-- No pending scope-affecting ADRs — the architectural surface is frozen at ship
-- Benchmark reproduces across Claude model versions without per-model tuning
+- Four-layer fusion proved on the cobra/httpx/hono benchmark
+  substrate (or expanded substrate per scope decisions) with
+  statistically-meaningful wins on both the efficiency and
+  quality axes (full quality-axis methodology landed pre-v1.0)
+- Developer onboarding pipeline shipped (configuration helper +
+  ADR bootstrap + warm-up + lifecycle); doctor script foundation
+  exists (v0.4) and full pipeline composes
+- At least one external dogfood trial completed — reviewer,
+  friend, or open solicitation. (Full external adoption is a
+  v1.x story, not a v1.0 blocker. The gate is "someone else ran
+  it on their code and reported back.")
+- No pending scope-affecting ADRs — the architectural surface is
+  frozen at ship
+- Benchmark reproduces across Claude model versions without
+  per-model tuning
+- Launch-document drafted (Travis personal notes consolidated
+  into public launch artifact)
+
+**Specific v1.0 gate criteria** lock at late-cycle scope-doc
+(v0.99 or whatever the final pre-v1.0 cycle becomes); items
+above are the framing target.
 
 **Scope boundaries:**
-- v1.0 is "the thesis working," not "everything possible." Feature completeness against the thesis, not against all imaginable extensions.
+- v1.0 is "the thesis working + production-installable," not
+  "everything possible." Feature completeness against the thesis
+  + production-tool persona, not against all imaginable
+  extensions.
 
 ## Explicit Non-Goals
 
@@ -374,7 +520,9 @@ ContextAtlas has multiple docs serving different readers. This roadmap is the st
 - **[DESIGN.md](DESIGN.md)** — Architectural design in technical detail
 - **[docs/adr/](docs/adr/)** — Specific architectural decisions with rationale
 - **[CLAUDE.md](CLAUDE.md)** — Guidance for AI collaborators working on this repo
-- **STEP-\*-PLAN.md** (in benchmarks) — Current-version build plan (v0.1)
+- **[v0.4-SCOPE.md](v0.4-SCOPE.md)** — Current-version scope anchor (v0.4 in progress; commit `e8b5114`)
+- **[v0.3-SCOPE.md](v0.3-SCOPE.md)** — v0.3 scope anchor (shipped 2026-04-28; preserved as historical record)
+- **STEP-\*-PLAN.md** — Per-version build plan (v0.4 plan drafting next session)
 - **[RUBRIC.md](../ContextAtlas-benchmarks/RUBRIC.md)** (in benchmarks repo) — Measurement methodology
 
 ## Open questions (tracked, not decided)
@@ -402,5 +550,7 @@ Tracked here, not committed to a version. Each gets its own ADR when approached.
 ---
 
 ## Revision history
+
+- **2026-04-28 — v0.3 ship + v0.4 reframe.** v0.3 shipped (tag `v0.3.0`); ROADMAP refreshed in parallel per (γ) production-tool hardening primary thesis lock + P6 backlog discipline. v0.4 section reframed from "Semantic layer [PLANNED, EVIDENCE-GATED]" to "Production-installability foundation [IN PROGRESS]" per [v0.4-SCOPE.md](v0.4-SCOPE.md) (commit `e8b5114`); v0.5 section reframed as "v0.5+ must-ship-before-v1.0 backlog [FLEXIBLE PLACEMENT]" per backlog-discipline lock (every deferred item gets explicit forward-pointer; per-version placement at per-scope-doc time, not now); v0.6+ renamed to v1.0+ enrichment backlog [POST-LAUNCH] clarifying post-v1.0-flavored items distinct from must-ship-before-v1.0 backlog; v1.0 section amended with onboarding pipeline + launch-document + quality-axis methodology ship criteria; version dependency graph updated to reflect v0.4-IN-PROGRESS + v0.5+-flexible-placement framing. Net delta ~+45 LOC. Drafted following 16-item v0.4 candidate inventory walk + cross-instance scope discussion + P1-P6 pushback resolution.
 
 - **2026-04-25 — Phase A realignment.** Added "What ContextAtlas Is FOR" subsection capturing canonical product-positioning anchor (production tool for developers, not research experiment); added Vision tagline integration; added "Key efficiency unlocks" subsection consolidating the 7-item efficiency-collapse list across versions; expanded v0.5 section to include ADR-crafting pipeline as second deliverable alongside task-shaped queries; added developer-tool framing paragraph to Architectural Layers section. Realignment surfaced during Step 7 alignment check; framing source is Travis's anchor statement: *"The benchmark repo should only be used as a tool to better our main repo, whose ultimate goal is to be a production tool for developers to use with Claude Code to enable life improvements for Claude (the token burn, architectural context, etc)."* Non-revisionist amendments — existing content preserved.
