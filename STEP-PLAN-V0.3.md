@@ -915,6 +915,234 @@ shipped.
 - Ship-criteria verification: [each criterion with evidence]
 ```
 
+### Step 16 shipped — 2026-04-28 (main `998b1cc` + `04f5b9d` + `6a92b6a` + TBD-Commit-3 + tag `v0.3.0`)
+
+- **Scope.** Verify all v0.3-SCOPE.md success criteria met; refresh
+  external-facing docs (README, ROADMAP, DESIGN, CLAUDE.md);
+  package.json bump 0.2.0 → 0.3.0; annotated tag `v0.3.0`. External-
+  facing target (resume + community-sharing) raises bar on doc
+  accuracy. Per [`v0.3-SCOPE.md`](v0.3-SCOPE.md) Success Criteria.
+  Five-commit ladder (1 / 1.5 / 2 / 3 / 4); Stage 1 verification +
+  Stage 2 closeout.
+
+- **Outcome — v0.3 SHIPPED across five-commit ladder.** All 14 ship
+  criteria satisfied. Doc-refresh bundle (Commit 1 `998b1cc`)
+  refreshes README + ROADMAP + DESIGN + CLAUDE.md (+136 net LOC
+  across 4 files; production-tool framing preserved; methodology
+  limits surfaced honestly; no quality-axis claims published).
+  TS adapter timing-race fix (Commit 1.5 `04f5b9d`) recovers test
+  suite from 808/810 → 810/810 PASS post-fix (environmental drift
+  exposed latent flake at v0.3.0 tag boundary; root-cause documented).
+  Package version bump (Commit 2 `6a92b6a`) lands 0.2.0 → 0.3.0 with
+  dist/ rebuilt against post-Commit-1.5 source. Three-language
+  baseline (hono / httpx / cobra) sharpened across all four streams;
+  four named findings (3 VALIDATED + 1 FALSIFIED) constitute the v0.3
+  thesis story shipped to community-readable surface. Cumulative v0.3
+  API spend $55.67 (Step 14 + Step 15; Step 16 zero-spend doc + fix +
+  bump operations).
+
+- **Ship-criteria verification.** All 14 criteria satisfied:
+  - [x] **SC1 Stream A complete.** Theme 1.2 Fix 1 ADR authoring
+    validation main `85214eb`; Fix 2 drop-with-fallback default
+    Step 14 Commit 1 `4308de5`; Theme 1.1 multi-symbol API + ADR-15
+    Phase 8 §5 closure-validated; Theme 1.3 atlas schema v1.3 with
+    `contextatlas_commit_sha` Step 14 Commits 3a/b/c.
+  - [x] **SC2 Stream B docstring source landed across three
+    languages.** TS / Python / Go via Step 11 main `569e1f6` +
+    Step 10 (Go-first); 410 net new docstring claims across the
+    three v0.3 atlases per Step 14 stamp.
+  - [x] **SC3 Stream C methodology hardening complete.** Atlas-
+    file-visibility filter Step 12 Commit 1 `537589b`; methodology
+    note Step 12 Commit 2 `0851c69`; Theme 2.2 cross-harness
+    convention Phase 8 §6 + RUBRIC amendment Step 15 Commit 5
+    `2e15993`; Go-specific cost priors Step 13 Commit 1 `5db02c7`;
+    per-language calibration pattern Step 13 Commit 2 `051fd8a`.
+  - [x] **SC4 Stream D Phase 8 reference run committed.** Three
+    matrices clean (24/24 per target) at Step 15 Commits 1-3
+    `44fad18` / `7a6c6f9` / `c54b58b`; Phase 8 synthesis Commit 4
+    `36fd535` documents Theme 1.2 + Stream B + Theme 1.1 minimum-
+    three findings + Theme 2.2 falsification.
+  - [x] **SC5 No quality-axis claims published.** Phase 8 §10.2
+    explicit "no quality-axis claims published" carried into Step
+    16 doc refresh; README + ROADMAP headlines describe efficiency
+    + bundle-precision only (45–72% token reduction; never quality
+    claims). v0.4 blind-grading methodology gates quality-axis.
+  - [x] **README refresh.** Commit 1 `998b1cc`: status block +
+    Phase 8 reference-run section with headline finding (45–72%
+    token reduction vs Claude Code without ContextAtlas, replicated
+    across Go / Python / TypeScript) + four named findings + v0.3
+    shipped block + v0.4 candidate-observations block.
+  - [x] **ROADMAP.md.** Commit 1 `998b1cc`: v0.3 [PLANNED] →
+    [SHIPPED]; empirical-validation block (Phase 8 evidence + spend
+    reconciliation + Phase 7 v0.3+ findings resolution + 12-item
+    v0.4 candidate queue); v0.4 input anchor referencing
+    v0.3-SCOPE OQ4 default (a).
+  - [x] **DESIGN.md.** Commit 1 `998b1cc`: claim `source` field
+    format bullet (`"docstring:<path>"` form alongside `"ADR-NN"`);
+    atlas schema v1.3 example + multi-symbol API previously
+    documented per Step 14 prior commits.
+  - [x] **CLAUDE.md.** Commit 1 `998b1cc`: Current Version block
+    refreshed (v0.3 outcome + Stream A/B/C/D summary + four named
+    findings + methodology limits + v0.4 candidate queue); v0.2
+    outcome preserved as historical record per CLAUDE.md
+    preservation discipline.
+  - [x] **Main-repo test suite green.** 810/810 PASS post-Commit
+    1.5 (recovered from 808/810; root cause + fix documented in
+    Commit 1.5 message). Benchmarks-repo test suite: green as of
+    Step 15 Commit 6 `88668f5` close (no benchmarks-repo changes
+    since); pre-tag verification recommended at Travis discretion.
+  - [x] **package.json version bumped 0.2.0 → 0.3.0.** Commit 2
+    `6a92b6a`. dist/ rebuilt against post-Commit-1.5 source
+    (verification: `dist/index.js` mtime post-1.5).
+  - [ ] **Annotated tag `v0.3.0` created with summary message.**
+    Pending Commit 4 (Travis-owned, post-stamp).
+  - [x] **All commits pushed to origin.** Commits 1 / 1.5 / 2
+    pushed; Commit 3 (this stamp) pushes on commit; Commit 4
+    annotated tag pushes via `git push origin v0.3.0`.
+  - [x] **STEP-PLAN-V0.3.md `## Progress log` complete.** This
+    stamp completes the 16-step log; revision history block carries
+    forward per scope-doc convention.
+
+- **v0.3 cycle closure summary — four streams.**
+  - **Stream A (atlas precision).** Theme 1.2 narrower attribution
+    via drop-with-fallback default + Pattern 2 retention (Step 7
+    main `abb18d3`; Step 14 Commit 1 `4308de5`); Theme 1.1 multi-
+    symbol API per ADR-15 (Step 11 + Phase 8 §5 closure validation
+    on cobra c4-subcommand-resolution); Theme 1.3 atlas schema v1.3
+    with `generator.contextatlas_commit_sha` (Step 14 Commits 3a/b/c
+    + Commit 2.5 `397789f` plumbing fix). Stream A VALIDATED on
+    Phase 6 p4-stream-lifecycle (-57% calls / -46% tokens vs v0.2)
+    + cross-target evidence cobra c6 + httpx p4.
+  - **Stream B (docstring source extraction).** TS via tsserver
+    (Step 11 Commit 5 `46ddf0d`); Python via Pyright (Step 11);
+    Go via gopls (Step 10 Commit 1 `0b4c0a5`). 410 net new
+    docstring claims across hono (134) + httpx (148) + cobra (128).
+    Stream B VALIDATED across all three buckets (win-bucket -45%
+    to -72% tokens; tie/trick no over-engineering); Phase 8 §4
+    measurement.
+  - **Stream C (methodology hardening).** Atlas-file-visibility
+    trace-time filter (Step 12 Commit 1 `537589b`) + methodology
+    note (Step 12 Commit 2 `0851c69`; Path 3b clean-workspace
+    deferred to v0.4 conditional); per-language cost priors +
+    RUBRIC calibration pattern (Step 13 Commits `5db02c7` +
+    `051fd8a`); Theme 2.2 cross-harness comparison convention
+    (Phase 8 §6 + RUBRIC amendment Step 15 Commit 5 `2e15993`;
+    falsified hypothesis surfaced as production-tool finding).
+  - **Stream D (reference run).** Phase 8 reference matrix
+    execution against pinned v0.2 SHAs (Step 15 Phase A Commits
+    1-3 `44fad18` / `7a6c6f9` / `c54b58b`; 72 cells clean at
+    24/24 per target). Phase 8 synthesis (~1009 LOC; Step 15
+    Commit 4 `36fd535`) + trace-analysis supplement (~265 LOC;
+    Step 15 Commit 6 `88668f5`). Four named findings: Theme 1.2
+    VALIDATED, Stream B VALIDATED, Theme 1.1 VALIDATED, Theme 2.2
+    FALSIFIED. n=1 single-run methodology; v0.4 multi-run gates
+    quality axis.
+
+- **Cumulative v0.3 spend reconciliation.** Final API spend
+  $55.67 across the cycle (Step 14 atlas re-extraction $22.97 +
+  Step 15 Phase A reference run $32.70). Vs scope-doc envelope
+  $23–$39: scope expansion (+43%) documented honestly per Step 14
+  cost-reconciliation precedent. Step 16 zero-spend (doc refresh +
+  TS adapter fix + version bump are non-API-spend operations).
+  Cost-axis carry-forward: per-language cost priors + Go retry-
+  overhead modeling tracked as v0.4 hygiene candidate per
+  v0.4 candidate queue.
+
+- **v0.3 → v0.4 trigger evaluation.** Per [`v0.3-SCOPE.md`](v0.3-SCOPE.md)
+  Open Question 4 default preference (a) Evidence-based: efficiency
+  + precision measurements (45–72% token reduction in win-bucket
+  cells across all three target languages; cross-language
+  replication; cross-harness convention falsified) suggest a quality
+  differential exists that v0.4's blind-grading methodology would
+  resolve. **Trigger condition MET for v0.4.** Step 16 acknowledges
+  trigger; v0.4 planning is its own session per Travis's earlier
+  framing ("finish v0.3 first"). v0.4 inputs anchored in
+  [`ROADMAP.md`](ROADMAP.md) v0.4 section + this stamp's v0.4
+  candidate queue + Step 16 process-hygiene findings (next bullet).
+
+- **v0.4 candidate observation queue (substrate-derived; carries
+  over unchanged).** 12-item queue from Phase 8 §12 +
+  trace-analysis-supplement §7 carries into v0.4 planning unchanged
+  (cobra contamination drift root-cause; chain α activation gate;
+  per-target ceiling defaults; test-discipline npm-test standard;
+  multi-run methodology; clean-workspace mode; Theme 1.2 Fix 3 BM25
+  activation; full multi-symbol API usage census; Phase 7 §5.3
+  hypothesis revisitation under multi-run; per-target retry-overhead
+  modeling; schema-version detection automation; directory-aware
+  test-file exclusion). Substrate-derived backlog distinct from
+  Step 16 process-hygiene findings (next bullet).
+
+- **Methodological observations — Step 16 process-hygiene findings
+  (3 items; v0.4 hygiene candidates distinct from substrate-derived
+  v0.4 queue above).**
+  - **(a) File-case-mismatch hygiene gap (`roadmap.md` lowercase
+    git tracking).** Surfaced during Commit 1 staging: case-sensitive
+    `git add ROADMAP.md` silently no-op'd against the lowercase-
+    tracked file, requiring `--amend` recovery. Q5 bundle lock
+    preserved post-amend; production-tool ship discipline maintained.
+    v0.4 hygiene candidate: canonicalize via `git mv roadmap.md
+    ROADMAP.md.tmp && git mv ROADMAP.md.tmp ROADMAP.md` (the
+    case-flip-via-tmp dance) once cross-platform compat confirmed.
+    Reusable for any other case-mismatched paths discovered.
+  - **(b) LSP adapter timing-race robustness (TS getDiagnostics 1s
+    → 5s timeout).** Commit 1.5 `04f5b9d`: tsserver cold-start +
+    first publishDiagnostics push takes ~1.3s on Node 22 /
+    typescript-language-server 4.4.1 / typescript 5.9.3, exceeding
+    the 1s polling ceiling. Fixed-ceiling polling is fragile across
+    LSP server timing variance (pyright pushes faster; tsserver
+    slower; future LSPs unpredictable). v0.4 hygiene candidate:
+    bounded-poll + explicit readiness signal pattern more robust
+    than fixed-ceiling polling on either adapter. Track for v0.4
+    LSP-substrate hardening.
+  - **(c) npm-test discipline reinforcement.** Phase 8 §12 already
+    documented "full npm test as standard verification step for any
+    src/ change" as v0.4 candidate (originating from Commit 0.5
+    follow-on where summary.test.ts latent regression went undetected
+    for 5 commits). Step 16 Commit 1.5 reinforces: the 1s timeout
+    flake would have been caught earlier with stricter pre-commit
+    npm-test discipline rather than surfacing at the v0.3.0 ship
+    gate. v0.4 hygiene candidate (already queued; reinforced here).
+
+- **Cross-references / commit map.**
+  - **Commit 1 (Substep 16.1).** main `998b1cc` (doc-refresh
+    bundle: README + ROADMAP + DESIGN + CLAUDE.md; +136 net LOC;
+    Q5 bundle lock satisfied via amend-recovery from case-mismatch).
+  - **Commit 1.5 (Substep 16.1.5).** main `04f5b9d` (TS adapter
+    diagnostics 1s → 5s timeout fix; +6/-2 LOC; recovered test
+    suite 808/810 → 810/810; v0.4 hygiene candidate logged).
+  - **Commit 2 (Substep 16.2).** main `6a92b6a` (package.json
+    version bump 0.2.0 → 0.3.0; dist/ rebuilt against post-1.5
+    source; Travis-owned per ownership split).
+  - **Commit 3 (Substep 16.3, this stamp).** main TBD-Commit-3
+    self-referential per Step 14/15 prior convention; no amend
+    backfill.
+  - **Commit 4 (Substep 16.4).** annotated tag `v0.3.0` (Travis-
+    owned, post-stamp); pushes via `git push origin v0.3.0`.
+  - **Step 15 shipped (upstream).** benchmarks `e0d68fd` +
+    `44fad18` + `7a6c6f9` + `c54b58b` + `36fd535` + `2e15993` +
+    `88668f5`; main TBD post-Phase C.
+  - **Step 14 shipped (upstream).** benchmarks `224099d` +
+    `397789f` + `b301be5` + `a5337c2` + `7cda543`; main `4308de5`
+    + `6576b47`.
+  - **Step 13 shipped (upstream).** main `d9040ff` (per-language
+    cost priors).
+  - **Step 12 shipped (upstream).** main `8a3de76` (atlas-file-
+    visibility filter + Path 3b methodology lock).
+  - **Step 11 shipped (upstream).** main `569e1f6` (Stream B
+    substrate complete).
+  - **Step 7 shipped (upstream).** main `abb18d3` (Stream A
+    finalization).
+  - **v0.4 (downstream).** Planning session queues next; evidence-
+    based trigger per OQ4 (a) MET. Inputs: 12-item substrate-
+    derived queue (Phase 8 §12 + supplement §7) + 3-item process-
+    hygiene queue (this stamp, Section "Methodological
+    observations") + ROADMAP.md v0.4 section.
+
+- **Closing.** v0.3 SHIPPED. Three-language baseline established
+  + sharpened across all four streams. Production-tool framing
+  carried forward via README + ROADMAP + DESIGN + CLAUDE.md.
+  v0.4 planning queues next.
+
 ### Step 15 shipped — 2026-04-28 (benchmarks `e0d68fd` + `44fad18` + `7a6c6f9` + `c54b58b` + `36fd535` + `2e15993` + `88668f5`; main TBD post-Phase C)
 
 - **Scope.** Stream D execution + Phase 8 synthesis + Theme 2.2
