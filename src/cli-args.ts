@@ -402,9 +402,9 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
       `Flag --full is only accepted with the 'index' subcommand. ${USAGE}`,
     );
   }
-  if (json && subcommand !== "index") {
+  if (json && subcommand !== "index" && subcommand !== "doctor") {
     throw new Error(
-      `Flag --json is only accepted with the 'index' subcommand. ${USAGE}`,
+      `Flag --json is only accepted with the 'index' or 'doctor' subcommand. ${USAGE}`,
     );
   }
   if (budgetWarn !== null && subcommand !== "index") {

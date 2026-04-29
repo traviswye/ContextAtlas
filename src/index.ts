@@ -90,11 +90,13 @@ export async function main(): Promise<void> {
     process.exit(result.exitCode);
   }
 
-  // v0.4 Stream B Step 8 stub. Doctor subcommand reports
-  // diagnostic-only self-check on ContextAtlas configuration + state.
-  // Substantive checks land at STEP-PLAN-V0.4.md Step 8.
+  // v0.4 Stream B Step 8 — Doctor subcommand reports diagnostic-only
+  // self-check on ContextAtlas configuration + state.
   if (subcommand === "doctor") {
-    const result = await runDoctorSubcommand();
+    const result = await runDoctorSubcommand({
+      repoRoot: configRoot,
+      json: parsed.json,
+    });
     process.exit(result.exitCode);
   }
 

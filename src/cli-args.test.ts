@@ -315,10 +315,16 @@ describe("parseArgs — `index` subcommand (ADR-12)", () => {
     );
   });
 
-  it("--json outside `index` rejects", () => {
+  it("--json outside `index`/`doctor` rejects", () => {
     expect(() => parseArgs(["--json"])).toThrow(
-      /--json is only accepted with the 'index' subcommand/,
+      /--json is only accepted with the 'index' or 'doctor' subcommand/,
     );
+  });
+
+  it("--json with `doctor` subcommand accepts (v0.4 Step 8)", () => {
+    const a = parseArgs(["doctor", "--json"]);
+    expect(a.subcommand).toBe("doctor");
+    expect(a.json).toBe(true);
   });
 });
 
