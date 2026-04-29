@@ -166,6 +166,32 @@ against those external repos.
 - **Tests adjacent to source.** `foo.ts` + `foo.test.ts`. Use Vitest.
 - **Error messages are actionable.** Every thrown error should tell the
   user what went wrong and what to do about it.
+- **Run `npm test` (full suite) before committing `src/` changes.**
+  Type-check + lint alone don't catch assertion regressions like the
+  v0.3 Commit 0.5 prose-string case (a `summary.test.ts` assertion
+  against a stale prose string went unnoticed for 5 commits because
+  pre-commit only ran `node --check` + `typecheck`). Pre-commit hook
+  automation deferred to v0.5+ candidate (CLAUDE.md "minimize
+  dependencies" principle weighs against husky for v0.4); developer
+  discipline is the v0.4 standard.
+
+## Extraction cost framing (v0.4 Step 6 / Q5 lock)
+
+Script-reported extraction costs use Anthropic's full-token API
+pricing. Actual platform-billed costs reflect prompt-cache discount
+(~90% off cached `EXTRACTION_PROMPT` prefix once the first call
+warms the cache). v0.4 Step 5 measurements showed ~3x reduction
+script-vs-platform across three reference targets:
+- cobra: $5.44 script → $1.82 platform
+- httpx: $5.53 script → $1.85 platform (estimated; cache-discount-consistent)
+- hono: $10.89 script → $3.65 platform (estimated)
+
+**Honest scope-narrative discipline.** Claim conservative
+projections; note actual-typically-lower. Don't tune projection
+math toward platform-actual values (Q5 lock — pricing volatility
+makes maintenance a liability, not a one-time fix). Adaptive
+priors-based correction is a v0.5+ candidate if priors observably
+drift.
 
 ## What to Ask the User About
 

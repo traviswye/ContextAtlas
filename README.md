@@ -235,6 +235,13 @@ contextatlas index
   on ADR count and size, this takes 1-10 minutes and costs a few
   dollars in Opus API credits. The resulting `atlas.json` can be
   committed so future contributors skip this step.
+- **Cost projection note.** Script-reported extraction costs use
+  full-token API pricing; platform-billed actuals reflect prompt-
+  cache discount on the shared `EXTRACTION_PROMPT` prefix and
+  typically run **~3x lower**. v0.4 Step 5 reference measurements:
+  cobra $5.44 → $1.82, httpx $5.53 → $1.85, hono $10.89 → $3.65
+  (3.0x ratio consistent across targets). Treat projected costs as
+  conservative upper bounds.
 - On subsequent runs, only files whose SHAs have changed since the
   last index get reprocessed. Usually seconds.
 
