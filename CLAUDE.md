@@ -65,43 +65,56 @@ These are decisions already made. Do not relitigate them.
 
 ## Current Version
 
-- **Current:** v0.3 shipped 2026-04-28. v0.4 planning queues next;
+- **Current:** v0.4 shipped 2026-04-29. v0.5 planning queues next;
   not yet started.
 - **Strategic arc:** [`ROADMAP.md`](ROADMAP.md) covers v0.1 → v1.0.
-- **v0.3 outcome:** Stream A atlas precision (Theme 1.2 narrower
-  attribution per ADR-16 amendment + Theme 1.1 multi-symbol API per
-  ADR-15 + Theme 1.3 atlas schema v1.3 with `contextatlas_commit_sha`);
-  Stream B docstring source extraction across TS/Python/Go; Stream C
-  methodology hardening (atlas-file-visibility filter + per-language
-  cost priors + Theme 2.2 cross-harness comparison convention);
+- **v0.4 outcome:** Production-installability foundation. Stream A
+  substrate hardening (B2 LSP timing-race robustness with
+  bounded-poll + readiness-signal pattern across TS/Python/Go
+  adapters per ADR-18; A4 directory-aware test-file exclusion; A1
+  priors-derived ceiling defaults; A2 retry-overhead modeling;
+  commit-message extraction as third claim source; cost-projection
+  disclaimer landed in 5 user-facing surfaces). Stream B
+  contextatlas-on-itself dogfood + diagnostic-only doctor script
+  foundation (5 categories; 17-21 checks; limited-mode for
+  unconfigured repos). Stream C bounded-validity matrix-run
+  replication (5 cells × n=2 trials; BOUNDED outcome; tokens median
+  4.4% / max 45.0%; three-measurement convergence ~4-13%
+  replication-noise-floor across extraction-side / matrix-run-side
+  / cost-side). Four named findings: filter-shape vs content-
+  richness distinction VALIDATED (commit-message filter is
+  conventional-commits-flavored; under-captures non-conventional
+  corpora); Q3 bifurcated reading SHIPPED (≥30 floor + ≥50 ceiling
+  honored independently); bounded-validity replication CONFIRMED;
+  cost-projection-vs-platform-billing systematic 3x reduction
+  VALIDATED across 4 reference targets.
+- **Methodology limits acknowledged in v0.4 ship narrative:** n=2
+  trial replication (full statistical methodology n>2 deferred to
+  v0.5+); calls-Δ quantization noise on small-N cells (token-Δ is
+  load-bearing metric); quality-axis blind-grading explicitly
+  v0.5+ scope; Phase 8 substrate cell selection finding-anchored
+  not random (full-matrix replication is v0.5+).
+- **v0.3 outcome (preserved as historical record):** Stream A atlas
+  precision (Theme 1.2 narrower attribution per ADR-16 amendment +
+  Theme 1.1 multi-symbol API per ADR-15 + Theme 1.3 atlas schema
+  v1.3 with `contextatlas_commit_sha`); Stream B docstring source
+  extraction across TS/Python/Go; Stream C methodology hardening;
   Stream D Phase 8 reference run + trace-analysis supplement. Four
   named findings: Theme 1.2 VALIDATED, Stream B VALIDATED, Theme 1.1
-  VALIDATED, Theme 2.2 FALSIFIED (Phase 7 §5.3 hypothesis falsifies
-  on v0.3 substrate; CA value robust across harness types).
-- **Methodology limits acknowledged in v0.3 ship narrative:** Step
-  12 Path 3b atlas-file-visibility caveat (bias direction
-  conservative); single-run methodology (n=1 per cell); blind-grading
-  quality-axis measurement deferred to v0.4 per scope-doc Stream D
-  framing.
+  VALIDATED, Theme 2.2 FALSIFIED.
 - **v0.2 outcome (preserved as historical record):** Three-language
   baseline established across hono (TypeScript), httpx (Python), and
   cobra (Go). Stream A + Stream B both shipped. v0.2 thesis ("works
-  across languages and repos") empirically validated. Three v0.3+
-  findings (Phase 7 §5.1 / §5.2 / §5.3) all resolved in v0.3 (closed
-  / fix shipped / falsified respectively).
-- **v0.4 candidate observations queued (12-item input):** quality-
-  axis measurement; clean-workspace mode (Path 3b conditional); BM25
-  activation; per-target ceiling defaults; cobra contamination drift
-  root-cause; multi-symbol API usage census; per-target retry-overhead
-  modeling; schema-version detection automation; directory-aware
-  test-file exclusion; chain α activation gate; Phase 7 §5.3
-  hypothesis revisitation under multi-run; test-discipline npm-test
-  standard. Full list in `STEP-PLAN-V0.3.md` Step 16 stamp +
-  `phase-8-v0.3-reference-run.md` §12 + `phase-8-trace-analysis-supplement.md` §7.
-- **Historical references:** `STEP-PLAN-V0.2.md` progress log
-  documents the per-step execution arc; `v0.2-SCOPE.md` is the
-  scope anchor as shipped (success criteria all satisfied — see
-  [STEP-PLAN-V0.2.md `## Progress log` Step 11 entry](STEP-PLAN-V0.2.md)).
+  across languages and repos") empirically validated.
+- **v0.5+ candidates** (canonical reference at
+  [`research/v0.5-candidates.md`](research/v0.5-candidates.md);
+  13 items across substrate gaps / feature gaps / process
+  improvements / methodology hardening). v0.5 thesis selection at
+  per-version scope-doc drafting time; likely candidate is
+  developer onboarding pipeline (#13) per ROADMAP framing.
+- **Historical references:** `STEP-PLAN-V0.3.md` + `STEP-PLAN-V0.2.md`
+  progress logs document per-step execution arcs; `v0.3-SCOPE.md` +
+  `v0.2-SCOPE.md` are the scope anchors as shipped.
 
 When making architectural decisions, check ADRs first. ADR-13
 (Pyright) and ADR-14 (gopls) document the language-adapter LSP

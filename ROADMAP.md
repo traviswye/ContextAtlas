@@ -95,7 +95,7 @@ v0.1 ──┬── v0.2 (language adapter breadth)         — SHIPPED
        ├── v0.3 (claim enrichment + sharpening)    — SHIPPED;
        │                                             input to v0.4 hardening
        │
-       └── v0.4 (production-installability)        — IN PROGRESS;
+       └── v0.4 (production-installability)        — SHIPPED;
                                                      substrate hardening +
                                                      doctor script foundation +
                                                      bounded validity
@@ -115,7 +115,7 @@ v1.0 (public launch)                               — gates: onboarding pipelin
                                                      external dogfood
 ```
 
-Practical implication: v0.4 in progress; v0.5+ specific version assignments at per-version scope-doc time, not now. v1.0 gates land via v0.99 final pre-launch scope-doc.
+Practical implication: v0.4 shipped 2026-04-29; v0.5+ specific version assignments at per-version scope-doc time, not now. v1.0 gates land via v0.99 final pre-launch scope-doc.
 
 ### v0.1 — Serving architecture with hand-authored intent [SHIPPED]
 
@@ -256,7 +256,7 @@ revisitation under multi-run.
 
 ---
 
-### v0.4 — Production-installability foundation [IN PROGRESS]
+### v0.4 — Production-installability foundation [SHIPPED]
 
 **Thesis:** Make ContextAtlas production-usable end-to-end (install
 → atlas → query → trust the output) for a solo developer on an
@@ -307,30 +307,56 @@ test-file layouts, atlas extraction on recent-not-pinned SHAs).
 **Cost envelope:** $30-50 with $50 ceiling. Detailed in
 [`v0.4-SCOPE.md`](v0.4-SCOPE.md) §"Cost envelope".
 
-**Status:** In progress; cycle-close imminent. Scope-doc shipped
-2026-04-28 (commit `e8b5114`). Steps 1-10 complete as of
-2026-04-29; Step 11 (v0.4 ship gate) is the final v0.4 step.
-Steps 1-9 shipped substrate hardening (Stream A) + dogfood +
-doctor (Stream B) + bounded-validity matrix-run replication
-(Stream C); Step 10 shipped synthesis + v0.5+ candidate
-seeding (this commit) + Step 11 prep checklist. See
+**Status:** Shipped 2026-04-29 (tag `v0.4.0`). Scope-doc shipped
+2026-04-28 (commit `e8b5114`); execution Steps 1-11 across 11
+working sessions. All 10 v0.4-SCOPE.md success criteria satisfied
+via committed artifacts. Self-use atlas refreshed at ship SHA
+(768 symbols / 825 claims; provenance matches HEAD). See
 [`research/v0.5-candidates.md`](research/v0.5-candidates.md)
-for canonical v0.5+ candidate reference and
-[`research/v0.4-step11-prep-checklist.md`](research/v0.4-step11-prep-checklist.md)
-for ship-gate prep.
+for canonical v0.5+ candidate reference (13 items across substrate
+gaps / feature gaps / process improvements / methodology
+hardening).
 
-**Step 9 bounded-validity outcome (BOUNDED):** 1/5 cells over
-20% token-Δ; 0/5 over 50%. Aggregates: tokens median 4.4% /
-max 45.0% (single-cell hono h1 outlier; agent-decision
-branching not methodology violation); cost median 8.4%.
-Three-measurement convergence on ~4-13% replication-noise-
-floor (extraction-side, matrix-run tokens, cost-side).
-Launch-narrative credibility line locked in
-`phase-8-trace-analysis-supplement.md` §8.7 (benchmarks
-repo).
+**Empirical validation (v0.4 cycle):**
+- **Stream A substrate hardening shipped.** B2 LSP timing-race
+  robustness via two-readiness-signals architecture (waitForServer
+  Ready + waitForDiagnostics) across all 3 adapters; ADR-18
+  documents cross-cutting pattern. A4 directory-aware test-file
+  exclusion ships with conservative defaults; A1 priors-derived
+  ceiling defaults + A2 retry-overhead modeling absorbed.
+  Commit-message extraction lands as third claim source alongside
+  ADR + docstring; conservative-default conventional-commits-
+  flavored filter.
+- **Stream B dogfood + doctor shipped.** ContextAtlas-on-itself
+  extraction validates filter-shape vs content-richness empirical
+  finding (ContextAtlas's step-stamped commit format yields 3.8%
+  filter selectivity vs design-target ~30%; FAIL ≥30 floor; B3
+  drop applied per Q3 bifurcated reading). Doctor script provides
+  diagnostic-only foundation for v0.5+ onboarding pipeline (5
+  categories; 17-21 checks; limited-mode for unconfigured repos).
+- **Stream C bounded-validity outcome (BOUNDED):** 5 cells × n=2
+  trials; 1/5 over 20% token-Δ (hono h1 45.0% — agent-decision
+  branching at identical 5-call count, not methodology violation);
+  0/5 over 50%. Aggregates: tokens median 4.4% / max 45.0%; cost
+  median 8.4% / max 22.1%. Three-measurement convergence on
+  ~4-13% replication-noise-floor (extraction-side, matrix-run
+  tokens, cost-side). Launch-narrative credibility line locked in
+  `phase-8-trace-analysis-supplement.md` §8.7 (benchmarks repo).
 
-**Cumulative spend:** ~$36.24 script-projected / ~$13-14
-platform actual; well below $50 ceiling.
+**Named findings:**
+1. Filter-shape vs content-richness distinction VALIDATED.
+2. Q3 bifurcated reading SHIPPED (≥30 floor = per-repo content
+   gate; ≥50 ceiling = launch-narrative gate; honored
+   independently).
+3. Bounded-validity replication CONFIRMED (BOUNDED per scope-doc
+   Step 9.4 lock).
+4. Cost-projection-vs-platform-billing systematic 3x reduction
+   VALIDATED (cobra $5.44→$1.82; httpx $5.53→$1.85; hono
+   $10.89→$3.65; dogfood $7.62→~$3.7); validates Q5 cost-
+   disclaimer scope-doc lock.
+
+**Cumulative spend:** $43.80 script-projected / ~$14.50
+platform-billed estimated; comfortably below $50 ceiling.
 
 **Why this version:** v0.3 proved efficiency + bundle-precision
 improvements; v0.4 hardens substrate so those improvements survive
@@ -579,6 +605,20 @@ Tracked here, not committed to a version. Each gets its own ADR when approached.
 ---
 
 ## Revision history
+
+- **2026-04-29 — v0.4 ship.** Tag `v0.4.0`. v0.4 section status
+  flipped `[IN PROGRESS]` → `[SHIPPED]`; status paragraph
+  rewritten as ship-narrative; v0.4 outcome paragraphs replace
+  Step-9-only summary with full Stream A / Stream B / Stream C
+  validation; named findings list; cumulative spend ($43.80
+  script / ~$14.50 platform; well below $50 ceiling); version
+  dependency graph updated (`v0.4 — SHIPPED`); practical-
+  implication line refreshed. Methodology-limits paragraph
+  in CLAUDE.md current-version block captures v0.4 honesty
+  scope (n=2; calls quantization; quality-axis deferral;
+  cell-selection finding-anchored). Self-use atlas refreshed
+  at ship SHA (768 symbols / 825 claims). v0.5+ section
+  pointer to `research/v0.5-candidates.md` retained.
 
 - **2026-04-29 — v0.4 Step 10 synthesis.** v0.4 section
   status refreshed to reflect Steps 1-10 complete (Step 11

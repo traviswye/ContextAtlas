@@ -582,18 +582,180 @@ Travis approves + bumps + tags + pushes).
 
 *Entries added in reverse-chronological order as steps ship.*
 
-*Format:*
+### Step 11 shipped — 2026-04-29 (this commit + tag `v0.4.0`)
 
-```
-### Step N shipped — YYYY-MM-DD (commit SHA)
-- Scope: [one-line from step definition]
-- Outcome: [1-2 sentences on what actually shipped]
-- Notable decisions: [if any surfaced during execution]
-- Ship-criteria verification: [each criterion with evidence]
-```
+**Scope.** Final v0.4 step. Verify all v0.4-SCOPE.md success
+criteria met; refresh CLAUDE.md current-version + ROADMAP cycle-
+close + STEP-PLAN-V0.4 progress log + v0.4-SCOPE cycle-close;
+bump package.json `0.3.0` → `0.4.0`; annotated tag `v0.4.0`.
+Single-ship-commit pattern (Travis Step 11 framing; v0.3 used
+4-commit ladder, v0.4 simplifies). Self-use atlas refreshed at
+Step 10 substrate SHA (`8e20aae`) BEFORE this commit per Step
+11 sequencing — atlas captures final substrate state; ship
+commit adds doc refreshes + version bump only.
 
-*(No entries yet; v0.4 execution begins post-STEP-PLAN-V0.4 commit
-+ scaffolding-scope clarification.)*
+**Outcome — v0.4 SHIPPED.** All 10 v0.4-SCOPE.md success criteria
+satisfied. Three streams delivered: Stream A substrate hardening
++ commit-message extraction + cost-projection disclaimer; Stream
+B contextatlas-on-itself dogfood + diagnostic-only doctor
+script; Stream C bounded-validity matrix-run replication. Four
+named findings (filter-shape vs content-richness VALIDATED; Q3
+bifurcated reading SHIPPED; bounded-validity CONFIRMED; cost
+3x systematic VALIDATED). Cumulative spend $43.80 script /
+~$14.50 platform — comfortably below $50 ceiling.
+
+**Cycle close — process-hygiene notes (absorbed from Step 10.1).**
+
+*Methodological process notes (5):*
+
+1. `parser.test.ts` hardcoded valid-keys regex fragility recurred
+   at Steps 2 + 4. Test-as-mirror-of-implementation, brittle by
+   construction. Lifted to v0.5+ candidate #7 (schema-driven
+   test data generation).
+2. Pipeline-integration scope confusion discipline: when wiring
+   a new claim source into existing pipeline, verify by reading
+   precedent integration before drafting new one — don't assume
+   symmetry. Saved one rework cycle each time at Steps 5 + 7.
+   Lifted to v0.5+ candidate #8 (formalize in CLAUDE.md as
+   checked invariant).
+3. v0.X-tagged script modification discipline established:
+   `v0.4-stepN-*.mjs` scripts are step-bound substrate;
+   substantive modifications after step closes get new script +
+   shared utility, not in-place rewrites. Step 5.7 atlas content
+   drop honored this pattern.
+4. Trace-analysis amendments benefit from set-difference framing
+   (which cells are in/out of the band) over aggregate-Δ-only
+   framing. Step 9 §8 amendment used per-cell variance +
+   outlier-classification rather than median-only.
+5. Cost-projection vs platform-billing systematic 3x discrepancy
+   measured at Step 5 across 3 reference targets; validates Q5
+   lock (don't tune projection math toward platform-actuals;
+   pricing volatility makes maintenance a liability). Disclaimer
+   landed in 5 user-facing surfaces at Step 6.
+
+*Empirical findings (4):*
+
+1. Filter-shape vs content-richness distinction (Stream C commit-
+   message filter is conventional-commits-prefix-anchored;
+   substrate not following convention under-captures: 5/129 =
+   3.9% selectivity in self-use vs design-target ~30%). Filter
+   correct *for its target corpus*; corpus-fit is v0.5+
+   concern (candidate #5).
+2. Q3 bifurcated reading (B3 lock): single ≥50-claims gate
+   refined to ≥30 floor (per-repo atlas-content gate) + ≥50
+   ceiling (launch-narrative gate). Both honored independently;
+   hono integrated 31 above floor; cobra/httpx Stream C dropped
+   below floor; aggregate +31 puts 3-repo total above ≥50
+   ceiling.
+3. Cache-discount ratio range 2-3x driven by per-file
+   documentation density (adapter files with rich JSDoc burn
+   more uncached tokens per Stream B call; dogfood ratio 2x vs
+   benchmark-target 3x).
+4. Three-measurement variance convergence on ~4-13% replication-
+   noise-floor: extraction-side ~4% (Step 5 httpx Stream B
+   re-run vs v0.3 baseline) + matrix-run-side tokens 4.4%
+   (Step 9 median across 5 cells) + cost-side 8.4% (Step 9
+   median across 5 cells). Independent dimensions land in same
+   band; substantiates bounded-validity claim.
+
+*Investigation-discipline patterns (3):*
+
+1. Empirical fact-check before locking hypothesis. Step 4
+   attribution reframe: original hypothesis ("LLM-drafted
+   commits richer than human-drafted") falsified by data already
+   on disk before Travis approved design. No API spend; no
+   fictional rework.
+2. Stochastic vs deterministic distinction via diagnostic-
+   before-rerun. Step 5 httpx 24-error spike: 3-sample
+   diagnostic with full instrumentation rather than blind full
+   re-run. Result: 0/2 valid samples reproduced → classified
+   transient → full re-run cleared cleanly. Cost: 3 samples
+   vs full re-run.
+3. Investigation-before-implementation discipline. Step 1.1b
+   probe (LSP timing race characterization) and Step 4 ADR-
+   style attribution reframe both pre-empted design errors.
+   Pattern: when a step proposes a fix, run a sub-step probe
+   first to confirm diagnosis, not just symptom.
+
+**Step-by-step cycle summary:**
+
+- **Step 1 (B2 LSP timing-race robustness).** Two-readiness-
+  signals architecture (`waitForServerReady` + `waitForDiagnostics`)
+  across 3 adapters (TS / pyright / gopls); ADR-18 captures
+  cross-cutting pattern; 3000ms ceiling tuned for vitest 5s
+  test timeout fit; two-condition short-circuit (skip
+  waitForServerReady when warmup opens 0 files OR no
+  tsconfig/jsconfig present).
+- **Step 2 (A4 directory-aware test-file exclusion).** Replaces
+  filename-based exclusion; conservative defaults ship per-
+  language (`*.test.ts` etc. for TS; `tests/` + `test_*.py` /
+  `*_test.py` for Python). minimatch-direct integration in
+  `walkSourceFiles`.
+- **Step 3 (A1 + A2 priors-derived ceilings + retry-overhead).**
+  `RETRY_OVERHEAD_V0_3` constant + `lookupCostPriorWithRetry`
+  + `projectedCeilingForRepo` in benchmarks harness.
+- **Step 4 (commit-message extraction).** Third claim source
+  alongside ADR + docstring; ADR-style attribution reframe
+  (commits as architectural-intent statements, not code-change
+  log); `DEFAULT_SUBJECT_PREFIX_PATTERNS` +
+  `DEFAULT_BODY_ANYWHERE_PATTERNS` conservative-default filter.
+- **Step 5 (Stream A re-extraction).** cobra/httpx/hono atlases
+  at v0.4 substrate. Q3 bifurcated reading: hono integrates 31
+  commit claims above ≥30 floor; cobra/httpx commit claims
+  dropped below floor via post-process script. httpx 24-error
+  transient classified + cleared via 3-sample diagnostic +
+  re-run. $24.43 script-projected.
+- **Step 6 (cost-projection disclaimer + capacity absorption).**
+  5-surface disclaimer landed (`extract-benchmark-atlas.mjs`
+  console + `run-reference.ts` console + README + CLAUDE.md +
+  RUBRIC.md). Concrete 3x measurement data anchor:
+  cobra/httpx/hono cache-discount ratios.
+- **Step 7 (contextatlas-on-itself dogfood).** `dogfood-extract.mjs`
+  orchestrator (~210 LOC); 3-stream extraction; 743 symbols /
+  822 claims at SHA `32deffe`. Filter-shape vs content-richness
+  finding empirically surfaces here.
+- **Step 8 (doctor script).** Diagnostic-only foundation; 5
+  categories (config / atlas / sha / lsp / extraction); 17-21
+  checks; limited-mode for unconfigured repos; text + JSON
+  output. ~1267 LOC across `src/doctor/` tree.
+- **Step 9 (bounded-validity matrix-run).** 5 cells × n=2 trials;
+  BOUNDED outcome per scope-doc Step 9.4 lock; supplement
+  amendment §8 (~140 LOC) lands in benchmarks repo
+  (`phase-8-trace-analysis-supplement.md`); commit `2efc7ba`.
+- **Step 10 (synthesis).** v0.5+ candidate seeding
+  (`research/v0.5-candidates.md`; 13 candidates renumbered
+  consecutively); Step 11 prep checklist
+  (`research/v0.4-step11-prep-checklist.md`); ROADMAP refresh.
+  Commit `8e20aae`.
+- **Step 11 (this commit, ship gate).** Self-use atlas refresh
+  at SHA `8e20aae` (768 symbols / 825 claims; +0.4% claims vs
+  Step 7 baseline within ~4-13% noise floor; $7.56 script /
+  ~$2.50 platform). Doc refreshes + version bump + tag.
+
+**Ship-criteria verification:**
+
+- ✅ Stream A substrate-hardening complete (B2 + A4 + A1 + A2);
+  A7 cobra contamination drift root-cause documented as v0.5+
+  candidate (within scope-doc descope clause).
+- ✅ Stream A commit-message extraction shipped per Q3 outcome
+  (hono integrated; cobra/httpx dropped per ≥30 floor; B3
+  bifurcated reading honored).
+- ✅ Stream A cost-projection disclaimer in 5 surfaces.
+- ✅ Stream B dogfood + doctor shipped; doctor green on
+  contextatlas + cobra HEAD acceptance.
+- ✅ Stream C bounded validity confirmed (5 cells × n=2; BOUNDED;
+  supplement §8 amendment).
+- ✅ No quality-axis claims published (v0.5+ scope explicit).
+- ✅ Backlog discipline preserved (`research/v0.5-candidates.md`
+  is canonical reference; 13 candidates with explicit
+  placement criteria).
+- ✅ Launch-document personal notes Travis-owned outside repo
+  per Option B.
+- ✅ Test suites green pre-bump: main 859/859 PASS; benchmarks
+  252/252 PASS + 9 skipped integration.
+- ✅ Standard ship-gate: package.json bump `0.3.0` → `0.4.0`;
+  annotated tag `v0.4.0`; STEP-PLAN-V0.4.md progress log
+  complete (this entry); all commits pushed.
 
 ---
 
