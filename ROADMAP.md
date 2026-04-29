@@ -307,8 +307,30 @@ test-file layouts, atlas extraction on recent-not-pinned SHAs).
 **Cost envelope:** $30-50 with $50 ceiling. Detailed in
 [`v0.4-SCOPE.md`](v0.4-SCOPE.md) §"Cost envelope".
 
-**Status:** In progress. Scope-doc shipped 2026-04-28 (commit
-`e8b5114`). STEP-PLAN-V0.4.md drafting next session.
+**Status:** In progress; cycle-close imminent. Scope-doc shipped
+2026-04-28 (commit `e8b5114`). Steps 1-10 complete as of
+2026-04-29; Step 11 (v0.4 ship gate) is the final v0.4 step.
+Steps 1-9 shipped substrate hardening (Stream A) + dogfood +
+doctor (Stream B) + bounded-validity matrix-run replication
+(Stream C); Step 10 shipped synthesis + v0.5+ candidate
+seeding (this commit) + Step 11 prep checklist. See
+[`research/v0.5-candidates.md`](research/v0.5-candidates.md)
+for canonical v0.5+ candidate reference and
+[`research/v0.4-step11-prep-checklist.md`](research/v0.4-step11-prep-checklist.md)
+for ship-gate prep.
+
+**Step 9 bounded-validity outcome (BOUNDED):** 1/5 cells over
+20% token-Δ; 0/5 over 50%. Aggregates: tokens median 4.4% /
+max 45.0% (single-cell hono h1 outlier; agent-decision
+branching not methodology violation); cost median 8.4%.
+Three-measurement convergence on ~4-13% replication-noise-
+floor (extraction-side, matrix-run tokens, cost-side).
+Launch-narrative credibility line locked in
+`phase-8-trace-analysis-supplement.md` §8.7 (benchmarks
+repo).
+
+**Cumulative spend:** ~$36.24 script-projected / ~$13-14
+platform actual; well below $50 ceiling.
 
 **Why this version:** v0.3 proved efficiency + bundle-precision
 improvements; v0.4 hardens substrate so those improvements survive
@@ -321,7 +343,14 @@ before research methodology rigor.
 ### v0.5+ — must-ship-before-v1.0 backlog [FLEXIBLE PLACEMENT]
 
 **Items below MUST ship before v1.0 public launch but specific
-version assignment is flexible.** Per-version scope-docs (v0.5,
+version assignment is flexible.** Canonical candidate reference
+(13 items; categorized substrate gaps / feature gaps / process
+improvements / methodology hardening): [`research/v0.5-candidates.md`](research/v0.5-candidates.md)
+(seeded at v0.4 Step 10). The list below is the strategic-arc
+framing; the canonical reference holds per-candidate detail
+(surface, problem, fix shape, placement criteria).
+
+Per-version scope-docs (v0.5,
 v0.6, v0.7, ...up to v0.99 if needed) decide which items land
 when based on:
 
@@ -550,6 +579,20 @@ Tracked here, not committed to a version. Each gets its own ADR when approached.
 ---
 
 ## Revision history
+
+- **2026-04-29 — v0.4 Step 10 synthesis.** v0.4 section
+  status refreshed to reflect Steps 1-10 complete (Step 11
+  ship gate queues next); added Step 9 bounded-validity
+  outcome paragraph (BOUNDED; three-measurement noise-floor
+  convergence ~4-13%; launch-narrative credibility line
+  locked in supplement §8.7); added cumulative spend line
+  (~$36.24 script / ~$13-14 platform; well below $50
+  ceiling). v0.5+ section gains canonical candidate
+  reference pointer to new `research/v0.5-candidates.md`
+  (13 candidates, categorized; replaces ad-hoc tracking
+  across scope docs and conversation summaries). Net
+  delta ~+25 LOC. Companion artifact:
+  `research/v0.4-step11-prep-checklist.md` (ship-gate prep).
 
 - **2026-04-28 — v0.3 ship + v0.4 reframe.** v0.3 shipped (tag `v0.3.0`); ROADMAP refreshed in parallel per (γ) production-tool hardening primary thesis lock + P6 backlog discipline. v0.4 section reframed from "Semantic layer [PLANNED, EVIDENCE-GATED]" to "Production-installability foundation [IN PROGRESS]" per [v0.4-SCOPE.md](v0.4-SCOPE.md) (commit `e8b5114`); v0.5 section reframed as "v0.5+ must-ship-before-v1.0 backlog [FLEXIBLE PLACEMENT]" per backlog-discipline lock (every deferred item gets explicit forward-pointer; per-version placement at per-scope-doc time, not now); v0.6+ renamed to v1.0+ enrichment backlog [POST-LAUNCH] clarifying post-v1.0-flavored items distinct from must-ship-before-v1.0 backlog; v1.0 section amended with onboarding pipeline + launch-document + quality-axis methodology ship criteria; version dependency graph updated to reflect v0.4-IN-PROGRESS + v0.5+-flexible-placement framing. Net delta ~+45 LOC. Drafted following 16-item v0.4 candidate inventory walk + cross-instance scope discussion + P1-P6 pushback resolution.
 
