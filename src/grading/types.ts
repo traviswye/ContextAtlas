@@ -39,10 +39,20 @@ export interface UsageInfo {
   outputTokens: number;
 }
 
-/** Outcome of a single judge call from createJudgeClient(...).judge(...). */
-export interface JudgeCallResult {
-  scores: RubricResult;
+/** Shared metadata across all judge call results. */
+export interface BaseCallResult {
   usage: UsageInfo;
   costUsd: number;
   model: ModelId;
+}
+
+/** Single-trial grading result — used in Step 6 calibration. */
+export interface JudgeCallResult extends BaseCallResult {
+  scores: RubricResult;
+}
+
+/** Paired-comparison grading result — used in Step 8 production. */
+export interface PairedJudgeCallResult extends BaseCallResult {
+  scoresA: RubricResult;
+  scoresB: RubricResult;
 }
