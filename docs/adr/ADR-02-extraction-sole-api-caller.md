@@ -25,9 +25,10 @@ intended.
 
 ## Decision
 
-The extraction pipeline (`src/extraction/`) is the only module in the
-codebase permitted to import from `@anthropic-ai/sdk` or otherwise call
-the Anthropic API.
+The extraction pipeline (`src/extraction/`) and the v0.5 grading harness
+(`src/grading/`) are the only modules in the codebase permitted to import
+from `@anthropic-ai/sdk` or otherwise call the Anthropic API. Both are
+research-time / index-time only.
 
 Query-time code paths — MCP tool handlers, language adapters, storage
 layer, git integration, config parsing — MUST NOT call the Anthropic
@@ -53,7 +54,19 @@ adapter layer would violate the query-time invariant.
   - Fall back to deterministic heuristics (pick first, truncate, etc.)
   - Expose the ambiguity to the caller and let Claude decide
 - This rule can be enforced mechanically. A grep for imports of
-  `@anthropic-ai/sdk` outside `src/extraction/` should return zero
-  matches. CI may enforce this.
+  `@anthropic-ai/sdk` outside `src/extraction/` and `src/grading/`
+  should return zero matches. CI may enforce this.
 - The single exception is the extraction pipeline itself, which is
   exactly where expensive model reasoning belongs.
+
+## Revision history
+
+- **2026-04-30** — v0.5 Step 2.0 amendment: extended permitted-modules
+  list to include `src/grading/` for v0.5 LLM-judge harness work.
+  Trigger: ADR-19 §2 + STEP-PLAN-V0.5 Step 2 surfaced ADR-02 boundary
+  at design-proposal time per investigation-first discipline. Load-
+  bearing invariant unchanged (query-time vs research-time / index-
+  time separation; sub-100ms queries; zero query cost preserved);
+  permitted-modules list expanded by one to reflect the invariant's
+  research-time application. CI enforcement grep pattern updated
+  correspondingly.
