@@ -732,7 +732,167 @@ substep-addition rationale (deliberate refinement vs v0.4
 
 *Entries added in reverse-chronological order as steps ship.*
 
-*(empty; populates as v0.5 steps execute)*
+### Step 2 shipped — 2026-05-01
+
+**Scope:** LLM-judge harness implementation per
+`v0.5-SCOPE.md` §Stream A LLM-judge harness component.
+Sonnet 4.6 default + Opus 4.7 escalation toggle; output capture;
+per-call cost tracking; deterministic-where-possible config;
+judge-agreement statistics primitives.
+
+**Outcome:** Stream A LLM-judge harness shipped. 5 substeps
+across 7 commits; 4 production modules (`types.ts`, `pricing.ts`,
+`judge-client.ts`, `agreement-stats.ts`) + 3 test files in
+`src/grading/`; ADR-02 amended at Step 2.0 to permit `src/grading/`
+as second `@anthropic-ai/sdk` caller; probe validated end-to-end
+against real Sonnet 4.6 with PROBE PASS at $0.00891. Steps 3-5
+unblocked.
+
+**Substep summary:**
+
+| Substep | Commit | Subject |
+|---|---|---|
+| 2.0 | `aeaa5e0` | ADR-02 amendment (extend permitted-modules to include `src/grading/`) |
+| 2.1 | `d9bd006` | `types.ts` + `pricing.ts` foundational modules |
+| 2.2 | `0b7bdc7` | `judge-client.ts` dual-mode (`gradeSingle` + `gradePair` per ADR-19 §3) |
+| 2.3 | `3733d9c` | `agreement-stats.ts` (Step 6 gate metrics + threshold constants) |
+| 2.4 (probe v1) | `4289b55` | Probe script first version |
+| 2.4 (recalibration) | `d4e9d4d` | Criterion 3 floor 50 → 20 |
+| 2.4 (close) | `dd7d87c` | Probe execution record |
+
+**Notable decisions:**
+
+- ADR-02 amendment (Step 2.0): `src/grading/` added as second
+  permitted Anthropic API caller; query-time invariant preserved.
+- Path B (dual-mode `gradeSingle` + `gradePair`) lock at Step 2.2:
+  `gradeSingle` for Step 6 calibration; `gradePair` for Step 8
+  production paired-comparison per ADR-19 §3 framing.
+- Spearman tied-rank-Pearson implementation matches scipy default;
+  for 0-3 ordinal scale, simplified formula `1 − 6Σd²/(n(n²−1))` is
+  inexact when ties exist.
+- Probe Criterion 3 floor recalibration (50 → 20) after Sonnet
+  produced compliant compact JSON at 35 tokens; second run PROBE
+  PASS bitwise-identical to first.
+
+**Cumulative deltas:**
+
+| Metric | Value |
+|---|---:|
+| LOC delta | +2327 insertions / −11 deletions / 2316 net |
+| Test delta | +78 (859 baseline → 937) |
+| Test files added | 3 |
+| API spend | $0.00891 (two probe runs) |
+
+**LOC scope-vs-estimate calibration:**
+
+| Substep | Kickoff | Refined | Actual | Ratio (kickoff) | Ratio (refined) |
+|---|---:|---:|---:|---:|---:|
+| 2.0 | ~10 | n/a | 18 | 1.8× | n/a |
+| 2.1 | ~80 | n/a | 250 | 3.1× | n/a |
+| 2.2 | ~400 | ~500 | 846 | 2.1× | 1.7× |
+| 2.3 | ~150 | ~480 | 799 | 5.3× | 1.7× |
+| 2.4 | ~80 | n/a | 414 (probe + recal + close combined) | 5.2× | n/a |
+| **Total** | **~720** | — | **2327** | **3.2× weighted** | — |
+
+Pattern: kickoff estimates ~2-5× light; refined estimates
+(post-design-proposal) ~1.5-2× light. Empirical evidence about
+kickoff-stage estimation calibration; documented for v0.6+ cycle
+budgeting refinement.
+
+**Test count progression:**
+
+- 2.0: no tests (doc commit)
+- 2.1: +14 (859 → 873; pricing arithmetic + type-safety
+  `@ts-expect-error`)
+- 2.2: +30 (873 → 903; classifyError canaries + retry loop +
+  schema validation across single + paired modes)
+- 2.3: +34 (903 → 937; per-function boundary cases + Spearman
+  textbook anchors + gate evaluation paths)
+- 2.4: no tests (probe is dev-time scaffolding; not unit test
+  substrate)
+
+Test count estimates were ~1.4× light on average (consistent with
+LOC pattern).
+
+**API spend transparency:**
+
+- Step 2 cumulative: $0.00891 across two probe runs
+  ($0.004455 each at Sonnet 4.6 pricing verified 2026-04-30)
+- Both runs below $1 cost-discipline threshold; Travis pre-approval
+  scope held throughout
+- Substantive API spend deferred to Step 6 ($10-25 calibration
+  envelope) + Steps 7-8 (Stream B production + grading)
+
+**Findings carried forward:**
+
+1. **Finding 2 (Step 6 calibration substrate)** — Sonnet scored
+   `hallucination=1` on the probe's verifiable httpx answer
+   (`httpx/_models.py:635-639` + ADR-05 citations). Three plausible
+   interpretations (Sonnet weak on httpx internals; placeholder
+   rubric anchors underspecified; subtle overclaim in answer); Step
+   6 calibration with Travis-intuition baseline adjudicates. If
+   pattern recurs with factual-axis correlation < 0.6 AND other axes
+   pass, Step 1.3 Option A→B pivot triggers (inline ADR ground-truth
+   for Step 8 grading per ADR-19 §3). See
+   `scripts/v0.5-step2-probe-output.md` §Finding 2.
+
+2. **Finding 3 (Step 6 calibration substrate)** — Two probe runs
+   produced bitwise-identical scores at temperature 0 on
+   compact-JSON output workload. Suggests Sonnet 4.6 may be MORE
+   deterministic than ADR-19 §2 "approximately-deterministic"
+   framing implied — for compact-JSON workloads. Doesn't generalize
+   to verbose grading-rationale workloads; Step 6 on canonical
+   rubric is the empirical test; n=2 directional only; v0.5 design
+   preserves the conservative caveat.
+
+3. **Cost projection observation** — Opus 4.7 verified pricing
+   ($5/$25 per MTok at 2026-04-30) is ~1.67× Sonnet (5/3 ratio),
+   not the order-of-magnitude jump older pricing implied. ADR-19
+   §2 Step 7-8 Option A cost projection (full Opus production)
+   should be recalculated against current pricing pre-Step-6
+   calibration. Pricing-ratio invariant test in `pricing.test.ts`
+   serves as regression sentinel.
+
+4. **`src/extraction/pricing.ts` staleness** — verified 2026-04-30:
+   has stale Opus 4.7 pricing ($15/$75 vs verified $5/$25).
+   Travis-flagged as separate small-housekeeping commit, NOT
+   bundled into Step 2. Awaits Travis launch; not Step 2 scope.
+
+5. **Estimation calibration insight** — kickoff LOC estimates ran
+   ~3× light on average; design-proposal-refined estimates ~1.7×
+   light. Not noise; pattern persisted across 5 substeps. v0.6+
+   cycle LOC budgeting should apply 3× multiplier to kickoff
+   estimates as default + surface design-proposal refinement before
+   implementation begins.
+
+6. **Substep decomposition refinement** — Step 2 originally listed
+   5 ship-criteria substeps (2.1-2.5; per STEP-PLAN-V0.5 §Step 2).
+   During execution, substep 2.0 (ADR-02 amendment) was introduced
+   ahead of original 2.1; original 2.1-2.5 shifted to 2.1-2.4 + 2.5
+   close. Refinement was substantive per the discovered ADR-02
+   boundary; ship criteria coverage unchanged.
+
+**Estimation calibration note for v0.6+ cycles:**
+
+v0.5 Step 2 substep LOC actuals consistently ran 2-5× larger than
+kickoff estimates. Refinement during design-proposal phase improved
+accuracy to ~1.5-2×. Pattern persisted across all 5 substeps; not
+noise. v0.6+ cycle LOC estimates should:
+
+a. Apply ~3× multiplier to kickoff estimates as default
+b. Surface design-proposal refinement BEFORE implementation begins
+   (not after) for improved accuracy
+c. Treat "kickoff estimate" as anchor for scope shape, not LOC
+   budget — actual LOC depends on test coverage density + interface
+   design surface that emerges during design phase
+
+**Step 3 unblock:** graded-output protocol (rubric prompt text per
+F1 PROMPT TEXT lock) unblocks per STEP-PLAN-V0.5 dependency graph.
+Step 3 implements canonical rubric prompt committed to source per
+ADR-19 §1; replaces the placeholder rubric used in Step 2.4 probe.
+Step 3 prompt commits at `src/grading/rubric-prompt.ts` analogous
+to `src/extraction/prompt.ts` precedent (ADR-02 single-source-of-
+truth pattern).
 
 ---
 

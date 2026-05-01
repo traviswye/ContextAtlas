@@ -22,7 +22,8 @@
  * Travis pre-approved per Option A workflow (Travis runs locally;
  * output pasted back for interpretation).
  *
- * Discard after Step 2 closes — one-shot dev-time validation.
+ * Dev-time validation script; kept for future reproducibility
+ * (Step 6 calibration may re-use harness round-trip pattern).
  */
 
 import Anthropic from "@anthropic-ai/sdk";
