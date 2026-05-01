@@ -194,10 +194,12 @@ async function main() {
     );
   }
 
-  // Criterion 3: output tokens in sanity range
-  if (result.usage.outputTokens < 50 || result.usage.outputTokens > 500) {
+  // Criterion 3: output tokens in sanity range. Floor at 20: 4-axis
+  // JSON at extreme compaction is ~25 tokens; floor 20 catches genuine
+  // truncation while admitting compliant compact responses.
+  if (result.usage.outputTokens < 20 || result.usage.outputTokens > 500) {
     failures.push(
-      `usage.outputTokens out of expected range [50, 500]: ${result.usage.outputTokens}`,
+      `usage.outputTokens out of expected range [20, 500]: ${result.usage.outputTokens}`,
     );
   }
 
