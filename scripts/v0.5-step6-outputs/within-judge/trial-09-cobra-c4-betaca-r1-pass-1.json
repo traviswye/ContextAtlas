@@ -1,0 +1,19 @@
+{
+  "trialId": "trial-09-cobra-c4-betaca-r1",
+  "trialPath": "C:\\CodeWork\\ContextAtlas-benchmarks\\runs/2026-04-29T05-39-45-525Z/cobra/c4-subcommand-resolution/beta-ca.json",
+  "pass": 1,
+  "rubricPromptVersion": "Step-3-canonical (commit 6ed89ce)",
+  "scores": {
+    "factual_correctness": 1,
+    "completeness": 2,
+    "actionability": 2,
+    "hallucination": 1
+  },
+  "usage": {
+    "inputTokens": 3033,
+    "outputTokens": 35
+  },
+  "costUsd": 0.009623999999999999,
+  "model": "claude-sonnet-4-6",
+  "createdAt": "2026-05-03T20:48:45.671Z"
+}

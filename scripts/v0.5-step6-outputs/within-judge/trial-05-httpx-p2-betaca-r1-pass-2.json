@@ -1,0 +1,19 @@
+{
+  "trialId": "trial-05-httpx-p2-betaca-r1",
+  "trialPath": "C:\\CodeWork\\ContextAtlas-benchmarks\\runs/2026-04-29T05-37-49-695Z/httpx/p2-http3-transport/beta-ca.json",
+  "pass": 2,
+  "rubricPromptVersion": "Step-3-canonical (commit 6ed89ce)",
+  "scores": {
+    "factual_correctness": 2,
+    "completeness": 3,
+    "actionability": 2,
+    "hallucination": 1
+  },
+  "usage": {
+    "inputTokens": 2535,
+    "outputTokens": 35
+  },
+  "costUsd": 0.00813,
+  "model": "claude-sonnet-4-6",
+  "createdAt": "2026-05-03T20:48:35.711Z"
+}

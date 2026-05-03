@@ -1,0 +1,19 @@
+{
+  "trialId": "trial-03-cobra-c3-betaca-r1",
+  "trialPath": "C:\\CodeWork\\ContextAtlas-benchmarks\\runs/2026-04-29T05-36-52-571Z/cobra/c3-hook-lifecycle/beta-ca.json",
+  "pass": 2,
+  "rubricPromptVersion": "Step-3-canonical (commit 6ed89ce)",
+  "scores": {
+    "factual_correctness": 1,
+    "completeness": 2,
+    "actionability": 2,
+    "hallucination": 1
+  },
+  "usage": {
+    "inputTokens": 2967,
+    "outputTokens": 35
+  },
+  "costUsd": 0.009425999999999999,
+  "model": "claude-sonnet-4-6",
+  "createdAt": "2026-05-03T20:48:30.593Z"
+}
