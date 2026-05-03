@@ -334,7 +334,7 @@ underperformer.
 
 ### 4. Statistical methodology — descriptive CI only
 
-> **Amended 2026-05-03 (commit `<Step 5.0 SHA>`):** §4 difference-of-
+> **Amended 2026-05-03 (commit `05c9fc7`):** §4 difference-of-
 > means formula updated from unpaired-pooled (df=n_A+n_B−2) to
 > paired-t (df=n−1) per Step 5 design adjudication. Cross-cell
 > rollup math clarified as paired-t at concatenated N=25 differences
