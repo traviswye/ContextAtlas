@@ -1229,7 +1229,7 @@ truth pattern).
 
 ## Revision history
 
-- **2026-05-03 (commit [Step 4.4 SHA])**: Step 4.6 reframe.
+- **2026-05-03 (commit `8df1490`)**: Step 4.6 reframe.
   Original §4.6 said "Style-normalization stretch deferred. Only
   ships if Step 8 post-hoc verification triggers." Original
   phrasing was scope ambiguous (implementation deferred OR
