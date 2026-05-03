@@ -732,6 +732,156 @@ substep-addition rationale (deliberate refinement vs v0.4
 
 *Entries added in reverse-chronological order as steps ship.*
 
+### Step 3 shipped — 2026-05-03
+
+**Scope:** Canonical rubric prompt text per ADR-19 §1 + §3;
+F1 PROMPT TEXT lock at Step 3 commits canonical rubric to
+source.
+
+**Outcome:** `src/grading/rubric-prompt.ts` shipped with two
+exported constants (`RUBRIC_PROMPT_SINGLE`;
+`RUBRIC_PROMPT_PAIRED`) pre-composed per ADR-02
+`EXTRACTION_PROMPT` single-source-of-truth precedent. Lint-style
+regression sentinel tests in `rubric-prompt.test.ts` catch
+axis-name drops; JSON schema spec regressions; anti-RLHF
+instruction loss; framing-prefix divergence between SINGLE and
+PAIRED. Step 4 (double-blind harness) unblocks per
+STEP-PLAN-V0.5 dependency graph.
+
+**Substep summary:**
+
+| Substep | Commit | Subject |
+|---|---|---|
+| 3.1+3.2 | `6ed89ce` | `rubric-prompt.ts` canonical text (378 LOC) |
+| 3.5 | [this commit] | `rubric-prompt.test.ts` regression sentinels + Step 3 close |
+
+**Notable decisions:**
+
+- Two-constants pre-composed pattern (`RUBRIC_PROMPT_SINGLE` +
+  `RUBRIC_PROMPT_PAIRED` + private `RUBRIC_PROMPT_BODY`) per
+  Decision A of Step 3 design lock; matches ADR-02
+  `EXTRACTION_PROMPT` precedent.
+- Worked anchors via ONE pair of verbatim Phase 5 §5.1 fragments
+  (ALPHA H4 + CA H4) + per-axis criteria-by-reference per
+  Decision B; honest "real output" labeling.
+- Axis 4 score-0 anchor labeled "hypothetical-illustrative" per
+  ADR-19 §1 transparency note; `validator.fabricatedMethod()`
+  name chosen for clearer hypothetical signal vs plausibly-real
+  `validator.checkSchema()` (Q3 review refinement).
+- Axis 2 score-3 anchor tightened to separate architectural
+  anchor from mechanical flow requirements (Q1 review
+  refinement; future Sonnet sees only opening fragment, not full
+  answer).
+- Six edge cases handled inline per ADR-19 §1 spec.
+- `judge-client.ts` unchanged per Decision D; `req.rubricPrompt`
+  stays required parameter.
+- No probe-run at Step 3 per Decision C; Step 6 calibration
+  ($10-25 envelope) IS canonical rubric's empirical test.
+- 2-commit substep ladder per Decision E (3.1+3.2 + 3.5 close
+  folded together).
+- Step 3.5 test-design refinement: whitespace-normalized
+  substring helper introduced for assertions whose target spans
+  line boundaries (anti-RLHF instruction wraps after "do" in
+  PAIRED canonical text). Regression sentinels resilient to
+  line-wrap changes; catch word-drop, not wrap-position drift.
+
+**Cumulative deltas:**
+
+| Metric | Value |
+|---|---:|
+| LOC delta | +378 (`rubric-prompt.ts`) + 144 (test file) = 522 |
+| Test delta | +18 (937 → 955) |
+| Test files added | 1 |
+| API spend | $0 (no probe per Decision C) |
+
+**LOC scope-vs-estimate calibration:**
+
+| Substep | Kickoff | Refined | Actual | Ratio (kickoff) | Ratio (refined) |
+|---|---:|---:|---:|---:|---:|
+| 3.1+3.2 | ~80 (2000-4000 chars) | 100-180 | 378 | 4.7× | 2.1× |
+| 3.5 | ~80-120 | n/a | 144 | 1.4× | n/a |
+| **Total** | **~200** | — | **522** | **2.6× weighted** | — |
+
+Pattern continues from Step 2: kickoff estimates run light
+(~2-5×); refined estimates land closer (~1.5-2× for prompt-text
+work, ~1.4× for test-only work). Test-only substep (3.5) was
+the closest-to-estimate substep across Steps 2-3; rationale:
+test scope is cleanly bounded by spec count (5-8 sentinels →
+written as 18 individual `it()` cases for per-axis clarity;
+boundary expansion not scope creep).
+
+**Test count progression:**
+
+- 3.1+3.2: no tests (canonical text commit)
+- 3.5: +18 (937 → 955; 4 describe blocks × 5-7 sentinels;
+  per-axis-name cases broken out for readability)
+
+Per-axis breakdown of test additions:
+- `RUBRIC_PROMPT_SINGLE` block: 6 `it()` cases (axis names;
+  scale; schema; discipline line; worked anchors; framing)
+- `RUBRIC_PROMPT_PAIRED` block: 7 `it()` cases (same set + anti-
+  RLHF instruction; paired-mode framing)
+- Structural distinctness block: 3 `it()` cases (length; framing
+  divergence; anti-RLHF PAIRED-only)
+- Honest-labeling discipline block: 2 `it()` cases (hypothetical
+  label; real-output label)
+
+**API spend transparency:**
+
+- Step 3 cumulative: $0 (no probe per Decision C)
+- v0.5 cumulative through Step 3: $0.00891 (Step 2 probe runs
+  only)
+- Substantive API spend deferred to Step 6 calibration ($10-25
+  envelope) per scope-doc; canonical rubric's empirical test is
+  Step 6 within-judge consistency + Travis-intuition correlation
+  on n=10 substrate.
+
+**Findings carried forward:**
+
+1. **Test-design pattern: whitespace-normalized substring
+   helper for prose-content regression sentinels.** The
+   anti-RLHF instruction "do not invent distinctions to break
+   ties" wraps after "do" in canonical PAIRED text; raw
+   `.toContain()` failed despite the instruction being
+   present. Fix: `containsNormalized()` helper collapses
+   whitespace before substring check. Pattern applies to any
+   future test of multi-word instructions in prose-style
+   constants where line-wrapping is a formatting choice. Caught
+   pre-merge by following CLAUDE.md `npm test` discipline.
+
+2. **18 vs 5-8 test cases — boundary expansion not scope
+   creep.** Step 3 design proposal #6 projected 5-8 sentinels;
+   actual ship has 18 individual `it()` cases. Rationale:
+   per-axis-name checks broken into separate cases for
+   readability and per-test failure isolation (if `factual_
+   correctness` drops from PAIRED, the failure points at that
+   exact axis rather than a generic "all-axes" assertion). 4
+   logical sentinel groups (axis presence; schema; framing;
+   honest labeling); 18 mechanical assertions implementing
+   them. Same conceptual coverage; finer failure granularity.
+
+3. **Estimation calibration extends across Step 3.** Kickoff-
+   refined-actual ratios mirror Step 2 pattern: kickoff ~3×
+   light; refined ~1.5-2× light. v0.6+ cycle LOC budgeting
+   should continue applying ~3× kickoff multiplier. Step 3
+   test-only substep (3.5) was closest-to-estimate (~1.4×);
+   suggests test-substep estimation is materially more
+   tractable than text-substep estimation (test scope binds
+   to spec count; text scope binds to substantive content
+   coverage which is harder to estimate at kickoff).
+
+**Step 4 unblock:** double-blind harness implementation per
+ADR-19 §3 + Step 1.3 5-step anonymization protocol lock.
+Empirical strip-list already derived in ADR-19 §3 (inspection
+of `httpx/p4-stream-lifecycle/ca.json` +
+`httpx/p2-http3-transport/beta-ca.json`); Step 4 implements
+against locked spec. Estimated LOC per scope-doc: ~150-250
+across anonymization pipeline + agreement metrics + post-hoc
+verification. Apply Step 2/3 calibration multiplier (~3× kickoff;
+~1.7× refined) for v0.5 cycle estimation discipline.
+
+---
+
 ### Step 2 shipped — 2026-05-01
 
 **Scope:** LLM-judge harness implementation per
