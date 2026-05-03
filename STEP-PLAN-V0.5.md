@@ -732,6 +732,181 @@ substep-addition rationale (deliberate refinement vs v0.4
 
 *Entries added in reverse-chronological order as steps ship.*
 
+### Step 6 shipped — 2026-05-03
+
+**Scope:** Pre-flight grading calibration per ADR-19 §5 + Step
+1.5 thresholds lock. Within-judge consistency check + Travis-
+intuition correlation; gate-condition substep before Step 7
+production replication.
+
+**Outcome:** Gate evaluation: **Branch D adjudication** (explicit
+offset disclosure per ADR-19 §2). Within-judge consistency PASS
+at +20pt margin; aggregate Spearman 0.74 PASS at +0.14 margin;
+per-axis direction-agreement degenerate at n=5 + constant-vector
+substrate (methodology-refinement candidate for v0.6+). Step 7
+production replication unblocks per ADR-19 §5 with offset
+disclosure framing.
+
+**Substep summary:**
+
+| Substep | SHA | Subject |
+|---|---|---|
+| 6.0 design | (no commit) | Design proposal lock; 9 specifics adjudicated |
+| 6.1 within-judge | `23ac7d4` + `02e6b41` | Harness script (+465 LOC) + execution evidence (+455 LOC, 21 files); PROBE PASS |
+| 6.2 Travis-intuition | `3ba2aef` | Phase A worksheet template (+419 LOC); Travis filled |
+| 6.3 gate evaluation | `585ccfc` | Gate eval script + report + filled grades (+572 LOC); Branch D adjudication |
+| 6.4 close | [this commit] | Progress log entry; offset disclosure documented |
+
+**Notable decisions:**
+
+- Q1-Q9 design lock at Step 6.0 (substrate selection; threshold
+  preservation; cost projection; workflow detail; methodology;
+  persistence; substep ladder; npm build pre-flight).
+- Phase A unmediated grading methodology lock (priors-vs-Sonnet
+  baseline; Phase B rubric-mediated diagnostic conditional on
+  Phase A failing — never triggered since Phase A Spearman
+  passed).
+- **Branch D adjudication** (explicit offset disclosure per
+  ADR-19 §2; Spearman PASSES; systematic-strictness diagnostic;
+  ADR-19 §2 explicitly permits this recovery path). Branch B
+  (rubric refinement) queued as v0.6+ candidate IF reviewer
+  feedback post-v0.5-ship surfaces concerns.
+- Trick-bucket override empirical validation deferred to Step 7
+  if applicable (substrate-limited at Step 6; h6-fetch-signature
+  not in Step 9 substrate; honest scope-limit acknowledgment).
+
+**Cumulative deltas:**
+
+| Metric | Value |
+|---|---:|
+| LOC delta | +1911 (harness 465 + execution evidence 455 + worksheet 419 + gate-eval substrate 572) |
+| Test delta | 0 (Step 6 is execution; harness scripts dev-time scaffolding) |
+| API spend | $0.180942 (Step 6.1 within-judge; 20 Sonnet 4.6 calls; mid-range of $0.10-0.24 projection) |
+| Cumulative v0.5 spend | $0.18985 (Step 2 probe + Step 6.1) |
+| Test files added | 0 (no unit tests) |
+
+**Gate evaluation results (per ADR-19 §5):**
+
+Within-judge consistency:
+- Per-axis within-1-point: 100% all 4 axes (vs ≥80% threshold)
+- Per-axis exact-match: 90% / 90% / 80% / 100% (diagnostic; not
+  gating)
+- Bitwise determinism: 7/10 trials (Finding 3 partial
+  generalization at canonical rubric)
+
+Phase A (Travis priors vs Sonnet pass-1):
+- Aggregate Spearman: 0.7406 (vs ≥0.6 threshold; +0.14 margin)
+  — **PASS**
+- Per-axis direction agreement: 20% / 40% / 40% / 40% (vs ≥75%
+  threshold) — **FAIL** (interpretation below)
+- Per-axis MAD (Travis − Sonnet; positive = Travis higher):
+  factual +0.80; completeness +0.40; actionability +0.60;
+  hallucination +0.40
+
+**Direction-agreement failures interpretation:** Largely
+artifactual at n=5 + constant-vector substrate. Travis = constant
+3 on completeness + actionability across all 5 trials (no Travis
+direction signal); Sonnet = constant 1 on hallucination (no
+Sonnet direction signal). The strict `sign()` comparison treats
+constant-vector vs varied-vector pairs as disagreement; real
+meaningful disagreement only present on factual_correctness
+axis (where both have variance) at 20% direction agreement.
+
+**ADR-19 §2 diagnostic match:** systematic-strictness pattern
+(high correlation + uniform positive MAD across all 4 axes;
+Travis grades 0.40-0.80 points higher than Sonnet across the
+board). Per ADR-19 §2 verbatim: *"Systematic lenience/strictness
+only (high correlation, large MAD): Judge tracks Travis on
+different scale; bias is correctable. Recovery: Rubric anchor
+refinement OR explicit offset disclosure — never escalation
+alone."*
+
+**Findings 2-3 adjudication:**
+
+Finding 2 (hallucination=1 pattern): **PARTIALLY-REPRODUCES**.
+- Sonnet scored hallucination=1 on 100% of 20 calls
+- Travis matched at hallucination=1 on 3/5 trials where actual
+  overclaim issues present (httpx p4 mutually-exclusive
+  read/iter_bytes; hono h1 Node adapter uncertainty; cobra c4
+  db-not-prefix-of-database)
+- Travis graded hallucination=0 on 2/5 trials with no
+  fabrications detected (cobra c3 + httpx p2)
+- Interpretation: Sonnet defaults to halluc=1 across all
+  answers; Travis priors distinguish actual-overclaim from
+  clean. Axis 4 anchor systematic strictness; correctable via
+  offset disclosure (Branch D) or anchor refinement (v0.6+
+  candidate).
+
+Finding 3 (bitwise determinism): **PARTIAL generalization**.
+7/10 trials bitwise-identical at canonical rubric (vs Step 2.4
+placeholder rubric n=2 full bitwise). ADR-19 §2 "approximately-
+deterministic" framing preserved as accurate; "fully
+deterministic" framing ruled out. Honest acknowledgment for v0.5
+final reporting.
+
+**Findings carried forward:**
+
+1. **Sonnet 4.6 systematic strictness on canonical rubric.**
+   Travis-intuition baseline shows +0.40 to +0.80 MAD across all
+   4 axes; uniform positive offset; ADR-19 §2 disclosure-band
+   tolerable. Pattern is "judge tracks Travis ranking on
+   different scale," not "judge measures wrong thing."
+
+2. **Per-axis direction-agreement metric degeneracy at n=5 +
+   constant-vector substrate.** v0.6+ methodology-refinement
+   candidate. Possible remediations: substrate ≥10; tied-score
+   handling that doesn't auto-fail constant-vector cases; per-
+   axis-direction-agreement weighting by per-axis variance.
+   Worth noting in v0.6+ statistical methodology refinement
+   work.
+
+3. **Output substrate density as separate LOC-inflation driver
+   from design-lock depth and test substrate density.** Step 6.1
+   harness landed 1.55× target; markdown audit-trail writers
+   expand LOC similarly to test-substrate density (Step 5
+   finding #5). Three distinct calibration variables for v0.6+
+   cycle planning: design-lock depth + test substrate density +
+   output substrate density.
+
+4. **Trick-bucket override (Axis 3) empirical validation
+   deferred to Step 7** production if applicable cells exercise
+   pattern. If no Step 7 cells exercise trick-bucket, override
+   remains theoretically-locked-but-empirically-unvalidated
+   through v0.5 cycle close — honest scope acknowledgment for
+   v0.5 final reporting.
+
+**Branch D offset disclosure language for v0.5 final reporting:**
+
+> v0.5 quality-axis grading uses Sonnet 4.6 LLM-judge with
+> explicit calibration disclosure: Sonnet judge applied canonical
+> rubric ~0.5pt stricter than Travis-intuition baseline on
+> average across all 4 axes (per-axis MAD: factual +0.80;
+> completeness +0.40; actionability +0.60; hallucination +0.40;
+> positive = Travis grades higher). Rankings track at Spearman
+> 0.74 against Travis priors, indicating Sonnet tracks ranking
+> correctly on different scale. Quality-axis findings reported
+> with explicit MAD disclosure per ADR-19 §2 lenience/strictness
+> recovery path; aggregate effect-size + uncertainty framing;
+> no NHST p-value interpretation.
+
+**v0.6+ candidates queued (Step 6 surfacings):**
+
+- Rubric anchor refinement (Axis 1 + Axis 4 specifically) IF
+  reviewer feedback post-v0.5-ship surfaces concerns; ADR-19 §2
+  anchor refinement path.
+- Per-axis direction-agreement metric reformulation for small-N
+  + constant-vector substrate handling.
+- Trick-bucket override Axis 3 empirical validation if not
+  surfaced organically at Step 7.
+
+**Step 7 unblock:** production replication per STEP-PLAN-V0.5
+dependency graph. Step 7 runs canonical extraction pipeline +
+grading at production substrate per ADR-19 §3 paired-mode +
+Step 4 anonymization pipeline + Step 5 stats primitives. ~$25-40
+envelope per scope-doc.
+
+---
+
 ### Step 5 shipped — 2026-05-03
 
 **Scope:** Statistical tooling implementation per ADR-19 §4 +
