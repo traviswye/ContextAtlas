@@ -732,6 +732,203 @@ substep-addition rationale (deliberate refinement vs v0.4
 
 *Entries added in reverse-chronological order as steps ship.*
 
+### Step 5 shipped — 2026-05-03
+
+**Scope:** Statistical tooling implementation per ADR-19 §4 +
+Step 1.4 statistical methodology lock. Three modules: stats.ts
+(paired-t CI primitives + 4-level aggregation pipeline);
+reporting.ts (Phase-9 stubs + distinguishableColumnCaption full);
+sibling scripts/lib/stats.mjs in benchmarks repo. ADR-19 §4
+amendment surfaced + adjudicated mid-execution.
+
+**Outcome:** Stream A close substep. 5/5 v0.5 steps shipped
+(Steps 1-5). 6 commits across 2 repos (5 main + 1 benchmarks).
+ADR-19 §4 paired-t amendment landed at Step 5.0 ahead of
+implementation. Step 6 calibration (first substantive API
+spend; $10-25 envelope; gate-condition discipline before Step 7
+production) unblocks per STEP-PLAN-V0.5 dependency graph.
+
+**Substep summary:**
+
+| Substep | Repo | Commit | Subject |
+|---|---|---|---|
+| 5.0 amendment | main | `05c9fc7` | ADR-19 §4 paired-t amendment (4 edits; +80/-9) |
+| 5.0 backfill | main | `204a506` | SHA placeholder backfill (+1/-1) |
+| 5.1 stats.ts | main | `1258feb` | paired-t CI primitives + 4-level aggregation (+870; +45 tests) |
+| 5.2 reporting.ts | main | `14c606a` | Phase-9 stubs + caption full (+243; +12 tests) |
+| 5.3 stats.mjs sibling | bench | `e8cf482` | benchmarks-repo sibling per non-DRY policy (+726; +36 tests) |
+| 5.4 close | main | [this commit] | STEP-PLAN-V0.5 progress log + Revision history entry |
+
+**Notable decisions:**
+
+- Q1 paired-vs-unpaired adjudication → Option B (paired-t) +
+  ADR-19 §4 amendment per investigation-first surfacing during
+  Step 5 design proposal. Original Step 1.4 lock chose unpaired-
+  pooled by default-textbook framing without explicit adjudication;
+  Step 5 implementation forced explicit choice.
+- Q2 two-module decomposition (stats.ts + reporting.ts); matches
+  existing src/grading/ one-concept-per-file pattern.
+- Q3 t-distribution lookup table df=1..30 + ∞ (Option B scope per
+  paired-t; df>30 z-asymptote fallback at <2% narrow-CI bias).
+- Q4 generic-over-metric API surface (primitives are
+  metric-agnostic; same pipeline serves quality axes + efficiency
+  metrics).
+- Q5 raw values flow via PerCellDifference.rawDifferences field
+  (implementation-time refinement over Q5 lock — "PerCellAggregate
+  is derived view"; PerCellDifference embeds rawDifferences for
+  cross-cell rollup pipeline coupling).
+- Q6 reporting stubs at Step 5 with distinguishableColumnCaption
+  full implementation exception (caption is static string per
+  ciLevel; no Step 7 dependency).
+- Q7 sibling cross-repo per ADR-19 §4 non-DRY policy; copy-paste
+  parity at commit time; bidirectional SHA audit trail.
+- Q8 5-commit substep ladder (4 main + 1 benchmarks; close adds
+  6th main commit).
+- L1-L5 ADR-19 amendment edits applied (amendment marker
+  callout + CI computation paragraph rewrite + Rationale bullet +
+  §Revision history section creation; API naming
+  `differenceOfMeansCI` per L5).
+- Cross-cell rollup B-2 lock (paired-t at concatenated N=25
+  differences; not weighted-mean of per-cell differences). Lower-
+  amendment-scope path consistent with existing ADR-19 §4
+  "n=25 per condition" wording.
+
+**Cumulative deltas:**
+
+| Metric | Value |
+|---|---:|
+| LOC delta | +1920 across both repos (main: +1194; benchmarks: +726) |
+| Test delta | +57 main (1039 → 1096); +36 bench (252 → 288); +93 combined cross-repo |
+| Test files added | 3 (stats.test.ts main; reporting.test.ts main; stats.test.ts bench) |
+| API spend | $0 (pure-math; no API calls) |
+
+**LOC scope-vs-estimate calibration:**
+
+| Substep | Refined target | Actual | Ratio |
+|---|---:|---:|---:|
+| 5.0 amendment + backfill | n/a | 81 | doc-only |
+| 5.1 stats.ts | 540 | 870 | 1.61× |
+| 5.2 reporting.ts | 180 | 243 | 1.35× |
+| 5.3 stats.mjs sibling | 430 | 726 | 1.69× |
+| 5.4 close | n/a | ~150 | doc-only |
+| **Combined main** | **~720** | **1194** | **1.66× weighted** |
+| **Sibling bench** | **~430** | **726** | **1.69×** |
+
+Step 5 calibration drift vs Step 4 (1.04×). Pattern: design-
+lock-depth correlation holds for narrow-scope substeps (5.2 stub
+scope; bounded test substrate); breaks for substeps with broad
+test substrate (5.1 + 5.3 textbook anchor coverage ran beyond
+projection). Test substrate density emerges as separate
+calibration variable from design-lock depth.
+
+**Test count progression:**
+
+- 5.0: no tests (doc commits)
+- 5.1: +45 main (1039 → 1084; t-table 11 + variance 5 + mean 2 +
+  rangeOverMean 5 + meanWithCI 5 + differenceOfMeansCI 9 +
+  aggregation pipeline 8)
+- 5.2: +12 main (1084 → 1096; caption regression sentinels 8 +
+  stub-shape compliance 3 + VarianceTableRow shape 1)
+- 5.3: +36 bench (252 → 288; mirrors main stats.test.ts substrate
+  in JS flavor)
+- 5.4: no tests (doc commit)
+
+**API spend transparency:**
+
+- Step 5 cumulative: $0 (pure-math; no Anthropic API calls)
+- v0.5 cumulative through Step 5: $0.00891 (Step 2 probe runs
+  only)
+- Substantive API spend deferred to Step 6 calibration ($10-25
+  envelope per scope-doc); Step 6 IS the first cycle's
+  substantive API spend AND the gate-condition before Step 7
+  production replication ($25-40+).
+
+**Findings carried forward:**
+
+1. **PerCellDifference.rawDifferences pipeline coupling.**
+   Q5 lock specified "raw values" flow but didn't pin how —
+   carry-on-aggregate vs separate-param. Resolved during 5.1
+   implementation: PerCellDifference embeds rawDifferences;
+   downstream cross-cell rollup flatMaps embedded values.
+   Caller doesn't thread raw values separately. Reinforces
+   Step 4 finding #4: design-lock-depth requirement extends
+   to API-flow specifics, not just function signatures.
+
+2. **df>30 z-asymptote fallback (~2% narrow-CI bias).** Per Q3
+   lock; tested at df=31 and df=100. Acceptable per textbook
+   convention. Documented in stats.ts module header. v0.5
+   stretch substrate at unpaired-pooled n=20+25 (df=43) would
+   have exceeded df=1..30 range; paired-t at v0.5 stretch n=25
+   pairs (df=24) keeps comfortably within tabulated coverage.
+
+3. **aggregateCrossCellRollup math equivalence.** Option B-2
+   "paired-t at concatenated N=25 differences" implemented as
+   single-sample-t on differences vector (mathematically
+   equivalent; same formula at the math level — paired-t IS
+   single-sample-t-on-differences). Documented in stats.ts
+   module header for future archaeology readers.
+
+4. **TypeScript noUnusedParameters strict-mode requires
+   underscore-prefix for stub parameters.** Caught during 5.2
+   reporting stub implementation; eslint-disable comments are
+   insufficient (TS compiler check is separate). Underscore
+   prefix is the standard idiom. Pattern carried forward for
+   v0.6+ stub scaffolding work.
+
+5. **Test substrate density as separate calibration variable.**
+   Step 5 calibration drift (5.1: 1.61×; 5.2: 1.35×; 5.3:
+   1.69×) vs Step 4 (1.04×). Pattern: design-lock-depth
+   correlation holds for narrow-scope substeps (5.2 stub
+   scope); breaks for substeps with broad test substrate (5.1
+   + 5.3 textbook anchor coverage ran beyond projection).
+   v0.6+ heuristic refinement: estimate test substrate density
+   independently (count textbook anchors; boundary cases;
+   integration tests); apply density multiplier separately
+   from design-lock-depth multiplier.
+
+6. **Vitest include-pattern parity discipline (cross-repo).**
+   Benchmarks repo `*.test.{ts,tsx}` filter forced
+   `.test.mjs → .test.ts` rename despite implementation `.mjs`
+   spec. Mixed-extension implementation+test is fine when test
+   extension matches Vitest include pattern; matters when
+   crossing repo boundaries with different Vitest config.
+   Pattern: verify destination-repo test-runner config before
+   sibling-implementation commit.
+
+**Estimation calibration note for v0.6+ cycles** (incorporating
+Finding 5 heuristic refinement):
+
+v0.5 Step 5 calibration drift highlighted test substrate density
+as separate variable from design-lock depth. Step 4 hit 1.04×
+because both were tightly bounded; Step 5.1 hit 1.61× because
+test substrate (textbook anchor coverage with extensive pre/post
+assertions) ran broader than projected despite adequate design-
+lock depth. v0.6+ cycle LOC budgeting should:
+
+a. Estimate test substrate density independently (count
+   textbook anchors; boundary cases; integration tests).
+b. Apply density multiplier separately from design-lock-depth
+   multiplier.
+c. Bounded substeps (stubs; small-scope test substrate) hold
+   close to refined estimates; broad-substrate substeps (math
+   primitives with textbook verification) require ~1.5-2× even
+   with design-lock-depth in place.
+
+**Stream A close: 5/5 v0.5 steps shipped (Steps 1-5).** Stream
+B (Step 6 calibration; first substantive API spend; $10-25
+envelope; gate-condition discipline before Step 7 production)
+unblocks per STEP-PLAN-V0.5 dependency graph.
+
+**Step 6 unblock:** pre-flight grading calibration on Step 9
+anchor cells. Within-judge consistency check + Travis-intuition
+correlation; both metrics MUST clear pre-defined thresholds
+before Step 7 production replication starts. Rescope-condition
+discipline applies if calibration thresholds fail (Opus
+escalation; rubric refinement; or descope to statistical-only-
+rigor framing per scope-doc §Rescope conditions).
+
+---
+
 ### Step 4 shipped — 2026-05-03
 
 **Scope:** Double-blind harness implementation per ADR-19 §3 +
@@ -1228,6 +1425,24 @@ truth pattern).
 ---
 
 ## Revision history
+
+- **2026-05-03 (commit `05c9fc7`)**: Step 5.0 ADR-19 §4
+  amendment shipped at main-repo commit `05c9fc7`. Difference-of-
+  means formula updated from unpaired-pooled (df=n_A+n_B−2) to
+  paired-t (df=n−1) per Step 5 design proposal investigation-
+  first surfacing. Cross-cell rollup math clarified as paired-t
+  at concatenated N=25 differences (Option B-2 lock). Welch's
+  correction paragraph removed (moot under paired-t). Step 5
+  implementation (Steps 5.1-5.3) consumes paired-t formula per
+  amendment. Trigger: Step 5 design proposal forced explicit
+  paired-vs-unpaired choice at primitive-implementation time;
+  original Step 1.4 lock chose unpaired-pooled by default-
+  textbook framing without explicit adjudication. Travis
+  adjudication 2026-05-03: paired-t methodologically correct for
+  v0.5 substrate (structurally paired; trial-difficulty variance
+  shared between conditions). ADR-19 §Revision history entry
+  committed at amendment SHA; STEP-PLAN-V0.5 entry referencing
+  it committed at Step 5.4 close commit.
 
 - **2026-05-03 (commit `8df1490`)**: Step 4.6 reframe.
   Original §4.6 said "Style-normalization stretch deferred. Only
