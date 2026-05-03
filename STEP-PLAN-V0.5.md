@@ -732,6 +732,187 @@ substep-addition rationale (deliberate refinement vs v0.4
 
 *Entries added in reverse-chronological order as steps ship.*
 
+### Step 4 shipped — 2026-05-03
+
+**Scope:** Double-blind harness implementation per ADR-19 §3 +
+Step 1.3 5-step anonymization protocol lock. Three modules:
+output anonymization pipeline + position-bias verification
+metric + style-normalization stretch transformer.
+
+**Outcome:** Stream A double-blind harness shipped. 3 substeps
+across 4 commits (3 substep + 1 close); 3 production modules
+in `src/grading/` + 3 test files. 1222 LOC delta (1.04× honest
+target — first v0.5 substep series to land within estimate
+band). Step 5 (statistical tooling) unblocks per STEP-PLAN-V0.5
+dependency graph.
+
+**Substep summary:**
+
+| Substep | Commit | Subject |
+|---|---|---|
+| 4.1 | `b582f76` | `anonymize.ts` + tests (572 LOC; 43 tests) |
+| 4.2 | `0faba72` | `position-bias.ts` + tests (350 LOC; 15 tests) |
+| 4.3 | `fba1500` | `style-normalize.ts` + tests (300 LOC; 26 tests) |
+| 4.4 | [this commit] | STEP-PLAN-V0.5 progress log + Revision history entry for §4.6 reframe |
+
+**Sequencing note:** Steps 4 and 5 are formally parallel-able
+per scope-doc sequencing diagram; v0.5 execution chose
+sequential ordering (4 → 5) for review-cadence simplicity. Both
+ship in v0.5 cycle regardless of ordering choice. Documents
+deliberate choice rather than implicit drift.
+
+**Notable decisions:**
+
+- Three-module decomposition (`anonymize` / `position-bias` /
+  `style-normalize`) per Decision A; matches existing
+  `src/grading/` one-concept-per-file pattern.
+- Manifest schema includes `pair_uuid`, `cell_id`, `trial_index`,
+  `run_uuid`, `seed`, `assignment_parity`, `assignment {A,B}`,
+  `ca_source_path`, `beta_ca_source_path`, `presentation_id`,
+  `cross_order_regrade`, `created_at`, `anonymization_version=1`
+  per Decision B; `presentation_id` derived from second
+  SHA256(seed) formatted as 8-4-4-4-12 UUID layout.
+  `original_metrics_hash` deferred (speculative).
+- Replacement token `[artifact]` (square brackets) per Decision D
+  refinement — `<artifact>` flagged with HTML/markdown rendering
+  ambiguity + TypeScript-generics conflict; switched to
+  journalism/legal redaction convention.
+- Field-validation throws per Decision C: cell_id `:` collision;
+  run_uuid `:` collision; non-integer or negative trial_index.
+  Fail loudly per CLAUDE.md.
+- Cross-order regrade realized via `forceSwapAB?: boolean` flag
+  on `AnonymizeOptions` (cleaner API than re-derived seed; same
+  effect; deterministic given inputs + flag).
+- Position-bias trigger is aggregate-only (per-axis at n=25
+  too noisy to gate independently); per-axis reported for
+  diagnostic visibility. Trigger boundary STRICT `> 0.60`
+  (exactly 60/40 does NOT trigger; verified via dual-direction
+  boundary test).
+- Style-normalize implementation deviates from ADR-19 §3 letter
+  on two points per Decision E (both approved):
+  (1) bullets stripped entirely vs ADR-19 §3 "bullets →
+  semicolons" (reason: list-grouping reconstruction adds
+  parsing fragility); (2) no 80-col wrap vs ADR-19 §3 "wrap at
+  80 cols" (reason: line-wrap shifts token boundaries; defeats
+  determinism goal). Both deviations preserve §3 substantive
+  requirement (remove formatting bias) with simpler
+  implementation. ADR-19 §3 NOT amended — deviations are
+  implementation refinements, not methodology changes.
+- Style-normalize implementation lands at Step 4 (vs STEP-PLAN-
+  V0.5 §4.6 literal "deferred until Step 8 trigger") per
+  Decision F Interp A; activation remains conditional on Step 8
+  position-bias trigger. Rescope logged as Revision history
+  entry below.
+- Style-normalize 9-step pipeline preserves source-code refs
+  (file:line + ADR-NN) and snake_case identifiers
+  (underscore-emphasis bounded by non-word chars to avoid
+  mangling factual_correctness, get_symbol_context). Backtick
+  stripping loops for nested cases (emphasis-stripping can
+  expose previously-nested backticks).
+- 4-commit substep ladder per Decision G (3 substep + 1 close);
+  matches Step 2 substep-source-pairing precedent.
+
+**Cumulative deltas:**
+
+| Metric | Value |
+|---|---:|
+| LOC delta | +1222 (572 + 350 + 300; close commit doc-only) |
+| Test delta | +84 (955 → 1039) |
+| Test files added | 3 |
+| API spend | $0 |
+
+**LOC scope-vs-estimate calibration:**
+
+| Substep | Refined target | Actual | Ratio |
+|---|---:|---:|---:|
+| 4.1 anonymize | 350+280=630 | 572 | 0.91× (under!) |
+| 4.2 position-bias | 200+130=330 | 350 | 1.06× |
+| 4.3 style-normalize | 130+80=210 | 300 | 1.43× |
+| **Total** | **~1170** | **1222** | **1.04×** |
+
+First v0.5 substep series to land within estimate band.
+Pattern likely driven by: (a) ADR-19 §3 substrate already-locked
+(no design surface evolving during implementation); (b)
+Decision A-G design-lock phase resolved 7 implementation choices
+ahead of kickoff. v0.6+ cycle estimation discipline may benefit
+from forcing more decision-lock ahead of substep kickoff to
+replicate this calibration.
+
+**Test count progression:**
+
+- 4.1: +43 (955 → 998; stripFilenameMarkers 12 + deriveSeed 9 +
+  abParity 4 + derivePresentationId 3 + anonymize 9 +
+  decodeAssignment 1 + manifest I/O 5)
+- 4.2: +15 (998 → 1013; boundary-value imbalance 7 + per-axis
+  disaggregation 3 + report shape 3 + trigger boundary 2)
+- 4.3: +26 (1013 → 1039; markdown stripping 10 + content
+  preservation 5 + whitespace normalization 5 + invariants 4 +
+  realistic mixed inputs 2)
+
+**API spend transparency:**
+
+- Step 4 cumulative: $0 (pure data-transformation modules; no
+  Anthropic API calls; ADR-02 amendment permits `src/grading/`
+  but this step's modules don't actually call API)
+- v0.5 cumulative through Step 4: $0.00891 (Step 2 probe runs
+  only)
+- Substantive API spend still deferred to Step 6 calibration
+  ($10-25 envelope) per scope-doc
+
+**Findings carried forward:**
+
+1. **Replacement-token convention for prose-grading redaction:
+   `[artifact]` over `<artifact>`.** Travis-flagged real
+   concerns with `<...>`: HTML/markdown rendering ambiguity
+   (judge sees redacted text; markdown→HTML rendering may
+   interpret `<artifact>` as HTML tag); TypeScript-generics
+   visual conflict (code blocks contain `<T>` patterns).
+   Square-bracket convention follows journalism/legal
+   redaction precedent and avoids both ambiguities. Pattern
+   for v0.6+ when redacting in prose meant for LLM
+   consumption.
+
+2. **Style-normalize idempotency requires care with ordered
+   transformations.** Two specific traps caught by test
+   substrate: (a) backtick stripping must loop because
+   emphasis-stripping can expose nested backticks; (b)
+   underscore-emphasis must be bounded by non-word chars to
+   avoid mangling snake_case identifiers (factual_correctness,
+   get_symbol_context). Test substrate (6-input idempotency
+   loop) caught these pre-commit.
+
+3. **Position-bias trigger boundary precision is load-bearing.**
+   ADR-19 §3 says "imbalance > 0.60"; implementation matches
+   STRICTLY (exactly 60/40 = 0.6 does NOT trigger; 60.5/39.5 =
+   0.605 does). Boundary verification test asserts both
+   directions to lock the strict-greater behavior.
+
+4. **Substep series LOC estimation tractability correlates
+   with design-lock-phase depth.** Step 4 landed at 1.04×
+   honest target after 7 design-lock decisions resolved
+   pre-kickoff (Decisions A-G); Steps 2/3 ran 1.5-3× because
+   design surface evolved during execution. Heuristic for
+   v0.6+: front-load design-lock decisions; defer
+   implementation kickoff until decisions resolved.
+
+5. **forceSwapAB flag preferred over re-derived-seed for
+   cross-order regrade.** Re-derived seed only swaps A/B
+   stochastically (~50% of the time); ADR-19 §3 cross-order
+   intent is GUARANTEED swap. Flag-based API guarantees swap
+   while preserving determinism (given inputs + flag, same
+   output). Cleaner contract; manifest entry's
+   `cross_order_regrade` boolean reflects flag state for
+   post-hoc decoding.
+
+**Step 5 unblock:** statistical tooling implementation
+(CI computation library via roll-our-own t-distribution lookup
+per Step 1.4 lock + per-cell + aggregate reporting
+infrastructure). Estimated LOC per scope-doc: ~200-350 kickoff;
+applying 3× v0.5 calibration multiplier projects ~600-1050
+actual.
+
+---
+
 ### Step 3 shipped — 2026-05-03
 
 **Scope:** Canonical rubric prompt text per ADR-19 §1 + §3;
@@ -1047,6 +1228,21 @@ truth pattern).
 ---
 
 ## Revision history
+
+- **2026-05-03 (commit [Step 4.4 SHA])**: Step 4.6 reframe.
+  Original §4.6 said "Style-normalization stretch deferred. Only
+  ships if Step 8 post-hoc verification triggers." Original
+  phrasing was scope ambiguous (implementation deferred OR
+  activation deferred?). Reframed: "Style-normalization
+  implementation ships at Step 4; activation conditional on
+  Step 8 post-hoc verification trigger (>60/40 imbalance per
+  ADR-19 §3)." Substantively cleaner — Step 4 is natural place
+  for Stream A infrastructure; Step 8 is API spend (bad pacing
+  for implementation under cycle pressure); test substrate
+  cheap at Step 4; ~$0 cost difference. Disambiguates
+  implementation-vs-activation scope. Downstream impact: Step 8
+  consumes already-shipped `styleNormalize()` if trigger fires;
+  no implementation work at Step 8.
 
 - **2026-04-29** — Initial drafting at v0.5 prep session close.
   11 numbered steps spanning Streams A/B/C + ship gate. Mirrors
