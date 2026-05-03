@@ -334,6 +334,16 @@ underperformer.
 
 ### 4. Statistical methodology — descriptive CI only
 
+> **Amended 2026-05-03 (commit `<Step 5.0 SHA>`):** §4 difference-of-
+> means formula updated from unpaired-pooled (df=n_A+n_B−2) to
+> paired-t (df=n−1) per Step 5 design adjudication. Cross-cell
+> rollup math clarified as paired-t at concatenated N=25 differences
+> (not weighted-mean of per-cell differences). Welch's correction
+> paragraph removed (moot under paired-t). See updated CI
+> computation paragraph below; Rationale §Paired-t-for-difference-
+> of-means bullet; ADR-19 §Revision history; STEP-PLAN-V0.5
+> §Revision history entry referencing this amendment commit.
+
 **Library: roll-our-own t-distribution lookup table** (~30 LOC
 per repo). Honors CLAUDE.md "Dependencies: Minimize" principle.
 Static t-critical values for df ∈ {1..30} at α ∈ {0.025, 0.05};
@@ -345,15 +355,43 @@ reporting). simple-statistics (Node-native package) considered
 and rejected — 50KB dependency for ~5 t-table values fails the
 dep-min cost-benefit.
 
-**CI computation:** 95% CI = mean ± t_critical(df, 0.025) × SE.
-Difference-of-means at n=5 + n=5: pooled df=8; SE_diff =
-sqrt(var_A/n_A + var_B/n_B); CI_diff = mean_diff ± t_crit ×
-SE_diff. Welch's correction NOT applied — pooled-df is
-conservative under unequal-variance assumption (Welch's would
-only narrow CIs if variances are equal); v0.5 reports the
-slightly-less-conservative pooled framing with explicit
-acknowledgment, persisted trial data supports Welch's
-recomputation.
+**Single-sample CI:** 95% CI = mean ± t_critical(df, 0.025) × SE,
+where SE = sd(values) / sqrt(n) and df = n − 1.
+
+**Difference-of-means CI uses paired-t** (per 2026-05-03 amendment).
+The v0.5 substrate is structurally paired: each trial-index has
+both ca and beta-ca outputs against the same prompt + same
+anchor cell. Compute differences[i] = ca[i] − beta-ca[i] across
+the n paired trials; the difference-of-means CI is then a single-
+sample CI on the differences:
+
+  df = n − 1
+  mean_diff = mean(differences)
+  SE_diff = sd(differences) / sqrt(n)
+  CI_diff = mean_diff ± t_critical(df, 0.025) × SE_diff
+
+At v0.5 base substrate (n=5 trials per cell), df=4 →
+t_critical(4, 0.025) ≈ 2.776.
+
+**Cross-cell rollup applies the same paired-t primitive to the
+concatenated set of all paired differences across the 5 anchor
+cells** (N=25 paired obs at v0.5 base substrate; df=24 →
+t_critical(24, 0.025) ≈ 2.064), NOT a weighted-mean-of-per-cell-
+differences (Welch-Satterthwaite-style) pooling. Single primitive
+applied at two scales — per-cell within-cell pairs (n=5) and
+cross-cell concatenated pairs (N=25) — keeps the formula uniform.
+
+Paired-t controls for trial-difficulty variance via the
+var(differences) computation: shared per-trial-index difficulty
+between ca and beta-ca produces positive within-pair correlation,
+which paired-t absorbs into a tighter CI. The pre-amendment
+unpaired-pooled formula would over-count trial-difficulty variance
+into the error term (defensibly-but-conservatively wider CIs);
+paired-t is the textbook fit for paired data structure. Welch's
+correction concern (which applied to the unpaired-pooled formula's
+equal-variance assumption) is moot under paired-t — paired
+differences yield a single variance estimate with no equal-
+variance assumption needed.
 
 **4-level aggregation:**
 
@@ -450,6 +488,20 @@ bucket reporting (1-3 / 4-7 / 8+) addresses calls separately.
   communicate effect size + uncertainty cleanly.
 - **Roll-our-own t-distribution** — ~30 LOC vs 50KB dependency;
   CLAUDE.md dep-min principle wins on cost-benefit.
+- **Paired-t for difference-of-means** (per 2026-05-03 amendment) —
+  v0.5 substrate is structurally paired (each trial-index has both
+  ca and beta-ca outputs against the same prompt + same anchor
+  cell). Trial-difficulty variance is real and shared between
+  conditions at trial-i, producing positive within-pair correlation.
+  Paired-t controls for this via var(differences) computation,
+  yielding tighter CIs and cleaner condition-effect attribution
+  than unpaired-pooled. Reviewer-defensibility: paired-t is the
+  textbook fit for paired data structure; unpaired-pooled would
+  defensibly-but-conservatively over-count trial-difficulty variance
+  into the error term. Cross-cell rollup applies the same paired-t
+  primitive at the concatenated-differences scale (N=25 paired
+  obs); fixed-effect framing matches existing ADR-19 §4 cross-cell
+  pooling disclosure unchanged.
 - **Pre-flag hono h1 from Step 9 data** — operational clarity
   that falls out of threshold lock; updates Step 7 budget
   before any new spend.
@@ -570,3 +622,22 @@ Future v0.6+ ADRs (if cross-vendor panel ships, if rubric
 refinement surfaces) follow the same shape: cross-cutting
 pattern at the ADR layer; per-vendor or per-axis specifics in
 source files.
+
+## Revision history
+
+- **2026-05-03** — v0.5 Step 5.0 amendment: §4 difference-of-means
+  formula updated from unpaired-pooled (df=n_A+n_B−2; SE_diff =
+  sqrt(var_A/n_A + var_B/n_B)) to paired-t (df=n−1; SE_diff =
+  sd(differences) / sqrt(n)). Cross-cell rollup math clarified as
+  paired-t at concatenated N=25 differences (not weighted-mean of
+  per-cell differences). Welch's correction paragraph removed (moot
+  under paired-t). Rationale §Paired-t-for-difference-of-means
+  bullet added explaining within-pair correlation rationale +
+  reviewer-defensibility framing. Trigger: Step 5 design proposal
+  investigation-first surfaced paired-vs-unpaired tension at
+  primitive-implementation time. Travis adjudication 2026-05-03:
+  paired-t correctness for structurally-paired v0.5 substrate;
+  unpaired-pooled was default-textbook-without-explicit-adjudication
+  at original Step 1.4 lock. ADR-19 frontmatter symbols list
+  unchanged (`differenceOfMeansCI` semantically accurate under
+  either formula; only the underlying computation differs).
