@@ -732,6 +732,200 @@ substep-addition rationale (deliberate refinement vs v0.4
 
 *Entries added in reverse-chronological order as steps ship.*
 
+### Step 8 shipped — 2026-05-04
+
+**Scope:** Production grading per ADR-19 §3 (paired-mode + 5-step
+anonymization protocol) + §4 (paired-t amendment lock) +
+STEP-PLAN-V0.5 Step 8. 28 paired comparisons (Step 7 substrate
+within-trial-index pairing) + 7 cross-order regrade subset
+(deterministic from STEP8_RUN_UUID); canonical
+`RUBRIC_PROMPT_PAIRED` + Step 4 anonymize.ts + Step 2.2
+judge-client gradePair.
+
+**Outcome:** 34/35 production grades shipped (27/28 base + 7/7
+cross-order); cobra/c3 trial-2 base reproducibly failed JSON
+parse under assignment=EVEN (Path A acceptance; Finding 6
+emergent observation). Position-bias NO TRIGGER (0.538 < 0.60
+threshold; Step 4 strict comparison). Style-normalize stretch
+skipped per conditional activation lock. Step 9 Phase-9
+reference doc generation unblocks per STEP-PLAN-V0.5 dependency
+graph.
+
+**Substep summary (ladder renumbered Option I per Q9 fold):**
+
+| Substep | Repo | SHA | Subject |
+|---|---|---|---|
+| 8.0 design | (no commit) | (n/a) | Q1-Q10 lock per design proposal |
+| 8.1 harness | main | `241af7a` | Grading harness implementation (614 LOC) |
+| 8.1 execution | main | `bf5313c` | 34/35 base+cross-order substrate (36 files; 2297 LOC) |
+| 8.1 retry evidence | main | `a3388a1` | Reproducible failure classification + harness manifest-clobber fix |
+| 8.2 position-bias | main | `e45813c` | Pure-math post-hoc; NO TRIGGER at 0.538; stretch skipped |
+| 8.3 close | main | [this commit] | Progress log + 7 findings + Step 9 unblock |
+
+Original ladder: 8.0 / 8.1 / 8.2 cross-order / 8.3 position-bias
+/ 8.4 close. Cross-order folded into 8.1 execution (single
+harness run handles both base + cross-order in sequence;
+deterministic; no Travis interim adjudication needed). Renumbered
+8.3 → 8.2 (position-bias); 8.4 → 8.3 (close).
+
+**Notable decisions:**
+
+- Q1-Q10 design lock (28-pair within-trial-index pairing per
+  ADR-19 §4 amendment; Step 4 anonymize.ts unchanged; cross-order
+  regrade subset 7 pairs deterministic shuffle; position-bias
+  post-hoc strict >0.60 trigger; two-script architecture;
+  scores_recovered_by_condition orchestrator-level field;
+  cost-cap $5; persistence layout per Step 6.1 audit-trail
+  pattern; ladder renumbering per fold; hardcoded Step 7
+  substrate path).
+- Path A acceptance for cobra/c3 trial-2 base reproducible
+  failure (vs Path B substitution or Path C investigation):
+  substrate gap acknowledged transparently; methodology
+  cleanliness preserved over substrate uniformity.
+- Step 4 §6.4 Interp A activation: style-normalize stretch only
+  on position-bias trigger; NO TRIGGER at 0.538 means stretch
+  skipped (no pre-emptive activation).
+- Cross-order regrade subset: 7 pairs (mid-range of ADR-19 §3
+  5-10 substrate); deterministic shuffle
+  `SHA256(STEP8_RUN_UUID:pair_uuid)[:8]`; reproducible.
+- 76% tie rate (82/108 axis-comparisons) empirically validates
+  anonymization pipeline effectiveness + Finding 1 PRIMARY
+  mechanism.
+
+**Cumulative deltas:**
+
+| Metric | Value |
+|---|---:|
+| LOC delta (5 commits) | +3358 (harness 614 + execution evidence 2297 + retry evidence net +30 + 8.2 script 267 + 8.3 close ~150) |
+| Test delta | 0 (Step 8 is execution; harness scripts dev-time scaffolding) |
+| API spend (script-projected) | $0.4394 |
+| API spend (platform-billed reconstructed) | ~$0.4524 ($0.4394 script + ~$0.013 estimated failed-retry; Finding 7) |
+| v0.5 cumulative platform-billed (reconstructed) | ~$10.25 ($9.80 prior + ~$0.45 Step 8 reconstructed) |
+| Wall-clock | ~80 seconds first-run + ~5 seconds retry |
+| Cost-cap $5 | not hit (max running $0.4394; never paused) |
+
+Reconstructed = script-tracked + estimated failed-retry; not
+verified against Anthropic console. Verification via dashboard
+deferred (would settle Finding 7 measurement; not blocking for
+Step 8 close).
+
+**Per-cell paired-mode aggregate Δ** (mean ca - beta-ca per axis;
+positive = ca higher; * = Path A reduced n):
+
+| Cell | n | factual | complete | action | halluc |
+|---|---:|---:|---:|---:|---:|
+| httpx/p4-stream-lifecycle | 5 | +0.60 | 0.00 | +0.20 | +0.20 |
+| cobra/c3-hook-lifecycle | 4* | +1.00 | +0.25 | +0.50 | +1.00 |
+| httpx/p2-http3-transport | 5 | 0.00 | 0.00 | 0.00 | 0.00 |
+| hono/h1-context-runtime | 8 | +0.38 | 0.00 | +0.13 | +0.38 |
+| cobra/c4-subcommand-resolution | 5 | 0.00 | 0.00 | 0.00 | 0.00 |
+
+**Position-bias diagnostic:** aggregate imbalance 0.538 (max
+axis = factual_correctness 0.600 exactly at threshold; strict >
+does NOT trigger). Style-normalize stretch skipped per Step 4
+§6.4 Interp A. Sonnet largely position-blind on scores per
+ADR-19 §3 empirically validated.
+
+**76% tie rate empirical observation:** 82/108 axis-comparisons
+across 27 base pairs produced ties between ca and beta-ca
+scoring. Empirical evidence that anonymization pipeline strips
+condition-identifying signal effectively; Sonnet treats paired
+answers as substantively equivalent on most comparisons;
+differentiation surfaces only on cells with substantive
+condition difference (3 of 5 cells per per-cell Δ table).
+Reinforces Finding 1 (PRIMARY) mechanism.
+
+**7 findings carried forward:**
+
+1. **PRIMARY: Paired-mode unlocks rubric differentiation that
+   single-mode obscures.** Step 6 single-mode showed Sonnet
+   hallucination defaults to 1 across 20/20 trials (no
+   comparator framing); Step 8 paired-mode shows differentiated
+   scoring across pairs (range 0.00 to +1.00 mean Δ;
+   Travis-priors-aligned). Step 6 Branch D offset-disclosure
+   framing was mode-specific not structural; v0.5 thesis
+   methodologically strengthened. Single-mode and paired-mode
+   are different operational regimes; rubric calibrates
+   correctly when given comparator framing. v0.5 reference doc
+   leads with this finding rather than hedges it.
+
+2. **cobra/c4 + httpx/p2 all-zero Δ across all 4 axes.**
+   Unexpected for cobra/c4 (Theme 1.1 multi-symbol API closure
+   cell expected ca advantage). Three interpretations:
+   substrate (both produced similar quality); rubric (Sonnet
+   blind spot for these specific answer pairs); anonymization
+   (stripped differentiating signal). Step 9 synthesis
+   investigation candidate.
+
+3. **Cross-order agreement strong (83-100% per axis at n=6
+   cross-order pairs);** Sonnet judge largely position-blind on
+   scores. Validates ADR-19 §3 expected behavior empirically.
+
+4. **gradePair production reliability: 1/35 first-run JSON
+   parse failure (2.9%);** reproducible on retry under same
+   assignment_parity (Finding 6 root cause). Resume mechanism
+   handles transient cases cleanly; reproducible cases require
+   investigation.
+
+5. **Cost-projection accuracy at paired-mode: $0.4394
+   script-projected; ~$0.4524 reconstructed platform-billed**
+   (script + estimated failed-retry; not dashboard-verified).
+   Reconstructed ratio ~1:1 (vs Step 7 claude-code 2.14× cache
+   discount); paired-mode canonical-rubric workload doesn't
+   show Step 7's discount, possibly because explicit
+   cache-control headers not set on gradePair calls. v0.6+
+   harness refinement candidate: explicit cache-control header
+   configuration for repeated-prefix workloads + dashboard
+   verification at cycle close.
+
+6. **Position-dependent JSON output formatting (NEW empirical
+   observation).** cobra/c3 trial-2 reproducibly fails JSON
+   parse under assignment=EVEN (A=ca, B=beta-ca) but succeeds
+   under assignment=ODD (A=beta-ca, B=ca). Same prompt + same
+   answers + same rubric; only A/B label assignment differs.
+   Distinct from ADR-19 §3 score-based position bias concept;
+   this is OUTPUT-FORMATTING asymmetry. Single occurrence at
+   n=28 (3.6%); not predicted by v0.5 design locks. v0.6+
+   candidate: investigate Sonnet output stability dependence on
+   input ordering for paired comparisons; possible mitigations
+   include explicit JSON-only reminder prefix; schema-validation
+   retry mechanism; pre-flight input validation.
+
+7. **Failed-call cost-tracking gap.** Failed gradePair retries
+   consume API spend (~$0.013 per retry estimated) but don't
+   update script-tracked totalCost (only successful grades
+   increment state.totalCost). For Step 8.1 first-run + retry:
+   $0.4394 script-tracked vs ~$0.4524 reconstructed
+   platform-billed (delta inferred, not measured; dashboard
+   verification deferred). v0.6+ harness refinement candidate:
+   track API call costs regardless of grade success.
+
+**Bonus harness improvements landed at Step 8.1 retry evidence
+commit `a3388a1`:**
+- Resume manifest-clobber bug patched (harness now reads + merges
+  existing manifest at resume start; prevents future clobber on
+  retry-only runs that hit reproducible failures)
+- One-off manifest reconstruction performed (recovered 34
+  entries from per-pair JSONs via deterministic anonymize()
+  re-invocation)
+
+**Step 9 unblock:** Phase-9 reference doc generation. Pure-doc
+work; consumes Step 7 production substrate (56 trials;
+ca-condition variance asymmetry; hono h1 bimodal; etc.) + Step
+8 production grading (34/35 paired grades; 76% tie rate;
+per-cell Δ; Finding 6 emergent observation; cross-order
+agreement strong; position-bias clean) as primary substrate.
+Synthesizes v0.5 cycle thesis with paired-mode-unlocks-
+differentiation as PRIMARY finding.
+
+**v0.5 cycle progress through Step 8:** 8/11 steps shipped
+(Stream A complete; Stream B complete: Step 6 calibration +
+Step 7 production replication + Step 8 production grading).
+Remaining: Step 9 Phase-9 reference doc; Step 10 v0.5+
+candidates capture; Step 11 ship-gate.
+
+---
+
 ### Step 7 shipped — 2026-05-04
 
 **Scope:** Production replication per scope-doc §7.1.2 + ADR-19
