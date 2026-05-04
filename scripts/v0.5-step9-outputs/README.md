@@ -90,9 +90,9 @@ generator identified for v0.6+ retro-complete copy-paste port).
 
 - **Benchmarks repo Step 9.1 commit:** `e32b5dd` (doc-gen
   script + reference doc)
-- **Main repo Step 9.2 commit:** [SHA captured at commit time;
-  added back-reference to benchmarks-repo ref doc revision
-  history per bidirectional audit-trail discipline]
+- **Main repo Step 9.2 commit:** `ed7519d` (this directory's
+  parent commit; STEP-PLAN-V0.5 progress log entry + audit-trail
+  copy)
 
 ## Navigating to canonical reference
 
