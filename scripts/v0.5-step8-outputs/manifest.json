@@ -1,0 +1,619 @@
+{
+  "run_uuid": "151d4281-b779-4777-a934-fb436adf0240",
+  "step8_cycle_started_at": "2026-05-04T12:57:45.625Z",
+  "anonymization_version": 1,
+  "entries": [
+    {
+      "pair_uuid": "ee0579cbd8924e78",
+      "cell_id": "httpx/p4-stream-lifecycle",
+      "trial_index": 0,
+      "run_uuid": "151d4281-b779-4777-a934-fb436adf0240",
+      "seed": "3db3c6a4983fb431",
+      "assignment_parity": "even",
+      "assignment": {
+        "A": "ca",
+        "B": "beta-ca"
+      },
+      "ca_source_path": "<benchmarks-runs>\\v0.5-step7-e46dfd64-cd19-41e5-b6bc-34d1bc65b0b0/httpx/p4-stream-lifecycle/ca-trial-0.json",
+      "beta_ca_source_path": "<benchmarks-runs>\\v0.5-step7-e46dfd64-cd19-41e5-b6bc-34d1bc65b0b0/httpx/p4-stream-lifecycle/beta-ca-trial-0.json",
+      "presentation_id": "90f75237-589c-69cc-fbdb-cc03c16ee4ce",
+      "cross_order_regrade": false,
+      "created_at": "2026-05-04T12:56:27.203Z",
+      "anonymization_version": 1
+    },
+    {
+      "pair_uuid": "cdc6db51ff5cec4a",
+      "cell_id": "httpx/p4-stream-lifecycle",
+      "trial_index": 1,
+      "run_uuid": "151d4281-b779-4777-a934-fb436adf0240",
+      "seed": "46c66f2fda59700f",
+      "assignment_parity": "odd",
+      "assignment": {
+        "A": "beta-ca",
+        "B": "ca"
+      },
+      "ca_source_path": "<benchmarks-runs>\\v0.5-step7-e46dfd64-cd19-41e5-b6bc-34d1bc65b0b0/httpx/p4-stream-lifecycle/ca-trial-1.json",
+      "beta_ca_source_path": "<benchmarks-runs>\\v0.5-step7-e46dfd64-cd19-41e5-b6bc-34d1bc65b0b0/httpx/p4-stream-lifecycle/beta-ca-trial-1.json",
+      "presentation_id": "f52ae59e-5163-8b6a-ee3b-1f31a529ee26",
+      "cross_order_regrade": false,
+      "created_at": "2026-05-04T12:56:29.256Z",
+      "anonymization_version": 1
+    },
+    {
+      "pair_uuid": "dfcab8e18201fe0c",
+      "cell_id": "httpx/p4-stream-lifecycle",
+      "trial_index": 2,
+      "run_uuid": "151d4281-b779-4777-a934-fb436adf0240",
+      "seed": "cc7556755ec88821",
+      "assignment_parity": "odd",
+      "assignment": {
+        "A": "beta-ca",
+        "B": "ca"
+      },
+      "ca_source_path": "<benchmarks-runs>\\v0.5-step7-e46dfd64-cd19-41e5-b6bc-34d1bc65b0b0/httpx/p4-stream-lifecycle/ca-trial-2.json",
+      "beta_ca_source_path": "<benchmarks-runs>\\v0.5-step7-e46dfd64-cd19-41e5-b6bc-34d1bc65b0b0/httpx/p4-stream-lifecycle/beta-ca-trial-2.json",
+      "presentation_id": "fa4af82c-4f75-c1f3-0857-1e9c3382f82c",
+      "cross_order_regrade": false,
+      "created_at": "2026-05-04T12:56:31.006Z",
+      "anonymization_version": 1
+    },
+    {
+      "pair_uuid": "5af045c1634c0d21",
+      "cell_id": "httpx/p4-stream-lifecycle",
+      "trial_index": 3,
+      "run_uuid": "151d4281-b779-4777-a934-fb436adf0240",
+      "seed": "bd701c312b758942",
+      "assignment_parity": "odd",
+      "assignment": {
+        "A": "beta-ca",
+        "B": "ca"
+      },
+      "ca_source_path": "<benchmarks-runs>\\v0.5-step7-e46dfd64-cd19-41e5-b6bc-34d1bc65b0b0/httpx/p4-stream-lifecycle/ca-trial-3.json",
+      "beta_ca_source_path": "<benchmarks-runs>\\v0.5-step7-e46dfd64-cd19-41e5-b6bc-34d1bc65b0b0/httpx/p4-stream-lifecycle/beta-ca-trial-3.json",
+      "presentation_id": "97bcef27-6965-58af-795e-076d7e38a321",
+      "cross_order_regrade": false,
+      "created_at": "2026-05-04T12:56:32.591Z",
+      "anonymization_version": 1
+    },
+    {
+      "pair_uuid": "fa00ae7e864275da",
+      "cell_id": "httpx/p4-stream-lifecycle",
+      "trial_index": 4,
+      "run_uuid": "151d4281-b779-4777-a934-fb436adf0240",
+      "seed": "0175f8b0115709e4",
+      "assignment_parity": "even",
+      "assignment": {
+        "A": "ca",
+        "B": "beta-ca"
+      },
+      "ca_source_path": "<benchmarks-runs>\\v0.5-step7-e46dfd64-cd19-41e5-b6bc-34d1bc65b0b0/httpx/p4-stream-lifecycle/ca-trial-4.json",
+      "beta_ca_source_path": "<benchmarks-runs>\\v0.5-step7-e46dfd64-cd19-41e5-b6bc-34d1bc65b0b0/httpx/p4-stream-lifecycle/beta-ca-trial-4.json",
+      "presentation_id": "6201f438-7873-7e99-8ae0-6c3d5636cf81",
+      "cross_order_regrade": false,
+      "created_at": "2026-05-04T12:56:34.381Z",
+      "anonymization_version": 1
+    },
+    {
+      "pair_uuid": "eb8ad9a86f766cea",
+      "cell_id": "cobra/c3-hook-lifecycle",
+      "trial_index": 0,
+      "run_uuid": "151d4281-b779-4777-a934-fb436adf0240",
+      "seed": "ddc9f02aebcd6b30",
+      "assignment_parity": "even",
+      "assignment": {
+        "A": "ca",
+        "B": "beta-ca"
+      },
+      "ca_source_path": "<benchmarks-runs>\\v0.5-step7-e46dfd64-cd19-41e5-b6bc-34d1bc65b0b0/cobra/c3-hook-lifecycle/ca-trial-0.json",
+      "beta_ca_source_path": "<benchmarks-runs>\\v0.5-step7-e46dfd64-cd19-41e5-b6bc-34d1bc65b0b0/cobra/c3-hook-lifecycle/beta-ca-trial-0.json",
+      "presentation_id": "1b1a0903-bdbf-d8a7-885e-a2e638e11eb1",
+      "cross_order_regrade": false,
+      "created_at": "2026-05-04T12:56:36.351Z",
+      "anonymization_version": 1
+    },
+    {
+      "pair_uuid": "ff974266ae536add",
+      "cell_id": "cobra/c3-hook-lifecycle",
+      "trial_index": 1,
+      "run_uuid": "151d4281-b779-4777-a934-fb436adf0240",
+      "seed": "cd5c632d808afd63",
+      "assignment_parity": "odd",
+      "assignment": {
+        "A": "beta-ca",
+        "B": "ca"
+      },
+      "ca_source_path": "<benchmarks-runs>\\v0.5-step7-e46dfd64-cd19-41e5-b6bc-34d1bc65b0b0/cobra/c3-hook-lifecycle/ca-trial-1.json",
+      "beta_ca_source_path": "<benchmarks-runs>\\v0.5-step7-e46dfd64-cd19-41e5-b6bc-34d1bc65b0b0/cobra/c3-hook-lifecycle/beta-ca-trial-1.json",
+      "presentation_id": "f178ec00-f9f9-638a-4219-5213865a57c7",
+      "cross_order_regrade": false,
+      "created_at": "2026-05-04T12:56:40.705Z",
+      "anonymization_version": 1
+    },
+    {
+      "pair_uuid": "3df4d5481336fd9a",
+      "cell_id": "cobra/c3-hook-lifecycle",
+      "trial_index": 3,
+      "run_uuid": "151d4281-b779-4777-a934-fb436adf0240",
+      "seed": "c2d563edf27c8089",
+      "assignment_parity": "odd",
+      "assignment": {
+        "A": "beta-ca",
+        "B": "ca"
+      },
+      "ca_source_path": "<benchmarks-runs>\\v0.5-step7-e46dfd64-cd19-41e5-b6bc-34d1bc65b0b0/cobra/c3-hook-lifecycle/ca-trial-3.json",
+      "beta_ca_source_path": "<benchmarks-runs>\\v0.5-step7-e46dfd64-cd19-41e5-b6bc-34d1bc65b0b0/cobra/c3-hook-lifecycle/beta-ca-trial-3.json",
+      "presentation_id": "63a8df39-9576-d65f-d54d-f7c87ceb1fc6",
+      "cross_order_regrade": false,
+      "created_at": "2026-05-04T12:56:45.013Z",
+      "anonymization_version": 1
+    },
+    {
+      "pair_uuid": "16e2aeb0ffcb531d",
+      "cell_id": "cobra/c3-hook-lifecycle",
+      "trial_index": 4,
+      "run_uuid": "151d4281-b779-4777-a934-fb436adf0240",
+      "seed": "7545fa2acc906438",
+      "assignment_parity": "even",
+      "assignment": {
+        "A": "ca",
+        "B": "beta-ca"
+      },
+      "ca_source_path": "<benchmarks-runs>\\v0.5-step7-e46dfd64-cd19-41e5-b6bc-34d1bc65b0b0/cobra/c3-hook-lifecycle/ca-trial-4.json",
+      "beta_ca_source_path": "<benchmarks-runs>\\v0.5-step7-e46dfd64-cd19-41e5-b6bc-34d1bc65b0b0/cobra/c3-hook-lifecycle/beta-ca-trial-4.json",
+      "presentation_id": "ea9bb93d-d946-782d-7489-170fb30a9046",
+      "cross_order_regrade": false,
+      "created_at": "2026-05-04T12:56:46.931Z",
+      "anonymization_version": 1
+    },
+    {
+      "pair_uuid": "0f4e89b8e5bb5c19",
+      "cell_id": "httpx/p2-http3-transport",
+      "trial_index": 0,
+      "run_uuid": "151d4281-b779-4777-a934-fb436adf0240",
+      "seed": "39af6c71d3a95bf1",
+      "assignment_parity": "odd",
+      "assignment": {
+        "A": "beta-ca",
+        "B": "ca"
+      },
+      "ca_source_path": "<benchmarks-runs>\\v0.5-step7-e46dfd64-cd19-41e5-b6bc-34d1bc65b0b0/httpx/p2-http3-transport/ca-trial-0.json",
+      "beta_ca_source_path": "<benchmarks-runs>\\v0.5-step7-e46dfd64-cd19-41e5-b6bc-34d1bc65b0b0/httpx/p2-http3-transport/beta-ca-trial-0.json",
+      "presentation_id": "a3bf2f82-b600-4772-e891-be6abebe2d20",
+      "cross_order_regrade": false,
+      "created_at": "2026-05-04T12:56:49.078Z",
+      "anonymization_version": 1
+    },
+    {
+      "pair_uuid": "3721f85fa54adda2",
+      "cell_id": "httpx/p2-http3-transport",
+      "trial_index": 1,
+      "run_uuid": "151d4281-b779-4777-a934-fb436adf0240",
+      "seed": "eb14ed76c837c753",
+      "assignment_parity": "even",
+      "assignment": {
+        "A": "ca",
+        "B": "beta-ca"
+      },
+      "ca_source_path": "<benchmarks-runs>\\v0.5-step7-e46dfd64-cd19-41e5-b6bc-34d1bc65b0b0/httpx/p2-http3-transport/ca-trial-1.json",
+      "beta_ca_source_path": "<benchmarks-runs>\\v0.5-step7-e46dfd64-cd19-41e5-b6bc-34d1bc65b0b0/httpx/p2-http3-transport/beta-ca-trial-1.json",
+      "presentation_id": "fbdaf90b-11ba-1142-721a-a4f054dcc02c",
+      "cross_order_regrade": false,
+      "created_at": "2026-05-04T12:56:51.005Z",
+      "anonymization_version": 1
+    },
+    {
+      "pair_uuid": "af36ec8f327d6c03",
+      "cell_id": "httpx/p2-http3-transport",
+      "trial_index": 2,
+      "run_uuid": "151d4281-b779-4777-a934-fb436adf0240",
+      "seed": "7a8ac77c07e7fa78",
+      "assignment_parity": "even",
+      "assignment": {
+        "A": "ca",
+        "B": "beta-ca"
+      },
+      "ca_source_path": "<benchmarks-runs>\\v0.5-step7-e46dfd64-cd19-41e5-b6bc-34d1bc65b0b0/httpx/p2-http3-transport/ca-trial-2.json",
+      "beta_ca_source_path": "<benchmarks-runs>\\v0.5-step7-e46dfd64-cd19-41e5-b6bc-34d1bc65b0b0/httpx/p2-http3-transport/beta-ca-trial-2.json",
+      "presentation_id": "1e06d8b7-dc4a-158d-b4e9-035c0dd2d599",
+      "cross_order_regrade": false,
+      "created_at": "2026-05-04T12:56:52.801Z",
+      "anonymization_version": 1
+    },
+    {
+      "pair_uuid": "bb220f1769cd4e2d",
+      "cell_id": "httpx/p2-http3-transport",
+      "trial_index": 3,
+      "run_uuid": "151d4281-b779-4777-a934-fb436adf0240",
+      "seed": "fa0e654a61264c28",
+      "assignment_parity": "even",
+      "assignment": {
+        "A": "ca",
+        "B": "beta-ca"
+      },
+      "ca_source_path": "<benchmarks-runs>\\v0.5-step7-e46dfd64-cd19-41e5-b6bc-34d1bc65b0b0/httpx/p2-http3-transport/ca-trial-3.json",
+      "beta_ca_source_path": "<benchmarks-runs>\\v0.5-step7-e46dfd64-cd19-41e5-b6bc-34d1bc65b0b0/httpx/p2-http3-transport/beta-ca-trial-3.json",
+      "presentation_id": "cde9c1af-1e30-d324-5a5b-0481f463cfac",
+      "cross_order_regrade": false,
+      "created_at": "2026-05-04T12:56:54.578Z",
+      "anonymization_version": 1
+    },
+    {
+      "pair_uuid": "91014ea37f5fc82f",
+      "cell_id": "httpx/p2-http3-transport",
+      "trial_index": 4,
+      "run_uuid": "151d4281-b779-4777-a934-fb436adf0240",
+      "seed": "21bdb1ed4dba3c27",
+      "assignment_parity": "odd",
+      "assignment": {
+        "A": "beta-ca",
+        "B": "ca"
+      },
+      "ca_source_path": "<benchmarks-runs>\\v0.5-step7-e46dfd64-cd19-41e5-b6bc-34d1bc65b0b0/httpx/p2-http3-transport/ca-trial-4.json",
+      "beta_ca_source_path": "<benchmarks-runs>\\v0.5-step7-e46dfd64-cd19-41e5-b6bc-34d1bc65b0b0/httpx/p2-http3-transport/beta-ca-trial-4.json",
+      "presentation_id": "c0086e30-2143-f162-5e2c-b662855a95b0",
+      "cross_order_regrade": false,
+      "created_at": "2026-05-04T12:56:59.180Z",
+      "anonymization_version": 1
+    },
+    {
+      "pair_uuid": "59c9c309ab727bb5",
+      "cell_id": "hono/h1-context-runtime",
+      "trial_index": 0,
+      "run_uuid": "151d4281-b779-4777-a934-fb436adf0240",
+      "seed": "ca2531bf9d9f37e9",
+      "assignment_parity": "odd",
+      "assignment": {
+        "A": "beta-ca",
+        "B": "ca"
+      },
+      "ca_source_path": "<benchmarks-runs>\\v0.5-step7-e46dfd64-cd19-41e5-b6bc-34d1bc65b0b0/hono/h1-context-runtime/ca-trial-0.json",
+      "beta_ca_source_path": "<benchmarks-runs>\\v0.5-step7-e46dfd64-cd19-41e5-b6bc-34d1bc65b0b0/hono/h1-context-runtime/beta-ca-trial-0.json",
+      "presentation_id": "c80e3f97-2f4f-6ce0-f78d-7d25ecf25b81",
+      "cross_order_regrade": false,
+      "created_at": "2026-05-04T12:57:01.128Z",
+      "anonymization_version": 1
+    },
+    {
+      "pair_uuid": "c401b3ef959ac1d8",
+      "cell_id": "hono/h1-context-runtime",
+      "trial_index": 1,
+      "run_uuid": "151d4281-b779-4777-a934-fb436adf0240",
+      "seed": "9d27f5544fdf60fb",
+      "assignment_parity": "even",
+      "assignment": {
+        "A": "ca",
+        "B": "beta-ca"
+      },
+      "ca_source_path": "<benchmarks-runs>\\v0.5-step7-e46dfd64-cd19-41e5-b6bc-34d1bc65b0b0/hono/h1-context-runtime/ca-trial-1.json",
+      "beta_ca_source_path": "<benchmarks-runs>\\v0.5-step7-e46dfd64-cd19-41e5-b6bc-34d1bc65b0b0/hono/h1-context-runtime/beta-ca-trial-1.json",
+      "presentation_id": "b37aa7e3-eda7-1867-8a51-19d698c19121",
+      "cross_order_regrade": false,
+      "created_at": "2026-05-04T12:57:03.211Z",
+      "anonymization_version": 1
+    },
+    {
+      "pair_uuid": "6f3c3dd63ce9c78a",
+      "cell_id": "hono/h1-context-runtime",
+      "trial_index": 2,
+      "run_uuid": "151d4281-b779-4777-a934-fb436adf0240",
+      "seed": "ad92d840392303ce",
+      "assignment_parity": "even",
+      "assignment": {
+        "A": "ca",
+        "B": "beta-ca"
+      },
+      "ca_source_path": "<benchmarks-runs>\\v0.5-step7-e46dfd64-cd19-41e5-b6bc-34d1bc65b0b0/hono/h1-context-runtime/ca-trial-2.json",
+      "beta_ca_source_path": "<benchmarks-runs>\\v0.5-step7-e46dfd64-cd19-41e5-b6bc-34d1bc65b0b0/hono/h1-context-runtime/beta-ca-trial-2.json",
+      "presentation_id": "cdea07ad-08cf-cdc6-b551-9fc791ffc484",
+      "cross_order_regrade": false,
+      "created_at": "2026-05-04T12:57:05.264Z",
+      "anonymization_version": 1
+    },
+    {
+      "pair_uuid": "961c136815c7daea",
+      "cell_id": "hono/h1-context-runtime",
+      "trial_index": 3,
+      "run_uuid": "151d4281-b779-4777-a934-fb436adf0240",
+      "seed": "4c1aa0f9c4765ab6",
+      "assignment_parity": "odd",
+      "assignment": {
+        "A": "beta-ca",
+        "B": "ca"
+      },
+      "ca_source_path": "<benchmarks-runs>\\v0.5-step7-e46dfd64-cd19-41e5-b6bc-34d1bc65b0b0/hono/h1-context-runtime/ca-trial-3.json",
+      "beta_ca_source_path": "<benchmarks-runs>\\v0.5-step7-e46dfd64-cd19-41e5-b6bc-34d1bc65b0b0/hono/h1-context-runtime/beta-ca-trial-3.json",
+      "presentation_id": "6471e47f-e3e5-29d8-cc1b-a0e3b8d7e566",
+      "cross_order_regrade": false,
+      "created_at": "2026-05-04T12:57:07.735Z",
+      "anonymization_version": 1
+    },
+    {
+      "pair_uuid": "4d341b6e4efc993a",
+      "cell_id": "hono/h1-context-runtime",
+      "trial_index": 4,
+      "run_uuid": "151d4281-b779-4777-a934-fb436adf0240",
+      "seed": "645ba50f156b9c86",
+      "assignment_parity": "odd",
+      "assignment": {
+        "A": "beta-ca",
+        "B": "ca"
+      },
+      "ca_source_path": "<benchmarks-runs>\\v0.5-step7-e46dfd64-cd19-41e5-b6bc-34d1bc65b0b0/hono/h1-context-runtime/ca-trial-4.json",
+      "beta_ca_source_path": "<benchmarks-runs>\\v0.5-step7-e46dfd64-cd19-41e5-b6bc-34d1bc65b0b0/hono/h1-context-runtime/beta-ca-trial-4.json",
+      "presentation_id": "6e3a34c8-945e-eae5-4e5f-3489de843998",
+      "cross_order_regrade": false,
+      "created_at": "2026-05-04T12:57:09.955Z",
+      "anonymization_version": 1
+    },
+    {
+      "pair_uuid": "72cdd4667586f183",
+      "cell_id": "hono/h1-context-runtime",
+      "trial_index": 5,
+      "run_uuid": "151d4281-b779-4777-a934-fb436adf0240",
+      "seed": "15a8a5d8d9000713",
+      "assignment_parity": "even",
+      "assignment": {
+        "A": "ca",
+        "B": "beta-ca"
+      },
+      "ca_source_path": "<benchmarks-runs>\\v0.5-step7-e46dfd64-cd19-41e5-b6bc-34d1bc65b0b0/hono/h1-context-runtime/ca-trial-5.json",
+      "beta_ca_source_path": "<benchmarks-runs>\\v0.5-step7-e46dfd64-cd19-41e5-b6bc-34d1bc65b0b0/hono/h1-context-runtime/beta-ca-trial-5.json",
+      "presentation_id": "efd1e24e-9d09-6100-888a-035b7b223fe7",
+      "cross_order_regrade": false,
+      "created_at": "2026-05-04T12:57:12.154Z",
+      "anonymization_version": 1
+    },
+    {
+      "pair_uuid": "3a32059c37e22428",
+      "cell_id": "hono/h1-context-runtime",
+      "trial_index": 6,
+      "run_uuid": "151d4281-b779-4777-a934-fb436adf0240",
+      "seed": "b08c8c32fb7b0403",
+      "assignment_parity": "even",
+      "assignment": {
+        "A": "ca",
+        "B": "beta-ca"
+      },
+      "ca_source_path": "<benchmarks-runs>\\v0.5-step7-e46dfd64-cd19-41e5-b6bc-34d1bc65b0b0/hono/h1-context-runtime/ca-trial-6.json",
+      "beta_ca_source_path": "<benchmarks-runs>\\v0.5-step7-e46dfd64-cd19-41e5-b6bc-34d1bc65b0b0/hono/h1-context-runtime/beta-ca-trial-6.json",
+      "presentation_id": "31189191-b1c6-e02f-688d-fb0d8409b0ef",
+      "cross_order_regrade": false,
+      "created_at": "2026-05-04T12:57:14.350Z",
+      "anonymization_version": 1
+    },
+    {
+      "pair_uuid": "f2aa9b4b25c91196",
+      "cell_id": "hono/h1-context-runtime",
+      "trial_index": 7,
+      "run_uuid": "151d4281-b779-4777-a934-fb436adf0240",
+      "seed": "565c5ef4b596a462",
+      "assignment_parity": "even",
+      "assignment": {
+        "A": "ca",
+        "B": "beta-ca"
+      },
+      "ca_source_path": "<benchmarks-runs>\\v0.5-step7-e46dfd64-cd19-41e5-b6bc-34d1bc65b0b0/hono/h1-context-runtime/ca-trial-7.json",
+      "beta_ca_source_path": "<benchmarks-runs>\\v0.5-step7-e46dfd64-cd19-41e5-b6bc-34d1bc65b0b0/hono/h1-context-runtime/beta-ca-trial-7.json",
+      "presentation_id": "8b444eea-4960-a4ab-496e-007827d20440",
+      "cross_order_regrade": false,
+      "created_at": "2026-05-04T12:57:16.561Z",
+      "anonymization_version": 1
+    },
+    {
+      "pair_uuid": "5234f99cd67cc0d9",
+      "cell_id": "cobra/c4-subcommand-resolution",
+      "trial_index": 0,
+      "run_uuid": "151d4281-b779-4777-a934-fb436adf0240",
+      "seed": "f7aefe1f642bceb7",
+      "assignment_parity": "odd",
+      "assignment": {
+        "A": "beta-ca",
+        "B": "ca"
+      },
+      "ca_source_path": "<benchmarks-runs>\\v0.5-step7-e46dfd64-cd19-41e5-b6bc-34d1bc65b0b0/cobra/c4-subcommand-resolution/ca-trial-0.json",
+      "beta_ca_source_path": "<benchmarks-runs>\\v0.5-step7-e46dfd64-cd19-41e5-b6bc-34d1bc65b0b0/cobra/c4-subcommand-resolution/beta-ca-trial-0.json",
+      "presentation_id": "8ce1fb77-b33f-f8ea-61e1-c47b66386ca8",
+      "cross_order_regrade": false,
+      "created_at": "2026-05-04T12:57:18.638Z",
+      "anonymization_version": 1
+    },
+    {
+      "pair_uuid": "6aa3f7e095e52773",
+      "cell_id": "cobra/c4-subcommand-resolution",
+      "trial_index": 1,
+      "run_uuid": "151d4281-b779-4777-a934-fb436adf0240",
+      "seed": "25ac1fa31e84613e",
+      "assignment_parity": "odd",
+      "assignment": {
+        "A": "beta-ca",
+        "B": "ca"
+      },
+      "ca_source_path": "<benchmarks-runs>\\v0.5-step7-e46dfd64-cd19-41e5-b6bc-34d1bc65b0b0/cobra/c4-subcommand-resolution/ca-trial-1.json",
+      "beta_ca_source_path": "<benchmarks-runs>\\v0.5-step7-e46dfd64-cd19-41e5-b6bc-34d1bc65b0b0/cobra/c4-subcommand-resolution/beta-ca-trial-1.json",
+      "presentation_id": "f6899109-e01d-2c9b-3f05-d4aec5058474",
+      "cross_order_regrade": false,
+      "created_at": "2026-05-04T12:57:20.664Z",
+      "anonymization_version": 1
+    },
+    {
+      "pair_uuid": "78329376af98e52f",
+      "cell_id": "cobra/c4-subcommand-resolution",
+      "trial_index": 2,
+      "run_uuid": "151d4281-b779-4777-a934-fb436adf0240",
+      "seed": "2ba6cc036c843975",
+      "assignment_parity": "odd",
+      "assignment": {
+        "A": "beta-ca",
+        "B": "ca"
+      },
+      "ca_source_path": "<benchmarks-runs>\\v0.5-step7-e46dfd64-cd19-41e5-b6bc-34d1bc65b0b0/cobra/c4-subcommand-resolution/ca-trial-2.json",
+      "beta_ca_source_path": "<benchmarks-runs>\\v0.5-step7-e46dfd64-cd19-41e5-b6bc-34d1bc65b0b0/cobra/c4-subcommand-resolution/beta-ca-trial-2.json",
+      "presentation_id": "b7e877b2-3b65-5f15-9db3-044bbaf8a46f",
+      "cross_order_regrade": false,
+      "created_at": "2026-05-04T12:57:22.629Z",
+      "anonymization_version": 1
+    },
+    {
+      "pair_uuid": "e1fe60107a76541e",
+      "cell_id": "cobra/c4-subcommand-resolution",
+      "trial_index": 3,
+      "run_uuid": "151d4281-b779-4777-a934-fb436adf0240",
+      "seed": "8a9d5760da890561",
+      "assignment_parity": "even",
+      "assignment": {
+        "A": "ca",
+        "B": "beta-ca"
+      },
+      "ca_source_path": "<benchmarks-runs>\\v0.5-step7-e46dfd64-cd19-41e5-b6bc-34d1bc65b0b0/cobra/c4-subcommand-resolution/ca-trial-3.json",
+      "beta_ca_source_path": "<benchmarks-runs>\\v0.5-step7-e46dfd64-cd19-41e5-b6bc-34d1bc65b0b0/cobra/c4-subcommand-resolution/beta-ca-trial-3.json",
+      "presentation_id": "60945fe4-b0f4-366a-57d1-d004dae0e1db",
+      "cross_order_regrade": false,
+      "created_at": "2026-05-04T12:57:25.567Z",
+      "anonymization_version": 1
+    },
+    {
+      "pair_uuid": "7fe94cd8fb78b487",
+      "cell_id": "cobra/c4-subcommand-resolution",
+      "trial_index": 4,
+      "run_uuid": "151d4281-b779-4777-a934-fb436adf0240",
+      "seed": "375bac6a2c5d439c",
+      "assignment_parity": "even",
+      "assignment": {
+        "A": "ca",
+        "B": "beta-ca"
+      },
+      "ca_source_path": "<benchmarks-runs>\\v0.5-step7-e46dfd64-cd19-41e5-b6bc-34d1bc65b0b0/cobra/c4-subcommand-resolution/ca-trial-4.json",
+      "beta_ca_source_path": "<benchmarks-runs>\\v0.5-step7-e46dfd64-cd19-41e5-b6bc-34d1bc65b0b0/cobra/c4-subcommand-resolution/beta-ca-trial-4.json",
+      "presentation_id": "98ce4ef4-ea43-c429-03c7-649640b063b2",
+      "cross_order_regrade": false,
+      "created_at": "2026-05-04T12:57:29.409Z",
+      "anonymization_version": 1
+    },
+    {
+      "pair_uuid": "6aa3f7e095e52773",
+      "cell_id": "cobra/c4-subcommand-resolution",
+      "trial_index": 1,
+      "run_uuid": "151d4281-b779-4777-a934-fb436adf0240",
+      "seed": "25ac1fa31e84613e",
+      "assignment_parity": "even",
+      "assignment": {
+        "A": "ca",
+        "B": "beta-ca"
+      },
+      "ca_source_path": "<benchmarks-runs>\\v0.5-step7-e46dfd64-cd19-41e5-b6bc-34d1bc65b0b0/cobra/c4-subcommand-resolution/ca-trial-1.json",
+      "beta_ca_source_path": "<benchmarks-runs>\\v0.5-step7-e46dfd64-cd19-41e5-b6bc-34d1bc65b0b0/cobra/c4-subcommand-resolution/beta-ca-trial-1.json",
+      "presentation_id": "f6899109-e01d-2c9b-3f05-d4aec5058474",
+      "cross_order_regrade": true,
+      "created_at": "2026-05-04T12:57:31.379Z",
+      "anonymization_version": 1
+    },
+    {
+      "pair_uuid": "bb220f1769cd4e2d",
+      "cell_id": "httpx/p2-http3-transport",
+      "trial_index": 3,
+      "run_uuid": "151d4281-b779-4777-a934-fb436adf0240",
+      "seed": "fa0e654a61264c28",
+      "assignment_parity": "odd",
+      "assignment": {
+        "A": "beta-ca",
+        "B": "ca"
+      },
+      "ca_source_path": "<benchmarks-runs>\\v0.5-step7-e46dfd64-cd19-41e5-b6bc-34d1bc65b0b0/httpx/p2-http3-transport/ca-trial-3.json",
+      "beta_ca_source_path": "<benchmarks-runs>\\v0.5-step7-e46dfd64-cd19-41e5-b6bc-34d1bc65b0b0/httpx/p2-http3-transport/beta-ca-trial-3.json",
+      "presentation_id": "cde9c1af-1e30-d324-5a5b-0481f463cfac",
+      "cross_order_regrade": true,
+      "created_at": "2026-05-04T12:57:33.446Z",
+      "anonymization_version": 1
+    },
+    {
+      "pair_uuid": "af36ec8f327d6c03",
+      "cell_id": "httpx/p2-http3-transport",
+      "trial_index": 2,
+      "run_uuid": "151d4281-b779-4777-a934-fb436adf0240",
+      "seed": "7a8ac77c07e7fa78",
+      "assignment_parity": "odd",
+      "assignment": {
+        "A": "beta-ca",
+        "B": "ca"
+      },
+      "ca_source_path": "<benchmarks-runs>\\v0.5-step7-e46dfd64-cd19-41e5-b6bc-34d1bc65b0b0/httpx/p2-http3-transport/ca-trial-2.json",
+      "beta_ca_source_path": "<benchmarks-runs>\\v0.5-step7-e46dfd64-cd19-41e5-b6bc-34d1bc65b0b0/httpx/p2-http3-transport/beta-ca-trial-2.json",
+      "presentation_id": "1e06d8b7-dc4a-158d-b4e9-035c0dd2d599",
+      "cross_order_regrade": true,
+      "created_at": "2026-05-04T12:57:35.214Z",
+      "anonymization_version": 1
+    },
+    {
+      "pair_uuid": "5234f99cd67cc0d9",
+      "cell_id": "cobra/c4-subcommand-resolution",
+      "trial_index": 0,
+      "run_uuid": "151d4281-b779-4777-a934-fb436adf0240",
+      "seed": "f7aefe1f642bceb7",
+      "assignment_parity": "even",
+      "assignment": {
+        "A": "ca",
+        "B": "beta-ca"
+      },
+      "ca_source_path": "<benchmarks-runs>\\v0.5-step7-e46dfd64-cd19-41e5-b6bc-34d1bc65b0b0/cobra/c4-subcommand-resolution/ca-trial-0.json",
+      "beta_ca_source_path": "<benchmarks-runs>\\v0.5-step7-e46dfd64-cd19-41e5-b6bc-34d1bc65b0b0/cobra/c4-subcommand-resolution/beta-ca-trial-0.json",
+      "presentation_id": "8ce1fb77-b33f-f8ea-61e1-c47b66386ca8",
+      "cross_order_regrade": true,
+      "created_at": "2026-05-04T12:57:37.466Z",
+      "anonymization_version": 1
+    },
+    {
+      "pair_uuid": "a84a24251a59a899",
+      "cell_id": "cobra/c3-hook-lifecycle",
+      "trial_index": 2,
+      "run_uuid": "151d4281-b779-4777-a934-fb436adf0240",
+      "seed": "1fc8b6282fbc2564",
+      "assignment_parity": "odd",
+      "assignment": {
+        "A": "beta-ca",
+        "B": "ca"
+      },
+      "ca_source_path": "<benchmarks-runs>\\v0.5-step7-e46dfd64-cd19-41e5-b6bc-34d1bc65b0b0/cobra/c3-hook-lifecycle/ca-trial-2.json",
+      "beta_ca_source_path": "<benchmarks-runs>\\v0.5-step7-e46dfd64-cd19-41e5-b6bc-34d1bc65b0b0/cobra/c3-hook-lifecycle/beta-ca-trial-2.json",
+      "presentation_id": "1d45d229-75e9-a807-3bb0-eb2f29b0d431",
+      "cross_order_regrade": true,
+      "created_at": "2026-05-04T12:57:39.487Z",
+      "anonymization_version": 1
+    },
+    {
+      "pair_uuid": "78329376af98e52f",
+      "cell_id": "cobra/c4-subcommand-resolution",
+      "trial_index": 2,
+      "run_uuid": "151d4281-b779-4777-a934-fb436adf0240",
+      "seed": "2ba6cc036c843975",
+      "assignment_parity": "even",
+      "assignment": {
+        "A": "ca",
+        "B": "beta-ca"
+      },
+      "ca_source_path": "<benchmarks-runs>\\v0.5-step7-e46dfd64-cd19-41e5-b6bc-34d1bc65b0b0/cobra/c4-subcommand-resolution/ca-trial-2.json",
+      "beta_ca_source_path": "<benchmarks-runs>\\v0.5-step7-e46dfd64-cd19-41e5-b6bc-34d1bc65b0b0/cobra/c4-subcommand-resolution/beta-ca-trial-2.json",
+      "presentation_id": "b7e877b2-3b65-5f15-9db3-044bbaf8a46f",
+      "cross_order_regrade": true,
+      "created_at": "2026-05-04T12:57:41.364Z",
+      "anonymization_version": 1
+    },
+    {
+      "pair_uuid": "59c9c309ab727bb5",
+      "cell_id": "hono/h1-context-runtime",
+      "trial_index": 0,
+      "run_uuid": "151d4281-b779-4777-a934-fb436adf0240",
+      "seed": "ca2531bf9d9f37e9",
+      "assignment_parity": "even",
+      "assignment": {
+        "A": "ca",
+        "B": "beta-ca"
+      },
+      "ca_source_path": "<benchmarks-runs>\\v0.5-step7-e46dfd64-cd19-41e5-b6bc-34d1bc65b0b0/hono/h1-context-runtime/ca-trial-0.json",
+      "beta_ca_source_path": "<benchmarks-runs>\\v0.5-step7-e46dfd64-cd19-41e5-b6bc-34d1bc65b0b0/hono/h1-context-runtime/beta-ca-trial-0.json",
+      "presentation_id": "c80e3f97-2f4f-6ce0-f78d-7d25ecf25b81",
+      "cross_order_regrade": true,
+      "created_at": "2026-05-04T12:57:43.461Z",
+      "anonymization_version": 1
+    }
+  ]
+}

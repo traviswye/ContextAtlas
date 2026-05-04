@@ -1,0 +1,48 @@
+{
+  "pair_uuid": "72cdd4667586f183",
+  "cell_id": "hono/h1-context-runtime",
+  "trial_index": 5,
+  "step8_run_uuid": "151d4281-b779-4777-a934-fb436adf0240",
+  "rubric_version": "Step-3-canonical (commit 6ed89ce)",
+  "anonymize_assignment_parity": "even",
+  "anonymize_assignment": {
+    "A": "ca",
+    "B": "beta-ca"
+  },
+  "scores": {
+    "scoresA": {
+      "factual_correctness": 3,
+      "completeness": 3,
+      "actionability": 3,
+      "hallucination": 2
+    },
+    "scoresB": {
+      "factual_correctness": 3,
+      "completeness": 3,
+      "actionability": 3,
+      "hallucination": 3
+    }
+  },
+  "scores_recovered_by_condition": {
+    "ca": {
+      "factual_correctness": 3,
+      "completeness": 3,
+      "actionability": 3,
+      "hallucination": 2
+    },
+    "beta-ca": {
+      "factual_correctness": 3,
+      "completeness": 3,
+      "actionability": 3,
+      "hallucination": 3
+    }
+  },
+  "usage": {
+    "inputTokens": 4386,
+    "outputTokens": 73
+  },
+  "costUsd": 0.014253,
+  "model": "claude-sonnet-4-6",
+  "createdAt": "2026-05-04T12:57:14.336Z",
+  "cross_order_regrade": false
+}
