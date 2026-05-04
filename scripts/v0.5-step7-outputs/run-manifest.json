@@ -1,0 +1,51 @@
+{
+  "run_uuid": "e46dfd64-cd19-41e5-b6bc-34d1bc65b0b0",
+  "orchestrator_version": "v0.5-step7-v1.0",
+  "atlas_version": "ContextAtlas v0.4.0",
+  "cells": [
+    {
+      "repo": "httpx",
+      "promptId": "p4-stream-lifecycle",
+      "anchor": "Theme 1.2 fix anchor"
+    },
+    {
+      "repo": "cobra",
+      "promptId": "c3-hook-lifecycle",
+      "anchor": "win-bucket"
+    },
+    {
+      "repo": "httpx",
+      "promptId": "p2-http3-transport",
+      "anchor": "win-bucket"
+    },
+    {
+      "repo": "hono",
+      "promptId": "h1-context-runtime",
+      "anchor": "win-bucket; Step 9 outlier 45% token Δ; n=8 stretch pre-flagged"
+    },
+    {
+      "repo": "cobra",
+      "promptId": "c4-subcommand-resolution",
+      "anchor": "Theme 1.1 multi-symbol API closure"
+    }
+  ],
+  "conditions": [
+    "ca",
+    "beta-ca"
+  ],
+  "n_base": 5,
+  "n_stretch": 3,
+  "hono_stretch_auto_cell": "hono/h1-context-runtime",
+  "variance_trigger": 0.2,
+  "cost_cap_usd": 25,
+  "created_at": "2026-05-03T23:26:23.063Z",
+  "completed_at": "2026-05-04T00:07:44.061Z",
+  "total_cost_usd": 20.53102325,
+  "trials_completed": 56,
+  "trial_failures": [],
+  "stretch_triggered": {
+    "hono/h1-context-runtime": "auto-pre-flagged"
+  },
+  "paused": false,
+  "pause_reason": null
+}

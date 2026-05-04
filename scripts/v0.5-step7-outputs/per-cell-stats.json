@@ -1,0 +1,619 @@
+{
+  "cells": {
+    "httpx/p4-stream-lifecycle": {
+      "anchor": "Theme 1.2 fix",
+      "ca": {
+        "n": 5,
+        "trials": [
+          {
+            "i": 0,
+            "tokens": 42992,
+            "calls": 7,
+            "cost": 0.77922,
+            "wallMs": 38674,
+            "stretch": false
+          },
+          {
+            "i": 1,
+            "tokens": 28727,
+            "calls": 8,
+            "cost": 0.569205,
+            "wallMs": 35594,
+            "stretch": false
+          },
+          {
+            "i": 2,
+            "tokens": 23636,
+            "calls": 5,
+            "cost": 0.47022,
+            "wallMs": 30828,
+            "stretch": false
+          },
+          {
+            "i": 3,
+            "tokens": 28906,
+            "calls": 8,
+            "cost": 0.54765,
+            "wallMs": 31634,
+            "stretch": false
+          },
+          {
+            "i": 4,
+            "tokens": 29259,
+            "calls": 6,
+            "cost": 0.551865,
+            "wallMs": 31382,
+            "stretch": false
+          }
+        ],
+        "tokensMean": 30704,
+        "tokensRange": 19356,
+        "tokensRangeMean": 0.6304064616988014,
+        "costMean": 0.583632,
+        "costRange": 0.309,
+        "costRangeMean": 0.529443210790361,
+        "callsMean": 6.8,
+        "callsRange": 3,
+        "callsRangeMean": 0.4411764705882353,
+        "totalCost": 2.9181600000000003
+      },
+      "beta-ca": {
+        "n": 5,
+        "trials": [
+          {
+            "i": 0,
+            "tokens": 24126,
+            "calls": 3,
+            "cost": 0.10654899999999999,
+            "wallMs": 38558,
+            "stretch": false
+          },
+          {
+            "i": 1,
+            "tokens": 23359,
+            "calls": 3,
+            "cost": 0.09365775,
+            "wallMs": 33934,
+            "stretch": false
+          },
+          {
+            "i": 2,
+            "tokens": 20726,
+            "calls": 2,
+            "cost": 0.0795415,
+            "wallMs": 37827,
+            "stretch": false
+          },
+          {
+            "i": 3,
+            "tokens": 20557,
+            "calls": 3,
+            "cost": 0.08321200000000001,
+            "wallMs": 39540,
+            "stretch": false
+          },
+          {
+            "i": 4,
+            "tokens": 21074,
+            "calls": 2,
+            "cost": 0.08793874999999998,
+            "wallMs": 40496,
+            "stretch": false
+          }
+        ],
+        "tokensMean": 21968.4,
+        "tokensRange": 3569,
+        "tokensRangeMean": 0.16246062526173957,
+        "costMean": 0.09017979999999999,
+        "costRange": 0.02700749999999999,
+        "costRangeMean": 0.2994850287980234,
+        "callsMean": 2.6,
+        "callsRange": 1,
+        "callsRangeMean": 0.3846153846153846,
+        "totalCost": 0.45089899999999994
+      }
+    },
+    "cobra/c3-hook-lifecycle": {
+      "anchor": "win-bucket",
+      "ca": {
+        "n": 5,
+        "trials": [
+          {
+            "i": 0,
+            "tokens": 23435,
+            "calls": 5,
+            "cost": 0.448725,
+            "wallMs": 29597,
+            "stretch": false
+          },
+          {
+            "i": 1,
+            "tokens": 16185,
+            "calls": 4,
+            "cost": 0.332175,
+            "wallMs": 26282,
+            "stretch": false
+          },
+          {
+            "i": 2,
+            "tokens": 17105,
+            "calls": 3,
+            "cost": 0.342015,
+            "wallMs": 28684,
+            "stretch": false
+          },
+          {
+            "i": 3,
+            "tokens": 17168,
+            "calls": 3,
+            "cost": 0.3477,
+            "wallMs": 30589,
+            "stretch": false
+          },
+          {
+            "i": 4,
+            "tokens": 27900,
+            "calls": 5,
+            "cost": 0.52584,
+            "wallMs": 33204,
+            "stretch": false
+          }
+        ],
+        "tokensMean": 20358.6,
+        "tokensRange": 11715,
+        "tokensRangeMean": 0.575432495358227,
+        "costMean": 0.399291,
+        "costRange": 0.19366499999999998,
+        "costRangeMean": 0.485022201852784,
+        "callsMean": 4,
+        "callsRange": 2,
+        "callsRangeMean": 0.5,
+        "totalCost": 1.996455
+      },
+      "beta-ca": {
+        "n": 5,
+        "trials": [
+          {
+            "i": 0,
+            "tokens": 22018,
+            "calls": 3,
+            "cost": 0.1024235,
+            "wallMs": 52477,
+            "stretch": false
+          },
+          {
+            "i": 1,
+            "tokens": 37619,
+            "calls": 5,
+            "cost": 0.13504975,
+            "wallMs": 55132,
+            "stretch": false
+          },
+          {
+            "i": 2,
+            "tokens": 20744,
+            "calls": 3,
+            "cost": 0.08774025,
+            "wallMs": 47780,
+            "stretch": false
+          },
+          {
+            "i": 3,
+            "tokens": 22152,
+            "calls": 3,
+            "cost": 0.089422,
+            "wallMs": 50099,
+            "stretch": false
+          },
+          {
+            "i": 4,
+            "tokens": 21776,
+            "calls": 3,
+            "cost": 0.08771599999999999,
+            "wallMs": 51032,
+            "stretch": false
+          }
+        ],
+        "tokensMean": 24861.8,
+        "tokensRange": 16875,
+        "tokensRangeMean": 0.678752141840092,
+        "costMean": 0.10047029999999998,
+        "costRange": 0.04733375000000001,
+        "costRangeMean": 0.47112181410824905,
+        "callsMean": 3.4,
+        "callsRange": 2,
+        "callsRangeMean": 0.5882352941176471,
+        "totalCost": 0.5023515
+      }
+    },
+    "httpx/p2-http3-transport": {
+      "anchor": "win-bucket",
+      "ca": {
+        "n": 5,
+        "trials": [
+          {
+            "i": 0,
+            "tokens": 17611,
+            "calls": 3,
+            "cost": 0.339165,
+            "wallMs": 21842,
+            "stretch": false
+          },
+          {
+            "i": 1,
+            "tokens": 21861,
+            "calls": 3,
+            "cost": 0.420195,
+            "wallMs": 28097,
+            "stretch": false
+          },
+          {
+            "i": 2,
+            "tokens": 17639,
+            "calls": 3,
+            "cost": 0.341265,
+            "wallMs": 22821,
+            "stretch": false
+          },
+          {
+            "i": 3,
+            "tokens": 21629,
+            "calls": 3,
+            "cost": 0.406515,
+            "wallMs": 25129,
+            "stretch": false
+          },
+          {
+            "i": 4,
+            "tokens": 17352,
+            "calls": 3,
+            "cost": 0.32946,
+            "wallMs": 22075,
+            "stretch": false
+          }
+        ],
+        "tokensMean": 19218.4,
+        "tokensRange": 4509,
+        "tokensRangeMean": 0.23461890688090578,
+        "costMean": 0.36732,
+        "costRange": 0.09073500000000001,
+        "costRangeMean": 0.24701894805619082,
+        "callsMean": 3,
+        "callsRange": 0,
+        "callsRangeMean": 0,
+        "totalCost": 1.8365999999999998
+      },
+      "beta-ca": {
+        "n": 5,
+        "trials": [
+          {
+            "i": 0,
+            "tokens": 20004,
+            "calls": 2,
+            "cost": 0.07584375,
+            "wallMs": 31131,
+            "stretch": false
+          },
+          {
+            "i": 1,
+            "tokens": 19242,
+            "calls": 2,
+            "cost": 0.074497,
+            "wallMs": 31600,
+            "stretch": false
+          },
+          {
+            "i": 2,
+            "tokens": 20063,
+            "calls": 2,
+            "cost": 0.0733325,
+            "wallMs": 33928,
+            "stretch": false
+          },
+          {
+            "i": 3,
+            "tokens": 19300,
+            "calls": 2,
+            "cost": 0.07065425,
+            "wallMs": 33782,
+            "stretch": false
+          },
+          {
+            "i": 4,
+            "tokens": 19949,
+            "calls": 2,
+            "cost": 0.07113625,
+            "wallMs": 31616,
+            "stretch": false
+          }
+        ],
+        "tokensMean": 19711.6,
+        "tokensRange": 821,
+        "tokensRangeMean": 0.04165060167617038,
+        "costMean": 0.07309275,
+        "costRange": 0.0051895,
+        "costRangeMean": 0.07099883367365437,
+        "callsMean": 2,
+        "callsRange": 0,
+        "callsRangeMean": 0,
+        "totalCost": 0.36546375
+      }
+    },
+    "hono/h1-context-runtime": {
+      "anchor": "win-bucket; outlier; auto-stretched n=8",
+      "ca": {
+        "n": 8,
+        "trials": [
+          {
+            "i": 0,
+            "tokens": 61223,
+            "calls": 9,
+            "cost": 1.063245,
+            "wallMs": 51552,
+            "stretch": false
+          },
+          {
+            "i": 1,
+            "tokens": 46367,
+            "calls": 5,
+            "cost": 0.833625,
+            "wallMs": 46168,
+            "stretch": false
+          },
+          {
+            "i": 2,
+            "tokens": 43226,
+            "calls": 5,
+            "cost": 0.78717,
+            "wallMs": 47199,
+            "stretch": false
+          },
+          {
+            "i": 3,
+            "tokens": 64770,
+            "calls": 9,
+            "cost": 1.14069,
+            "wallMs": 55128,
+            "stretch": false
+          },
+          {
+            "i": 4,
+            "tokens": 38682,
+            "calls": 6,
+            "cost": 0.70233,
+            "wallMs": 41212,
+            "stretch": false
+          },
+          {
+            "i": 5,
+            "tokens": 48914,
+            "calls": 6,
+            "cost": 0.88593,
+            "wallMs": 48471,
+            "stretch": true
+          },
+          {
+            "i": 6,
+            "tokens": 60574,
+            "calls": 7,
+            "cost": 1.04709,
+            "wallMs": 47018,
+            "stretch": true
+          },
+          {
+            "i": 7,
+            "tokens": 72231,
+            "calls": 8,
+            "cost": 1.211925,
+            "wallMs": 44880,
+            "stretch": true
+          }
+        ],
+        "tokensMean": 54498.375,
+        "tokensRange": 33549,
+        "tokensRangeMean": 0.6155963365880175,
+        "costMean": 0.9590006249999999,
+        "costRange": 0.5095949999999999,
+        "costRangeMean": 0.5313813012374209,
+        "callsMean": 6.875,
+        "callsRange": 4,
+        "callsRangeMean": 0.5818181818181818,
+        "totalCost": 7.6720049999999995
+      },
+      "beta-ca": {
+        "n": 8,
+        "trials": [
+          {
+            "i": 0,
+            "tokens": 30396,
+            "calls": 4,
+            "cost": 0.15903299999999998,
+            "wallMs": 64989,
+            "stretch": false
+          },
+          {
+            "i": 1,
+            "tokens": 43742,
+            "calls": 5,
+            "cost": 0.15691975,
+            "wallMs": 66331,
+            "stretch": false
+          },
+          {
+            "i": 2,
+            "tokens": 64724,
+            "calls": 7,
+            "cost": 0.1919065,
+            "wallMs": 74570,
+            "stretch": false
+          },
+          {
+            "i": 3,
+            "tokens": 32297,
+            "calls": 5,
+            "cost": 0.1759325,
+            "wallMs": 72415,
+            "stretch": false
+          },
+          {
+            "i": 4,
+            "tokens": 83694,
+            "calls": 7,
+            "cost": 0.21011725000000003,
+            "wallMs": 75391,
+            "stretch": false
+          },
+          {
+            "i": 5,
+            "tokens": 26004,
+            "calls": 3,
+            "cost": 0.125018,
+            "wallMs": 64056,
+            "stretch": true
+          },
+          {
+            "i": 6,
+            "tokens": 27456,
+            "calls": 3,
+            "cost": 0.1352495,
+            "wallMs": 64087,
+            "stretch": true
+          },
+          {
+            "i": 7,
+            "tokens": 47047,
+            "calls": 5,
+            "cost": 0.16611975,
+            "wallMs": 65987,
+            "stretch": true
+          }
+        ],
+        "tokensMean": 44420,
+        "tokensRange": 57690,
+        "tokensRangeMean": 1.2987393066186403,
+        "costMean": 0.16503703125,
+        "costRange": 0.08509925000000004,
+        "costRangeMean": 0.5156373048851728,
+        "callsMean": 4.875,
+        "callsRange": 4,
+        "callsRangeMean": 0.8205128205128205,
+        "totalCost": 1.32029625
+      }
+    },
+    "cobra/c4-subcommand-resolution": {
+      "anchor": "Theme 1.1 closure",
+      "ca": {
+        "n": 5,
+        "trials": [
+          {
+            "i": 0,
+            "tokens": 35801,
+            "calls": 8,
+            "cost": 0.679455,
+            "wallMs": 44008,
+            "stretch": false
+          },
+          {
+            "i": 1,
+            "tokens": 29612,
+            "calls": 5,
+            "cost": 0.56112,
+            "wallMs": 37279,
+            "stretch": false
+          },
+          {
+            "i": 2,
+            "tokens": 29386,
+            "calls": 5,
+            "cost": 0.54561,
+            "wallMs": 33656,
+            "stretch": false
+          },
+          {
+            "i": 3,
+            "tokens": 22283,
+            "calls": 4,
+            "cost": 0.440445,
+            "wallMs": 35284,
+            "stretch": false
+          },
+          {
+            "i": 4,
+            "tokens": 31485,
+            "calls": 5,
+            "cost": 0.600495,
+            "wallMs": 41117,
+            "stretch": false
+          }
+        ],
+        "tokensMean": 29713.4,
+        "tokensRange": 13518,
+        "tokensRangeMean": 0.4549462532056244,
+        "costMean": 0.5654250000000001,
+        "costRange": 0.23901000000000006,
+        "costRangeMean": 0.4227085820400584,
+        "callsMean": 5.4,
+        "callsRange": 4,
+        "callsRangeMean": 0.7407407407407407,
+        "totalCost": 2.827125
+      },
+      "beta-ca": {
+        "n": 5,
+        "trials": [
+          {
+            "i": 0,
+            "tokens": 26550,
+            "calls": 3,
+            "cost": 0.12580924999999998,
+            "wallMs": 60385,
+            "stretch": false
+          },
+          {
+            "i": 1,
+            "tokens": 26369,
+            "calls": 3,
+            "cost": 0.12001474999999999,
+            "wallMs": 57663,
+            "stretch": false
+          },
+          {
+            "i": 2,
+            "tokens": 26789,
+            "calls": 3,
+            "cost": 0.12337825000000002,
+            "wallMs": 60486,
+            "stretch": false
+          },
+          {
+            "i": 3,
+            "tokens": 27301,
+            "calls": 3,
+            "cost": 0.146645,
+            "wallMs": 73946,
+            "stretch": false
+          },
+          {
+            "i": 4,
+            "tokens": 25552,
+            "calls": 3,
+            "cost": 0.1258205,
+            "wallMs": 62260,
+            "stretch": false
+          }
+        ],
+        "tokensMean": 26512.2,
+        "tokensRange": 1749,
+        "tokensRangeMean": 0.06596962907642519,
+        "costMean": 0.12833355,
+        "costRange": 0.026630250000000008,
+        "costRangeMean": 0.2075080912201058,
+        "callsMean": 3,
+        "callsRange": 0,
+        "callsRangeMean": 0,
+        "totalCost": 0.64166775
+      }
+    }
+  },
+  "totalCost": 20.531023249999997,
+  "totalTrials": 56
+}
