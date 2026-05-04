@@ -35,7 +35,15 @@ const VALID_LANGUAGES: readonly LanguageCode[] = [
 const VALID_ADR_FORMATS = ["markdown-frontmatter"] as const;
 type ValidAdrFormat = (typeof VALID_ADR_FORMATS)[number];
 
-const TOP_LEVEL_KEYS = [
+/**
+ * Canonical list of top-level config keys. Exported for test substrate
+ * to check against (per v0.5 Step 10.3 schema-driven test data
+ * candidate; eliminates hardcoded-regex fragility recurrence per v0.4
+ * STEP-PLAN-V0.4 §Cycle close process-hygiene notes #1). Adding a new
+ * top-level key requires both: (a) extending this list; (b) adding the
+ * corresponding `validate<Key>` call in `validate()` below.
+ */
+export const TOP_LEVEL_KEYS = [
   "version",
   "languages",
   "adrs",

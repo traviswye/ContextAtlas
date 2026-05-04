@@ -188,6 +188,53 @@ against those external repos.
   dependencies" principle weighs against husky for v0.4); developer
   discipline is the v0.4 standard.
 
+## Pipeline Integration Discipline
+
+**When wiring a new claim source into the existing extraction
+pipeline (e.g., commit-message extraction at v0.4; future
+docstring/PR-description/README sources), READ THE PRECEDENT
+INTEGRATION FIRST. Do not assume symmetry between the new source
+and prior sources.**
+
+The extraction pipeline (per ADR-02 + DESIGN.md) has multiple
+stages each new claim source may touch — collection of the source
+artifacts; structured extraction via the canonical prompt; symbol
+resolution into canonical IDs; persistence; incremental reindex
+hash-tracking. See ADR-02 + DESIGN.md for canonical pipeline-stage
+decomposition.
+
+**Checked invariant for new claim sources.** When introducing a
+new claim source, the PR introducing it must include explicit
+cross-references to:
+
+1. The corresponding stage(s) of the precedent claim source
+   (e.g., "uses the same walker as ADR documents per
+   `src/extraction/walkers.ts`")
+2. Any shape divergence from the precedent (e.g., "uses different
+   walker because commit-messages live in git history, not
+   filesystem")
+3. Stage-by-stage symmetry-OR-divergence-OR-not-applicable note
+   for each pipeline stage per DESIGN.md decomposition
+
+For symmetric stages, shorthand `Stage N: symmetric to [precedent
+reference]` is acceptable. Narrative required only for divergent
+stages, where the divergence and its rationale must be explicitly
+stated. Stages the new source doesn't touch can be marked `Stage
+N: not applicable`.
+
+**Origin.** v0.4 cycle close §process-hygiene notes #2: "Pipeline-
+integration scope confusion discipline: when wiring a new claim
+source into existing pipeline, verify by reading precedent
+integration before drafting new one — don't assume symmetry. Saved
+one rework cycle each time at Steps 5 + 7." Symmetry-assumption
+errors caused redo work twice in v0.4 because new claim sources
+were drafted before precedent was read.
+
+**Enforcement.** Review-gate at PR time. Automated pipeline-
+integration linter deferred to v0.6+ candidate (matches CLAUDE.md
+"minimize dependencies" principle weighing against linter
+additions at v0.5 scope).
+
 ## Extraction cost framing (v0.4 Step 6 / Q5 lock)
 
 Script-reported extraction costs use Anthropic's full-token API

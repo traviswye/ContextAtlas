@@ -10,7 +10,22 @@ import { join as pathJoin, resolve as pathResolve } from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { loadConfig } from "./parser.js";
+// Schema-driven test substrate per v0.5 Step 10.3 (#7 from
+// research/v0.5-candidates.md inventory). TOP_LEVEL_KEYS is the
+// canonical schema source; tests below assert against it directly so
+// adding a new top-level key without updating both the constant and
+// the corresponding validate<Key>() call surfaces immediately. Type-
+// import via `loadConfig` + `TOP_LEVEL_KEYS` provides compile-time
+// schema-fixture-drift check: if the constant's shape changes (e.g.,
+// turned into a Map or renamed), TypeScript fails before tests run.
+//
+// Canonical schema source: src/config/parser.ts TOP_LEVEL_KEYS
+// (exported const at module top). Hardcoded-regex fragility origin:
+// v0.4 STEP-PLAN-V0.4 §Cycle close process-hygiene notes #1
+// ("parser.test.ts hardcoded valid-keys regex fragility recurred at
+// Steps 2 + 4. Test-as-mirror-of-implementation, brittle by
+// construction. Lifted to v0.5+ candidate #7."). v0.5 fix lands here.
+import { loadConfig, TOP_LEVEL_KEYS } from "./parser.js";
 
 const FIXTURE_DIR = pathResolve("test/fixtures/config");
 const MINIMAL = pathJoin(FIXTURE_DIR, "minimal.yml");
@@ -120,14 +135,21 @@ describe("loadConfig — error cases", () => {
     expect(() => loadConfig(tmp)).toThrow(/expected integer 1/);
   });
 
-  it("unknown top-level key — names it and lists valid keys", () => {
+  it("unknown top-level key — names it and lists ALL valid keys per canonical TOP_LEVEL_KEYS schema", () => {
     writeCfg(
       "version: 1\nlanguages: [typescript]\nadrs: { path: x }\nbogus: 5",
     );
     const err = captureError(() => loadConfig(tmp));
     expect(err.message).toMatch(/Unknown key 'bogus'/);
     expect(err.message).toMatch(/Valid keys at this level/);
-    expect(err.message).toContain("adrs");
+    // Schema-driven assertion: error message must list every canonical
+    // top-level key from the exported TOP_LEVEL_KEYS constant. Adding
+    // a new key to TOP_LEVEL_KEYS without it appearing here will fail
+    // this test at the next added key (compile-time TS type guards
+    // schema shape; runtime test guards content).
+    for (const key of TOP_LEVEL_KEYS) {
+      expect(err.message).toContain(key);
+    }
   });
 
   it("unknown nested key — names it with the dotted path", () => {
