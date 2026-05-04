@@ -147,11 +147,11 @@ tools (which can't really be committed) and knowledge-graph tools
 
 ## Installation
 
-> **Status:** v0.1 + v0.2 + v0.3 shipped (v0.3 on 2026-04-28). Three-language
-> baseline validated on hono (TypeScript), httpx (Python), and cobra (Go) —
-> Phase 5/6/7/8 reference runs in the
+> **Status:** v0.1 + v0.2 + v0.3 + v0.4 + v0.5 shipped (v0.5 on 2026-05-04).
+> Three-language baseline validated on hono (TypeScript), httpx (Python), and
+> cobra (Go) — Phase 5/6/7/8/9 reference runs in the
 > [benchmarks repo](https://github.com/traviswye/ContextAtlas-benchmarks).
-> v0.4 planning queues next. Package not yet published
+> v0.6 planning queues next. Package not yet published
 > to npm; install instructions below describe the intended shape.
 
 ```bash
@@ -371,24 +371,53 @@ conservative — actual CA contribution is likely larger than published
 numbers indicate). v0.3 ships under single-run methodology (n=1 per
 cell); blind-grading quality-axis measurement is v0.4 scope.
 
-### Quality axis — deferred to step 13
+### Quality axis — measured at v0.5 with paired-mode LLM-judge methodology
 
-Phase 5 measures efficiency (tool calls, tokens, cost). Correctness
-scoring, hallucination rates, and constraint-violation detection are
-**quality-axis** measurements that require blind grading across a
-larger prompt set — scheduled for the step-13 full benchmark
-expansion, post-v0.3. The implement-within-constraints hypothesis
-(does CA-equipped Claude violate written architectural rules less
-often than baseline?) lands there.
+V0.5 ships full quality-axis blind-grading methodology under
+paired-mode anonymization (per ADR-19 + Phase-9 reference doc).
+Cross-cell rollup paired-t at N=27 differences per axis (5 anchor
+cells × n=5 trials × 2 conditions; hono h1 auto-stretch to n=8)
+distinguishes on 3 of 4 quality axes:
 
-Phase 5's synthesis catalogs surface evidence that points in the
-expected direction — CA answers cite ADRs by number and exact line
-counts; alpha answers describe the same concepts in approximations —
-but surface evidence is not a correctness benchmark.
+- **factual_correctness:** mean Δ +0.370; CI [0.176, 0.565] —
+  CLEAN
+- **hallucination:** mean Δ +0.296; CI [0.032, 0.561] —
+  BORDERLINE
+- **actionability:** mean Δ +0.148; CI [0.005, 0.291] —
+  BORDERLINE
+- **completeness:** mean Δ +0.037; CI [-0.039, 0.113] — NOT
+  distinguishable
 
-Cross-repo and cross-language validation shipped in v0.2 — see the
-Phase 6/7 links above and [`v0.2-SCOPE.md`](v0.2-SCOPE.md) for
-context.
+**Threshold pre-registration disclosure.** Three-tier
+distinguishability framing locked at Step 9.1.b spot-check
+before precision values computed (Option α strict three-tier:
+≥0.05 = CLEAN; 0.001-0.05 = BORDERLINE; ≤0 = NOT
+distinguishable). No goalpost-shifting after data; thresholds
+honored verbatim. Hallucination CI lower bound 0.032 is below
+the 0.05 clean-tier threshold but well above the 0.001
+borderline-floor — peer-review-defensible borderline
+classification, not clean. Completeness NOT distinguishable
+preserved honestly per threshold pre-registration discipline.
+
+**Methodology defensibility.** Paired-mode anonymization (5-step
+protocol per ADR-19 §3) controls for stylistic identification
+between conditions; paired-t statistical primitive (per ADR-19
+§4 amendment 2026-05-03 replacing unpaired-pooled) increases
+inferential power on per-cell-paired comparisons. Single-judge-
+model methodology (Sonnet pass-1 vs pass-2 within-judge
+consistency ≥80% per axis); cross-vendor judge-panel graduation
+deferred to v0.6+. Substrate scope: 5 anchor cells (not full-
+matrix replication; matrix-replication graduation v0.6+); n=5
+per-cell trials × 2 conditions (hono h1 auto-stretch n=8).
+
+Full per-axis paired-t CI numerics + cycle-thesis evaluation +
+9 named findings at the [Phase-9 reference doc](https://github.com/traviswye/ContextAtlas-benchmarks/blob/main/research/phase-9-v0.5-reference-run.md)
+§6 + §8 + §7.
+
+Cross-repo and cross-language validation shipped in v0.2 — see
+the Phase 6/7 links above and [`v0.2-SCOPE.md`](v0.2-SCOPE.md)
+for context. v0.3 Phase 8 cross-target measurement at the Phase
+8 link above.
 
 **Dogfooding.** Throughout development, ContextAtlas indexes its own
 ADRs and is used by Claude Code during work on ContextAtlas itself.
@@ -558,20 +587,64 @@ Step 15 reference run: $55.67. See [`v0.3-SCOPE.md`](v0.3-SCOPE.md)
 for original stream-level scope; Phase 8 synthesis docs for empirical
 detail.
 
-**v0.4 candidate observations queued:** quality-axis measurement
-(blind-grading methodology with multi-run n≥3 per cell);
-clean-workspace mode (Step 12 Path 3b conditional); BM25 ranking
-activation (Theme 1.2 Fix 3); per-target ceiling defaults; full
-multi-symbol API usage census; additional reference targets beyond
-hono/httpx/cobra. v0.4 evidence gate per
-[`v0.3-SCOPE.md`](v0.3-SCOPE.md) Open Question 4.
+**v0.4 shipped (2026-04-29):** Stream A substrate hardening (LSP
+adapter timing-race robustness via two-readiness-signals
+architecture per ADR-18; directory-aware test-file exclusion;
+priors-derived ceiling defaults; commit-message extraction as
+third claim source; cost-projection disclaimer in 5 user-facing
+surfaces); Stream B contextatlas-on-itself dogfood + diagnostic-
+only doctor script foundation (5 categories; 17-21 checks);
+Stream C bounded-validity matrix-run replication (5 cells × n=2
+trials; BOUNDED outcome; tokens median 4.4% / max 45.0%; three-
+measurement convergence ~4-13% replication-noise-floor). Four
+named findings: filter-shape vs content-richness distinction
+VALIDATED; Q3 bifurcated reading SHIPPED; bounded-validity
+replication CONFIRMED; cost-projection-vs-platform-billing
+systematic 3x reduction VALIDATED. Cumulative spend: ~$43.80
+script-projected / ~$14.50 platform-billed estimated; below
+$50 ceiling. See [`v0.4-SCOPE.md`](v0.4-SCOPE.md) for original
+stream-level scope.
+
+**v0.5 shipped (2026-05-04):** Stream A LLM-judge harness +
+rubric prompt + 5-step anonymization pipeline (per ADR-19;
+position-bias post-hoc 0.538 NO TRIGGER); Stream B paired-t
+statistical methodology + Phase-9 reference doc (4-level
+aggregation including cross-cell rollup at N=27 differences per
+axis; ADR-19 §4 amendment 2026-05-03 replaces unpaired-pooled);
+Stream C adaptive cost priors + Pipeline Integration Discipline
+(methodology riders #7/#8/#9/#12). Substrate: 5 anchor cells ×
+n=5 trials × 2 conditions; hono h1 auto-stretch to n=8. Cross-
+cell rollup distinguishes on 3 of 4 quality axes (1 CLEAN / 2
+BORDERLINE / 1 NOT distinguishable per Option α strict three-
+tier framing); threshold pre-registration honored. Nine named
+findings (full text at Phase-9 reference doc §7): F1 PRIMARY
+paired-mode unlocks rubric differentiation single-mode obscures;
+F2-F9 per ref-doc §7. V1.0 ship-gate criterion #1 quality-axis
+methodology parenthetical CLOSED at v0.5; statistically-
+meaningful-wins gate remains open (matrix-replication graduation
+v0.6+). Cumulative spend: ~$10.25 platform-billed reconstructed
+/ ~12% of $51-97 base envelope. See [`v0.5-SCOPE.md`](v0.5-SCOPE.md)
+for original stream-level scope.
+
+**v0.6+ candidate observations queued.** Two complementary
+substrates per Q10 cycle-lock two-substrate distinction:
+(1) [`research/v0.5-candidates.md`](research/v0.5-candidates.md)
+remains canonical for the 9 remaining items not absorbed at v0.5
+(absorbed-item annotations mark #7/#8/#9/#12 v0.5-Step-10
+closures); (2) [Phase-9 reference doc §9](https://github.com/traviswye/ContextAtlas-benchmarks/blob/main/research/phase-9-v0.5-reference-run.md)
+captures cycle-emergent candidates surfaced during v0.5
+execution (see ref-doc §9 for canonical list). Likely v0.6
+thesis candidate is developer onboarding pipeline per ROADMAP
+framing. v0.6 thesis selection at scope-doc drafting time.
 
 **Deferred to future versions (see [ROADMAP.md](ROADMAP.md) for specifics):**
-- Claim source enrichment: docstrings, READMEs (v0.3)
-- External dogfood trial (v0.3)
-- Semantic embedding layer for `find_by_intent` (v0.4, evidence-gated)
+- README / `docs/` parsing for architectural claims (v0.6+;
+  docstring extraction shipped at v0.3 per "What's Implemented
+  Today" above)
+- External dogfood trial (v1.0 ship-gate criterion #3)
+- Semantic embedding layer for `find_by_intent` (v0.6+, evidence-gated)
 - Task-shaped bundle queries: `why_does_this_fail`, `onboard_to_feature`,
-  `audit_change` (v0.5)
+  `audit_change` (v0.6+)
 - Hot-path caching, claim capture from agent sessions (v0.6+)
 - Additional language adapters beyond Go — Rust, C#, Java (by demand)
 - Web dashboard for index inspection (out of roadmap)

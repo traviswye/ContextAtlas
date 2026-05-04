@@ -732,6 +732,164 @@ substep-addition rationale (deliberate refinement vs v0.4
 
 *Entries added in reverse-chronological order as steps ship.*
 
+### Step 11 shipped — 2026-05-04
+
+V0.5 ship gate executed per locked 11-substep ladder (11.1
+pre-flight verification → 11.2.a-d external-doc inline surfaces
+→ 11.3 verification table inline → 11.4 tag message inline →
+11.5 absorbed-item annotation inline → 11.6 ship commit + tag
+operation → 11.7 cross-repo back-reference). Single ship commit
+per Q1 single-ship-commit lock (matches v0.4 `454fcc8`
+precedent); annotated tag `v0.5.0` created alongside via
+HEREDOC per Q5 lock; v0.4.0-precedent SHA-free tag-message-self-
+containment hygiene preserved (verified via `git tag -v v0.4.0`
+inspection at 11.4 surface).
+
+| Substep | branch | commit | Notes |
+|---|---|---|---|
+| 11.1 pre-flight | main | (verification only) | Working content gap inventory + cross-document consistency verification + cycle-thesis surface enumeration |
+| 11.2.a README inline | main | [this commit] | Quality axis section replacement + What's Implemented Today v0.4 + v0.5 shipped blocks + v0.6+ candidates + Installation status box catch-at-re-draft + Update 4-extended deferred-list refresh |
+| 11.2.b ROADMAP inline | main | [this commit] | New v0.5 [SHIPPED] section + v0.5+ → v0.6+ backlog reframe + v1.0 ship-gate criterion #1 closure annotation + efficiency-unlock table v0.5 → v0.6+ slip + revision history entry |
+| 11.2.c CLAUDE.md inline | main | [this commit] | v0.5 outcome compressed paragraph (Path β) + methodology limits + v0.4 outcome reframed historical + v0.6+ candidates two-substrate pointer + historical references catch-up + version-anchored phrasing cleanup |
+| 11.2.d DESIGN.md inline | main | [this commit] | §Benchmark Methodology Fairness LLM-judge cross-reference + §Versioning v0.3/v0.4/v0.5 ship-date catch-up |
+| 11.3 verification table inline | main | [this commit] | 14-criterion 6-column verification table embedded below; Q11 design-proposal-time 5-column lock refined to 6-column with Locked-at column for archaeology-reader substrate value |
+| 11.4 tag message inline | main | [this commit] | FINAL tag content locked at 11.4 surface; v0.4.0-precedent SHA-free body verified clean via `git tag -v v0.4.0`; F4 parenthetical addition + Option α tier-detail framing preserved verbatim |
+| 11.5 absorbed-item annotations | main | [this commit] | 4 in-place absorbed-item annotations (#7/#8/#9/#12) + file-level v0.5-novel-pattern flag block at research/v0.5-candidates.md; URL-form sub-pattern locked as canonical for v0.6+ inheritance |
+| 11.6 ship commit + tag | main | [this commit] | Single ship commit per Q1 lock; package.json 0.4.0 → 0.5.0; annotated tag v0.5.0 created via HEREDOC alongside |
+| 11.7 cross-repo back-ref | benchmarks | (subsequent commit) | Refs main-repo ship SHA in Phase-9 ref-doc §11 revision history; adds 16th + 17th candidates to ref-doc §9 table |
+
+#### v0.5-SCOPE.md §Success criteria — verification table
+
+**v0.5-cycle-introduced ship-gate discipline.** This 6-column
+verification table (criterion # / status / evidence / locked-at
+/ notes) is one of two v0.5-cycle-introduced ship-gate
+disciplines captured at Step 11; pairs with in-place absorbed-
+item annotation pattern at Surface 11.5. Both become canonical
+ship-gate cadence v0.6+ inherits per cycle-close discipline
+carry-forward. Column structure refines Q11 design-proposal-time
+5-column lock (# / Criterion / Status / Evidence / Honest-scope-
+acknowledgment) to 6-column (# / Criterion / Status / Evidence /
+Locked-at / Notes) inline-discovered at 11.3 verification table
+draft. Locked-at column adds archaeology-reader substrate value
+(per-criterion source attribution at v0.5-SCOPE §SC #N + ADR-
+locked-at refs); honest-scope-acknowledgment preserved in Notes
+column. Q11 refinement flagged here for audit-trail completeness;
+absorbed into cycle-introduced verification-table-format
+discipline carry-forward (footer discipline #1).
+
+Status legend: ✓ MET / △ PARTIAL / ✗ MISSED / PENDING
+(verification scheduled at this cycle moment but not yet
+executed). Honest-scope-acknowledgment over retroactive-checkbox
+per cycle-introduced ship-gate discipline (criterion 12 △
+PARTIAL adjudicated at Q13 lock; notes column captures honest
+gap acknowledgment + 17th §9 candidate forward-pointer rather
+than checkbox-completion).
+
+| # | Criterion | Status | Evidence | Locked-at | Notes |
+|---|-----------|--------|----------|-----------|-------|
+| 1 | Stream A LLM-judge harness shipped + tested | ✓ MET | `d9bd006` types.ts + pricing.ts; `0b7bdc7` judge-client.ts; `3733d9c` agreement-stats.ts; `dd7d87c` Step 2.4 close (probe PASS); `4153be7` Step 2 close | v0.5-SCOPE.md §SC #1 | Per-call cost tracking shipped; mocked test coverage on harness behavior; criterion 3 floor recalibrated 50→20 at probe |
+| 2 | Stream A graded-output protocol defined + locked | ✓ MET | `c96118c` ADR-19 (Step 1 lock); `6ed89ce` Step 3.1+3.2 rubric-prompt.ts canonical text; `42d9a60` Step 3.5 regression sentinels | v0.5-SCOPE.md §SC #2 | Rubric DESIGN locked at Step 1 (ADR-19); PROMPT TEXT committed at Step 3 per F1 PROMPT TEXT lock |
+| 3 | Stream A double-blind harness shipped | ✓ MET | `b582f76` Step 4.1 anonymize.ts; `0faba72` Step 4.2 position-bias.ts; `fba1500` Step 4.3 style-normalize.ts; `8df1490` Step 4 close | v0.5-SCOPE.md §SC #3 | 5-step anonymization protocol per Q3 lock; post-hoc verification harness implemented at `e45813c` |
+| 4 | Stream A statistical tooling shipped | ✓ MET | `05c9fc7` ADR-19 §4 amendment; `1258feb` Step 5.1 stats.ts; `14c606a` Step 5.2 reporting.ts; `e8cf482` Step 5.3 scripts/lib/stats.mjs (benchmarks-repo sibling); `05460f6` Step 5.4 Stream A close | v0.5-SCOPE.md §SC #4 | Test coverage on CI computation against known distributions; paired-t per ADR-19 §4 amendment replacing unpaired-pooled; t-table df=1..30 + ∞ |
+| 5 | Step 6 calibration thresholds | ✓ MET (Branch D) | `02e6b41` Step 6.1 PROBE PASS; `3ba2aef` Step 6.2 Phase A worksheet; `585ccfc` Step 6.3 gate eval; `f9098a2` Step 6.4 Branch D explicit offset disclosure | v0.5-SCOPE.md §SC #5; thresholds at ADR-19 | Initial gate FAIL adjudicated via Branch D per ADR-19 §2; subsequently revealed at Step 8 to be MODE-SPECIFIC not structural — paired-mode unlocks rubric differentiation single-mode obscured (F1 PRIMARY at ref-doc §7) |
+| 6 | Step 7 statistical replication n=5 × 5 cells × 2 conditions | ✓ MET (Path A) | `cec8be6` Step 7.1 orchestrator; `a801347` 56/56 trials; `9007dff` Step 7.3 audit script; `3a3a8bc` AUDIT PASS; `ca16dc0` Step 7.4 close | v0.5-SCOPE.md §SC #6 | 56/56 trials shipped; F4 ca-condition variance asymmetry surfaced; cobra/c3 trial-2 base reproducible failure under EVEN parity → Path A acceptance (n=4 at cobra/c3 cell) |
+| 7 | Step 8 grading run blind-graded | ✓ MET (34/35 Path A) | `241af7a` Step 8.1 harness (28 paired + 7 cross-order); `bf5313c` 34/35 grades; `a3388a1` Path A retry; `e45813c` Step 8.2 position-bias NO TRIGGER (0.538 < 0.60); `a0d94fe` Step 8.3 close | v0.5-SCOPE.md §SC #7 | 34/35 grades shipped; F1 PRIMARY paired-mode rubric differentiation finding emerged here; F6 position-dependent JSON output formatting cycle-emergent (distinct from ADR-19 §3 score-bias) |
+| 8 | Phase-9 reference doc shipped | ✓ MET | `e32b5dd` Step 9.1 Phase-9 ref-doc + doc-gen script (benchmarks); `ed7519d` Step 9.2 close (main-repo audit-trail); `35d00e0` Step 9.2 cross-repo back-reference; `d73eb1b` Step 9.2 SHA fill | v0.5-SCOPE.md §SC #8 | 9 named findings at §7; Option α strict three-tier framing honored at §6/§8; threshold pre-registration discipline preserved (no goalpost-shifting); bidirectional cross-repo SHA audit trail pattern shipped |
+| 9 | Methodology riders shipped (#7/#8/#9/#12) | ✓ MET (4/4) | `8e39aa6` Step 10.1 benchmarks-batch (#9 + #12); `ef99b92` Step 10.2 main-batch (#7 + #8); `87f12e6` Step 10.3 close; `875db2c` cross-repo back-reference | v0.5-SCOPE.md §SC #9 | All 4 riders shipped; 16th §9 candidate (cycle-based aggregation) captured as v0.6+; CLAUDE.md Pipeline Integration Discipline section landed (#8) per Q-A through Q-F locks at Step 10.4 |
+| 10 | No quality-axis claims beyond v0.5 measurement | ✓ MET | `e32b5dd` Phase-9 ref-doc (rubric-defined measurements); `a0d94fe` Step 8.3 close (platform-billed labeling refinement); README v0.5 + ROADMAP v0.5 + CLAUDE.md v0.5 outcome (this commit; honest-scope discipline) | v0.5-SCOPE.md §SC #10; honesty-scope lock | Threshold pre-registration disciplined Option α strict three-tier framing honored across all public surfaces; no extrapolation; hallucination CI lower bound below 0.05 clean-tier threshold preserved as BORDERLINE not retroactively reclassified |
+| 11 | Backlog discipline preserved | ✓ MET | `87f12e6` Step 10.3 close (16th §9 candidate); ROADMAP v0.6+ section + CLAUDE.md v0.6+ candidates pointer (this commit per Q10 two-substrate); ref-doc §9 canonical list; v0.5-candidates.md absorbed-item annotations (this commit) | v0.5-SCOPE.md §SC #11 | Three forward-pointer mechanisms preserved per Q10 cycle-lock: (1) v0.5-candidates.md remains canonical for 9 unabsorbed items; (2) ref-doc §9 captures cycle-emergent surfaces; (3) ROADMAP v0.6+ section frames strategic arc |
+| 12 | Self-use during cycle documented | △ PARTIAL | v0.5 self-use ad-hoc during cycle (rubric-design feedback at Step 1; quality observations at Step 9 thesis evaluation; UX observations carrying forward to v0.6); Travis-owned launch-document personal notes (informal accumulation; not committed-artifact form); 17th §9 candidate (formalize-self-use-logging gap) added at Step 11.3 per Q13 adjudication | v0.5-SCOPE.md §SC #12 | △ **honest-scope-acknowledgment per Q13 lock.** Informal self-use during cycle preserved as Travis-owned personal notes per cycle plan; formal-documentation gap acknowledged honestly rather than retroactively-checked; 17th §9 candidate (formalize-self-use-logging) captured for v0.6+ formalization. Honest-scope-acknowledgment vs retroactive-checkbox is itself a v0.5-cycle-introduced ship-gate discipline (#4) |
+| 13 | Test suites green pre-bump | ✓ MET | `npm test` pass main-repo 1096/1096 (v0.5 cumulative including anonymize.test + position-bias.test + style-normalize.test + stats.test + rubric-prompt.test + parser.test schema-driven update); benchmarks-repo 302/302 pass + 9 integration-skipped (288 baseline + 14 calls-bucket from Step 10.1) | v0.5-SCOPE.md §SC #13 | Verified at 11.6 pre-flight: main-repo 49 test files in 9.61s; benchmarks-repo 21 test files + 3 integration-skipped in 3.05s |
+| 14 | Standard ship-gate criteria | ✓ MET | package.json 0.4.0 → 0.5.0 (this commit); annotated tag `v0.5.0` (created at 11.6 step 6 alongside ship commit); STEP-PLAN-V0.5.md complete with all step entries (this entry); benchmarks-repo cross-repo back-reference at 11.7 (subsequent commit) | v0.5-SCOPE.md §SC #14 | Standard discipline matching v0.4 ship precedent; push deferred per CLAUDE.md "no-push-without-explicit-direction" discipline |
+
+**Result.** 13/14 criteria ✓ MET; 1/14 △ PARTIAL (criterion 12,
+honest-scope-acknowledgment per Q13). 0/14 ✗ MISSED. Cycle-thesis
+evaluation: v1.0 ship-gate criterion #1 quality-axis methodology
+parenthetical CLOSED at v0.5 per ADR-19 + paired-t cross-cell
+rollup methodology; statistically-meaningful-wins gate remains
+open (3-of-4 axes distinguishable per Option α strict three-tier
+framing; matrix-replication graduation v0.6+) per ROADMAP v1.0
+ship-gate criterion #1 closure annotation.
+
+#### V0.5-cycle-introduced ship-gate disciplines (4 total) carrying forward to v0.6+ as canonical
+
+1. **5-column → 6-column verification-table format** —
+   criterion # / status / evidence / locked-at / notes;
+   surfaces methodology-defensibility audit trail at ship-gate.
+   Q11 design-proposal-time 5-column lock refined inline at
+   11.3 to 6-column for archaeology-reader substrate value.
+   Lock-refinement-during-execution-with-explicit-flag pattern
+   itself becomes substrate for v0.6+ ship-gate cadence: locks
+   set at design-proposal-time can refine at execution-time IF
+   refinement adds substrate value AND refinement is explicitly
+   flagged for audit trail.
+
+2. **In-place absorbed-item annotation pattern with URL-form
+   sub-pattern** — at Surface 11.5 v0.5-candidates.md gets in-
+   place annotations marking #7/#8/#9/#12 v0.5-Step-10 closures
+   (preserves canonical-reference status for 9 unabsorbed items
+   per Q10 two-substrate distinction). URL-form sub-pattern (full
+   GitHub commit URLs with markdown click-through navigation)
+   locked at 11.5 review per Travis (iii) adjudication; URL-form
+   becomes canonical for v0.6+ ship-gate cadence inheritance.
+
+3. **Surface-inline-before-commit ship-gate cadence** — 11.2.a-d
+   inline-review pattern empirically caught **9 instances** of
+   v0.3/v0.4-era doc-refresh gaps + content-drift errors
+   operating at three recursion depth levels:
+   - **Level 1** — original surface 11.2.a-d catches (instances
+     1-5; v0.3/v0.4-era doc-refresh + content-drift errors caught
+     at 11.2.a-d / 11.3 / 11.5: README "What's Implemented Today"
+     missed v0.4 update; CLAUDE.md historical-references missed
+     STEP-PLAN-V0.4 + v0.4-SCOPE; DESIGN.md §Versioning shipped-
+     list missed v0.3 + v0.4 entries; ROADMAP ~$30 figure stale-
+     number error; verification table 859/859 stale-test-count
+     pattern-match error).
+   - **Level 2** — recursive 11.2.a' re-draft catch (instance 7;
+     Update 3 Installation status box gap caught during 11.2.a
+     re-draft after content-substrate gap surfaced post-summary).
+   - **Level 3** — Update 4 framing-context verification catches
+     (instances 8 + 9; deferred-list "Claim source enrichment
+     docstrings, READMEs (v0.3)" split-state catch + "External
+     dogfood trial (v0.3)" v1.0-gate-bound categorization-
+     reframing catch).
+   Each recursion level surfaces gaps the prior level didn't
+   catch; each catch operates within the same discipline
+   framework. Recursive operability across three depth levels
+   at single-cycle ship-gate is empirically substantial substrate
+   for discipline carry-forward to v0.6+ as canonical methodology
+   hygiene, not process formalism.
+
+4. **Honest-scope-acknowledgment over retroactive-checkbox** —
+   criterion 12 △ PARTIAL adjudicated at Q13 as honest gap-
+   acknowledgment + 17th §9 candidate forward-pointer rather
+   than retroactively-checked. Discipline pattern: when scope-
+   doc criterion can't be honestly checked, surface the gap as
+   forward-pointer (not retroactively recover via redefinition).
+   Discipline operates recursively at ship-gate execution itself
+   — caught README 11.2.a content-substrate gap pre-execution
+   (the gap that triggered Path A re-draft); discipline #4
+   catches what discipline #3 surface-inline cadence creates
+   verification opportunity for. Both disciplines composing
+   recursively at most consequential moment of cycle is the
+   strongest single-instance reviewable-methodology evidence
+   the cycle produced.
+
+These four cycle-introduced ship-gate disciplines compose the
+v0.6+ ship-gate substrate. STEP-PLAN-V0.6 plan-drafting inherits.
+
+#### Cumulative cycle spend
+~$10.25 platform-billed reconstructed / ~12% of $51-97 base
+envelope. Methodology defensibility preserved through
+cost-discipline; v0.5 quality-axis-methodology cycle delivered
+substantive substrate at fraction of envelope per F9 (ref-doc
+§7).
+
+**Step 11 unblock.** v0.5 cycle definitively closed. v0.5+
+candidate inventory carry-forward established via Q10 two-
+substrate distinction; v0.6 thesis selection at scope-doc-
+drafting time per ROADMAP framing.
+
 ### Step 10 shipped — 2026-05-04
 
 **Scope:** Stream C methodology riders per scope-doc Stream C +

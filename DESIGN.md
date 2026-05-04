@@ -899,8 +899,11 @@ Full methodology in RUBRIC.md. Brief outline:
 - **Axes:** Efficiency (tool calls, tokens, wall-clock) + Correctness
   (task success, constraint violations, hallucinations) + Confidence
   (calibration).
-- **Fairness:** Same model version both sides. Blind manual grading.
-  Three runs per prompt, medians reported. Pre-registered rubric.
+- **Fairness:** Same model version both sides. Blind LLM-judge
+  grading under paired-mode anonymization (per ADR-19 + Phase-9
+  reference doc); v0.5 uses n=5 trials per cell with paired-t
+  cross-cell rollup at N=27 differences per axis. Pre-registered
+  rubric per threshold pre-registration discipline.
 
 ## Risks and Open Questions
 
@@ -946,11 +949,13 @@ v2 concern.
 ## Versioning
 
 This document tracks the shipped architecture; v0.1 + v0.2 shipped
-(2026-04-25). Material changes to the tool interface, storage schema,
-or config schema bump the minor version. Atlas schema versioning is
-additive within minor versions (v0.2 bumped 1.1 → 1.2; v0.3 bumped
-1.2 → 1.3 to add `generator.contextatlas_commit_sha`, all following
-ADR-11's pattern). Per-version release notes start with v0.3;
-v0.1 + v0.2 historical record lives in
+(2026-04-25); v0.3 shipped (2026-04-28); v0.4 shipped (2026-04-29);
+v0.5 shipped (2026-05-04). Material changes to the tool interface,
+storage schema, or config schema bump the minor version. Atlas schema
+versioning is additive within minor versions (v0.2 bumped 1.1 → 1.2;
+v0.3 bumped 1.2 → 1.3 to add `generator.contextatlas_commit_sha`, all
+following ADR-11's pattern; v0.4 + v0.5 atlas schema unchanged at 1.3
+— substrate-hardening and methodology cycles respectively). Per-version
+release notes start with v0.3; v0.1 + v0.2 historical record lives in
 [`STEP-PLAN-V0.2.md`](STEP-PLAN-V0.2.md) progress logs and the
 benchmarks-repo Phase 5/6/7 synthesis docs.

@@ -65,10 +65,53 @@ These are decisions already made. Do not relitigate them.
 
 ## Current Version
 
-- **Current:** v0.4 shipped 2026-04-29. v0.5 planning queues next;
+- **Current:** v0.5 shipped 2026-05-04. v0.6 planning queues next;
   not yet started.
 - **Strategic arc:** [`ROADMAP.md`](ROADMAP.md) covers v0.1 → v1.0.
-- **v0.4 outcome:** Production-installability foundation. Stream A
+- **v0.5 outcome:** LLM-judge methodology + quality-axis blind-
+  grading methodology shipped. Stream A rubric + anonymization
+  (single + paired rubric prompts; 5-step anonymization pipeline
+  per ADR-19; position-bias post-hoc 0.538 NO TRIGGER below
+  strict 0.60). Stream B paired-t statistical methodology +
+  Phase-9 reference doc (ADR-19 §4 amendment 2026-05-03 commit
+  `05c9fc7` replaces unpaired-pooled with paired-t; 4-level
+  aggregation including cross-cell rollup Option B-2 at
+  concatenated N=27 differences; threshold pre-registration
+  honored under Option α strict three-tier framing). Stream C
+  adaptive cost priors (atlas-version-based filter; v0.4.0+
+  tagged substrate; cumulative aggregation) + Pipeline
+  Integration Discipline section absorbed into CLAUDE.md at
+  Step 10.2. Cross-cell rollup distinguishes on 3 of 4 quality
+  axes (1 clean / 2 borderline / 1 tied); see ref-doc §6 for
+  full per-axis paired-t CI numerics + §8 for cycle-thesis
+  evaluation. Nine named findings (full text at ref-doc §7):
+  F1 PRIMARY paired-mode unlocks rubric differentiation
+  single-mode obscures (with 12:1 ca-favored asymmetry); F2
+  anonymization validated by 76% tie rate; F3 cobra/c4 +
+  httpx/p2 all-zero Δ; F4 ca-condition variance asymmetry;
+  F5 hono h1 beta-ca bimodal exploration intrinsic; F6
+  position-dependent JSON output formatting (cycle-emergent;
+  distinct from ADR-19 §3 score-bias); F7 cross-order
+  agreement strong; F8 cost-projection accuracy at paired-mode
+  + failed-call cost-tracking gap; F9 cost-discipline
+  preserved (~$10.25 cumulative platform-billed reconstructed
+  / ~12% of $51-97 base envelope).
+- **Methodology limits acknowledged in v0.5 ship narrative:**
+  Quality-axis measured at 5 anchor cells × n=5 trials × 2
+  conditions (hono h1 auto-stretch to n=8); not full-matrix
+  replication (matrix-replication graduation is v0.6+
+  candidate). Cobra/c3 trial-2 base reproducible failure
+  under assignment_parity=EVEN accepted via Path A; n=4 at
+  cobra/c3 cell. Single-judge-model methodology (Sonnet
+  pass-1 vs pass-2 within-judge consistency ≥80% per axis;
+  cross-model judge-pool graduation is v0.6+ candidate per
+  ref-doc §9). Hallucination CI lower bound below 0.05
+  clean-tier threshold but well above 0.001 borderline-floor —
+  peer-review-defensible borderline classification, not clean.
+  Completeness NOT distinguishable preserved honestly per
+  threshold pre-registration discipline.
+- **v0.4 outcome (preserved as historical record):** Production-
+  installability foundation. Stream A
   substrate hardening (B2 LSP timing-race robustness with
   bounded-poll + readiness-signal pattern across TS/Python/Go
   adapters per ADR-18; A4 directory-aware test-file exclusion; A1
@@ -88,12 +131,18 @@ These are decisions already made. Do not relitigate them.
   honored independently); bounded-validity replication CONFIRMED;
   cost-projection-vs-platform-billing systematic 3x reduction
   VALIDATED across 4 reference targets.
-- **Methodology limits acknowledged in v0.4 ship narrative:** n=2
-  trial replication (full statistical methodology n>2 deferred to
-  v0.5+); calls-Δ quantization noise on small-N cells (token-Δ is
-  load-bearing metric); quality-axis blind-grading explicitly
-  v0.5+ scope; Phase 8 substrate cell selection finding-anchored
-  not random (full-matrix replication is v0.5+).
+- **Methodology limits acknowledged in v0.4 ship narrative
+  (preserved as historical record):** n=2 trial replication
+  (full statistical methodology n>2 deferred to v0.5+; closed
+  at v0.5 with n=5 per-cell trials × 5 cells; cross-cell
+  rollup paired-t at N=27 differences per axis); calls-Δ
+  quantization noise on small-N cells (token-Δ is load-
+  bearing metric; calls-bucket reporting at v0.5 Step 10.1
+  addresses this); quality-axis blind-grading explicitly
+  v0.5+ scope (closed at v0.5 with LLM-judge methodology
+  under paired-mode anonymization); Phase 8 substrate cell
+  selection finding-anchored not random (full-matrix
+  replication remains v0.6+).
 - **v0.3 outcome (preserved as historical record):** Stream A atlas
   precision (Theme 1.2 narrower attribution per ADR-16 amendment +
   Theme 1.1 multi-symbol API per ADR-15 + Theme 1.3 atlas schema
@@ -106,15 +155,22 @@ These are decisions already made. Do not relitigate them.
   baseline established across hono (TypeScript), httpx (Python), and
   cobra (Go). Stream A + Stream B both shipped. v0.2 thesis ("works
   across languages and repos") empirically validated.
-- **v0.5+ candidates** (canonical reference at
-  [`research/v0.5-candidates.md`](research/v0.5-candidates.md);
-  13 items across substrate gaps / feature gaps / process
-  improvements / methodology hardening). v0.5 thesis selection at
-  per-version scope-doc drafting time; likely candidate is
-  developer onboarding pipeline (#13) per ROADMAP framing.
-- **Historical references:** `STEP-PLAN-V0.3.md` + `STEP-PLAN-V0.2.md`
-  progress logs document per-step execution arcs; `v0.3-SCOPE.md` +
-  `v0.2-SCOPE.md` are the scope anchors as shipped.
+- **v0.6+ candidates.** Two complementary substrates per Q10
+  cycle-lock two-substrate distinction:
+  (1) `research/v0.5-candidates.md` remains canonical for the
+  9 remaining items not absorbed at v0.5; absorbed-item
+  in-place annotations mark #7/#8/#9/#12 v0.5-Step-10 closures.
+  (2) `../ContextAtlas-benchmarks/research/phase-9-v0.5-reference-run.md`
+  §9 captures cycle-emergent candidates surfaced during v0.5
+  execution (canonical list; surfaces beyond v0.5-candidates.md
+  inventory scope per Q10 cycle-emergent-only scope lock).
+  v0.6 thesis selection at per-version scope-doc drafting time;
+  likely candidate is developer onboarding pipeline (originally
+  #13 in v0.5-candidates.md inventory) per ROADMAP framing.
+- **Historical references:** `STEP-PLAN-V0.5.md` + `STEP-PLAN-V0.4.md`
+  + `STEP-PLAN-V0.3.md` + `STEP-PLAN-V0.2.md` progress logs document
+  per-step execution arcs; `v0.5-SCOPE.md` + `v0.4-SCOPE.md` +
+  `v0.3-SCOPE.md` + `v0.2-SCOPE.md` are the scope anchors as shipped.
 
 When making architectural decisions, check ADRs first. ADR-13
 (Pyright) and ADR-14 (gopls) document the language-adapter LSP
@@ -124,8 +180,14 @@ document the atlas-side invariants.
 v0.1 shipped with Phase 5 empirical validation (50–71% tool-call
 reduction on architectural win-bucket prompts on hono). v0.2
 shipped Phase 6 (httpx) + Phase 7 (cobra) reference runs validating
-cross-language replication. Historical MVP build-plan details
-live in git history, not this file.
+cross-language replication. v0.3 shipped Phase 8 reference run +
+trace-analysis supplement (Themes 1.1/1.2 VALIDATED; Theme 2.2
+FALSIFIED). v0.4 shipped Stream C bounded-validity replication
+(BOUNDED outcome; n=2 across 5 cells). v0.5 shipped Phase-9
+reference run with paired-t cross-cell rollup quality-axis
+methodology (factual_correctness CLEAN; hallucination + actionability
+BORDERLINE; completeness NOT distinguishable per ADR-19). Historical
+MVP build-plan details live in git history, not this file.
 
 ## Tool scope philosophy
 
@@ -184,9 +246,9 @@ against those external repos.
   v0.3 Commit 0.5 prose-string case (a `summary.test.ts` assertion
   against a stale prose string went unnoticed for 5 commits because
   pre-commit only ran `node --check` + `typecheck`). Pre-commit hook
-  automation deferred to v0.5+ candidate (CLAUDE.md "minimize
-  dependencies" principle weighs against husky for v0.4); developer
-  discipline is the v0.4 standard.
+  automation deferred to v0.6+ candidate (CLAUDE.md "minimize
+  dependencies" principle weighs against husky); developer
+  discipline remains the standard.
 
 ## Pipeline Integration Discipline
 
@@ -235,7 +297,7 @@ integration linter deferred to v0.6+ candidate (matches CLAUDE.md
 "minimize dependencies" principle weighing against linter
 additions at v0.5 scope).
 
-## Extraction cost framing (v0.4 Step 6 / Q5 lock)
+## Extraction cost framing (v0.4 Step 6 / Q5 lock; v0.5 Step 10 adaptive priors closure)
 
 Script-reported extraction costs use Anthropic's full-token API
 pricing. Actual platform-billed costs reflect prompt-cache discount
@@ -250,8 +312,11 @@ script-vs-platform across three reference targets:
 projections; note actual-typically-lower. Don't tune projection
 math toward platform-actual values (Q5 lock — pricing volatility
 makes maintenance a liability, not a one-time fix). Adaptive
-priors-based correction is a v0.5+ candidate if priors observably
-drift.
+priors-based correction landed at v0.5 Step 10.1 (per
+`scripts/aggregate-cost-priors.mjs` in benchmarks repo +
+`cost-priors-v0.5.json` versioned snapshot); cumulative
+aggregation strategy per Q4(ii) lock; rolling-N aggregation
+remains v0.6+ candidate if needed for ongoing cost forecasting.
 
 ## What to Ask the User About
 

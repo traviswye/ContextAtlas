@@ -75,11 +75,11 @@ ContextAtlas commits to a set of efficiency unlocks across the version arc. Each
 | Signal fusion at query time, not ingest time | Each signal source (LSP, ADRs, git, docs) stays independent at storage. Queries compose across sources. New sources join the fusion without reshaping existing data. | v0.1 | **Shipped** |
 | LLM-native compact output format | Dense, stable, structured format optimized for token density. ~40-60% savings vs JSON on the same content (per ADR-04). | v0.1 | **Shipped** |
 | Cross-session caching with SHA-based invalidation | Atlas claims cached per-file via `source_shas`; incremental reindex re-extracts only changed files. Unchanged code = zero re-extraction work. Atlas itself functions as the cross-session/cross-developer cache (committed artifact per ADR-06). | v0.1 (SHA-diff gating per ADR-12) | **Shipped** |
-| Task-shaped bundle queries | One MCP call returns what would have taken 12+ primitive calls — `why_does_this_fail(symbol, error)`, `onboard_to_feature(feature)`, `audit_change(diff)`. The headline efficiency-collapse story. | v0.5 | Planned |
-| Progressive disclosure with stable IDs | First response is summary with IDs; Claude Code pulls detail by ID when needed. Avoids returning 500-element lists verbatim. | v0.5 | Planned |
+| Task-shaped bundle queries | One MCP call returns what would have taken 12+ primitive calls — `why_does_this_fail(symbol, error)`, `onboard_to_feature(feature)`, `audit_change(diff)`. The headline efficiency-collapse story. | v0.6+ | Planned |
+| Progressive disclosure with stable IDs | First response is summary with IDs; Claude Code pulls detail by ID when needed. Avoids returning 500-element lists verbatim. | v0.6+ | Planned |
 | Hot-path learning | Top-N queries across sessions cached as pre-computed bundles. Claude Code gets cached answer in one call instead of 15 discovery calls. | v0.6+ | Planned |
 
-Each unlock targets a specific token-burn or architectural-context cost. The version arc is a deliberate sequencing — substrate first (v0.1-v0.4 build the layers), efficiency-collapse second (v0.5 ships task-shaped queries on the substrate), learning-based optimization third (v0.6+ refines from real usage). v1.0 ships when the substrate + efficiency-collapse + learning are operating coherently together.
+Each unlock targets a specific token-burn or architectural-context cost. The version arc is a deliberate sequencing — substrate first (v0.1-v0.4 build the layers), quality-axis methodology second (v0.5 ships LLM-judge methodology + paired-t cross-cell rollup), efficiency-collapse third (v0.6+ ships task-shaped queries on the substrate), learning-based optimization fourth (v0.6+ refines from real usage). v1.0 ships when the substrate + methodology + efficiency-collapse + learning are operating coherently together.
 
 ## Versions
 
@@ -95,13 +95,18 @@ v0.1 ──┬── v0.2 (language adapter breadth)         — SHIPPED
        ├── v0.3 (claim enrichment + sharpening)    — SHIPPED;
        │                                             input to v0.4 hardening
        │
-       └── v0.4 (production-installability)        — SHIPPED;
-                                                     substrate hardening +
-                                                     doctor script foundation +
-                                                     bounded validity
+       ├── v0.4 (production-installability)        — SHIPPED;
+       │                                             substrate hardening +
+       │                                             doctor script foundation +
+       │                                             bounded validity
+       │
+       └── v0.5 (LLM-judge methodology +           — SHIPPED;
+            quality-axis measurement)                paired-t cross-cell rollup
+                                                     at N=27 + Phase-9 reference
+                                                     doc + adaptive cost priors
 
-v0.5+ (must-ship-before-v1.0; flexible)            — onboarding pipeline (most
-                                                     natural v0.5); task-shaped
+v0.6+ (must-ship-before-v1.0; flexible)            — onboarding pipeline (most
+                                                     natural v0.6); task-shaped
                                                      queries; semantic layer
                                                      (evidence-gated); remaining
                                                      claim sources; team workflow
@@ -115,7 +120,7 @@ v1.0 (public launch)                               — gates: onboarding pipelin
                                                      external dogfood
 ```
 
-Practical implication: v0.4 shipped 2026-04-29; v0.5+ specific version assignments at per-version scope-doc time, not now. v1.0 gates land via v0.99 final pre-launch scope-doc.
+Practical implication: v0.4 shipped 2026-04-29; v0.5 shipped 2026-05-04; v0.6+ specific version assignments at per-version scope-doc time, not now. v1.0 gates land via v0.99 final pre-launch scope-doc.
 
 ### v0.1 — Serving architecture with hand-authored intent [SHIPPED]
 
@@ -366,28 +371,154 @@ before research methodology rigor.
 
 ---
 
-### v0.5+ — must-ship-before-v1.0 backlog [FLEXIBLE PLACEMENT]
+### v0.5 — Quality-axis blind-grading methodology + LLM-judge harness [SHIPPED]
+
+**Thesis:** Establish quality-axis measurement methodology with
+peer-review-defensible rigor. v0.4 shipped bounded validity (n=2;
+explicit deferral of full blind-grading); v0.5 ships full LLM-judge
+methodology under paired-mode anonymization with paired-t statistical
+inference, closing v1.0 ship-gate criterion #1's "full quality-axis
+methodology landed pre-v1.0" parenthetical.
+
+**Delivers (per [`STEP-PLAN-V0.5.md`](STEP-PLAN-V0.5.md)):**
+
+- **Step 3-4 — Rubric + anonymization.** Single + paired rubric
+  prompts; 5-step anonymization pipeline (strip-list, A/B
+  randomization via SHA256 seed, format-ignoring instruction,
+  post-hoc position-bias verification, conditional style-normalize
+  stretch). [ADR-19](docs/adr/ADR-19-llm-judge-methodology.md)
+  documents the methodology.
+- **Step 5 — Statistical primitives.** Paired-t CI primitives +
+  4-level aggregation (per-trial / per-cell / cross-cell rollup
+  Option B-2 at concatenated N=27 differences); ADR-19 §4
+  amendment 2026-05-03 commit `05c9fc7` replaces unpaired-pooled
+  with paired-t. Sample standard deviation (Bessel's correction).
+- **Step 6 — Within-judge consistency calibration.** 10 trials × 2
+  passes; ≥80% within-1-point per axis gate. Branch D adjudication
+  surfaced single-mode-vs-paired-mode rubric differentiation
+  (subsequently revealed at Step 8 to be MODE-SPECIFIC not
+  structural — paired-mode unlocks rubric differentiation that
+  single-mode obscured; F1 PRIMARY).
+- **Step 7-8 — Production grading harness.** 5 anchor cells × n=5
+  trials × 2 conditions; hono h1 auto-stretch to n=8 (28 paired
+  comparisons + 7 cross-presentation-order regrades; deterministic
+  shuffle). Position-bias post-hoc 0.538 — NO TRIGGER (clean below
+  strict 0.60).
+- **Step 9 — Cross-cell rollup synthesis.** Paired-t at N=27
+  differences per axis; threshold pre-registration honored
+  (Option α strict three-tier framing locked at Step 9.1.b
+  spot-check before precision values computed).
+- **Step 10 — Adaptive cost priors + Pipeline Integration
+  Discipline.** Adaptive priors aggregation (atlas-version-based
+  filter; v0.4.0+ tagged substrate; cumulative aggregation;
+  cost-priors-v0.5.json versioned snapshot). Pipeline Integration
+  Discipline section added to CLAUDE.md (verify-precedent-before-
+  drafting invariant for new claim sources).
+
+**Validates:**
+- LLM-judge methodology under paired-mode anonymization produces
+  peer-review-defensible quality-axis measurements.
+- Cross-cell rollup paired-t at N=27 differences per axis surfaces
+  graded distinguishability across factual_correctness (CLEAN +0.370)
+  / hallucination (BORDERLINE +0.296) / actionability (BORDERLINE
+  +0.148) / completeness (NOT distinguishable +0.037).
+- 76% tie rate validates anonymization (judge cannot identify
+  conditions from format alone).
+- 12:1 ca-favored direction asymmetry as independent inferential
+  lens corroborates paired-t inference.
+
+**Scope boundaries:**
+- Quality-axis measured at v0.5 anchor-cell substrate (5 cells;
+  not full-matrix replication; matrix-replication graduation is
+  v0.6+ candidate).
+- Calls-bucket reporting (1-3 / 4-7 / 8+) addresses small-N
+  quantization-noise concern carried from v0.4.
+
+**Status:** Shipped 2026-05-04 (tag `v0.5.0`). All
+STEP-PLAN-V0.5 success criteria satisfied; cross-cell rollup
+distinguishability ranges from CLEAN to NOT-distinguishable
+across the 4-axis rubric; honest scope-narrative discipline
+honored throughout.
+
+**Empirical validation:**
+- **Cross-cell rollup paired-t at N=27 (cycle-thesis; ref-doc §6 +
+  §8):** factual_correctness mean Δ +0.370; CI [0.176, 0.565] —
+  CLEAN. hallucination mean Δ +0.296; CI [0.032, 0.561] —
+  BORDERLINE (LB below 0.05 clean-tier threshold but well above
+  0.001 borderline-floor). actionability mean Δ +0.148; CI
+  [0.005, 0.291] — BORDERLINE. completeness mean Δ +0.037; CI
+  [-0.039, 0.113] — NOT distinguishable.
+- **Mode-specific rubric differentiation finding (F1 PRIMARY at
+  ref-doc §7):** paired-mode unlocks differentiation that single-
+  mode obscured; Branch D adjudication at Step 6 originally read
+  as structural, Step 8 evidence revealed mode-specificity.
+- **Anonymization validation (ref-doc §6 statistical + §7 F2):**
+  76% tie rate; position-bias post-hoc 0.538 (clean below strict
+  0.60 trigger).
+- **Adaptive cost priors:** v0.4.0+ atlas-version-tagged substrate;
+  cumulative aggregation; methodology provenance fields captured
+  in cost-priors-v0.5.json for future archaeology readers.
+
+**Named findings (9 total; canonical at
+[`research/phase-9-v0.5-reference-run.md`](../ContextAtlas-benchmarks/research/phase-9-v0.5-reference-run.md)
+§7):**
+1. **F1 PRIMARY:** Paired-mode unlocks rubric differentiation
+   that single-mode obscures (with 12:1 asymmetry sub-observation
+   as independent inferential lens)
+2. **F2:** Anonymization pipeline empirically validated by 76% tie
+   rate (82/108 axis-comparisons)
+3. **F3:** cobra/c4 + httpx/p2 all-zero Δ across all 4 axes (v0.6+
+   investigation candidate)
+4. **F4:** ca-condition systematic variance asymmetry (demoted
+   from Step 7 PRIMARY per Q7(i) cycle-level reframing)
+5. **F5:** Hono h1 beta-ca bimodal exploration intrinsic (n=8
+   stretch INCREASED variance; not n-driven)
+6. **F6:** Position-dependent JSON output formatting (cycle-emergent
+   at Step 8.1 retry evidence; distinct from ADR-19 §3 score-bias)
+7. **F7:** Cross-order agreement strong (Sonnet position-blind
+   on scores)
+8. **F8:** Cost-projection accuracy at paired-mode + failed-call
+   cost-tracking gap (combined per Q7(ii))
+9. **F9:** Cost-discipline preserved across cycle (~$10.25 / ~12%
+   base envelope)
+
+**Cumulative API spend:** ~$10.25 platform-billed reconstructed
+(~12% of $51-97 base envelope; detailed reconciliation at ref-doc
+§6 + Step 8.3 progress log entry).
+
+**Why this version:** v0.4 acknowledged quality-axis blind-grading
+deferral as v0.5+ scope; v0.5 closes that deferral with full
+methodology rigor. v1.0 ship-gate criterion #1's parenthetical
+"(full quality-axis methodology landed pre-v1.0)" closes here;
+remaining v1.0 gates (onboarding pipeline; community evidence;
+external dogfood) carry forward to v0.6+ scope.
+
+---
+
+### v0.6+ — must-ship-before-v1.0 backlog [FLEXIBLE PLACEMENT]
 
 **Items below MUST ship before v1.0 public launch but specific
 version assignment is flexible.** Canonical candidate reference
-(13 items; categorized substrate gaps / feature gaps / process
-improvements / methodology hardening): [`research/v0.5-candidates.md`](research/v0.5-candidates.md)
-(seeded at v0.4 Step 10). The list below is the strategic-arc
-framing; the canonical reference holds per-candidate detail
-(surface, problem, fix shape, placement criteria).
+(see [`research/phase-9-v0.5-reference-run.md`](../ContextAtlas-benchmarks/research/phase-9-v0.5-reference-run.md)
+§9 for canonical list of v0.6+ candidates carried forward from
+v0.5 cycle). `research/v0.5-candidates.md` remains canonical for
+the 9 remaining items not absorbed at v0.5; absorbed-item in-place
+annotations mark #7/#8/#9/#12 v0.5-Step-10 closures. ref-doc §9
+captures cycle-emergent candidates surfaced during v0.5 execution
+(surfaces beyond v0.5-candidates.md inventory scope per Q10
+cycle-emergent-only scope lock). Per-version scope-docs (v0.6,
+v0.7, ...up to v0.99 if needed) decide which items land when
+based on:
 
-Per-version scope-docs (v0.5,
-v0.6, v0.7, ...up to v0.99 if needed) decide which items land
-when based on:
-
-- v0.4 launch-document drafting surfacing credibility gaps
-- Community evidence accumulation (post-v0.4)
+- v0.5 launch evidence + drafting surfacing credibility gaps
+- Community evidence accumulation (post-v0.5)
 - External user requests
 - Travis-energy + capacity intersection
 
-This section names everything that doesn't ship in v0.4 with
-explicit forward-pointers. v0.4 corrects the v0.3 silent-deferral
-pattern by anchoring deferred work here, not letting it disappear.
+This section names everything that doesn't ship in v0.5 with
+explicit forward-pointers. v0.5 carries forward the v0.4
+silent-deferral-correction discipline by anchoring deferred work
+here, not letting it disappear.
 
 **Production-tool deliverables:**
 
@@ -517,7 +648,11 @@ launch (gate criteria below).
 - Four-layer fusion proved on the cobra/httpx/hono benchmark
   substrate (or expanded substrate per scope decisions) with
   statistically-meaningful wins on both the efficiency and
-  quality axes (full quality-axis methodology landed pre-v1.0)
+  quality axes (✓ full quality-axis methodology landed at v0.5
+  per ADR-19 + paired-t cross-cell rollup; see v0.5 section.
+  Statistically-meaningful-wins gate remains open — v0.5
+  established the measurement instrument; v0.6+ uses the
+  instrument under expanded substrate)
 - Developer onboarding pipeline shipped (configuration helper +
   ADR bootstrap + warm-up + lifecycle); doctor script foundation
   exists (v0.4) and full pipeline composes
@@ -605,6 +740,33 @@ Tracked here, not committed to a version. Each gets its own ADR when approached.
 ---
 
 ## Revision history
+
+- **2026-05-04 — v0.5 ship.** Tag `v0.5.0`. New v0.5 section
+  added between v0.4 and v0.5+ backlog with full SHIPPED
+  framing (LLM-judge methodology + paired-t cross-cell rollup
+  + adaptive cost priors); cycle-thesis empirical validation
+  paragraphs (cross-cell rollup paired-t at N=27 differences
+  per axis: factual_correctness CLEAN / hallucination
+  BORDERLINE / actionability BORDERLINE / completeness NOT
+  distinguishable); 9 named findings list; ~$10.25 cumulative
+  platform-billed reconstructed within scope-doc envelope.
+  v0.5+ backlog section reframed as v0.6+ backlog [FLEXIBLE
+  PLACEMENT] with canonical-reference pointer updated to
+  ref-doc §9 (`research/v0.5-candidates.md` remains canonical
+  for the 9 unabsorbed items; absorbed-item in-place
+  annotations mark #7/#8/#9/#12 v0.5-Step-10 closures per Q10
+  two-substrate cycle-lock). Version dependency graph updated
+  (v0.5 SHIPPED with paired-t cross-cell rollup at N=27 +
+  Phase-9 reference doc + adaptive cost priors annotation;
+  v0.6+ flexible). Key efficiency unlocks table: task-shaped
+  bundle queries + progressive disclosure slipped from
+  v0.5-Planned to v0.6+-Planned (v0.5 actual thesis was
+  quality-axis methodology, not task-shaped queries). v1.0
+  ship-gate criterion #1 marked partially-closed with closure
+  annotation: full quality-axis methodology landed at v0.5;
+  statistically-meaningful-wins gate remains open per v0.6+
+  expanded-substrate scope. Practical-implication line
+  refreshed (v0.5 shipped 2026-05-04). Net delta ~+95 LOC.
 
 - **2026-04-29 — v0.4 ship.** Tag `v0.4.0`. v0.4 section status
   flipped `[IN PROGRESS]` → `[SHIPPED]`; status paragraph
