@@ -732,6 +732,120 @@ substep-addition rationale (deliberate refinement vs v0.4
 
 *Entries added in reverse-chronological order as steps ship.*
 
+### Step 10 shipped — 2026-05-04
+
+**Scope:** Stream C methodology riders per scope-doc Stream C +
+STEP-PLAN-V0.5 Step 10 ship criteria. 4 deliverables absorbed
+from `research/v0.5-candidates.md` canonical 13-item inventory
+(items #7, #8, #9, #12) per Step 10.0 Q1 disambiguation lock.
+
+**Outcome:** 4/4 deliverables shipped across both repos via
+3-substep batched ladder (Q2 lock). Cycle-based aggregation
+alternative surfaced as 16th §9 candidate at ref-doc (forward-
+applicable atlas-version-based filter locked at 10.1; backward-
+looking cycle-history aggregate deferred to v0.6+).
+
+**Substep summary (Q2 3-substep ladder):**
+
+| Substep | Repo | SHA | Subject |
+|---|---|---|---|
+| 10.0 design | (no commit) | (n/a) | Q1-Q10 design lock + Q-pre substrate disambiguation |
+| 10.1 benchmarks-batch | benchmarks | `8e39aa6` | calls-bucket reporting + adaptive priors aggregation (#9 + #12) |
+| 10.2 main-batch | main | `ef99b92` | schema-driven test data + Pipeline Integration Discipline (#7 + #8) |
+| 10.3 close | main | [this commit] | Progress log + Q4(i) interpretation rationale + bidirectional SHA refs |
+
+**Notable decisions:**
+
+- **Q1-Q10 design lock** (Q-pre substrate disambiguation:
+  v0.5-SCOPE Stream C four items per STEP-PLAN-V0.5 ship
+  criteria; v0.5-candidates.md inventory canonical numbering;
+  ref-doc §9 distinct cycle-emergent supplement; Q2 3-substep
+  batched ladder; Q3 calls-bucket as scripts/lib/ sibling pattern;
+  Q4 cumulative aggregation strategy + provenance fields; Q5
+  hand-write fixtures with type-import compile-time check; Q6
+  surface-inline-before-commit for CLAUDE.md; Q7 lightweight
+  tests for 10.1 + skip for 10.2 aggregator; Q8 bidirectional
+  SHA at close; Q9 progress log placement; Q10 ref-doc §9
+  cycle-emergent-only scope).
+- **Q4(i) interpretation lock: atlas-version-based filter**
+  (package-version tag prefix "ContextAtlas v0.4" or "ContextAtlas
+  v0.5"; v0.4.0+ atlas-tagged substrate only). Cycle-based
+  alternative (include v0.4 cycle v0.3.0-tagged substrate)
+  deferred as v0.6+ candidate if backward-looking cycle-history
+  aggregate becomes useful. 22 v0.4 cycle runs excluded by
+  atlas-version filter because they ran against v0.3.0 atlas
+  pre-v0.4 ship; conditions-mismatch would dilute forecasting
+  accuracy of priors used for v0.6+ pre-flight cost projection.
+  cost-priors-v0.5.json `substrate_window` field captures filter
+  choice in artifact itself.
+- **Q-C verify-then-lock catch (Step 10.2 implementation).**
+  CLAUDE.md draft initially assumed 4-stage pipeline decomposition
+  (collection / extraction / validation / persistence); Q-C
+  verification against DESIGN.md surfaced actual 6 stages + Stage
+  0 (atlas import + collection + symbol inventory + extraction +
+  symbol resolution + storage + incremental reindex). Refined
+  CLAUDE.md text to reference DESIGN.md as canonical pipeline-
+  stage decomposition source per Q-C hedge directive (avoids
+  enumeration brittleness; robust to future architecture
+  changes).
+- **Q-D modified-α with N/A allowance.** Pipeline Integration
+  Discipline checked-invariant requires explicit-touch per
+  pipeline stage (must say something; can't silently skip) but
+  allows shorthand `Stage N: symmetric to [precedent reference]`
+  + `Stage N: not applicable`. Catches divergences without
+  imposing narrative overhead on common symmetric/N-A cases.
+- **Q9 16th candidate addition to ref-doc §9** at benchmarks-repo
+  back-reference commit (cross-repo cadence per Step 9.2
+  precedent). Per Q10 §9 cycle-emergent-only scope; new candidate
+  qualifies as cycle-emergent (surfaced during Step 10.1 filter-
+  interpretation adjudication).
+
+**Cumulative deltas:**
+
+| Metric | Value |
+|---|---:|
+| LOC delta — benchmarks repo (10.1) | +624 (calls-bucket script 116 + tests 116 + aggregator 233 + cost-priors-v0.5.json 89 + back-reference commit ~70) |
+| LOC delta — main repo (10.2 + 10.3) | +81 (parser.ts +9; parser.test.ts +20; CLAUDE.md +52) + ~150 (10.3 progress log) |
+| Test delta | 0 main-repo (rewrote existing parser test; baseline preserved 1096/1096); +14 benchmarks-repo (calls-bucket tests; 288 → 302) |
+| API spend | $0 (all four deliverables pure-math + filesystem + doc) |
+| v0.5 cumulative platform-billed (reconstructed) | ~$10.25 (unchanged from Step 9; Step 10 is $0 API) |
+
+**4 deliverables enumerated:**
+
+| Item | v0.5-candidates.md # | File path | LOC delta | Repo |
+|---|---|---|---:|---|
+| Calls-bucket reporting | #9 | `scripts/lib/calls-bucket.mjs` + `.test.ts` | +232 | benchmarks |
+| Adaptive priors aggregation | #12 | `scripts/aggregate-cost-priors.mjs` + `cost-priors-v0.5.json` | +322 | benchmarks |
+| Schema-driven test data | #7 | `src/config/parser.ts` (export `TOP_LEVEL_KEYS`) + `parser.test.ts` (cross-ref + schema-driven test) | +22 | main |
+| CLAUDE.md formalization | #8 | `CLAUDE.md` (new "Pipeline Integration Discipline" section) | +52 | main |
+
+**16th §9 candidate captured at benchmarks-repo back-reference
+commit:**
+
+> #16 (cycle-emergent): Cycle-based aggregation alternative for
+> cost-priors (include v0.4 cycle v0.3.0-tagged substrate).
+> Source: surfaced at Step 10.1 filter-interpretation
+> adjudication. Disposition: deferred for backward-looking
+> cycle-history aggregate use case if becomes useful for v0.6+.
+
+**Step 11 prep note (carry-forward):** v0.5-candidates.md
+inventory should get "absorbed at v0.5 Step 10" annotation per
+each absorbed item (#7, #8, #9, #12) at Step 11 doc-refresh.
+Not blocking 10.3 close; surfaces here for Step 11 prep
+checklist.
+
+**Step 11 unblock:** v0.5 ship gate per scope-doc success
+criteria #1-#14. Both v0.6+ candidate substrates ready for v0.6
+scope-doc planning consumption: v0.5-candidates.md inventory's
+remaining 9 items (#1-#6, #10, #11, #13) + ref-doc §9 cycle-
+emergent 16 items. Distinct purposes preserved per Q10 lock.
+
+**v0.5 cycle progress through Step 10:** 10/11 steps shipped
+(Stream A complete: Steps 1-5; Stream B complete: Steps 6-9;
+Stream C complete: Step 10). Remaining: Step 11 ship-gate.
+
+---
+
 ### Step 9 shipped — 2026-05-04
 
 **Scope:** Phase-9 reference doc generation per scope-doc Q7.3.2
