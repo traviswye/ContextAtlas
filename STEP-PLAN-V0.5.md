@@ -732,6 +732,161 @@ substep-addition rationale (deliberate refinement vs v0.4
 
 *Entries added in reverse-chronological order as steps ship.*
 
+### Step 9 shipped — 2026-05-04
+
+**Scope:** Phase-9 reference doc generation per scope-doc Q7.3.2
+deferred lock + Step 9 design proposal Q1-Q10 lock + STEP-PLAN-
+V0.5 Step 9. Pure-doc + pure-math synthesis; no API spend; no
+new substrate generation. Consumes Step 6 calibration + Step 7
+production substrate + Step 8 production grading; computes
+paired-t per ADR-19 §4 amendment via Step 5.3 sibling stats.mjs;
+synthesizes v0.5 cycle thesis evidence.
+
+**Outcome:** Cycle thesis substantively supported under Option α
+strict three-tier framing. Cross-cell rollup paired-t at N=27
+demonstrates calibrated tier-gradation:
+- 1 axis CLEAN distinguishable (factual_correctness; LB 0.176)
+- 2 axes BORDERLINE distinguishable (hallucination LB 0.032;
+  actionability LB 0.005)
+- 1 axis NOT distinguishable (completeness; LB -0.039)
+
+Plus supplementary 12:1 ca-favored direction asymmetry (24/2 in
+non-tie comparisons; F1 sub-observation; independent inferential
+lens). Reference doc shipped at benchmarks-repo commit
+`e32b5dd`; v0.5 thesis ("methodology defensible under peer
+review") evidence captured via calibrated tier-gradation rather
+than flat positive.
+
+**Substep summary:**
+
+| Substep | Repo | SHA | Subject |
+|---|---|---|---|
+| 9.0 design | (no commit) | (n/a) | Q1-Q10 lock + α/β/γ adjudication → Option α |
+| 9.1 doc-gen + ref doc | benchmarks | `e32b5dd` | doc-gen script (429 LOC) + reference doc (792 lines) |
+| 9.2 close | main | [this commit] | Progress log + main-repo audit-trail copy + bidirectional SHA |
+
+**Notable decisions:**
+
+- **Q1-Q10 design lock** (benchmarks-repo doc location;
+  doc-gen script with paired-t primitives; Option A inline
+  compute with port-compatibility comments; cross-repo
+  coordination; 3-substep ladder; faster drafting cadence
+  with mid-9.1 table-surface compromise; 9-finding list
+  with F1 PRIMARY hierarchy; methodology-limits explicit
+  with 3 new at v0.5; v0.6+ candidates with explicit
+  source attribution; 800-1500 line scope).
+- **Option α (strict three-tier framing) per threshold-
+  discipline lock.** Pre-registered tier criteria
+  (≥0.05 = clean; 0.001-0.05 = borderline; ≤0 = not
+  distinguishable) honored without post-hoc adjustment
+  after precision-dump data observation. Three-tier outcome
+  scores stronger as reviewable methodology than two-tier
+  framing would (Option β implicit grouping was wrong by
+  Travis's own threshold criteria; Option γ over-hedged).
+- **Pre-condition 1 (actionability raw value resolved at
+  9.1.b spot-check):** LB 0.005 → tier (b) borderline;
+  triggered three-tier framing in §6 + §8. Threshold-
+  discipline catch surfaced honestly.
+- **Pre-condition 2 (cobra/c3 degenerate-CI caveat):**
+  documented at §4 + §6 + §10. All 4 cobra/c3 paired
+  comparisons returned identical Δ=+1.0 on factual +
+  hallucination; CI degenerate-to-point [1.00, 1.00];
+  technically distinguishable but reflects within-cell
+  perfect-consistency rather than CI-test inferential
+  strength.
+- **Q3 Option A inline compute** with port-compatibility
+  comments at retro-complete-port sites (`reporting.ts.
+  generateVarianceTable` + cross-cell rollup table generator
+  identified; v0.6+ retro-complete becomes copy-paste).
+- **Q6 9.1.a/b/c sub-substep cadence** (single 9.1 commit
+  per Q6 lock; mid-9.1 table-surface for spot-check
+  compromise lowered post-commit rework risk on first-time
+  CI computation).
+- **Q7(i) Step 7 PRIMARY demoted to F4 cycle-level**
+  (v0.5 PRIMARY = F1 paired-mode-unlocks-differentiation;
+  Step 7 ca-condition variance asymmetry remains
+  substantive but not cycle-PRIMARY).
+- **Q7(ii) F8 absorption of Finding 7** (failed-call
+  cost-tracking gap absorbed into F8 cost-projection-
+  accuracy finding; F8 becomes "cost-projection accuracy
+  at paired-mode + failed-call cost-tracking gap"
+  combined finding).
+- **12:1 asymmetry absorbed into F1 sub-observation**
+  (preserves Q7 9-finding lock; supplementary inferential
+  lens beyond cross-cell rollup paired-t).
+- **Q9 candidates table all 15 retained** with explicit
+  source attribution per Q9 all-15-present-unless-
+  explicitly-filtered discipline. None filtered as out-of-
+  scope.
+
+**Threshold pre-registration disclosure (from §6 + §8):**
+tier criteria locked at Step 9.1.b spot-check kickoff
+(2026-05-04 session) BEFORE precision values were computed.
+Threshold not pre-cycle-registered (substrate generated
+before threshold lock at Step 9.1.b). Honored as stated; no
+post-hoc threshold adjustment after data observation.
+Disclosed transparently for peer-review reproducibility.
+
+**Cumulative deltas:**
+
+| Metric | Value |
+|---|---:|
+| LOC delta — benchmarks repo (9.1) | +1221 (doc-gen 429 + ref doc 792) |
+| LOC delta — main repo (9.2) | ~150 (progress log + audit-trail copy) |
+| Test delta | 0 (Step 9 is pure-doc + pure-math; no tests added) |
+| API spend | $0 (Step 9 consumes prior substrate; no API calls) |
+| v0.5 cumulative platform-billed (reconstructed) | ~$10.25 ($0.181 Step 6 + $9.61 Step 7 + ~$0.45 Step 8); ~12% of $51-97 base envelope |
+
+**9 named findings carried forward** (full text in benchmarks-
+repo ref doc §7; reference here for cycle-close audit trail):
+
+1. **F1 PRIMARY**: Paired-mode unlocks rubric differentiation
+   that single-mode obscures (with 12:1 asymmetry sub-
+   observation)
+2. **F2**: Anonymization pipeline empirically validated by
+   76% tie rate (82/108 axis-comparisons)
+3. **F3**: cobra/c4 + httpx/p2 all-zero Δ across all 4 axes
+   (Step 9 investigation candidate documented as questions)
+4. **F4**: ca-condition systematic variance asymmetry (Step
+   7 cycle-level; demoted from Step 7 PRIMARY per Q7(i))
+5. **F5**: Hono h1 beta-ca bimodal exploration intrinsic
+   (n=8 stretch INCREASED variance 104.6% → 129.9%; not
+   n-driven)
+6. **F6**: Position-dependent JSON output formatting (NEW;
+   distinct from §3 score-bias; cobra/c3 trial-2
+   reproducible)
+7. **F7**: Cross-order agreement strong (83-100% per axis;
+   Sonnet largely position-blind on scores)
+8. **F8**: Cost-projection accuracy at paired-mode + failed-
+   call cost-tracking gap (combined per Q7(ii); paired-mode
+   ~1:1 ratio differs from Step 7 2.14× cache discount)
+9. **F9**: Cost-discipline preserved across cycle (~$10.25
+   / ~12% of base envelope)
+
+**§9 v0.6+ candidates table:** 15 candidates with explicit
+source attribution per Q9 lock retained in benchmarks-repo
+ref doc §9. Step 10 v0.5+ candidates capture substrate is
+§9 of the reference doc; Step 10 formalization (not
+regeneration) per cycle-close cadence.
+
+**§10 methodology limits:** 11 acknowledged (8 inherited + 3
+new at v0.5: Path A substrate gap; F6 position-dependent JSON;
+per-axis direction-agreement metric degeneracy attributed to
+Step 5.1 stats.ts implementation surfaced at Step 6 per Q8).
+
+**Step 10 unblock:** Stream C methodology riders / v0.5+
+candidates capture per STEP-PLAN-V0.5 Step 10. Substrate is §9
+of the reference doc (15 candidates × explicit source
+attribution); Step 10 work is formalization (not
+regeneration).
+
+**v0.5 cycle progress through Step 9:** 9/11 steps shipped
+(Stream A complete: Steps 1-5; Stream B complete: Step 6 + 7
++ 8 + 9). Remaining: Step 10 v0.5+ candidates capture; Step 11
+ship-gate.
+
+---
+
 ### Step 8 shipped — 2026-05-04
 
 **Scope:** Production grading per ADR-19 §3 (paired-mode + 5-step
