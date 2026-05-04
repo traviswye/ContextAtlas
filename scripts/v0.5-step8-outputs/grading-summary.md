@@ -1,7 +1,7 @@
 # v0.5 Step 8.1 Production Grading — Execution Summary
 
 **Run UUID:** `151d4281-b779-4777-a934-fb436adf0240`
-**Date:** 2026-05-04T12:57:45.637Z
+**Date:** 2026-05-04T13:17:31.108Z
 **Step 7 substrate:** `e46dfd64-cd19-41e5-b6bc-34d1bc65b0b0`
 **Rubric:** RUBRIC_PROMPT_PAIRED canonical (Step 3 commit 6ed89ce)
 **Model:** Claude Sonnet 4.6 (default per ADR-19 §2)
@@ -40,7 +40,18 @@
 
 Position-blind judge: ca/beta-ca scores match across base + regrade regardless of position assignment. Per ADR-19 §3 cross-presentation-order agreement signal.
 
-## Step 8.1 closure
+## Step 8.1 closure — Path A locked (accept 34/35; document; proceed)
 
-✗ 1 failures or incomplete grading (34/35).
-Step 8.2 blocked until grading complete; investigate failures; re-run via STEP8_RESUME_UUID.
+✗ 1 failure: cobra/c3-hook-lifecycle trial-2 base grading. **Reproducible** position-dependent JSON parse failure.
+
+Retry attempt confirmed reproducibility: `STEP8_RESUME_UUID=151d4281-b779-4777-a934-fb436adf0240` re-attempted only the failed pair (per resume-from-failure mechanism); same JudgeParseError on retry. Same trial succeeded in Phase 2 cross-order regrade (entry 5/7). Difference: `forceSwapAB=false` (base; assignment=EVEN; A=ca, B=beta-ca) fails; `forceSwapAB=true` (cross-order; assignment=ODD; A=beta-ca, B=ca) succeeds.
+
+Position-dependent JSON output formatting; distinct from ADR-19 §3 score-based position bias concept (different mechanism: output-formatting compliance varies by A/B assignment vs scores varying systematically by position). Single substrate occurrence at n=28 (3.6%); reproducible when triggered. Documented as Step 8 finding (#6).
+
+**Path A adjudication:** accept 34/35 substrate; cobra/c3 cell at n=4 (paired-t df=3); cell qualitative conclusion (strong ca advantage; factual +1.00; hallucination +1.00) holds at reduced n. Methodology cleanliness preserved (no within-substrate mixing of base + regrade per Path B alternative).
+
+Step 8.2 (position-bias verification) unblocks: pure-math post-hoc analysis via Step 4 position-bias.ts on 27/28 base substrate; cross-order regrades (n=7) excluded from base analysis (control mechanism, not main substrate); conditional style-normalize stretch only if >60/40 trigger fires.
+
+**Cost-tracking note:** failed retry attempt consumed ~$0.013 platform-billed but is not reflected in script-tracked totalCost ($0.4394; only successful grades increment counter). Platform-billed actual ~$0.4524 for Step 8.1 first run + retry. Documented as Step 8 finding (#7); v0.6+ harness refinement candidate.
+
+**Manifest reconstruction note:** the resume retry run inadvertently clobbered manifest.json to entries=[] (resume reset state.manifestEntries; no new successful grades on retry; writeManifest persisted empty array). Manifest reconstructed deterministically from per-pair JSONs via Step 4 anonymize() re-invocation (same inputs → same seeds → same parities → same assignment); 34 entries restored matching disk inventory. Harness patched to read+merge existing manifest at resume start (prevents future clobber).

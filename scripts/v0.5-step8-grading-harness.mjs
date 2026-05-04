@@ -470,13 +470,32 @@ async function main() {
   const anthropic = new Anthropic();
   const judge = createJudgeClient({ anthropic });
 
+  // Resume bug fix: read existing manifest if it matches our run_uuid;
+  // preserve manifestEntries so resume runs don't clobber the manifest
+  // when no new successful grades are added (e.g., retry-only runs that
+  // hit reproducible failures).
+  let initialEntries = [];
+  if (existsSync(MANIFEST_PATH)) {
+    try {
+      const existing = JSON.parse(readFileSync(MANIFEST_PATH, "utf8"));
+      if (
+        existing.run_uuid === STEP8_RUN_UUID &&
+        Array.isArray(existing.entries)
+      ) {
+        initialEntries = existing.entries;
+      }
+    } catch {
+      // ignore; start fresh if existing manifest unparseable
+    }
+  }
+
   const state = {
     totalCost: 0,
     totalGrades: 0,
     baseGrades: 0,
     crossOrderGrades: 0,
     failures: [],
-    manifestEntries: [],
+    manifestEntries: initialEntries,
   };
 
   // Resume scan
