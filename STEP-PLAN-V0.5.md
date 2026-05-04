@@ -732,6 +732,155 @@ substep-addition rationale (deliberate refinement vs v0.4
 
 *Entries added in reverse-chronological order as steps ship.*
 
+### Step 7 shipped — 2026-05-04
+
+**Scope:** Production replication per scope-doc §7.1.2 + ADR-19
+§3 + Step 1.5 thresholds lock. 5 anchor cells × n=5 trials × 2
+conditions (ca + beta-ca) + hono h1 auto-stretch (n=8) = 56
+production trials. v0.4-shipped atlas substrate (current shipped
+per Q9 lock).
+
+**Outcome:** Production substrate generated; 56/56 trials AUDIT
+PASS; ca-condition systematic variance asymmetry pattern surfaced
+as empirical finding (not methodology failure); hono h1 beta-ca
+bimodal exploration documented as intrinsic. Step 8 grading
+unblocks per STEP-PLAN-V0.5 dependency graph.
+
+**Substep summary:**
+
+| Substep | Repo | SHA | Subject |
+|---|---|---|---|
+| 7.0 design | (no commit) | (n/a) | 10-point design proposal lock (Q1-Q10) |
+| 7.1 harness | bench | `cec8be6` | Production orchestrator script (578 LOC) |
+| 7.1 execution evidence | main | `a801347` | run-manifest + index + per-cell stats + execution-summary (886 LOC) |
+| 7.2 stretch adjudication | (folded into 7.4) | (n/a) | Branch C/D non-hono; lenient ship-with-disclosure hono |
+| 7.3 audit script | bench | `9007dff` | Pure-math audit verifier (387 LOC) |
+| 7.3 audit evidence | main | `3a3a8bc` | Audit report copy (37 LOC) |
+| 7.4 close | main | [this commit] | Progress log + adjudication outcomes |
+
+**Notable decisions:**
+
+- Q1-Q10 design lock at Step 7.0 (substep ladder; existing
+  run-reference.ts unchanged; orchestrator-level trial-index
+  wrapper; sequential execution with per-cell condition
+  alternation; resume-from-failure idempotent; cost-cap mid-run
+  pause at $25; hono auto-stretch + other-cell adjudicated;
+  trial substrate via gitignore-respecting summary-only commit;
+  v0.4.0 atlas SHA; calibration substrate parity acceptable per
+  Q10 framing).
+- Atlas SHA v0.4.0 (current shipped) per Q9 lock. Step 6
+  calibration (v0.3.0 substrate) / Step 7 production (v0.4.0
+  substrate) parity methodologically sound (rubric-application
+  properties measured at calibration are atlas-version-agnostic
+  per Q10 explicit framing).
+- Step 7.2 stretch adjudication: **Branch C/D for non-hono cells**
+  (accept variance + disclose); **lenient ship-with-disclosure for
+  hono h1 catastrophic 104.6%** per Step 6 Branch D precedent.
+- Substrate investigation skipped per Travis direction; bimodal
+  pattern documented as empirical finding without root-cause
+  attribution. v0.6+ candidate.
+
+**Cumulative deltas:**
+
+| Metric | Value |
+|---|---:|
+| LOC delta (benchmarks repo) | +1851 (orchestrator 578 + audit 387 + raw substrate ~886 gitignored) |
+| LOC delta (main repo) | +1149 (execution evidence 886 + audit report 37 + close commit ~150 progress log + 76 reused) |
+| Test delta | 0 (Step 7 is execution + audit; harness scripts dev-time scaffolding) |
+| API spend (script-projected) | $20.5310 |
+| API spend (platform-billed actual) | **$9.61** (~2.14× cache discount; consistent with v0.4 Step 5 measured ratios) |
+| v0.5 cumulative (platform-billed) | $9.80 ($0.18985 prior + $9.61 Step 7) |
+| Trials | 56/56 AUDIT PASS |
+| Wall-clock | ~40 minutes orchestrator execution |
+| Cost-cap $25 | not hit (max running $20.53 script-projected; never paused) |
+
+**Anchor cell substrate (5 cells per scope-doc §7.1.2):**
+
+| Cell | Trials | ca tokens range/μ | beta-ca tokens range/μ | Stretch |
+|---|---|---:|---:|---|
+| httpx/p4-stream-lifecycle | n=5 + n=5 | 63.0% | 16.2% | none |
+| cobra/c3-hook-lifecycle | n=5 + n=5 | 57.5% | 67.9% | none |
+| httpx/p2-http3-transport | n=5 + n=5 | 23.5% | 4.2% | none |
+| hono/h1-context-runtime | n=8 + n=8 | 51.3% | 104.6% | auto (Q7 lock) |
+| cobra/c4-subcommand-resolution | n=5 + n=5 | 45.5% | 6.6% | none |
+
+**Findings carried forward:**
+
+1. **ca-condition systematic variance asymmetry (Step 7 primary
+   methodology finding).** ca tokens range/μ at 23-63% across all
+   5 cells; beta-ca at 4-17% on 3 of 5 cells (cobra c3 + hono h1
+   are exceptions). Reading: structural property of atlas-mediated
+   exploration. ca condition uses MCP atlas tools (find_by_intent
+   / get_symbol_context) producing different path traversals
+   trial-to-trial; baseline beta-ca (grep/read) is more procedural
+   → more deterministic. NOT substrate noise — empirical signal
+   about how ca behaves. Paired-t difference computation per ADR-19
+   §4 amendment handles mathematically (trial-difficulty
+   correlation pairs out within trial-pairs).
+
+2. **Hono h1 beta-ca bimodal exploration (catastrophic 104.6%
+   variance).** Per-trial token sequence n=8: 30396, 43742, 64724,
+   32297, 83694, 26004, 27456, 47047. Two cluster modes: efficient
+   (~26-32k) and sprawled (~64-84k). Stretch n=5→8 did NOT reduce
+   variance (range expanded from baseline). Intrinsic exploration
+   variance, not n-driven. Substrate investigation skipped per
+   Travis direction; bimodal pattern documented as observed
+   without root-cause attribution. v0.6+ candidate: investigate
+   path-divergence root cause if reviewer feedback warrants.
+
+3. **Cost-projection cache discount (Step 7 secondary finding).**
+   Script-projected $20.53 vs platform-billed $9.61 = 2.14× ratio.
+   Consistent with v0.4 Step 5 measured cache discount ratios.
+   Orchestrator's pricing constants in run-reference.ts don't
+   account for cache discount. v0.6+ candidate: cost-projection
+   calculator should reflect cache discount per cycle planning
+   accuracy refinement. Not blocking for v0.5 (actual cost well
+   under envelope; v0.5 cycle cost discipline pattern intact).
+
+4. **Variance trigger threshold language needs domain-specific
+   specification.** Scope-doc §Rescope catastrophic >100%
+   threshold targets QUALITY-axis rubric concerns; efficiency
+   metrics (tokens; calls; cost) are continuous unbounded values
+   where >100% range/mean is meaningful but not catastrophic.
+   v0.6+ refinement candidate: scope-doc threshold language
+   should distinguish quality-axis (>100% = methodology
+   breakdown) vs efficiency-metric (>100% = real bimodal
+   pattern; finding not failure).
+
+5. **Output substrate density LOC inflation driver confirmed.**
+   Step 7.1 orchestrator ran ~1.4× honest target (578 LOC vs
+   400-700 range upper); Step 7.1 execution evidence ~1.6× target
+   (886 LOC vs 550 honest target). Pattern matches Step 5/6
+   finding #5 (test substrate density) + Step 6.1 finding #3
+   (audit-trail markdown writers). v0.6+ cycle planning heuristic
+   refinement: estimate output substrate density independently
+   from design-lock depth + test substrate density. Three
+   distinct calibration variables now empirically observed.
+
+**Cost-discipline transparency:**
+
+- Step 7 cumulative: $9.61 platform-billed
+- v0.5 cumulative through Step 7: $9.80
+- Scope-doc envelope: $51-97 base / $80 rescope-investigation
+  trigger / $100 absolute upper bound
+- Step 7 actual ~10% of base envelope; well within cycle budget
+- Step 8 production grading projected $15-25 (scope-doc); revised
+  projection per Step 7 cache discount data: ~$6-10 actual
+
+**Step 8 unblock:** production grading per ADR-19 §3 paired-mode
++ Step 4 anonymization pipeline + Step 3 `RUBRIC_PROMPT_PAIRED` +
+Step 5 stats primitives. Consumes Step 7 substrate (56 trials →
+28 paired comparisons via Step 4 `anonymize.ts`). Second-
+substantive API spend in v0.5 cycle (Step 6 calibration $0.18;
+Step 7 production $9.61; Step 8 grading projected $6-10).
+
+**v0.5 cycle progress through Step 7:** 7/11 steps shipped
+(Stream A complete; Step 6 calibration; Step 7 production
+replication). Remaining: Step 8 grading; Step 9 Phase-9 reference
+doc; Step 10 v0.5+ candidates capture; Step 11 ship-gate.
+
+---
+
 ### Step 6 shipped — 2026-05-03
 
 **Scope:** Pre-flight grading calibration per ADR-19 §5 + Step
