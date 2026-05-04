@@ -756,7 +756,7 @@ inspection at 11.4 surface).
 | 11.4 tag message inline | main | [this commit] | FINAL tag content locked at 11.4 surface; v0.4.0-precedent SHA-free body verified clean via `git tag -v v0.4.0`; F4 parenthetical addition + Option α tier-detail framing preserved verbatim |
 | 11.5 absorbed-item annotations | main | [this commit] | 4 in-place absorbed-item annotations (#7/#8/#9/#12) + file-level v0.5-novel-pattern flag block at research/v0.5-candidates.md; URL-form sub-pattern locked as canonical for v0.6+ inheritance |
 | 11.6 ship commit + tag | main | [this commit] | Single ship commit per Q1 lock; package.json 0.4.0 → 0.5.0; annotated tag v0.5.0 created via HEREDOC alongside |
-| 11.7 cross-repo back-ref | benchmarks | (subsequent commit) | Refs main-repo ship SHA in Phase-9 ref-doc §11 revision history; adds 16th + 17th candidates to ref-doc §9 table |
+| 11.7 cross-repo back-ref | benchmarks | `fd434c5` | Refs main-repo ship SHA in Phase-9 ref-doc §11 revision history; adds 17th cycle-emergent candidate (formalize self-use logging) to ref-doc §9 table |
 
 #### v0.5-SCOPE.md §Success criteria — verification table
 
