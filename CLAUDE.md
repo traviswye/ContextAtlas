@@ -318,6 +318,62 @@ priors-based correction landed at v0.5 Step 10.1 (per
 aggregation strategy per Q4(ii) lock; rolling-N aggregation
 remains v0.6+ candidate if needed for ongoing cost forecasting.
 
+## Cost-priors interpretation discipline (v0.6 Step 2 / E2 lock)
+
+V0.5 Step 10.1 shipped adaptive cost-priors aggregation
+(`scripts/aggregate-cost-priors.mjs` in benchmarks repo +
+`cost-priors-v0.5.json` versioned snapshot at benchmarks-repo
+root). v0.6 is the first cycle consuming v0.5-aggregated priors;
+this section documents cycle-execution-time discipline governing
+how cycles consume versioned cost-priors snapshots. **Discipline
+is inheritance from v0.5 substrate (not v0.6-specific creation);
+future cycles (v0.6+) consuming versioned cost-priors snapshots
+apply this discipline.**
+
+**Atlas-version-based filter discipline** (per v0.5 Step 10.1
+Q4(i) lock). cost-priors aggregation includes runs from v0.4.0+
+atlas-version-tagged substrate; v0.3-and-earlier substrate
+excluded as forward-applicable interpretation primary (per
+`contextatlas.version_label` prefix on `run-manifest.json`
+filtering). Rationale: atlas-version-tagging captures methodology
+compatibility (v0.4+ shares scope-doc + ship-gate disciplines);
+pre-v0.4 substrate diverges in methodology baseline.
+
+**Cumulative aggregation discipline** (per v0.5 Step 10.1 Q4(ii)
+lock). cost-priors aggregation cumulates across all v0.4.0+
+substrate runs; cycle history accumulates rather than rolling
+window. Rationale: more substrate produces more stable per-cell
+cost estimates. Rolling-N aggregation alternative deferred to
+v0.8+ candidate per B16 closure (close-as-superseded by atlas-
+version-based filter; backward-looking cycle-history aggregate
+use case doesn't have evidence-based trigger).
+
+**Mid-cycle priors-update variance discipline** (per Phase-9
+ref-doc §10 limit #8). Cycles use static post-prior-cycle-
+aggregation priors throughout cycle execution; mid-cycle
+adaptive-priors-update introduces methodology variance. v0.6
+uses `cost-priors-v0.5.json` snapshot throughout; v0.6 does NOT
+re-aggregate mid-cycle. Post-v0.6-cycle aggregation produces
+`cost-priors-v0.6.json` snapshot for v0.7 first-cycle consumption.
+
+**Cost-projection-vs-priors-drift discipline.** Budget projections
+at scope-doc-drafting time consume current versioned snapshot;
+actual cycle costs may drift from priors per substrate-density
+variation across cycles. Honest scope-narrative discipline (per
+"Extraction cost framing" Q5 lock above): claim conservative
+projections; note actual-typically-lower; don't tune projection
+math toward platform-actual values.
+
+**Cross-references:**
+- v0.5 Step 10.1 Q4(i) + Q4(ii) locks (atlas-version-based filter
+  + cumulative aggregation; benchmarks-repo commit `8e39aa6`)
+- Phase-9 ref-doc §10 limit #8 (mid-cycle priors-update variance)
+- `cost-priors-v0.5.json` versioned snapshot at benchmarks-repo
+  root (canonical priors source for v0.6 cycle)
+- ADR-19 §2 (full pricing-model context; v0.6 Step 2.2 amendment
+  applies Opus 4.7 = 1.67× Sonnet pricing per v0.5 Step 2 finding
+  #3)
+
 ## What to Ask the User About
 
 Ask before:
