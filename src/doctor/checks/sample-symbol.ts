@@ -83,8 +83,11 @@ export async function findSampleSymbol(
  * deep. Returns paths relative to repoRoot per LSP adapter convention.
  * Synchronous walk for simplicity; deep health check is doctor-time
  * (interactive) not server-runtime so wall-clock cost negligible.
+ *
+ * Exported for reuse by state-detection.ts (v0.6 Step 3.3 H5 code-
+ * dimension detection per Q3.3.3 lock).
  */
-function walkForSourceFiles(
+export function walkForSourceFiles(
   repoRoot: string,
   extensions: Set<string>,
   maxDepth: number,

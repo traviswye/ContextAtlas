@@ -25,6 +25,7 @@ import { configChecks } from "./checks/config.js";
 import { extractionChecks } from "./checks/extraction.js";
 import { lspChecks } from "./checks/lsp.js";
 import { shaChecks } from "./checks/sha.js";
+import { stateDetectionChecks } from "./checks/state-detection.js";
 import { formatJson } from "./output/json.js";
 import { formatText } from "./output/text.js";
 import type {
@@ -114,6 +115,10 @@ export async function collectChecks(repoRoot: string): Promise<DoctorResult> {
         "Filesystem-level checks executed; config / atlas / SHA / LSP checks skipped. Create `.contextatlas.yml` at the repo root for full diagnostic coverage.",
     });
     checks.push(...extractionChecks(ctx));
+    // H5 state-detection: filesystem-level dimensions run in both
+    // limited + normal mode (graceful null-config handling per Q3.3.2 +
+    // Q3.3.5 fallback patterns).
+    checks.push(...(await stateDetectionChecks(ctx)));
   } else {
     // Normal mode: run all categories.
     checks.push(...configChecks(ctx));
@@ -123,6 +128,7 @@ export async function collectChecks(repoRoot: string): Promise<DoctorResult> {
       checks.push(...(await lspChecks(ctx)));
     }
     checks.push(...extractionChecks(ctx));
+    checks.push(...(await stateDetectionChecks(ctx)));
   }
 
   // Compute summary.
