@@ -167,16 +167,20 @@ subset budgeting at Step 5.
 
 - [x] **Step 2.0** — Design adjudications: Q2.0.1-Q2.0.4 locks
   (CLAUDE.md addition section name + two distinct substeps +
-  direct amendment + split documentation).
-- [ ] **Step 2.1** — E2 CLAUDE.md addition: "Cost-priors
+  direct amendment + split documentation). Commit `92321d3`.
+- [x] **Step 2.1** — E2 CLAUDE.md addition: "Cost-priors
   interpretation discipline (v0.6 Step 2 / E2 lock)" section
-  alongside existing "Extraction cost framing" section.
-- [ ] **Step 2.2** — B15 ADR-19 §2 amendment: Opus 4.7 = 1.67×
+  alongside existing "Extraction cost framing" section. Commit
+  `9aab055`.
+- [x] **Step 2.2** — B15 ADR-19 §2 amendment: Opus 4.7 = 1.67×
   Sonnet pricing; amendment marker + revision history entry per
-  v0.5 §4 amendment precedent.
-- [ ] **Step 2.3** — Step 2 close commit: progress log close
-  entry + cross-references between CLAUDE.md section + ADR-19
-  amendment.
+  v0.5 §4 amendment precedent. Initial commit `e803031` +
+  separate backfill commit `dcb505d` per v0.5 SHA-backfill
+  precedent.
+- [x] **Step 2.3** — Step 2 close commit: progress log batching
+  for Steps 2.1 + 2.2 + 2.3; cross-references between CLAUDE.md
+  section + ADR-19 amendment confirmed bidirectional. (this
+  commit)
 
 **Unblocks.** Step 5 Stream B subset cost-budgeting + execution.
 
@@ -347,6 +351,213 @@ B-with-explicit-launch-staging.
 ## Progress log
 
 *Entries added in reverse-chronological order as steps ship.*
+
+### Step 2.3 shipped — 2026-05-05 (Step 2 close)
+
+V0.6 Step 2 closes per Stream B foundations specification at
+v0.6-SCOPE.md. E2 priors interpretation discipline + B15 ADR-19
+§2 cost projection recalculation shipped per Q2.0.1-Q2.0.4 locks
+at Step 2.0. Step N close progress log batching pattern applied:
+Step 2.1 + 2.2 (initial + backfill) + 2.3 progress log entries
+batched in this single close commit.
+
+| Substep | branch | commit | Notes |
+|---|---|---|---|
+| 2.3 close | main | [this commit] | Step 2 close + progress log batching for Steps 2.1 + 2.2 + 2.3 |
+
+#### Step 2 cumulative outcome
+
+Stream B foundations shipped per v0.6-SCOPE.md Stream B
+specification:
+- E2 priors interpretation discipline (CLAUDE.md "Cost-priors
+  interpretation discipline (v0.6 Step 2 / E2 lock)" section;
+  commit `9aab055`)
+- B15 ADR-19 §2 cost projection recalculation (initial commit
+  `e803031` + backfill commit `dcb505d` per v0.5 SHA-backfill
+  precedent)
+
+Stream B subset budgeting unblocked at Step 5 — E2 + B15
+establish methodology baseline (priors-interpretation discipline
++ Opus 4.7 pricing recalculation) for v0.6 targeted matrix-
+replication subset cost-projection.
+
+v0.6-SCOPE.md success criterion #3 (Stream B E2 priors
+interpretation discipline + B15 ADR-19 §2 cost projection
+recalculation shipped) ✓ MET.
+
+Step 3 Stream A foundations (A4 lazy-spawn + A6 doctor script +
+H5 multi-dimension state-detection) unblocked next per v0.6-
+SCOPE.md §Sequencing recommended execution order. Step 3.0
+design-adjudication substep first per Step N.0 cadence
+convention.
+
+#### Cycle execution observation: discipline #3 worked as designed at Step 2.2
+
+At Step 2.2 verification step (precedent-check before commit per
+Travis spec for v0.5 §4 paired-t amendment date-handling
+verification), discipline #3 surface-inline-before-commit cadence
+caught chicken-and-egg backfill mechanism issue: original Step
+2.2 cadence spec used `git commit --amend` pattern; v0.5
+precedent used separate-commit backfill (resolves amend chicken-
+and-egg where amend creates new SHA but body must reference
+initial commit SHA).
+
+Dev surfaced verification observation alongside (a) date-handling
+precedent confirmation; Travis adjudicated apply v0.5 separate-
+commit backfill precedent per "precedent inheritance overrides
+recommendation" principle extended from date-handling dimension
+to backfill mechanism dimension. Both v0.5 + v0.6 amendment-
+marker-cadence dimensions inherited via precedent-match.
+
+Step 2.2 ships 2 commits (`e803031` + `dcb505d`) matching v0.5
+§4 amendment 2-commit precedent (`05c9fc7` + `204a506`) exactly.
+Substrate-archaeology-readability preserved.
+
+This is the **13th instance of discipline #3** applied across
+v0.5 + v0.6 substrate (12 instances at v0.5 ship-gate + 1
+instance at v0.6 Step 2.2 verification step). Recursive
+discipline operability at any cycle moment confirmed at v0.6
+execution.
+
+#### Step 2 unblock
+
+Step 3 Stream A foundations work unblocked. Step 3.0 design-
+adjudication substep first per Step N.0 cadence convention.
+Step 3 deliverables per v0.6-SCOPE.md Stream A foundations
+specification: A4 lazy-spawn (atlas-only mode) + A6 doctor
+script (deep LSP health check) + H5 multi-dimension state-
+detection logic.
+
+---
+
+### Step 2.2 shipped — 2026-05-05
+
+V0.6 Step 2.2 ships ADR-19 §2 cost-projection amendment per
+Q2.0.3 lock matching v0.5 §4 paired-t amendment at commit
+`05c9fc7` precedent.
+
+| Substep | branch | commit | Notes |
+|---|---|---|---|
+| 2.2.a Initial amendment | main | `e803031` | ADR-19 §2 amendment 3 components with `[backfill SHA]` placeholder |
+| 2.2.b SHA backfill | main | `dcb505d` | Replaces `[backfill SHA]` placeholder with `e803031` at 2 locations (blockquote + revision history) |
+
+#### B15 amendment scope
+
+Three components shipped:
+- Amendment blockquote (top of §2): documents §2 amendment scope
+  + cross-references to v0.5 Step 2 findings #3 + #4 + CLAUDE.md
+  cost-priors interpretation discipline section (commit
+  `9aab055`)
+- Updated Option A cost-projection content (within §2): replaces
+  pre-amendment "$100 absolute upper bound" Sonnet-baseline-
+  referenced framing with Opus 4.7 verified pricing ($5/$25 base
+  per v0.5 Step 2 finding #4; ~1.67× Sonnet baseline per finding
+  #3); projects ~$33-50 theoretical upper bound; empirical anchor
+  v0.5 cycle actual ~$10.25 platform-billed reconstructed
+- Revision history entry (append after v0.5 §4 paired-t amendment
+  entry): full amendment provenance per v0.5 §4 amendment
+  revision-history pattern
+
+Pattern-match to v0.5 §4 amendment 2-commit precedent: initial
+commit ships with `[backfill SHA]` placeholder; separate backfill
+commit replaces with actual initial commit SHA per chicken-and-
+egg-avoidance pattern. v0.5: `05c9fc7` + `204a506`; v0.6:
+`e803031` + `dcb505d`.
+
+#### B15 cross-reference completion
+
+Bidirectional cross-reference pattern with CLAUDE.md "Cost-priors
+interpretation discipline (v0.6 Step 2 / E2 lock)" section
+(commit `9aab055`) completed at this step:
+- CLAUDE.md section forward-references ADR-19 §2 (placed at
+  Step 2.1)
+- ADR-19 §2 amendment backward-references CLAUDE.md section
+  (placed at Step 2.2)
+
+Pattern preserved per Q2.0.4 split lock.
+
+#### B15 chicken-and-egg observation surfaced at verification
+
+At Step 2.2 verification step per Travis spec (verify v0.5 §4
+paired-t amendment date-handling pattern), dev surfaced additional
+observation about backfill mechanism: v0.5 precedent uses
+separate-commit backfill (commits `05c9fc7` + `204a506`); Travis
+spec used `git commit --amend` pattern with chicken-and-egg
+problem (amend creates new SHA; body must reference initial
+commit SHA; amend pattern doesn't compose).
+
+Travis adjudicated apply v0.5 separate-commit backfill precedent
+per "precedent inheritance overrides recommendation" principle
+extended from date-handling dimension to backfill mechanism
+dimension. Discipline #3 surface-inline-before-commit cadence
+caught divergence at verification step before commit; substrate-
+discipline preserved.
+
+#### Step 2.2 unblock
+
+Step 2.3 close commit batches progress log entries for Steps 2.1
++ 2.2 + 2.3 per Step N close progress log batching pattern.
+
+---
+
+### Step 2.1 shipped — 2026-05-05
+
+V0.6 Step 2.1 ships E2 priors interpretation discipline as new
+CLAUDE.md section "Cost-priors interpretation discipline (v0.6
+Step 2 / E2 lock)" alongside existing "Extraction cost framing"
+section per Q2.0.1 lock.
+
+| Substep | branch | commit | Notes |
+|---|---|---|---|
+| 2.1 E2 CLAUDE.md addition | main | `9aab055` | "Cost-priors interpretation discipline (v0.6 Step 2 / E2 lock)" section addition; 4 sub-disciplines documented |
+
+#### E2 4 sub-disciplines documented
+
+Section captures 4 sub-disciplines as inheritance from v0.5
+substrate (NOT v0.6-specific creation per inheritance-framing
+observation flag at Step 2.0):
+- Atlas-version-based filter discipline (per v0.5 Step 10.1
+  Q4(i) lock; v0.4.0+ tagged substrate; forward-applicable
+  interpretation primary)
+- Cumulative aggregation discipline (per v0.5 Step 10.1 Q4(ii)
+  lock; rolling-N alternative deferred to v0.8+ per B16
+  closure)
+- Mid-cycle priors-update variance discipline (per Phase-9
+  ref-doc §10 limit #8; static priors throughout cycle)
+- Cost-projection-vs-priors-drift discipline (interpretation
+  guidance for budget-projection accuracy)
+
+Explicit cross-references to v0.5 substrate sources: Phase-9
+ref-doc §10 limit #8; v0.5 Step 10.1 Q4(i)/(ii) locks (benchmarks-
+repo commit `8e39aa6`); cost-priors-v0.5.json provenance.
+
+#### E2 inheritance-framing applied
+
+Section frames discipline as inheritance from v0.5 substrate;
+v0.6 is FIRST CYCLE applying discipline; future cycles (v0.6+)
+consuming versioned cost-priors snapshots apply this discipline.
+
+#### E2 forward cross-reference to ADR-19 §2 amendment
+
+Section forward-references ADR-19 §2 (full pricing-model context;
+v0.6 Step 2.2 amendment applies Opus 4.7 = 1.67× Sonnet pricing
+per v0.5 Step 2 finding #3). Backward-reference completion lands
+at Step 2.2 (ADR-19 §2 amendment cross-references CLAUDE.md
+section).
+
+Cycle-execution-time discipline canonical home pattern matches
+v0.5 Pipeline Integration Discipline precedent (CLAUDE.md
+absorbed pipeline-integration discipline at v0.5 Step 10.2 commit
+`ef99b92`; same pattern preserved for cost-priors discipline at
+v0.6 Step 2.1).
+
+#### Step 2.1 unblock
+
+Step 2.2 (B15 ADR-19 §2 amendment) implementation work unblocked
+per Q2.0.3 lock; bidirectional cross-reference pattern completed
+at Step 2.2.
+
+---
 
 ### Step 2.0 shipped — 2026-05-05
 
