@@ -22,20 +22,50 @@ import { buildBundle } from "../queries/symbol-context.js";
 import { importAtlasFile } from "../storage/atlas-importer.js";
 import { openDatabase } from "../storage/db.js";
 import { listAllSymbols } from "../storage/symbols.js";
-import type { LanguageAdapter, Symbol as AtlasSymbol } from "../types.js";
+import type {
+  LanguageAdapter,
+  Symbol as AtlasSymbol,
+  SymbolKind,
+} from "../types.js";
 
 export type SmokeTestResult =
   | {
       readonly status: "pass";
       readonly symbolId: string;
+      /**
+       * Last segment of symbolId (after final ":") — used by Step 4.5
+       * success message for language-aware first-query suggestions
+       * per Q4.5.4 lock at Step 4.5 surface review.
+       */
+      readonly symbolName: string;
+      /** Symbol kind (class / function / method / etc) per AtlasSymbol. */
+      readonly symbolKind: SymbolKind;
       readonly claims: number;
       readonly references: number;
       readonly durationMs: number;
+      /**
+       * Total atlas symbol count (from listAllSymbols result). Used
+       * by Step 4.5 success message Setup section per Q4.5.3 lock.
+       */
+      readonly atlasSymbolCount: number;
     }
   | {
       readonly status: "fail";
       readonly reason: string;
     };
+
+/**
+ * Extract symbol name (last segment) from canonical SymbolId format
+ * `sym:<lang>:<path>:<name>` per ADR-01. Returns the name segment
+ * (e.g., "BaseProcessor" from "sym:ts:src/orders/base.ts:BaseProcessor").
+ *
+ * Exported for testability.
+ */
+export function extractSymbolName(symbolId: string): string {
+  const lastColon = symbolId.lastIndexOf(":");
+  if (lastColon === -1) return symbolId;
+  return symbolId.slice(lastColon + 1);
+}
 
 /**
  * Stub adapter — throws on any method call. Used with
@@ -172,9 +202,12 @@ export async function runSmokeTest(
     return {
       status: "pass",
       symbolId: firstSymbol.id,
+      symbolName: extractSymbolName(firstSymbol.id),
+      symbolKind: firstSymbol.kind,
       claims: claimsCount,
       references: referencesCount,
       durationMs,
+      atlasSymbolCount: symbols.length,
     };
   } finally {
     db.close();

@@ -103,7 +103,7 @@ describe("runInitSubcommand — doctor + routing + atlas + smoke + MCP orchestra
     stdoutCapture += chunk;
   }
 
-  it("automated path: full pipeline → exit code 2 (fail-loudly preserved per Q4.2.6 until Step 4.5)", async () => {
+  it("automated path: full pipeline → exit code 0 (success per Q4.5.5 flip)", async () => {
     await setupAutomatedRouteFixture(tmpRoot);
     const result = await runInitSubcommand({
       configRoot: tmpRoot,
@@ -114,7 +114,7 @@ describe("runInitSubcommand — doctor + routing + atlas + smoke + MCP orchestra
       runIndexSubcommandOverride: SUCCESS_INDEX_OVERRIDE,
       resolveBinaryPathOverride: "/synthetic/dist/index.js",
     });
-    expect(result.exitCode).toBe(2);
+    expect(result.exitCode).toBe(0);
     expect(stdoutCapture).toContain("proceeding with automated path");
   });
 
@@ -168,7 +168,7 @@ describe("runInitSubcommand — doctor + routing + atlas + smoke + MCP orchestra
       runIndexSubcommandOverride: SUCCESS_INDEX_OVERRIDE,
       resolveBinaryPathOverride: "/synthetic/dist/index.js",
     });
-    expect(result.exitCode).toBe(2);
+    expect(result.exitCode).toBe(0); // Q4.5.5 flip: automated-with-warning success → 0
     expect(stdoutCapture).toContain("Advisory:");
     expect(stdoutCapture).toContain("README.md sparse");
   });
@@ -398,6 +398,66 @@ describe("runInitSubcommand — Step 4.4 atlas + smoke + MCP behavior", () => {
     });
     const onDisk = await readFile(userPath, "utf8");
     expect(onDisk).toBe(userContent); // unchanged
+  });
+});
+
+describe("runInitSubcommand — Step 4.5 success message + exit code flip", () => {
+  let tmpRoot: string;
+  let stdoutCapture: string;
+
+  beforeEach(async () => {
+    tmpRoot = await mkdtemp(path.join(tmpdir(), "init-runner-step45-"));
+    stdoutCapture = "";
+  });
+
+  afterEach(async () => {
+    await rm(tmpRoot, { recursive: true, force: true });
+  });
+
+  function captureStdout(chunk: string): void {
+    stdoutCapture += chunk;
+  }
+
+  it("automated path success: renders sectioned success message with [OK] markers", async () => {
+    await setupAutomatedRouteFixture(tmpRoot);
+    const result = await runInitSubcommand({
+      configRoot: tmpRoot,
+      ccOnly: false,
+      writeStdout: captureStdout,
+      detectLanguagesOverride: () => ["typescript"],
+      collectChecksOverride: async () => makeDoctorResult(PASSING_AUTOMATED_CHECKS),
+      runIndexSubcommandOverride: SUCCESS_INDEX_OVERRIDE,
+      resolveBinaryPathOverride: "/synthetic/dist/index.js",
+    });
+
+    expect(result.exitCode).toBe(0);
+    expect(stdoutCapture).toContain("[OK] ContextAtlas init complete");
+    expect(stdoutCapture).toContain("Setup:");
+    expect(stdoutCapture).toContain("Smoke test:");
+    expect(stdoutCapture).toContain("Try in your next Claude Code session:");
+    expect(stdoutCapture).toContain("Re-run:");
+    // [OK] marker on smoke test line per Q4.0.8 + [OK] refinement
+    expect(stdoutCapture).toContain("[OK] get_symbol_context returned bundle");
+  });
+
+  it("success message includes language-aware first-query suggestion (sample fixture symbol kind=class → 'class' noun)", async () => {
+    await setupAutomatedRouteFixture(tmpRoot);
+    await runInitSubcommand({
+      configRoot: tmpRoot,
+      ccOnly: false,
+      writeStdout: captureStdout,
+      detectLanguagesOverride: () => ["typescript"],
+      collectChecksOverride: async () => makeDoctorResult(PASSING_AUTOMATED_CHECKS),
+      runIndexSubcommandOverride: SUCCESS_INDEX_OVERRIDE,
+      resolveBinaryPathOverride: "/synthetic/dist/index.js",
+    });
+
+    // Sample fixture first symbol: BaseProcessor (kind=class).
+    // Q4.5.4 kind-tag suggestion → "BaseProcessor class".
+    expect(stdoutCapture).toContain('"What does the BaseProcessor class do?"');
+    expect(stdoutCapture).toContain(
+      '"Find symbols related to <intent>" — invokes find_by_intent',
+    );
   });
 });
 

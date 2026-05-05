@@ -48,6 +48,10 @@ import { writeConfigScaffold } from "./config-scaffold.js";
 import { upsertMcpRegistration } from "./mcp-registration.js";
 import { decideRoute, type Route } from "./routing.js";
 import { runSmokeTest } from "./smoke-test.js";
+import {
+  renderSuccessMessage,
+  type InitSuccessState,
+} from "./success-message.js";
 
 export interface InitRunOptions {
   /** Repo root the init command operates on. */
@@ -258,26 +262,45 @@ export async function runInitSubcommand(
     // test-fail; distinct from setup-fail exit code 1).
     return { exitCode: 2 };
   }
-  log.info(
-    `init: smoke test passed — get_symbol_context returned bundle for ` +
-      `${smokeResult.symbolId} (${smokeResult.claims} claims, ` +
-      `${smokeResult.references} references, ${smokeResult.durationMs}ms).`,
-  );
 
   // MCP registration per Q4.0.10 + Q4.4.5 + Q4.4.6 locks.
   const mcpResult = upsertMcpRegistration({
     configRoot: options.configRoot,
     binaryPathOverride: options.resolveBinaryPathOverride,
   });
-  log.info(`init: .mcp.json ${mcpResult.status} at ${mcpResult.path}.`);
 
-  // Step 4.4 still fail-loudly per Q4.2.6 lock — success message UX
-  // at Step 4.5; final exit code semantics flip at Step 4.5.
-  log.error(
-    "init: pipeline orchestration partially implemented (v0.6 Step 4.4 " +
-      "ships atlas + smoke + MCP; success message UX at Step 4.5).",
-  );
-  return { exitCode: 2 };
+  // Step 4.5 success message + exit code flip per Q4.0.8 lock + [OK]
+  // ASCII marker refinement + Q4.5.5 route-to-exit-code mapping.
+  // Q4.2.6 fail-loudly framing finally lifted at Step 4.5 close.
+  const successState: InitSuccessState = {
+    scaffoldResult,
+    atlasState: atlasCurrent
+      ? {
+          kind: "current",
+          symbolCount: smokeResult.atlasSymbolCount,
+        }
+      : {
+          kind: "extracted",
+          symbolCount: smokeResult.atlasSymbolCount,
+        },
+    smokeResult: {
+      symbolId: smokeResult.symbolId,
+      symbolName: smokeResult.symbolName,
+      symbolKind: smokeResult.symbolKind,
+      claims: smokeResult.claims,
+      references: smokeResult.references,
+      durationMs: smokeResult.durationMs,
+    },
+    mcpResult,
+    detectedLanguages: languages,
+    warnings: route.kind === "automated-with-warning" ? route.warnings : [],
+  };
+  writeStdout(renderSuccessMessage(successState) + "\n");
+
+  // Q4.5.5 lock: automated + automated-with-warning paths return
+  // exit code 0 on success. Fail-loudly preserved-through-Step-4.4
+  // per Q4.2.6 framing finally lifted at Step 4.5.
+  return { exitCode: 0 };
 }
 
 /**
