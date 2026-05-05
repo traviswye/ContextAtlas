@@ -3,15 +3,15 @@
  * v0.6 Step 4 (Stream A pipeline assembly). Per Q4.0.1-Q4.0.13 locks
  * at Step 4.0 design adjudications.
  *
- * Step 4.3 ships doctor gateway invocation + H5 state-driven routing
- * (per Q4.0.3 + Q4.0.4 + Q4.0.9 + Q4.3.1-Q4.3.5 sub-adjudications).
- * Atlas + smoke + MCP + success message land across:
- *   - Step 4.4: atlas creation (runIndexSubcommand reuse) + smoke
- *     test (first-symbol-from-atlas) + MCP registration (.mcp.json
- *     upsert) (per Q4.0.6 + Q4.0.7 + Q4.0.10 locks)
- *   - Step 4.5: success message + first-query suggestion UX
- *     (structured sectioned with [OK] ASCII marker per Q4.0.8 lock);
- *     final exit code semantics flip at Step 4.5
+ * Step 4.4 ships atlas creation (runIndexSubcommand reuse) + smoke
+ * test (first-symbol-from-atlas in-process buildBundle) + MCP
+ * registration (.mcp.json idempotent upsert) per Q4.0.6 + Q4.0.7 +
+ * Q4.0.10 + Q4.4.1-Q4.4.7 locks.
+ *
+ * Success message UX lands at Step 4.5 (structured sectioned with
+ * [OK] ASCII marker per Q4.0.8 lock); final exit code semantics flip
+ * at Step 4.5 (fail-loudly exit code 2 preserved through Step 4.4
+ * for automated paths per Q4.2.6 lock).
  *
  * Per ADR-12 subcommand contract: exit code 0 success / 1 pipeline
  * failure / 2 setup error.
@@ -22,16 +22,32 @@
  *   - missing-adrs → exit code 0 (interactive guidance per Q4.0.9)
  *   - new-project → exit code 0 (interactive guidance per Q4.0.9)
  *   - doctor first-run FAIL → exit code 1 (ADR-12 pipeline-failure)
+ *   - atlas extraction FAIL → exit code 1 (Q4.4.4 pass-through)
+ *   - smoke test FAIL → exit code 2 (Q4.0.7 spec)
  */
+
+import { existsSync, readFileSync } from "node:fs";
+import { dirname, resolve as pathResolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { detectLanguagesFromFilesystem } from "../doctor/checks/state-detection.js";
 import { collectChecks } from "../doctor/runner.js";
 import type { DoctorResult } from "../doctor/types.js";
+import {
+  runIndexSubcommand,
+  type IndexCliResult,
+} from "../extraction/cli-runner.js";
 import { log } from "../mcp/logger.js";
+import {
+  detectAtlasOnlyAvailable,
+  readHeadSha,
+} from "../queries/atlas-only-mode.js";
 import type { LanguageCode } from "../types.js";
 
 import { writeConfigScaffold } from "./config-scaffold.js";
+import { upsertMcpRegistration } from "./mcp-registration.js";
 import { decideRoute, type Route } from "./routing.js";
+import { runSmokeTest } from "./smoke-test.js";
 
 export interface InitRunOptions {
   /** Repo root the init command operates on. */
@@ -64,6 +80,18 @@ export interface InitRunOptions {
   readonly detectLanguagesOverride?: (
     repoRoot: string,
   ) => readonly LanguageCode[];
+  /**
+   * Test seam: inject runIndexSubcommand. Avoids real Anthropic API
+   * calls during unit tests per Q4.4 Point 4 lock.
+   */
+  readonly runIndexSubcommandOverride?: (
+    opts: import("../extraction/cli-runner.js").IndexCliOptions,
+  ) => Promise<IndexCliResult>;
+  /**
+   * Test seam: override .mcp.json contextatlas binary path per Q4.4.6
+   * + Q4.4.7 locks.
+   */
+  readonly resolveBinaryPathOverride?: string;
 }
 
 export interface InitRunResult {
@@ -72,15 +100,54 @@ export interface InitRunResult {
 }
 
 /**
- * Run the init subcommand. Step 4.3 ships:
- *   - Detect-then-scaffold reorder per Q4.3.4 lock (replaces Step 4.2
- *     STEP_4_2_LANGUAGES_PLACEHOLDER per Q4.2.4 Q11-style refinement)
- *   - First doctor run (gateway check) per Q4.0.4 lock
- *   - H5 state-driven routing decision per Q4.0.3 + Q4.3.2 locks
- *   - Route-to-exit-code mapping per Q4.3.5 lock
+ * Read package.json version field via walk-up from this module's
+ * __dirname (mirrors src/index.ts:50-55 readPackageVersion pattern;
+ * analogous to resolveContextatlasCommitSha pattern from
+ * cli-runner.ts:286-308).
  *
- * Atlas/smoke/MCP/success message at Steps 4.4-4.5 per Q4.2.6 lock
- * (fail-loudly exit code 2 preserved for automated paths).
+ * Inline helper at Step 4.4: src/index.ts readPackageVersion is
+ * private + location-bound (signature relies on its own
+ * import.meta.url). Q11-style refinement at Step 4.5 OR v0.7+ if
+ * shared utility module warrants (per Travis verification at Step
+ * 4.4 surface review).
+ */
+function readContextAtlasVersion(): string {
+  const here = dirname(fileURLToPath(import.meta.url));
+  let dir = here;
+  for (let i = 0; i < 10; i++) {
+    const pkgPath = pathResolve(dir, "package.json");
+    if (existsSync(pkgPath)) {
+      try {
+        const pkg = JSON.parse(readFileSync(pkgPath, "utf8")) as {
+          version?: string;
+        };
+        if (typeof pkg.version === "string") {
+          return pkg.version;
+        }
+      } catch {
+        // fall through to walk continuation
+      }
+    }
+    const parent = pathResolve(dir, "..");
+    if (parent === dir) break;
+    dir = parent;
+  }
+  // Fallback: dev placeholder when package.json walk fails (atypical
+  // install layout; v0.6 cohort scope acceptable).
+  return "0.6-dev";
+}
+
+/**
+ * Run the init subcommand. Step 4.4 ships:
+ *   - Atlas creation (runIndexSubcommand reuse) per Q4.0.6 +
+ *     Q4.4.3 + Q4.4.4 locks; idempotent skip-when-current via
+ *     detectAtlasOnlyAvailable pre-check
+ *   - Smoke test (first-symbol-from-atlas in-process buildBundle)
+ *     per Q4.0.7 + Q4.4.1 + Q4.4.2 locks; A4 lazy-spawn validation
+ *   - MCP registration (.mcp.json idempotent upsert) per Q4.0.10 +
+ *     Q4.4.5 + Q4.4.6 locks
+ *
+ * Success message + exit-code-flip at Step 4.5 per Q4.2.6 framing.
  */
 export async function runInitSubcommand(
   options: InitRunOptions,
@@ -90,6 +157,8 @@ export async function runInitSubcommand(
   const detectLangs =
     options.detectLanguagesOverride ?? detectLanguagesFromFilesystem;
   const runChecks = options.collectChecksOverride ?? collectChecks;
+  const runIndex =
+    options.runIndexSubcommandOverride ?? runIndexSubcommand;
 
   // Architecture choice from --cc-only flag plumbing per Q4.0.5 +
   // Q4.0.11 + Q5 locks.
@@ -98,18 +167,11 @@ export async function runInitSubcommand(
       ? "claude-code-only"
       : "anthropic-api-claude-code";
 
-  // Step 4.3 detect-then-scaffold reorder per Q4.3.4 lock: detect
-  // languages BEFORE writing scaffold so config has correct languages
-  // from start. Q4.2.4 Q11-style refinement realized.
+  // Step 4.3 detect-then-scaffold reorder per Q4.3.4 lock.
   const detectedLanguages = detectLangs(options.configRoot);
-  // Fallback to ["typescript"] only if filesystem detection yields
-  // nothing (greenfield repo case; doctor first-run will WARN on
-  // no-code; routing will surface new-project guidance).
   const languages: readonly LanguageCode[] =
     detectedLanguages.length > 0 ? detectedLanguages : ["typescript"];
 
-  // Config setup orchestration per Q4.2.1-Q4.2.5 locks; idempotent
-  // skip-when-present per Q4.0.12 lock.
   const scaffoldResult = writeConfigScaffold({
     configRoot: options.configRoot,
     architecture,
@@ -122,12 +184,10 @@ export async function runInitSubcommand(
     { architecture, languages: [...languages] },
   );
 
-  // First doctor run (gateway check) per Q4.0.4 lock. Reuses
-  // collectChecks(repoRoot) — in-process invocation; no subprocess.
+  // First doctor run (gateway check) per Q4.0.4 lock.
   const doctorResult = await runChecks(options.configRoot);
 
-  // FAIL aborts init with actionable summary per Q4.0.4 + Q4.3.5 locks
-  // (doctor FAIL → exit code 1 ADR-12 pipeline-failure semantics).
+  // FAIL aborts init per Q4.0.4 + Q4.3.5 locks.
   if (doctorResult.summary.fail > 0) {
     const failLines = doctorResult.checks
       .filter((c) => c.status === "fail")
@@ -141,23 +201,81 @@ export async function runInitSubcommand(
     return { exitCode: 1 };
   }
 
-  // Routing decision per Q4.0.3 + Q4.3.2 locks. WARN proceeds with
-  // H5-driven conditional guidance per Q4.0.4 lock.
+  // Routing decision per Q4.0.3 + Q4.3.2 locks.
   const route = decideRoute(doctorResult.checks);
   writeStdout(renderRouteMessage(route) + "\n");
 
-  // Route-to-exit-code mapping per Q4.3.5 lock.
+  // Interactive paths exit cleanly per Q4.0.9 + Q4.3.5 locks.
   if (route.kind === "missing-adrs" || route.kind === "new-project") {
-    // Interactive paths exit cleanly per Q4.0.9 non-blocking lock.
     return { exitCode: 0 };
   }
 
-  // Automated + automated-with-warning paths: fail-loudly preserved
-  // per Q4.2.6 lock until full pipeline lands at Step 4.5.
+  // Automated paths: Step 4.4 atlas + smoke + MCP orchestration.
+  const atlasPath = pathResolve(
+    options.configRoot,
+    ".contextatlas",
+    "atlas.json",
+  );
+
+  // Q4.4.3 lock pre-check: skip extraction if atlas current with HEAD.
+  const headSha = readHeadSha(options.configRoot);
+  const atlasCurrent =
+    headSha !== null &&
+    (await detectAtlasOnlyAvailable(atlasPath, headSha)) !== null;
+
+  if (atlasCurrent) {
+    log.info("init: atlas already current with HEAD; skipping extraction.");
+  } else {
+    log.info("init: invoking atlas extraction (runIndexSubcommand).");
+    const indexResult = await runIndex({
+      configRoot: options.configRoot,
+      configFile: options.configFile ?? null,
+      full: false,
+      json: false,
+      contextatlasVersion: readContextAtlasVersion(),
+    });
+    // Q4.4.4 lock: any non-zero from runIndexSubcommand → init exit
+    // code 1 (pass-through with init pipeline-failure semantics).
+    if (indexResult.exitCode !== 0) {
+      log.error(
+        `init: atlas extraction failed (runIndexSubcommand exit code ` +
+          `${indexResult.exitCode}); see error messages above; resolve ` +
+          `and re-run \`contextatlas init\`.`,
+      );
+      return { exitCode: 1 };
+    }
+  }
+
+  // Smoke test per Q4.0.7 + Q4.4.1 + Q4.4.2 locks.
+  const smokeResult = await runSmokeTest({
+    configRoot: options.configRoot,
+    atlasPath: ".contextatlas/atlas.json",
+    localCachePath: ".contextatlas/index.db",
+  });
+  if (smokeResult.status === "fail") {
+    log.error(`init: smoke test failed — ${smokeResult.reason}`);
+    // Q4.0.7 spec: exit code 2 for smoke-fail (post-atlas-but-smoke-
+    // test-fail; distinct from setup-fail exit code 1).
+    return { exitCode: 2 };
+  }
+  log.info(
+    `init: smoke test passed — get_symbol_context returned bundle for ` +
+      `${smokeResult.symbolId} (${smokeResult.claims} claims, ` +
+      `${smokeResult.references} references, ${smokeResult.durationMs}ms).`,
+  );
+
+  // MCP registration per Q4.0.10 + Q4.4.5 + Q4.4.6 locks.
+  const mcpResult = upsertMcpRegistration({
+    configRoot: options.configRoot,
+    binaryPathOverride: options.resolveBinaryPathOverride,
+  });
+  log.info(`init: .mcp.json ${mcpResult.status} at ${mcpResult.path}.`);
+
+  // Step 4.4 still fail-loudly per Q4.2.6 lock — success message UX
+  // at Step 4.5; final exit code semantics flip at Step 4.5.
   log.error(
-    "init: pipeline orchestration partially implemented (v0.6 Step 4.3 " +
-      "ships doctor + routing; atlas/smoke/MCP/success message at Steps " +
-      "4.4-4.5).",
+    "init: pipeline orchestration partially implemented (v0.6 Step 4.4 " +
+      "ships atlas + smoke + MCP; success message UX at Step 4.5).",
   );
   return { exitCode: 2 };
 }
@@ -168,11 +286,6 @@ export async function runInitSubcommand(
  * instructions); wording substantive at Step 4.3 per Q4.3 Point 5
  * lock (refinement at Step 4.5 if cohort feedback warrants per
  * Q11-style pattern).
- *
- * No prefix on stdout per existing convention (doctor's formatText
- * outputs structured content without per-line prefix; init follows
- * same pattern). Stderr log lines use `init:` colon-prefix per
- * existing index runner convention.
  */
 function renderRouteMessage(route: Route): string {
   switch (route.kind) {
