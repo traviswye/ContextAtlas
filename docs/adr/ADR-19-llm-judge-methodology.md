@@ -140,7 +140,7 @@ surface them, not an edge case).
 
 ### 2. Judge-model selection + escalation criterion
 
-> **Amended 2026-05-05 (commit `[backfill SHA]`):** §2 cost-
+> **Amended 2026-05-05 (commit `e803031`):** §2 cost-
 > projection content updated to apply Opus 4.7 verified pricing
 > ($5/$25 input/output base; ~1.67× Sonnet baseline pricing) per
 > v0.5 Step 2 finding #3 (Opus 4.7 = 1.67× Sonnet pricing
@@ -684,6 +684,7 @@ source files.
   7 lock; Q2.0.3 lock at v0.6 Step 2.0 commit `92321d3` confirmed
   direct-amendment pattern matching v0.5 §4 paired-t amendment
   precedent. SHA backfill discipline applied per v0.5 SHA-
-  placeholder-backfill precedent (initial commit `[backfill SHA]`
-  placeholder; separate backfill commit replaces with actual SHA
-  per chicken-and-egg-avoidance pattern).
+  placeholder-backfill precedent (initial commit `e803031`
+  shipped with placeholder; separate backfill commit replaces
+  placeholder with actual SHA per chicken-and-egg-avoidance
+  pattern).
