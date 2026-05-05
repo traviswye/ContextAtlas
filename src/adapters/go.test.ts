@@ -486,3 +486,63 @@ describe("GoAdapter — integration against fixture (gopls v0.21.1+)", () => {
     expect(info.usedByTypes).toContain("FancyRenderer");
   });
 });
+
+// ---------------------------------------------------------------------------
+// Doctor deep health check via Go adapter (fixtures/go cobra-style;
+// gopls regression coverage for v0.5+ candidate #6 motivating example)
+// Per v0.6 Step 3.2.b + Adjudication 4 lock: integration tests adjacent
+// to module under test (Go adapter); doctor's lspChecks invokes real
+// createAdapter → exercises end-to-end deep health sequence per
+// Q3.0.2 lock at v0.6 Step 3.0.
+// ---------------------------------------------------------------------------
+
+import { lspChecks } from "../doctor/checks/lsp.js";
+import type { CheckContext } from "../doctor/types.js";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join as pathJoin } from "node:path";
+
+describe("doctor deep health check via Go adapter (fixtures/go; gopls regression coverage)", () => {
+  beforeAll(() => enrichGoPath());
+
+  it("completes deep health sequence with pass status on Go fixtures (with go.mod present)", async () => {
+    const ctx: CheckContext = {
+      repoRoot: FIXTURE_ROOT,
+      config: { languages: ["go"] } as never,
+      configPath: ".contextatlas.yml",
+      configError: null,
+    };
+    const checks = await lspChecks(ctx);
+    const deep = checks.find((c) => c.id === "lsp.go.deep_health_check");
+    expect(deep).toBeDefined();
+    expect(deep!.status).toBe("pass");
+  }, 90_000);
+
+  // Synthetic gopls regression test for v0.5+ candidate #6 motivating
+  // example (gopls workspace-load failure on go.mod-less directories)
+  // DEFERRED at v0.6 Step 3.2.b per pre-commit empirical finding;
+  // honest-scope-acknowledgment per discipline #4. Empirical
+  // observation: current gopls version (v0.21.1+) handles go.mod-less
+  // directories GRACEFULLY — deep_health_check returns "pass" rather
+  // than "fail" or "warn". The motivating example regression does not
+  // reproduce in current gopls; whether due to gopls fix in interim
+  // versions OR mis-characterization of original failure mode at v0.5+
+  // candidate #6 surface-time is unclear.
+  //
+  // Test assertion per Adjudication 2 lock specified "non-pass status"
+  // (fail OR warn) but empirical reality returned "pass"; per
+  // discipline #4 honest-scope-acknowledgment-over-retroactive-checkbox
+  // pattern, don't fake the assertion to make a flawed test pass.
+  //
+  // Drop the synthetic test; deep_health_check infrastructure ships +
+  // catches REAL regressions when they happen (per checkDeepHealth
+  // failure-mode coverage at unit test level — initialize fail /
+  // findReferences throws / shutdown fail). Synthetic regression
+  // reproduction deferred to v0.6+ candidate for investigation:
+  //   - Investigate whether v0.5+ candidate #6 original repro still
+  //     achievable (gopls version archaeology; specific environment)
+  //   - If irreproducible at all: drop v0.5+ candidate #6 from §9
+  //     candidates table (close-as-not-reproducible)
+  //   - If reproducible under specific conditions: capture conditions
+  //     + re-add synthetic test with conditions documented
+});

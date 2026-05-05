@@ -619,3 +619,32 @@ describe("TypeScriptAdapter.getTypeInfo", () => {
     expect(names.has("Auditable")).toBe(true);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Doctor deep health check via TS adapter (fixtures/typescript dogfood)
+// Per v0.6 Step 3.2.b + Adjudication 4 lock: integration tests adjacent
+// to module under test (TS adapter); doctor's lspChecks invokes real
+// createAdapter → exercises end-to-end deep health sequence per
+// Q3.0.2 lock at v0.6 Step 3.0.
+// ---------------------------------------------------------------------------
+
+import { lspChecks } from "../doctor/checks/lsp.js";
+import type { CheckContext } from "../doctor/types.js";
+
+describe("doctor deep health check via TS adapter (fixtures/typescript dogfood)", () => {
+  it("completes deep health sequence with pass status on TS fixtures", async () => {
+    const ctx: CheckContext = {
+      repoRoot: FIXTURE_ROOT,
+      config: { languages: ["typescript"] } as never,
+      configPath: ".contextatlas.yml",
+      configError: null,
+    };
+    const checks = await lspChecks(ctx);
+    const deep = checks.find(
+      (c) => c.id === "lsp.typescript.deep_health_check",
+    );
+    expect(deep).toBeDefined();
+    expect(deep!.status).toBe("pass");
+    expect(deep!.detail).toMatch(/sample: .+ at .+/);
+  }, 60_000);
+});
