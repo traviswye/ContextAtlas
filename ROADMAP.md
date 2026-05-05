@@ -495,20 +495,170 @@ external dogfood) carry forward to v0.6+ scope.
 
 ---
 
-### v0.6+ — must-ship-before-v1.0 backlog [FLEXIBLE PLACEMENT]
+### v0.6 — Early-access onboarding pipeline + targeted methodology validation [PLANNED]
+
+**Thesis:** Substrate-generation-not-feature-completion. Early-
+access onboarding pipeline cycle generates empirical substrate
+for v0.7 production-launch design work. v0.6 ships install +
+doctor + config walkthrough + atlas creation + smoke test
+pipeline-mechanics under early-access cohort exposure (minimum
+bar 1-2 Travis network developers; ideal range 5-15); generates
+cohort UX feedback + tool-description observability + targeted
+matrix-replication substrate + self-use observations + B13-flag
+usage data — all consumed at v0.7 production-launch design work.
+
+The cycle architecture exists specifically to avoid the v0.5-
+Step-6-mistake-pattern at multi-cycle scale: design-without-
+empirical-operating-regime produces conclusions that reverse
+when operating regime arrives.
+
+**Delivers (3 streams per [`v0.6-SCOPE.md`](v0.6-SCOPE.md)
+commit `a8d01eb`):**
+
+- **Stream A pipeline-mechanics** (5 items): A4 lazy-spawn + A6
+  doctor script (deep LSP health check) + A7 self-use onboarding
+  pipeline + H5 doctor multi-dimension state-detection + B13-
+  flags optional-flags-with-explicit-pending-resolution
+- **Stream B methodology-rigor + matrix-replication subset** (4
+  items): E2 priors interpretation discipline + B15 ADR-19 §2
+  cost projection recalculation + B1 rubric anchor refinement
+  cycle-close evaluation + targeted matrix-replication subset
+  (3 cells at tier-gradation test points; 8-cell × n=5 × 2
+  conditions = ~80 trials)
+- **Stream C cohort/instrumentation + B17 self-use logging** (4
+  items): cohort feedback template + tool-description
+  observability + recruitment infrastructure + B17 hybrid capture
+  (progress-log + lightweight `research/v0.6-self-use-log.md`
+  append-when-observed)
+
+**V1.0 ship-gate criteria closure status (post-v0.6 ship
+projected):**
+
+| Criterion | Status | Closes at |
+|---|---|---|
+| #1 quality-axis methodology parenthetical | ✓ CLOSED at v0.5 | — |
+| #1 statistically-meaningful-wins gate | PARTIALLY ADVANCED (8-cell subset) | v0.7 matrix-completion |
+| #2 onboarding pipeline shipped | PARTIALLY ADVANCED (early-access pipeline-mechanics) | v0.7 onboarding-completion |
+| #3 external dogfood trial | Open (recruitment infrastructure shipped; execution at v0.7) | v0.7 trial execution |
+
+**Cycle-weight estimate:** ~$15-25 platform-billed reconstructed
+(~1.3-1.5× v0.5 cycle weight). 3 streams within thesis-narrowed
+envelope discipline matching v0.5 multi-stream precedent.
+
+**Status:** [PLANNED] — Phase 3 v0.6-SCOPE.md committed 2026-05-05
+(commit `a8d01eb`). Cycle launches at STEP-PLAN-V0.6.md
+initialization (Step 1.0 work per Q7 ladder-shape adjudication).
+See [`v0.6-SCOPE.md`](v0.6-SCOPE.md) for full scope-doc
+including Q-list (22 entries) + methodology limits (14 items) +
+success criteria (15 items) + rescope conditions (7 items) +
+cycle-pre-planning narrative (Phase 1 enumeration + 8-item
+adversarial debate phase + 2 reconsiders + Phase 2 triage).
+
+---
+
+### v0.7 — Production-launch-substrate cycle [PLANNED]
+
+**Thesis:** Production-launch-substrate cycle consuming v0.6
+empirical substrate via 4 streams to close v1.0 ship-gate
+criteria #1-#3 substantively. Strategy B-with-explicit-launch-
+staging cycle-architecture: v0.6 = early-access cycle generating
+empirical substrate; v0.7 = production-launch-substrate cycle
+designing against v0.6 substrate; v1.0 = public production launch
+with all ship-gate criteria closed.
+
+**Delivers (4 streams per [`v0.6-SCOPE.md`](v0.6-SCOPE.md) §v0.7
+forward-pointers; firms at v0.7-SCOPE.md drafting time post-v0.6
+cycle close):**
+
+- **Stream A onboarding-completion** (5 items): H1 hook/kickoff
+  script for Claude Code priming (returning-session UX; designed
+  against v0.6 first-session empirical signal); H2 ADR generation
+  pipeline (substrate-flexibility input dimension; flexibility-as-
+  feature design principle; single pipeline accepting available
+  substrate — code patterns + commits + README + DESIGN.md as
+  present); H3 first-session-vs-returning-session routing logic
+  (coupled to H1); C3 README/`docs/` parsing (folds into H2); B12
+  session-state context engine general architectural pattern (H1
+  is concrete realization).
+- **Stream B matrix-completion** (3 items): Full matrix-replication
+  completion (~168 trials remaining after v0.6 8-cell subset
+  shipped); B3 trick-bucket override Axis 3 empirical validation
+  (analysis pass on v0.6 trick-bucket substrate); B4 hono h1 beta-
+  ca bimodal exploration root-cause investigation.
+- **Stream C trial-execution** (2 items): External dogfood trial
+  execution against v0.6-shipped recruitment infrastructure; B8
+  Sonnet output stability dependence on input ordering analysis
+  pass on v0.7 trial substrate.
+- **Stream D task-shape-API + B13-decision + substrate-gaps** (6
+  items): C1 task-shaped queries (`why_does_this_fail`,
+  `onboard_to_feature`, `audit_change`); slash commands (designed
+  against v0.6 demand signal); B13 architectural decision (with
+  v0.6 flag-usage substrate); A1 `classifyError` catch-all; A2
+  `extractDocstringsForFile` non-idempotent; A3 `pipeline.ts`
+  Stage 5 deletion handling.
+
+**Closes:**
+
+- **V1.0 ship-gate criterion #1 statistically-meaningful-wins
+  gate** via Stream B full matrix-replication completion (closes
+  the gate that v0.5 quality-axis methodology parenthetical
+  closure left open; v0.6 8-cell subset PARTIALLY ADVANCED;
+  v0.7 full matrix completes)
+- **V1.0 ship-gate criterion #2 onboarding pipeline shipped** via
+  Stream A onboarding-completion (closes the criterion that v0.6
+  early-access pipeline-mechanics ship left at PARTIALLY ADVANCED)
+- **V1.0 ship-gate criterion #3 external dogfood trial** via
+  Stream C trial-execution against v0.6-shipped recruitment
+  infrastructure ("at least one trial completed" minimum bar)
+
+**Status:** [PLANNED] — cycle-pre-planning at v0.6 cycle close
+(post-v0.6 ship); v0.7-SCOPE.md drafts then; cycle launches at
+scope-doc lock. Substrate-preservation document
+[`v0_7-HANDOFF.md`](v0_7-HANDOFF.md) captures detailed cycle-
+pre-planning substrate from v0.6 cycle-pre-planning session
+(2026-05-05) for v0.7 Phase 1 enumeration consumption.
+
+**Cycle-weight calibration concern (per Phase 2 Adjudication 4):**
+v0.7 estimated ~2-2.5× v0.5 cycle weight at Phase 2 surface;
+substantively heavier than v0.5 + v0.6 cycles. Mitigations
+available at v0.7 scope-doc drafting time:
+- **Stream rebalancing:** descope substantively-heavier streams
+  to v1.x post-launch
+- **Cycle splitting:** v0.7 + v0.8 → v1.0 instead of v0.7 → v1.0
+
+V0.6 cycle execution + close empirical signal informs realistic
+v0.7 envelope.
+
+**Why this version:** v0.6 substrate-generation cycle generates
+empirical substrate (cohort feedback + tool-description
+observability + matrix-replication subset validation + B17 self-
+use observations + B13-flag usage + recruitment infrastructure)
+that v0.7 design work consumes. Pure-v0.7 design without v0.6
+empirical substrate would repeat v0.5-Step-6-mistake-pattern at
+multi-cycle scale (designing in vacuum; reversing when operating
+regime arrives). Strategy B-with-explicit-launch-staging
+methodology-defensible per 8-item adversarial debate phase + 2
+reconsiders during v0.6 cycle-pre-planning (2026-05-05).
+
+---
+
+### v0.8+ — must-ship-before-v1.0 backlog (items beyond v0.6 + v0.7) [FLEXIBLE PLACEMENT]
 
 **Items below MUST ship before v1.0 public launch but specific
-version assignment is flexible.** Canonical candidate reference
-(see [`research/phase-9-v0.5-reference-run.md`](../ContextAtlas-benchmarks/research/phase-9-v0.5-reference-run.md)
+version assignment is flexible.** v0.6 + v0.7 cycles covered in
+preceding [PLANNED] sections; this backlog covers items beyond
+v0.7 cycle scope but before v1.0 launch. Canonical candidate
+reference (see [`research/phase-9-v0.5-reference-run.md`](../ContextAtlas-benchmarks/research/phase-9-v0.5-reference-run.md)
 §9 for canonical list of v0.6+ candidates carried forward from
-v0.5 cycle). `research/v0.5-candidates.md` remains canonical for
-the 9 remaining items not absorbed at v0.5; absorbed-item in-place
-annotations mark #7/#8/#9/#12 v0.5-Step-10 closures. ref-doc §9
-captures cycle-emergent candidates surfaced during v0.5 execution
-(surfaces beyond v0.5-candidates.md inventory scope per Q10
-cycle-emergent-only scope lock). Per-version scope-docs (v0.6,
-v0.7, ...up to v0.99 if needed) decide which items land when
-based on:
+v0.5 cycle; supplemented by [`v0_7-HANDOFF.md`](v0_7-HANDOFF.md)
+for v0.7-specific substrate). `research/v0.5-candidates.md`
+remains canonical for the 9 remaining items not absorbed at v0.5;
+absorbed-item in-place annotations mark #7/#8/#9/#12 v0.5-Step-10
+closures. ref-doc §9 captures cycle-emergent candidates surfaced
+during v0.5 execution (surfaces beyond v0.5-candidates.md
+inventory scope per Q10 cycle-emergent-only scope lock). Per-
+version scope-docs (v0.8, v0.9, ...up to v0.99 if needed) decide
+which items land when based on:
 
 - v0.5 launch evidence + drafting surfacing credibility gaps
 - Community evidence accumulation (post-v0.5)
