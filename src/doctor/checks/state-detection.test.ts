@@ -15,7 +15,10 @@ import path from "node:path";
 
 import type { ContextAtlasConfig } from "../../types.js";
 import type { CheckContext } from "../types.js";
-import { stateDetectionChecks } from "./state-detection.js";
+import {
+  detectLanguagesFromFilesystem,
+  stateDetectionChecks,
+} from "./state-detection.js";
 
 function makeCtx(opts: {
   repoRoot: string;
@@ -287,6 +290,42 @@ describe("stateDetectionChecks — git dimension", () => {
     expect(gitCheck.status).toBe("warn");
     // Either "not a git repository" or "atlas.json not present" — both warn
     expect(["warn"]).toContain(gitCheck.status);
+  });
+});
+
+describe("detectLanguagesFromFilesystem (v0.6 Step 4.3 / Q4.3.3 lock)", () => {
+  let tmpRoot: string;
+
+  beforeEach(async () => {
+    tmpRoot = await mkdtemp(path.join(tmpdir(), "detect-langs-"));
+  });
+
+  afterEach(async () => {
+    await rm(tmpRoot, { recursive: true, force: true });
+  });
+
+  it("returns empty array on empty repo", () => {
+    expect(detectLanguagesFromFilesystem(tmpRoot)).toEqual([]);
+  });
+
+  it("returns detected langs filtered to LanguageCode subset (typescript / python / go)", async () => {
+    await writeFile(path.join(tmpRoot, "a.ts"), "//", "utf8");
+    await writeFile(path.join(tmpRoot, "b.py"), "#", "utf8");
+    await writeFile(path.join(tmpRoot, "c.go"), "package x", "utf8");
+    const detected = detectLanguagesFromFilesystem(tmpRoot);
+    expect(detected).toEqual(
+      expect.arrayContaining(["typescript", "python", "go"]),
+    );
+  });
+
+  it("excludes javascript / rust / java / csharp from output (LanguageCode subset filter)", async () => {
+    await writeFile(path.join(tmpRoot, "a.ts"), "//", "utf8");
+    await writeFile(path.join(tmpRoot, "b.js"), "//", "utf8"); // javascript — excluded
+    await writeFile(path.join(tmpRoot, "c.rs"), "//", "utf8"); // rust — excluded
+    await writeFile(path.join(tmpRoot, "d.java"), "//", "utf8"); // java — excluded
+    await writeFile(path.join(tmpRoot, "e.cs"), "//", "utf8"); // csharp — excluded
+    const detected = detectLanguagesFromFilesystem(tmpRoot);
+    expect(detected).toEqual(["typescript"]);
   });
 });
 

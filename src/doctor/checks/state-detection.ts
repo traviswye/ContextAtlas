@@ -34,6 +34,7 @@ import {
   detectAtlasOnlyAvailable,
   readHeadSha,
 } from "../../queries/atlas-only-mode.js";
+import type { LanguageCode } from "../../types.js";
 import type { CheckContext, DoctorCheck } from "../types.js";
 import { walkForSourceFiles } from "./sample-symbol.js";
 
@@ -63,6 +64,19 @@ const LANGUAGE_EXTENSIONS: Record<string, readonly string[]> = {
   java: [".java"],
   csharp: [".cs"],
 };
+
+/**
+ * ContextAtlasConfig-supported language subset (per LanguageCode
+ * union in src/types.ts). Used by detectLanguagesFromFilesystem to
+ * filter LANGUAGE_EXTENSIONS map down to languages init can write to
+ * scaffold; missing-language case (e.g., Rust-only repo) flows to
+ * new-project route per Q4.3.3 lock at v0.6 Step 4.3 surface review.
+ */
+const ATLAS_SUPPORTED_LANGUAGES: ReadonlySet<LanguageCode> = new Set<LanguageCode>([
+  "typescript",
+  "python",
+  "go",
+]);
 
 const ADR_PATTERN = /^\d{4}-.*\.md$/;
 
@@ -481,6 +495,36 @@ function countWords(content: string): number {
  * verbose-mode UX; cohort recruitment consumes for participant
  * selection criteria.
  */
+/**
+ * Returns ContextAtlasConfig-supported languages detected in the
+ * filesystem (typescript / python / go subset per LanguageCode
+ * union; filters out javascript/rust/java/csharp from
+ * LANGUAGE_EXTENSIONS map). Pure helper — no config required;
+ * avoids chicken-and-egg with config setup at runner Step 4.3
+ * sequence per Q4.3.3 + Q4.3.4 locks.
+ *
+ * Used by `runInitSubcommand` at Step 4.3 detect-then-scaffold
+ * reorder per Q4.3.4 lock + Q4.2.4 Q11-style refinement (replaces
+ * STEP_4_2_LANGUAGES_PLACEHOLDER with H5-detected languages list).
+ */
+export function detectLanguagesFromFilesystem(
+  repoRoot: string,
+): readonly LanguageCode[] {
+  const detected: LanguageCode[] = [];
+  for (const [lang, exts] of Object.entries(LANGUAGE_EXTENSIONS)) {
+    if (!ATLAS_SUPPORTED_LANGUAGES.has(lang as LanguageCode)) continue;
+    const files = walkForSourceFiles(
+      repoRoot,
+      new Set(exts),
+      STATE_DETECTION_WALK_DEPTH,
+    );
+    if (files.length > 0) {
+      detected.push(lang as LanguageCode);
+    }
+  }
+  return detected;
+}
+
 export async function stateDetectionChecks(
   ctx: CheckContext,
 ): Promise<DoctorCheck[]> {
