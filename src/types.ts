@@ -251,6 +251,18 @@ export interface TypeInfo {
 
 export interface ContextAtlasConfig {
   version: 1;
+  /**
+   * Architecture choice (B13-flags per v0.6 Step 4.2 / Q4.0.5 +
+   * Q4.2.1 + Q4.2.2 locks). Optional with default
+   * "anthropic-api-claude-code" (current dual-dependency); init
+   * writer always writes explicitly per Q4.0.5. v0.7 architectural
+   * decision uses cohort substrate aggregating which path users
+   * choose.
+   *
+   * YAML key is `architecture` (already lowercase); TS field
+   * `architecture` (no case conversion needed).
+   */
+  architecture?: "anthropic-api-claude-code" | "claude-code-only";
   languages: LanguageCode[];
   adrs: {
     path: string;

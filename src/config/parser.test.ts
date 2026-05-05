@@ -504,6 +504,52 @@ describe("loadConfig — source block (ADR-08 runtime)", () => {
   });
 
   // ---------------------------------------------------------------
+  // architecture (v0.6 Step 4.2 — B13-flags per Q4.0.5 + Q4.2.1 +
+  // Q4.2.2 locks)
+  // ---------------------------------------------------------------
+
+  it("architecture = 'anthropic-api-claude-code' → parses correctly", () => {
+    writeCfg(
+      "version: 1\nlanguages: [typescript]\nadrs: { path: docs/adr/ }\n" +
+        "architecture: anthropic-api-claude-code\n",
+    );
+    expect(loadConfig(tmp).architecture).toBe("anthropic-api-claude-code");
+  });
+
+  it("architecture = 'claude-code-only' → parses correctly", () => {
+    writeCfg(
+      "version: 1\nlanguages: [typescript]\nadrs: { path: docs/adr/ }\n" +
+        "architecture: claude-code-only\n",
+    );
+    expect(loadConfig(tmp).architecture).toBe("claude-code-only");
+  });
+
+  it("architecture absent → cfg.architecture is undefined (default applied at use-site)", () => {
+    writeCfg(
+      "version: 1\nlanguages: [typescript]\nadrs: { path: docs/adr/ }\n",
+    );
+    expect(loadConfig(tmp).architecture).toBeUndefined();
+  });
+
+  it("architecture invalid string → rejected with actionable error", () => {
+    writeCfg(
+      "version: 1\nlanguages: [typescript]\nadrs: { path: docs/adr/ }\n" +
+        "architecture: claude-only-with-typo\n",
+    );
+    expect(() => loadConfig(tmp)).toThrow(
+      /Invalid 'architecture'.*anthropic-api-claude-code, claude-code-only/,
+    );
+  });
+
+  it("architecture non-string (number) → rejected with type error", () => {
+    writeCfg(
+      "version: 1\nlanguages: [typescript]\nadrs: { path: docs/adr/ }\n" +
+        "architecture: 42\n",
+    );
+    expect(() => loadConfig(tmp)).toThrow(/Invalid 'architecture'/);
+  });
+
+  // ---------------------------------------------------------------
   // mcp section (v0.3 Theme 1.2 Fix 3 — ADR-16)
   // ---------------------------------------------------------------
 

@@ -35,6 +35,12 @@ const VALID_LANGUAGES: readonly LanguageCode[] = [
 const VALID_ADR_FORMATS = ["markdown-frontmatter"] as const;
 type ValidAdrFormat = (typeof VALID_ADR_FORMATS)[number];
 
+const VALID_ARCHITECTURES = [
+  "anthropic-api-claude-code",
+  "claude-code-only",
+] as const;
+type ValidArchitecture = (typeof VALID_ARCHITECTURES)[number];
+
 /**
  * Canonical list of top-level config keys. Exported for test substrate
  * to check against (per v0.5 Step 10.3 schema-driven test data
@@ -45,6 +51,7 @@ type ValidAdrFormat = (typeof VALID_ADR_FORMATS)[number];
  */
 export const TOP_LEVEL_KEYS = [
   "version",
+  "architecture",
   "languages",
   "adrs",
   "docs",
@@ -142,6 +149,7 @@ function validate(
     );
   }
 
+  const architecture = validateArchitecture(parsed.architecture, configPath);
   const languages = validateLanguages(parsed.languages, configPath);
   const adrs = validateAdrs(parsed.adrs, configPath);
   const docs = validateDocs(parsed.docs, configPath);
@@ -161,10 +169,34 @@ function validate(
     index,
     atlas,
   };
+  if (architecture !== undefined) out.architecture = architecture;
   if (source !== undefined) out.source = source;
   if (extraction !== undefined) out.extraction = extraction;
   if (mcp !== undefined) out.mcp = mcp;
   return out;
+}
+
+/**
+ * Validate the optional `architecture` field (B13-flags per v0.6
+ * Step 4.2 / Q4.0.5 + Q4.2.1 + Q4.2.2 locks). Optional with default
+ * "anthropic-api-claude-code"; absent means default applied at use-
+ * site (parser leaves field undefined when absent).
+ */
+function validateArchitecture(
+  raw: unknown,
+  configPath: string,
+): ValidArchitecture | undefined {
+  if (raw === undefined) return undefined;
+  if (
+    typeof raw !== "string" ||
+    !VALID_ARCHITECTURES.includes(raw as ValidArchitecture)
+  ) {
+    throw cfgError(
+      configPath,
+      `Invalid 'architecture': expected one of ${VALID_ARCHITECTURES.join(", ")}, got ${describeType(raw)}${typeof raw === "string" ? ` ('${raw}')` : ""}.`,
+    );
+  }
+  return raw as ValidArchitecture;
 }
 
 function validateLanguages(
