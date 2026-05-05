@@ -202,18 +202,29 @@ detection).
   detection; entry-check lazy-spawn; A4→A6→H5 ordering; atlas
   + HEAD-match detection; hybrid threshold pattern with refined
   placeholders; unit + integration tests).
-- [ ] **Step 3.1** — A4 buildBundle lazy-spawn implementation
+- [x] **Step 3.1** — A4 buildBundle lazy-spawn implementation
   (entry-check + method-signature classification per Q3.0.4 +
   Q3.0.6 locks).
-- [ ] **Step 3.2** — A6 doctor script implementation (deep LSP
-  health check sequence + sample symbol traversal per Q3.0.2;
-  A6 framework structure for H5 integration).
-- [ ] **Step 3.3** — H5 multi-dimension state-detection logic
+- [x] **Step 3.2.a** — A6 doctor core implementation (deep LSP
+  health check + sample symbol traversal per Q3.0.2; state-
+  detection CheckCategory framework for H5 integration).
+- [x] **Step 3.2.b** — A6 doctor integration tests (TS + Go
+  fixtures-passes; Pyright + gopls regression deferred per
+  honest-scope-acknowledgment per discipline #4).
+- [x] **Step 3.3** — H5 multi-dimension state-detection logic
   implementation (independent per-dimension detection per
   Q3.0.3; hybrid threshold pattern per Q3.0.7 with refined
   placeholders firmed at Step 3.3 design).
 - [ ] **Step 3.4** — Step 3 close commit: progress log batching
-  for Steps 3.1 + 3.2 + 3.3 + 3.4.
+  for Steps 3.1 + 3.2.a + 3.2.b + 3.3 + 3.4.
+
+**Substep ladder refinement audit trail.** Original Q3.0.1 lock at
+Step 3.0 specified 3.2 as single substep. Refined at execution-
+time per Q11-style explicit-flag pattern: Step 3.2 split into
+3.2.a (core implementation) + 3.2.b (integration tests) per dev-
+flagged scope-anxiety at Step 3.2 surface adjudication. Matches
+v0.5 Step 5 multi-substep precedent; methodology-hygiene
+preserved.
 
 **Unblocks.** Step 4 Stream A pipeline assembly.
 
@@ -368,6 +379,356 @@ B-with-explicit-launch-staging.
 ## Progress log
 
 *Entries added in reverse-chronological order as steps ship.*
+
+### Step 3.4 shipped — 2026-05-05 (Step 3 close)
+
+V0.6 Step 3 closes per Stream A foundations specification at
+v0.6-SCOPE.md. A4 buildBundle lazy-spawn (atlas-only mode) + A6
+doctor (deep LSP health check + state-detection CheckCategory
+framework) + H5 multi-dimension state-detection all shipped per
+Q3.0.1-Q3.0.8 locks at Step 3.0 + Q3.1-Q3.3 surface-time
+refinements. Step N close progress log batching pattern applied:
+Step 3.1 + 3.2.a + 3.2.b + 3.3 + 3.4 close progress log entries
+batched in this single close commit.
+
+| Substep | branch | commit | Notes |
+|---|---|---|---|
+| 3.4 close | main | [this commit] | Step 3 close + progress log batching for Steps 3.1 + 3.2.a + 3.2.b + 3.3 + 3.4 |
+
+#### Step 3 cumulative outcome — Stream A foundations shipped
+
+Stream A pipeline-mechanics core shipped per v0.6-SCOPE.md
+Stream A specification:
+- A4 buildBundle lazy-spawn (atlas-only mode + method-signature
+  classification; per-request detection cadence; commit
+  `490f4ba`)
+- A6 doctor (deep LSP health check via initialize → didOpen →
+  diagnostic-arrival → shutdown sequence with sample symbol
+  traversal per Q3.0.2; state-detection CheckCategory framework
+  populated; commits `52ee846` core + `2cef348` integration
+  tests)
+- H5 multi-dimension state-detection (6 independent per-
+  dimension detectors: ADRs/code/README/DESIGN.md/language/git
+  per Q3.0.3 + Q3.3.1-Q3.3.6 locks; runner integration in both
+  limited + normal mode; commit `b3af9e5`)
+
+v0.6-SCOPE.md success criterion #1 (Stream A pipeline-mechanics
+shipped + tested) **PARTIALLY ADVANCED** at Step 3 close: A4 +
+A6 + H5 substantive substrate landed; A7 self-use onboarding
+pipeline + B13-flags `--cc-only` integration remain at Step 4
+(Stream A pipeline assembly per v0.6-SCOPE.md §Sequencing).
+
+Step 4 (Stream A pipeline assembly: A7 onboarding pipeline + B13-
+flags integration per Q5 lock) unblocked next per v0.6-SCOPE.md
+§Sequencing recommended execution order.
+
+#### Q3.0.1 lock refinement audit trail
+
+Per Q11-style explicit-flag pattern (consistent with v0.6 cycle
+methodology): Step 3 substep ladder refined at execution-time.
+Original Q3.0.1 lock at Step 3.0 specified 3.2 as single substep
+(3.0 → 3.1 → 3.2 → 3.3 → 3.4). Refined at Step 3.2 surface
+adjudication (Adjudication 4 lock — Path β scope-split): Step 3.2
+split into 3.2.a (core implementation: deep LSP health check +
+sample-symbol helper + unit tests) + 3.2.b (integration tests:
+TS + Go fixtures-passes only).
+
+Refinement rationale: dev-flagged scope-anxiety at Step 3.2
+surface; integration tests are distinct artifact class (real-
+adapter spawn + fixture-dependent assertions vs mocked-adapter
+unit tests at 3.2.a). Substep-bounded ship-discipline preserves
+cleaner audit trail; matches v0.5 Step 5 multi-substep precedent;
+methodology-hygiene preserved.
+
+#### Cycle execution observation — discipline #3 cadence catches
+
+Discipline #3 surface-inline-before-commit cadence caught two
+substantive issues at pre-commit verification during Step 3
+execution:
+- **Step 2.2 chicken-and-egg backfill mechanism** (14th cadence-
+  catch instance across cycle pattern): I initially proposed
+  `--amend --no-edit` for ADR-19 §4 SHA backfill; verification
+  revealed v0.5 used separate-commit backfill precedent
+  (commits 05c9fc7 + 204a506). Travis adjudication: apply v0.5
+  precedent per "precedent inheritance overrides recommendation"
+  extended principle.
+- **Step 3.2.b two integration-test deferrals** (15th cadence-
+  catch instance): Pre-commit test surfaced (a) Pyright write-
+  after-end race condition during LSP shutdown lifecycle; (b)
+  empirical finding that current gopls v0.21.1 handles `go.mod`-
+  less directories gracefully (v0.5+ candidate #6 motivating
+  example does NOT reproduce). Both routed to honest-scope-
+  acknowledgment over retroactive-checkbox per discipline #4.
+
+Cycle pattern continues to validate discipline #3 + #4 paired
+operation (catches at surface; honest-scope at execution).
+
+#### v0.5+ candidate #6 status update
+
+V0.5+ candidate #6 motivating example (gopls workspace-load
+failure on `go.mod`-less directories) **does NOT reproduce
+against current upstream gopls v0.21.1**. Per Step 3.2.b
+empirical verification: gopls returns "pass" status when
+spawned against `go.mod`-less repo state.
+
+Substantive value of A6 deep health check **preserved beyond
+specific motivating example**: the initialize → didOpen →
+diagnostic-arrival → shutdown sequence with sample symbol
+traversal catches OTHER adapter regressions per implementation
+scope (per v0.6-SCOPE.md §Stream A A6 framing; per Q3.0.2 lock
+at Step 3.0 surface). Positive cycle-execution finding: upstream
+gopls fixed the original motivating regression.
+
+V0.5+ candidate #6 reproduction status flagged for v0.6+
+investigation per Phase-9 ref-doc §9 candidate-capture pattern;
+benchmarks-repo canonical home for cycle-emergent-only candidate
+inventory.
+
+#### Phase-9 ref-doc §9 candidate-capture routing
+
+Both Step 3.2.b deferrals routed to Phase-9 ref-doc §9
+candidate-capture pattern at v0.6 cycle close per Travis
+Observation 2 lock at Step 3.2.b surface; benchmarks-repo
+canonical home per v0.5 precedent:
+- Pyright doctor-integration test deferred (write-after-end
+  race condition in Pyright LSP shutdown lifecycle; test
+  logic works but cleanup throws; unit coverage compensates
+  via 9 unit tests at Step 3.2.a level using mocked
+  createAdapter)
+- gopls regression synthetic test deferred (per v0.5+
+  candidate #6 status update above)
+
+---
+
+### Step 3.3 shipped — 2026-05-05
+
+V0.6 Step 3.3 ships H5 multi-dimension state-detection logic per
+Q3.3.1-Q3.3.8 locks at Step 3.3 surface review (Q3.0.3 +
+Q3.0.7 placeholder locks at Step 3.0 carried forward).
+
+| Substep | branch | commit | Notes |
+|---|---|---|---|
+| 3.3 | main | b3af9e5 | 20 new tests; 846 insertions across 4 files |
+
+#### Implementation summary
+
+Six independent dimension detectors per Q3.3.1 single-file lock
++ Q3.3.2-Q3.3.6 per-dimension adjudications:
+1. **ADRs** — pattern `^\d{4}-.*\.md$` in resolved ADR dir
+   (config-driven `.contextatlas.yml` adrs.path OR canonical
+   `docs/adr/` fallback per Q3.3.2). ADR pattern-matching
+   refinement applied per existing v0.4+ ADR convention (matches
+   `docs/adr/` files in this repo).
+2. **code** — walkForSourceFiles + binary present + substantive
+   ≥5 advisory per Q3.3.3 hybrid lock. walkForSourceFiles export
+   refinement applied per Q3.3.3 verification (exported from
+   sample-symbol.ts at this step for code-dimension reuse).
+3. **README** — file existence binary + word count ≥300
+   substantive per Q3.3.4 + Q3.0.7 placeholder. Raw word count
+   refinement applied per Q3.3.4 lock (whitespace-split + filter-
+   non-empty; not markdown-stripped — consistency over accuracy).
+4. **DESIGN.md** — file existence binary + word count ≥500
+   substantive per Q3.3.4 + Q3.0.7 placeholder.
+5. **languages** — configured `.contextatlas.yml` languages OR
+   auto-detect via extensions scan per Q3.3.5 hybrid.
+6. **git** — atlas committed + extracted_at_sha matches HEAD per
+   Q3.3.6 (atlas-only-mode helpers reused for git-dimension
+   detection; readHeadSha + detectAtlasOnlyAvailable from
+   src/queries/atlas-only-mode.ts).
+
+#### Test coverage
+
+20 new tests per Q3.0.8 unit + integration test scope:
+- 5 ADRs unit tests (canonical fallback / empty / numbered /
+  pattern-filter / config-driven path)
+- 3 code unit tests (no source / sparse / substantive)
+- 3 README unit tests (absent / sparse / substantive)
+- 3 DESIGN.md unit tests (absent / sparse / substantive)
+- 3 languages unit tests (none / auto-detect / configured)
+- 1 git unit test (no .git → warn)
+- 2 aggregator integration tests (happy-path on contextatlas
+  dogfood + synthetic missing-substrate fixture per Q3.3.8
+  refinement; covers cohort-participant-missing-substrate case)
+
+#### Runner integration
+
+stateDetectionChecks runs in BOTH limited mode AND normal mode
+(graceful null-config handling per Q3.3.2 + Q3.3.5 fallback
+patterns).
+
+#### H5 detection-layer separation preserved
+
+Per H5 detection-layer-separation observation lock at Step 3.0:
+H5 produces detection layer; A6 doctor consumes for verbose-mode
+UX; cohort recruitment infrastructure consumes for participant
+selection criteria. Each consumer references H5 detection output
+for its own purpose without coupling H5 implementation to
+consumer concerns.
+
+#### Step 3.3 unblock
+
+Step 3.4 close (progress log batching for Steps 3.1 + 3.2.a +
+3.2.b + 3.3 + 3.4) unblocked next per Q3.0.1 lock + refinement.
+
+---
+
+### Step 3.2.b shipped — 2026-05-05
+
+V0.6 Step 3.2.b ships A6 doctor integration tests per
+Adjudication 4 lock (Path β scope-split) at Step 3.2 surface.
+
+| Substep | branch | commit | Notes |
+|---|---|---|---|
+| 3.2.b | main | 2cef348 | 2 new integration tests; 112 insertions across 3 files |
+
+#### Original vs shipped scope
+
+Original scope per Adjudication 4 lock: 4 integration tests
+planned (TS + Pyright + Go fixtures-passes + gopls regression
+synthetic).
+
+Shipped scope: 2 integration tests (TS + Go fixtures-passes
+only). Two honest-scope-acknowledgment deferrals captured per
+discipline #4:
+
+**Pyright doctor-integration test deferred.** Write-after-end
+race condition surfaced in Pyright LSP shutdown lifecycle during
+pre-commit test run. Test logic works (initialize → findSampleSymbol
+→ findReferences sequence completes); cleanup throws uncaught
+exception during shutdown teardown. Unit coverage compensates
+via 9 unit tests at Step 3.2.a level using mocked createAdapter.
+
+**gopls regression synthetic test deferred.** Empirical finding
+at pre-commit test run: current gopls v0.21.1 handles `go.mod`-
+less directories gracefully (returns "pass" status). v0.5+
+candidate #6 motivating example does NOT reproduce against
+current upstream. Honest-scope-acknowledgment over retroactive-
+checkbox preferred per discipline #4 (faking assertion would
+preserve checkbox while masking empirical truth).
+
+#### gopls version specificity
+
+Tested against `golang.org/x/tools/gopls v0.21.1`. v0.5+
+candidate #6 motivating example was captured against earlier
+gopls version (specific version not preserved at v0.5 candidate
+capture time); upstream fix landed sometime before v0.21.1.
+
+#### Phase-9 ref-doc §9 candidate-capture routing
+
+Both deferrals routed to Phase-9 ref-doc §9 candidate-capture
+pattern at v0.6 cycle close per Travis Observation 2 lock at
+Step 3.2.b surface; benchmarks-repo canonical home per v0.5
+precedent. Cycle-emergent-only candidate inventory scope
+preserved per v0.5 Q10 lock distinction.
+
+#### Step 3.2.b unblock
+
+Step 3.3 (H5 multi-dimension state-detection logic
+implementation) unblocked per Step 3.2.a CheckCategory framework
++ Step 3.2.b integration test substrate.
+
+---
+
+### Step 3.2.a shipped — 2026-05-05
+
+V0.6 Step 3.2.a ships A6 doctor core implementation per Q3.0.2
+lock (sample symbol traversal scope) + Q3.0.8 lock (unit tests
+adjacent to source).
+
+| Substep | branch | commit | Notes |
+|---|---|---|---|
+| 3.2.a | main | 52ee846 | 16 new tests; 719 insertions across 5 files |
+
+#### Implementation summary
+
+- **state-detection CheckCategory addition** — populated
+  doctor/types.ts CheckCategory union with `"state-detection"`
+  variant; framework for H5 plug-in at Step 3.3.
+- **checkDeepHealth function** — added to src/doctor/checks/lsp.ts;
+  full sequence per Q3.0.2: createAdapter → initialize →
+  findSampleSymbol → findReferences → shutdown. Failure modes:
+  adapter construction / initialize / findReferences / shutdown
+  / timeout → fail; no source files / no symbols → warn.
+  DEEP_HEALTH_TIMEOUT_MS=30s vs spawn_test 10s ceiling.
+- **findSampleSymbol helper** — added to new
+  src/doctor/checks/sample-symbol.ts; walks repo for first source
+  file matching adapter extensions; returns first symbol via
+  adapter.listSymbols. Per Q3.0.2 lock: 1 symbol per language
+  adapter detected; runtime discovery from actual repo state
+  (matches v0.5+ candidate #6 motivating example — workspace-
+  load failure surfaces only when running against actual user-
+  repo state).
+- **9 unit tests for checkDeepHealth + 7 unit tests for
+  findSampleSymbol** per Q3.0.8 unit test coverage.
+
+#### Adjudication 3 verification result
+
+`lsp.test.ts` NEW per CLAUDE.md "Tests adjacent to source.
+`foo.ts` + `foo.test.ts`. Use Vitest" discipline. Existing tests
+previously lived in shared runner.test.ts (consolidated test
+file pattern). Step 3.2.a verification confirmed the adjacent-
+test discipline was the appropriate convention; new file created
+rather than appending to runner.test.ts.
+
+#### Step 3.2.a unblock
+
+Step 3.2.b (A6 doctor integration tests) unblocked per Path β
+scope-split lock at Step 3.2 surface adjudication.
+
+---
+
+### Step 3.1 shipped — 2026-05-05
+
+V0.6 Step 3.1 ships A4 buildBundle lazy-spawn (atlas-only mode)
+per Q3.0.4 entry-check + Q3.0.6 atlas-only-mode detection +
+Q3.0.8 unit + integration tests locks.
+
+| Substep | branch | commit | Notes |
+|---|---|---|---|
+| 3.1 | main | 490f4ba | 19 new tests; ~300 LOC across 5 files |
+
+#### Implementation summary
+
+- **detectAtlasOnlyAvailable + readHeadSha helpers** — new
+  src/queries/atlas-only-mode.ts; per Q3.0.6 lock atlas.json
+  existence + extracted_at_sha HEAD-match auto-detection.
+- **isAtlasOnlySafeScope helper** — added to
+  src/queries/symbol-context.ts; method-signature classification
+  (atlas-only-safe vs lsp-live-required) per Q3.0.4 +
+  Q3.0.6 locks.
+- **buildBundle entry-check** — diagnostics gated on
+  `!atlasOnlyMode` per Travis Observation 1 lock at Step 3.1
+  surface. Diagnostics-skip-in-atlas-only-mode behavior change
+  captured: when atlas-only mode active, diagnostics field
+  omitted from bundle (LSP-live data not available without
+  adapter spawn; atlas substrate doesn't carry diagnostics).
+- **Per-request detection cadence** — `detectAtlasOnlyAvailable`
+  invoked per buildBundle call at handler-side
+  (src/mcp/handlers/get-symbol-context.ts) using
+  `readHeadSha(process.cwd())` + atlas.json path. Per
+  architectural confirmation at Step 3.1 surface: per-request
+  cadence chosen over server-startup-cached approach (avoids
+  staleness-on-extraction-during-server-lifetime; cost negligible
+  at small atlas.json + git HEAD read).
+
+#### Test coverage
+
+19 new tests per Q3.0.8 unit test scope:
+- 7 isAtlasOnlySafeScope unit tests (method-signature
+  classification matrix)
+- 5 buildBundle integration-style tests with countingStubAdapter
+  (verifies adapter NOT spawned in atlas-only mode for atlas-
+  only-safe scopes; verifies adapter IS spawned for lsp-live-
+  required scopes)
+- 7 atlas-only-mode helper unit tests
+  (detectAtlasOnlyAvailable + readHeadSha)
+
+#### Step 3.1 unblock
+
+Step 3.2 (A6 doctor script implementation) unblocked per Q3.0.5
+A4 → A6 → H5 ordering lock.
+
+---
 
 ### Step 3.0 shipped — 2026-05-05
 
