@@ -140,6 +140,20 @@ surface them, not an edge case).
 
 ### 2. Judge-model selection + escalation criterion
 
+> **Amended 2026-05-05 (commit `[backfill SHA]`):** §2 cost-
+> projection content updated to apply Opus 4.7 verified pricing
+> ($5/$25 input/output base; ~1.67× Sonnet baseline pricing) per
+> v0.5 Step 2 finding #3 (Opus 4.7 = 1.67× Sonnet pricing
+> relationship) + finding #4 (`src/extraction/pricing.ts`
+> staleness fix from $15/$75 to $5/$25 base; verified 2026-04-30).
+> Pre-amendment "$100 absolute upper bound" framing was Sonnet-
+> baseline-referenced / staleness-anchored; post-amendment framing
+> reflects current Opus 4.7 pricing model with empirical anchor.
+> Cross-reference: CLAUDE.md "Cost-priors interpretation discipline
+> (v0.6 Step 2 / E2 lock)" section (commit `9aab055`) for cycle-
+> execution-time discipline governing versioned cost-priors
+> snapshot consumption.
+
 **Single-judge: Claude Sonnet 4.6 default; Opus 4.7 escalation
 backup if Step 6 calibration fails Travis-intuition correlation
 (per `v0.5-SCOPE.md` §7.1.1).** Cross-vendor panel (Claude +
@@ -190,8 +204,16 @@ disclosure (Option B) doesn't survive scrutiny.
 escalation-event** — three-way choice:
 
 1. **Option A (full Opus production).** Full Opus Step 7-8;
-   budget impact toward $100 absolute upper bound; explicit
-   Travis rescope decision per scope-doc §Rescope conditions.
+   budget impact under current Opus 4.7 pricing (verified $5/$25
+   input/output base per v0.5 Step 2 finding #4; ~1.67× Sonnet
+   baseline pricing relationship per finding #3) projects ~$33-50
+   theoretical upper bound (recalibrated from pre-amendment $100
+   framing which was Sonnet-baseline-referenced + staleness-
+   anchored against $15/$75 pre-fix pricing). Empirical anchor:
+   v0.5 cycle actual ~$10.25 platform-billed reconstructed (well
+   under projection per cache-discount + n=5 substrate efficiency).
+   Explicit Travis rescope decision per scope-doc §Rescope
+   conditions if cycle-execution trajectory exceeds projection.
 2. **Option C (subset Opus + Sonnet remainder).** Step 8 subset
    on Opus; phase-9 ref doc reports both judges.
 3. **Statistical-only-rigor + grading-deferred** to v0.5.5 or
@@ -641,3 +663,27 @@ source files.
   at original Step 1.4 lock. ADR-19 frontmatter symbols list
   unchanged (`differenceOfMeansCI` semantically accurate under
   either formula; only the underlying computation differs).
+
+- **2026-05-05** — v0.6 Step 2.2 amendment: §2 cost-projection
+  content updated to apply Opus 4.7 verified pricing ($5/$25
+  input/output base; ~1.67× Sonnet baseline pricing) per v0.5
+  Step 2 finding #3 (Opus 4.7 = 1.67× Sonnet pricing relationship)
+  + finding #4 (`src/extraction/pricing.ts` staleness fix from
+  $15/$75 to $5/$25 base; verified 2026-04-30). Pre-amendment
+  "$100 absolute upper bound" framing was Sonnet-baseline-
+  referenced / staleness-anchored; post-amendment framing
+  reflects current Opus 4.7 pricing model with empirical anchor
+  (v0.5 cycle actual ~$10.25 platform-billed reconstructed).
+  Bidirectional cross-reference established with CLAUDE.md "Cost-
+  priors interpretation discipline (v0.6 Step 2 / E2 lock)"
+  section (commit `9aab055`); CLAUDE.md section references this
+  amendment for full pricing-model context. Trigger: v0.5 Step 2
+  finding #3 + finding #4 surfaced pricing-staleness during v0.5
+  cycle execution; B15 Phase-9 ref-doc §9 candidate captured
+  amendment work as v0.6 Stream B Tier-1 elevated entry per Item
+  7 lock; Q2.0.3 lock at v0.6 Step 2.0 commit `92321d3` confirmed
+  direct-amendment pattern matching v0.5 §4 paired-t amendment
+  precedent. SHA backfill discipline applied per v0.5 SHA-
+  placeholder-backfill precedent (initial commit `[backfill SHA]`
+  placeholder; separate backfill commit replaces with actual SHA
+  per chicken-and-egg-avoidance pattern).
