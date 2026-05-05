@@ -36,6 +36,10 @@ import {
 
 import { renderCompact } from "../../formatters/compact.js";
 import {
+  detectAtlasOnlyAvailable,
+  readHeadSha,
+} from "../../queries/atlas-only-mode.js";
+import {
   buildBundle,
   DEFAULT_SIGNALS,
 } from "../../queries/symbol-context.js";
@@ -139,8 +143,23 @@ async function resolveSingle(
       language: symbol.language,
     };
   }
+  // A4 atlas-only-mode detection (v0.6 Step 3.1; Q3.0.4 + Q3.0.6 +
+  // Travis architectural-confirmation locks). Per-request detection:
+  // HEAD can change between requests; cached pattern would require
+  // invalidation complexity not worth ~ms-scale cost. Defaults assume
+  // canonical atlas path `.contextatlas/atlas.json` per ADR-06; cwd
+  // as repoRoot. Returns null on any failure mode → atlasOnlyAvailable
+  // = false → adapter as usual.
+  const headSha = readHeadSha(process.cwd());
+  const atlasOnlyAvailable =
+    headSha !== null
+      ? (await detectAtlasOnlyAvailable(
+          ".contextatlas/atlas.json",
+          headSha,
+        )) !== null
+      : false;
   const bundle = await buildBundle(
-    { db: deps.db, adapter },
+    { db: deps.db, adapter, atlasOnlyAvailable },
     {
       symbol,
       depth: args.depth,

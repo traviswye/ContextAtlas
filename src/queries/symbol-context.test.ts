@@ -13,7 +13,7 @@ import type {
   TypeInfo,
 } from "../types.js";
 
-import { buildBundle } from "./symbol-context.js";
+import { buildBundle, isAtlasOnlySafeScope } from "./symbol-context.js";
 
 // ---------------------------------------------------------------------------
 // Test harness: stub adapter returning canned data.
@@ -700,5 +700,240 @@ describe("buildBundle — BM25 intent ranking (Fix 3, ADR-16)", () => {
     expect(claims[0]?.severity).toBe("context");
     expect(claims[0]?.claim).toBe("payment idempotency exact match here");
     expect(claims[1]?.severity).toBe("hard");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// A4 atlas-only-mode tests (v0.6 Step 3.1; v0.5-candidates #4 fix)
+// ---------------------------------------------------------------------------
+
+/**
+ * Counting stub adapter — tracks invocation count per method. Used by
+ * A4 atlas-only-mode tests to assert "call count = 0 in atlas-only
+ * mode" + "call count > 0 in non-atlas-only mode" per Q3.0.8 lock +
+ * Travis observation 2 lock at Step 3.1 surface review (instrumented
+ * stub more precise signal than throws-on-call).
+ */
+function countingStubAdapter(): LanguageAdapter & {
+  _calls: {
+    findReferences: number;
+    getTypeInfo: number;
+    getDiagnostics: number;
+  };
+} {
+  const calls = {
+    findReferences: 0,
+    getTypeInfo: 0,
+    getDiagnostics: 0,
+  };
+  const adapter: LanguageAdapter = {
+    language: "typescript",
+    extensions: [".ts"],
+    async initialize() {},
+    async shutdown() {},
+    async listSymbols() {
+      return [];
+    },
+    async getSymbolDetails() {
+      return null;
+    },
+    async findReferences() {
+      calls.findReferences++;
+      return [];
+    },
+    async getDiagnostics() {
+      calls.getDiagnostics++;
+      return [];
+    },
+    async getTypeInfo() {
+      calls.getTypeInfo++;
+      return { extends: [], implements: [], usedByTypes: [] };
+    },
+  };
+  return Object.assign(adapter, { _calls: calls });
+}
+
+describe("A4 isAtlasOnlySafeScope (signal classification)", () => {
+  it("returns true for intent-only scope", () => {
+    expect(
+      isAtlasOnlySafeScope({
+        symbol: sym(),
+        depth: "standard",
+        include: ["intent"],
+        maxRefs: 50,
+      }),
+    ).toBe(true);
+  });
+
+  it("returns true for git-only scope", () => {
+    expect(
+      isAtlasOnlySafeScope({
+        symbol: sym(),
+        depth: "standard",
+        include: ["git"],
+        maxRefs: 50,
+      }),
+    ).toBe(true);
+  });
+
+  it("returns true for intent+git combined scope", () => {
+    expect(
+      isAtlasOnlySafeScope({
+        symbol: sym(),
+        depth: "standard",
+        include: ["intent", "git"],
+        maxRefs: 50,
+      }),
+    ).toBe(true);
+  });
+
+  it("returns false when refs requested", () => {
+    expect(
+      isAtlasOnlySafeScope({
+        symbol: sym(),
+        depth: "standard",
+        include: ["refs"],
+        maxRefs: 50,
+      }),
+    ).toBe(false);
+  });
+
+  it("returns false when types requested", () => {
+    expect(
+      isAtlasOnlySafeScope({
+        symbol: sym(),
+        depth: "standard",
+        include: ["types"],
+        maxRefs: 50,
+      }),
+    ).toBe(false);
+  });
+
+  it("returns false when tests requested", () => {
+    expect(
+      isAtlasOnlySafeScope({
+        symbol: sym(),
+        depth: "standard",
+        include: ["tests"],
+        maxRefs: 50,
+      }),
+    ).toBe(false);
+  });
+
+  it("returns false for default DEFAULT_SIGNALS scope", () => {
+    expect(
+      isAtlasOnlySafeScope({
+        symbol: sym(),
+        depth: "standard",
+        include: ["refs", "intent", "git", "types", "tests"],
+        maxRefs: 50,
+      }),
+    ).toBe(false);
+  });
+});
+
+describe("A4 buildBundle skips adapter calls in atlas-only mode", () => {
+  it("does not call adapter when scope is intent-only + atlasOnlyAvailable=true", async () => {
+    const db = openDatabase(":memory:");
+    const adapter = countingStubAdapter();
+    upsertSymbols(db, [sym()]);
+
+    await buildBundle(
+      { db, adapter, atlasOnlyAvailable: true },
+      {
+        symbol: sym(),
+        depth: "standard",
+        include: ["intent"],
+        maxRefs: 50,
+      },
+    );
+
+    expect(adapter._calls.findReferences).toBe(0);
+    expect(adapter._calls.getTypeInfo).toBe(0);
+    expect(adapter._calls.getDiagnostics).toBe(0);
+    db.close();
+  });
+
+  it("does not call adapter when scope is intent+git + atlasOnlyAvailable=true", async () => {
+    const db = openDatabase(":memory:");
+    const adapter = countingStubAdapter();
+    upsertSymbols(db, [sym()]);
+
+    await buildBundle(
+      { db, adapter, atlasOnlyAvailable: true },
+      {
+        symbol: sym(),
+        depth: "standard",
+        include: ["intent", "git"],
+        maxRefs: 50,
+      },
+    );
+
+    expect(adapter._calls.findReferences).toBe(0);
+    expect(adapter._calls.getTypeInfo).toBe(0);
+    expect(adapter._calls.getDiagnostics).toBe(0);
+    db.close();
+  });
+
+  it("calls adapter as usual when atlasOnlyAvailable=false even for atlas-only-safe scope", async () => {
+    const db = openDatabase(":memory:");
+    const adapter = countingStubAdapter();
+    upsertSymbols(db, [sym()]);
+
+    await buildBundle(
+      { db, adapter, atlasOnlyAvailable: false },
+      {
+        symbol: sym(),
+        depth: "standard",
+        include: ["intent"],
+        maxRefs: 50,
+      },
+    );
+
+    // Diagnostics is always-on outside atlas-only mode → call count > 0
+    expect(adapter._calls.getDiagnostics).toBe(1);
+    db.close();
+  });
+
+  it("calls adapter as usual when refs requested even if atlasOnlyAvailable=true", async () => {
+    const db = openDatabase(":memory:");
+    const adapter = countingStubAdapter();
+    upsertSymbols(db, [sym()]);
+
+    await buildBundle(
+      { db, adapter, atlasOnlyAvailable: true },
+      {
+        symbol: sym(),
+        depth: "standard",
+        include: ["refs"],
+        maxRefs: 50,
+      },
+    );
+
+    // refs scope NOT atlas-only-safe → atlasOnlyMode false → adapter
+    // calls proceed as usual
+    expect(adapter._calls.findReferences).toBe(1);
+    expect(adapter._calls.getDiagnostics).toBe(1);
+    db.close();
+  });
+
+  it("preserves existing behavior when atlasOnlyAvailable omitted (default false)", async () => {
+    const db = openDatabase(":memory:");
+    const adapter = countingStubAdapter();
+    upsertSymbols(db, [sym()]);
+
+    await buildBundle(
+      { db, adapter },
+      {
+        symbol: sym(),
+        depth: "standard",
+        include: ["intent"],
+        maxRefs: 50,
+      },
+    );
+
+    // Default atlasOnlyAvailable=false → diagnostics still runs
+    expect(adapter._calls.getDiagnostics).toBe(1);
+    db.close();
   });
 });

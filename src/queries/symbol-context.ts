@@ -56,6 +56,35 @@ export const DEFAULT_SIGNALS: readonly BundleSignal[] = [
 export interface BuildBundleDeps {
   db: DatabaseInstance;
   adapter: LanguageAdapter;
+  /**
+   * Pre-computed flag indicating atlas substrate is consistent with
+   * current git HEAD. When true + scope is atlas-only-safe (per
+   * {@link isAtlasOnlySafeScope}), buildBundle skips all adapter calls
+   * (~500ms-per-query optimization).
+   *
+   * Optional with default false for backward compatibility; handler
+   * computes via {@link detectAtlasOnlyAvailable} per-request and
+   * threads through. Per A4 (v0.5-candidates #4 fix shape; v0.6 Step
+   * 3.1 implementation per Q3.0.4 + Q3.0.6 locks).
+   */
+  atlasOnlyAvailable?: boolean;
+}
+
+/**
+ * Classifies whether the requested bundle scope can be answered without
+ * adapter calls (atlas-only-safe) vs requires LSP-live data
+ * (lsp-live-required). Per A4 + Q3.0.4 lock at v0.6 Step 3.0:
+ * refs/types/tests need adapter; intent/git satisfied by db alone.
+ */
+export function isAtlasOnlySafeScope(
+  options: BuildBundleOptions,
+): boolean {
+  const signalSet = new Set<BundleSignal>(options.include);
+  return (
+    !signalSet.has("refs") &&
+    !signalSet.has("types") &&
+    !signalSet.has("tests")
+  );
 }
 
 export interface BuildBundleOptions {
@@ -104,11 +133,20 @@ export async function buildBundle(
   deps: BuildBundleDeps,
   options: BuildBundleOptions,
 ): Promise<SymbolContextBundle> {
-  const { db, adapter } = deps;
+  const { db, adapter, atlasOnlyAvailable = false } = deps;
   const { symbol, depth, include, maxRefs } = options;
   const gitRecentCommits =
     options.gitRecentCommits ?? DEFAULT_GIT_BUNDLE_RECENT;
   const signalSet = new Set<BundleSignal>(include);
+
+  // A4 atlas-only-mode entry-check: skip adapter calls when scope is
+  // atlas-only-safe (no refs/types/tests requested) AND atlas substrate
+  // consistent with HEAD. Diagnostics block (always-on currently)
+  // becomes conditional on atlasOnlyMode below; refs/types/tests
+  // blocks are signal-gated already so atlasOnlyMode implies their
+  // signals are absent from signalSet.
+  const atlasOnlyMode =
+    atlasOnlyAvailable && isAtlasOnlySafeScope(options);
 
   const bundle: SymbolContextBundle = {
     version: "1.0",
@@ -169,10 +207,16 @@ export async function buildBundle(
     }
   }
 
-  // Diagnostics — always included when present, per user decision.
-  const diagnostics = await safeGetDiagnostics(adapter, symbol.path);
-  if (diagnostics.length > 0) {
-    bundle.diagnostics = diagnostics;
+  // Diagnostics — included when present, per user decision. A4
+  // atlas-only-mode skips adapter call when atlasOnlyMode (no LSP
+  // live data needed; saves ~500ms per query). Existing callers that
+  // expect diagnostics field should not request atlas-only-safe scope
+  // OR set atlasOnlyAvailable=false explicitly.
+  if (!atlasOnlyMode) {
+    const diagnostics = await safeGetDiagnostics(adapter, symbol.path);
+    if (diagnostics.length > 0) {
+      bundle.diagnostics = diagnostics;
+    }
   }
 
   return bundle;
