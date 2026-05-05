@@ -249,19 +249,19 @@ detection); specific message wording firms at Step 4 implementation.
   auto-register .mcp.json with idempotent behavior; minimal flag
   surface; idempotent skip-when-present; unit + integration
   tests).
-- [ ] **Step 4.1** — `init` subcommand entry-point + parseArgs
+- [x] **Step 4.1** — `init` subcommand entry-point + parseArgs
   wiring + new file scaffold (`src/init/runner.ts`) per Q4.0.2
   lock.
-- [ ] **Step 4.2** — Config setup walkthrough + B13-flags
+- [x] **Step 4.2** — Config setup walkthrough + B13-flags
   `--cc-only` integration + `.contextatlas.yml` scaffold writer
   per Q4.0.5 lock + Q5 lock applicability.
-- [ ] **Step 4.3** — Doctor invocation orchestration + H5 state-
+- [x] **Step 4.3** — Doctor invocation orchestration + H5 state-
   driven routing decision module (`src/init/routing.ts`) per
   Q4.0.3 + Q4.0.4 + Q4.0.9 locks.
-- [ ] **Step 4.4** — Atlas creation (runIndexSubcommand reuse) +
+- [x] **Step 4.4** — Atlas creation (runIndexSubcommand reuse) +
   smoke test (first-symbol-from-atlas) + MCP registration
   (`.mcp.json` upsert) per Q4.0.6 + Q4.0.7 + Q4.0.10 locks.
-- [ ] **Step 4.5** — Success message + first-query suggestion UX
+- [x] **Step 4.5** — Success message + first-query suggestion UX
   (structured sectioned with [OK] ASCII marker) per Q4.0.8 lock.
 - [ ] **Step 4.6** — Step 4 close commit: progress log batching
   for Steps 4.1 + 4.2 + 4.3 + 4.4 + 4.5 + 4.6.
@@ -404,6 +404,395 @@ B-with-explicit-launch-staging.
 ## Progress log
 
 *Entries added in reverse-chronological order as steps ship.*
+
+### Step 4.6 shipped — 2026-05-05 (Step 4 close)
+
+V0.6 Step 4 closes per Stream A pipeline assembly specification
+at v0.6-SCOPE.md. A7 self-use onboarding pipeline shipped per
+Q4.0.1-Q4.0.13 locks at Step 4.0 + sub-adjudication clusters at
+Steps 4.2-4.5 (Q4.2.1-Q4.2.6 + Q4.3.1-Q4.3.5 + Q4.4.1-Q4.4.7 +
+Q4.5.1-Q4.5.5; 36 total adjudications across Step 4). Step N
+close progress log batching pattern applied: Step 4.1 + 4.2 +
+4.3 + 4.4 + 4.5 + 4.6 close progress log entries batched in
+this single close commit per v0.5+ inheritance.
+
+| Substep | branch | commit | Notes |
+|---|---|---|---|
+| 4.6 close | main | [this commit] | Step 4 close + progress log batching for Steps 4.1 + 4.2 + 4.3 + 4.4 + 4.5 + 4.6 |
+
+#### Step 4 cumulative outcome — Stream A pipeline assembly shipped
+
+A7 self-use onboarding pipeline shipped per v0.6-SCOPE.md Stream
+A specification:
+- A7 `contextatlas init` subcommand orchestrates v0.6 onboarding
+  pipeline integrating A4 lazy-spawn (Step 3.1) + A6 doctor (Step
+  3.2.a + 3.2.b) + H5 multi-dimension state-detection (Step 3.3)
+  into user-facing CLI flow
+- Detect-then-scaffold reorder + first doctor run (gateway check)
+  + H5 state-driven routing decision + atlas creation (idempotent
+  skip-when-current) + smoke test (atlas-only mode validation) +
+  .mcp.json idempotent upsert + sectioned success message +
+  language-aware first-query suggestions
+- B13-flags `--cc-only` boolean opt-in integration into config
+  setup (architecture field added to ContextAtlasConfig schema;
+  cohort substrate captures architectural-choice usage data for
+  v0.7 architectural decision)
+
+v0.6-SCOPE.md success criterion #1 (Stream A pipeline-mechanics
+shipped + tested) **✓ MET** at Step 4.5 close (substantive
+shipping; Step 4.6 is mechanical batching).
+
+Step 5 Stream B targeted matrix-replication subset unblocked
+next per v0.6-SCOPE.md §Sequencing recommended execution order.
+
+#### Step 4 cumulative deliverable counts
+
+- 7 commits across 7 substeps
+- ~3,000 LOC across Step 4 (~390 + 275 + 393 + 628 + 952 + 640
+  net Step 4 LOC; Step 4.6 close progress log batching adds
+  STEP-PLAN-V0.6.md edit only)
+- 90 net new tests across Step 4 (1153 → 1243; +14 [4.1] + +13
+  [4.2] + +18 [4.3] + +19 [4.4] + +26 [4.5])
+- Six new src/init/ modules: runner.ts + routing.ts + config-
+  scaffold.ts + mcp-registration.ts + smoke-test.ts + success-
+  message.ts (each with adjacent .test.ts file per CLAUDE.md
+  adjacent-tests discipline)
+
+#### Cycle-execution observation 1 — Step N.0 cadence applied at substep level
+
+Step N.0 design-adjudication cadence convention extended to
+substep-level for substantive substeps. Q4.2.1-Q4.2.6 + Q4.3.1-
+Q4.3.5 + Q4.4.1-Q4.4.7 + Q4.5.1-Q4.5.5 sub-adjudication
+clusters (28 sub-adjudications across 4 substeps) each surfaced
+inline before commit per discipline #3 cadence applied at
+substep-design-phase work.
+
+Methodology pattern observation: Step N.0 cadence at top-level
+(Step 4.0) anchors substep ladder; sub-adjudications at substep-
+design-phase (Step 4.X surface review) refine implementation
+specifics. Two-tier adjudication structure preserves clean audit
+trail without bloating Step 4.0 with implementation-detail
+adjudications. Pattern carry-forward to Steps 5+ where
+substantive design surfaces warrant sub-adjudication clusters.
+
+#### Cycle-execution observation 2 — Q4.4.7 dogfood integration test deferred
+
+Q4.4.7 locked dogfood integration test with skip-when-current
+path. Dev's design-time analysis surfaced flakiness concerns:
+process.cwd() against contextatlas repo introduces
+extracted_at_sha drift relative to HEAD during active dev;
+.mcp.json write side-effect on test repo. Both add flakiness
+without robust coverage.
+
+Refinement applied at execution-time per Q11-style execution-
+time refinement pattern: "no dogfood integration test at v0.6;
+coverage redistributed across smoke-test.test.ts (sample-atlas
+fixture; real importAtlasFile + listAllSymbols + buildBundle
+reads) + runner.test.ts Step 4.4 atlas+smoke+MCP behavior tests
+(orchestration paths covered against tmp dir + sample-atlas
+fixture); cohort exposure at Step 7 covers full extraction path
+per Q4.0.13 + Q4.4.7 framing." Discipline #3 surface-during-
+implementation cadence applied.
+
+#### Cycle-execution observation 3 — readPackageVersion shared utility annotation
+
+Step 4.4 surface review verification result: src/index.ts
+readPackageVersion is private + location-bound (its
+import.meta.url resolves relative to src/index.ts; reuse from
+src/init/runner.ts walks wrong path). Direct reuse requires
+refactor (export + signature change to take moduleUrl parameter
+OR extract to shared utility module).
+
+Pragmatic resolution applied at Step 4.4: inline
+readContextAtlasVersion helper in runner.ts (~12 LOC) using same
+multi-level walk pattern as resolveContextatlasCommitSha from
+cli-runner.ts:286-308 + resolveContextAtlasBinary from Step 4.4
+design. Avoids brittle "0.6-dev" hardcode without expanding
+scope to refactor src/index.ts.
+
+Q11-style annotation: shared utility module extraction (e.g.,
+`src/utils/package-meta.ts`) deferred to Step 4.5 OR v0.7+
+pending substantive cross-module reuse demand. Substrate-
+archaeology-readability preserved.
+
+#### Discipline #3 cadence-catches at Step 4
+
+Two cadence-catches recorded at Step 4 surface reviews:
+- **16th instance — Step 4.0 Q4.0.5 surface (flag UX):** Dev's
+  Q4.0.5 surface re-introduced `--architecture=<api|claude-code-
+  only>` form that conflated Section A v0.6-SCOPE.md placeholder
+  framing with Q5 lock from Step 1.0. Travis adjudication: apply
+  Q5 lock per "B13-flags --cc-only boolean opt-in integration
+  into A7 config setup per Q5 lock" (STEP-PLAN-V0.6.md §4 scope
+  text). Q5 lock applicability re-established + Q11-style
+  refinement clause added at Step 4.0 commit body.
+- **17th instance — Step 4.4 implementation (smoke test pre-
+  flight check):** Dev caught at first test run that
+  openDatabase requires `.contextatlas/` directory to exist;
+  added pre-flight check (existsSync atlas + cache paths) that
+  surfaces missing atlas as actionable smoke failure before
+  opening db. Discipline #3 surface-during-implementation cadence
+  working.
+
+Cumulative across v0.5 + v0.6 cycles: 17 cadence-catches
+recorded; pattern continues to validate discipline #3 + #4
+paired operation (catches at surface; honest-scope at execution).
+
+---
+
+### Step 4.5 shipped — 2026-05-05
+
+V0.6 Step 4.5 ships sectioned success message + first-query
+suggestion UX + exit code flip per Q4.0.8 lock + [OK] ASCII
+marker refinement at Step 4.0 + Q4.5.1-Q4.5.5 sub-adjudications.
+
+| Substep | branch | commit | Notes |
+|---|---|---|---|
+| 4.5 | main | 9328bf0 | 26 net new tests; 640 insertions / 19 deletions across 6 files |
+
+#### Implementation summary
+
+Five sub-adjudications locked at Step 4.5 surface (Q4.5.1-
+Q4.5.5):
+- Q4.5.1 (β) src/init/success-message.ts new file (matches
+  src/init/ pure-function module pattern)
+- Q4.5.2 (α) struct-at-end accumulation pattern;
+  InitSuccessState shape
+- Q4.5.3 (α) atlasSymbolCount added to SmokeTestResult success
+  path
+- Q4.5.4 (α) symbol-name-based with kind-tag for language-aware
+  first-query suggestions; works across all 3 supported langs
+  without per-language template proliferation
+- Q4.5.5 route-to-exit-code mapping flip: automated paths
+  return exit code 0 on success (was 2 fail-loudly per Q4.2.6)
+
+Sectioned success message renders 4 sections (Setup / Smoke /
+Try-in-next-Claude-Code-session / Re-run) with [OK] ASCII
+markers throughout per Q4.0.8 + cohort-process discipline +
+[OK] refinement at Step 4.0 (terminal output reliability across
+cohort participant terminal configurations).
+
+In-place test flip per single-source-of-truth discipline:
+4 existing runner.test.ts tests flipped from exitCode:2 to
+exitCode:0 per Q4.5.5 + Q4.5 Point 6 lock.
+
+#### Q4.2.6 fail-loudly framing finally lifted
+
+Q4.2.6 locked at Step 4.2 design surface: "preserve fail-loudly
+with exit code 2 between Step 4.2 and Step 4.5 commits; Step
+4.5 commit flips final exit code semantics." Q4.5.5 lock at
+Step 4.5 design surface: automated + automated-with-warning
+paths flip to exit code 0; smoke-fail preserves exit code 2 per
+Q4.0.7; doctor-fail + atlas-fail preserve exit code 1 per
+ADR-12. Fail-loudly framing finally lifted at Step 4.5 close.
+
+#### Step 4.5 unblock
+
+Step 4.6 close (progress log batching) unblocked next per
+Q4.0.1 ladder + 7-substep specification.
+
+---
+
+### Step 4.4 shipped — 2026-05-05
+
+V0.6 Step 4.4 ships atlas creation (runIndexSubcommand reuse) +
+smoke test (first-symbol-from-atlas in-process buildBundle) +
+MCP registration (.mcp.json idempotent upsert) per Q4.0.6 +
+Q4.0.7 + Q4.0.10 locks at Step 4.0 + Q4.4.1-Q4.4.7 sub-
+adjudications.
+
+| Substep | branch | commit | Notes |
+|---|---|---|---|
+| 4.4 | main | 78f4a37 | 19 net new tests; 952 insertions / 57 deletions across 6 files |
+
+#### Implementation summary
+
+Seven sub-adjudications locked at Step 4.4 surface (Q4.4.1-
+Q4.4.7):
+- Q4.4.1 (α) stub adapter (NEVER_CALLED_ADAPTER) + atlas-only
+  mode validates A4 lazy-spawn end-to-end via smoke test path;
+  doctor deep health check covers LSP path separately (non-
+  overlapping coverage)
+- Q4.4.2 (α) first symbol by id from listAllSymbols
+  (deterministic; sorted by id)
+- Q4.4.3 (α) pre-check via detectAtlasOnlyAvailable; skip
+  extraction if atlas current with HEAD
+- Q4.4.4 (α) pass-through with init exit code 1 on any non-zero
+  from runIndexSubcommand
+- Q4.4.5 (α) src/init/mcp-registration.ts file location
+- Q4.4.6 (α) walk-up from import.meta.url for binary path
+  resolution; falls back to process.execPath
+- Q4.4.7 LOCK: real-extraction test uses idempotent skip-when-
+  current path (avoids real Anthropic API cost)
+
+readPackageVersion verification result (Point 5 refinement):
+inline helper readContextAtlasVersion in runner.ts (~12 LOC)
+avoids brittle "0.6-dev" hardcode; shared utility module
+refactor opportunity recorded as Q11-style annotation for v0.7+.
+
+Q4.4.7 dogfood integration test deferred per execution-time
+flakiness analysis (extracted_at_sha drift + .mcp.json write
+side-effect); coverage redistributed across smoke-test.test.ts
+(sample-atlas fixture) + runner.test.ts (orchestration paths) +
+cohort exposure at Step 7.
+
+A4 lazy-spawn empirical validation: smoke test exercises atlas-
+only mode end-to-end; NEVER_CALLED_ADAPTER stub canary throws
+if A4 fails to gate adapter calls; ~500ms-per-query optimization
+works in integrated pipeline.
+
+Smoke test pre-flight check caught at first test run: openDatabase
+requires `.contextatlas/` directory to exist; pre-flight check
+(existsSync atlas + cache paths) surfaces missing atlas as
+actionable smoke failure before opening db. Discipline #3
+surface-during-implementation cadence 17th instance.
+
+#### Step 4.4 unblock
+
+Step 4.5 (success message + first-query suggestion UX + exit
+code flip) unblocked per Q4.0.8 lock + [OK] ASCII marker
+refinement at Step 4.0.
+
+---
+
+### Step 4.3 shipped — 2026-05-05
+
+V0.6 Step 4.3 ships doctor gateway invocation + H5 state-driven
+routing module per Q4.0.3 + Q4.0.4 + Q4.0.9 locks at Step 4.0 +
+Q4.3.1-Q4.3.5 sub-adjudications.
+
+| Substep | branch | commit | Notes |
+|---|---|---|---|
+| 4.3 | main | 10c0549 | 18 net new tests; 628 insertions / 63 deletions across 6 files |
+
+#### Implementation summary
+
+Five sub-adjudications locked at Step 4.3 surface (Q4.3.1-
+Q4.3.5):
+- Q4.3.1 (α) collectChecks direct call per Q4.0.4 lock
+- Q4.3.2 (α) src/init/routing.ts pure function module
+- Q4.3.3 (α) detectLanguagesFromFilesystem helper refactor +
+  LanguageCode subset filter (typescript / python / go)
+- Q4.3.4 (α) detect-then-scaffold reorder; STEP_4_2_LANGUAGES_
+  PLACEHOLDER removed from runner.ts; Q4.2.4 Q11-style refinement
+  realized
+- Q4.3.5 route-to-exit-code mapping clarifies Q4.2.6 fail-loudly
+  applies to automated path only; interactive paths exit code 0
+  per Q4.0.9; doctor FAIL exit code 1 per ADR-12
+
+[init] prefix verification result: existing convention is
+`<subcommand>:` colon-prefix in stderr log lines (per
+src/extraction/cli-runner.ts); NO prefix in stdout structured
+output (per doctor's formatText). Init follows both: log.error
+/log.info use "init: ..." prefix; route messages on stdout use
+no prefix.
+
+Routing taxonomy 4 routes per Q4.0.9 lock: existing-repo-with-
+ADRs (automated) / existing-repo-missing-ADRs (interactive
+guidance) / new-project (interactive guidance) / substantive-
+content-warning (advisory inline within automated path). All
+paths default non-interactive (print guidance + exit cleanly per
+Q4.0.9).
+
+#### Step 4.3 unblock
+
+Step 4.4 (atlas creation + smoke test + MCP registration)
+unblocked per Q4.0.6 + Q4.0.7 + Q4.0.10 locks.
+
+---
+
+### Step 4.2 shipped — 2026-05-05
+
+V0.6 Step 4.2 ships config setup + B13-flags --cc-only
+integration + .contextatlas.yml scaffold writer per Q4.0.5
+lock + Q5 lock applicability + Q4.2.1-Q4.2.6 sub-adjudications.
+
+| Substep | branch | commit | Notes |
+|---|---|---|---|
+| 4.2 | main | f14cb04 | 13 net new tests; 393 insertions / 37 deletions across 7 files |
+
+#### Implementation summary
+
+Six sub-adjudications locked at Step 4.2 surface (Q4.2.1-
+Q4.2.6):
+- Q4.2.1 (α) top-level architecture field placement
+- Q4.2.2 (α) optional with absent-means-default
+- Q4.2.3 (α) src/init/config-scaffold.ts file location
+- Q4.2.4 (β) pure-function scaffold writer + placeholder
+  caller; Step 4.2 hard-codes ["typescript"] languages
+  placeholder; Step 4.3 wires H5 detection per Q11-style
+  refinement (realized at Step 4.3)
+- Q4.2.5 (α) single function with result enum (created |
+  preserved)
+- Q4.2.6 (α) preserve fail-loudly with exit code 2 between
+  Step 4.2 and Step 4.5 commits (lifted at Step 4.5 close)
+
+Methodology pattern observation: Step N.0 design-adjudication
+cadence convention applied at substep level for substantive
+substeps (first instance at Q4.2.1-Q4.2.6 cluster); pattern
+carries forward to Q4.3, Q4.4, Q4.5 sub-adjudication clusters.
+
+ContextAtlasConfig schema bump: architecture field added
+(optional with default "anthropic-api-claude-code"; type union
+"anthropic-api-claude-code" | "claude-code-only"). Parser
+TOP_LEVEL_KEYS extended; validateArchitecture wired per
+existing per-section-validator pattern.
+
+Pure function scaffold writer + idempotent shape per Q4.2.5
+single-function-with-result-enum lock; YAML header comment for
+cohort UX provenance + DESIGN.md cross-reference.
+
+#### Step 4.2 unblock
+
+Step 4.3 (doctor invocation orchestration + H5 state-driven
+routing) unblocked per Q4.0.3 + Q4.0.4 + Q4.0.9 locks.
+
+---
+
+### Step 4.1 shipped — 2026-05-05
+
+V0.6 Step 4.1 ships init subcommand entry-point + parseArgs
+wiring + new file scaffold (`src/init/runner.ts`) per Q4.0.2
+lock + Q4.0.13 unit-test coverage.
+
+| Substep | branch | commit | Notes |
+|---|---|---|---|
+| 4.1 | main | 582d52d | 14 net new tests; 275 insertions / 11 deletions across 5 files |
+
+#### Implementation summary
+
+Subcommand wiring per Q4.0.2 lock:
+- Subcommand union extended: `"mcp" | "index" | "doctor" |
+  "init"`
+- KNOWN_SUBCOMMANDS adds `"init"`; SUBCOMMAND_SUGGESTIONS
+  removes `"init"` → `"index"` entry (init now real subcommand)
+- ParsedArgs adds `ccOnly: boolean` field
+- parseArgs body adds `--cc-only` flag handling (boolean form
+  only per Q5 lock + Q4.0.5 refinement; no --cc-only=value form)
+- Compatibility rules: `--cc-only` only with init; `--json` now
+  also accepted with init (compat error message updated)
+- USAGE string updated to mention `[index|doctor|init]` +
+  `[--cc-only]`; mechanical typo fix (trailing double-space
+  before "(see ADR-08, ADR-11, ADR-12)" → single space)
+- src/index.ts adds `subcommand === "init"` dispatch branch
+  parallel to existing doctor/index dispatches per Q4.0.2 lock
+
+Runner scaffold (src/init/runner.ts) — Step 4.1 scope: scaffold
++ signature only. Returns exit code 2 ("setup error: not yet
+implemented") with log.error stderr message — fail-loudly per
+CLAUDE.md guidance prevents silent confusion between Step 4.1
+scaffold and Step 4.2-4.5 orchestration commits.
+
+Test seams pre-emptive per DoctorRunOptions/IndexCliOptions
+pattern (writeStdout + writeStderr fields).
+
+#### Step 4.1 unblock
+
+Step 4.2 (config setup + B13-flags --cc-only integration +
+.contextatlas.yml scaffold writer) unblocked per Q4.0.5 lock +
+Q5 lock applicability.
+
+---
 
 ### Step 4.0 shipped — 2026-05-05
 
