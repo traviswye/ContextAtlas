@@ -1,13 +1,17 @@
 /**
  * LSP-category doctor checks (per configured language).
  *
- * Two checks per language: `executable_in_path` (binary findable)
- * + `spawn_test` (initialize + shutdown within ceiling). Skipped
- * entirely in limited mode.
+ * Three checks per language: `executable_in_path` (binary findable)
+ * + `spawn_test` (initialize + shutdown within ceiling) +
+ * `deep_health_check` (initialize → listSymbols → findReferences
+ * → shutdown sample-symbol traversal). Skipped entirely in limited
+ * mode.
  *
- * Spawn test stays minimal — initialize + shutdown — per Q5 lock.
- * Deeper LSP health (initialize → didOpen → diagnostic-arrival →
- * shutdown) is v0.5+ candidate.
+ * `spawn_test` stays minimal per v0.4 Q5 lock. `deep_health_check`
+ * shipped at v0.6 Step 3.2 per A6 + Q3.0.2 lock; catches adapter-
+ * deep regressions like gopls workspace-load failure on
+ * `go.mod`-less directories (v0.5+ candidate #6 motivating example)
+ * that the minimal `spawn_test` misses.
  */
 
 import { createRequire } from "node:module";
@@ -16,8 +20,16 @@ import { spawnSync } from "node:child_process";
 import { createAdapter } from "../../adapters/registry.js";
 import type { LanguageCode } from "../../types.js";
 import type { CheckContext, DoctorCheck } from "../types.js";
+import { findSampleSymbol } from "./sample-symbol.js";
 
 const SPAWN_TIMEOUT_MS = 10_000;
+
+/**
+ * Extended ceiling for deep health check — initialize + listSymbols
+ * + findReferences + shutdown can take longer than minimal
+ * spawn_test, especially on first-run cold-start adapter init.
+ */
+const DEEP_HEALTH_TIMEOUT_MS = 30_000;
 
 export async function lspChecks(ctx: CheckContext): Promise<DoctorCheck[]> {
   const out: DoctorCheck[] = [];
@@ -27,6 +39,7 @@ export async function lspChecks(ctx: CheckContext): Promise<DoctorCheck[]> {
   for (const lang of config.languages) {
     out.push(...checkExecutable(lang));
     out.push(await checkSpawn(lang, ctx.repoRoot));
+    out.push(await checkDeepHealth(lang, ctx.repoRoot));
   }
   return out;
 }
@@ -155,4 +168,153 @@ async function checkSpawn(
   })();
 
   return Promise.race([real, timeout]);
+}
+
+/**
+ * Deep LSP health check per A6 + Q3.0.2 lock at v0.6 Step 3.0.
+ * Sequence: createAdapter → initialize → findSampleSymbol (lists
+ * symbols on first source file matching language extensions) →
+ * findReferences against sample symbol → shutdown. Catches adapter-
+ * deep failures (e.g., gopls workspace-load failure on `go.mod`-
+ * less directories per v0.5+ candidate #6 motivating example) that
+ * minimal `spawn_test` misses.
+ *
+ * Failure modes mapped to status:
+ * - Adapter construction fail / initialize fail → fail
+ * - findReferences throws → fail (deep regression target)
+ * - No source files / no symbols → warn (can't run; not a fail)
+ * - Timeout → fail
+ *
+ * Per Q3.0.2 lock: 1 symbol per language adapter detected; runtime
+ * discovery from actual user-repo state per Adjudication 1 lock at
+ * v0.6 Step 3.2 surface review.
+ */
+async function checkDeepHealth(
+  lang: LanguageCode,
+  repoRoot: string,
+): Promise<DoctorCheck> {
+  const id = `lsp.${lang}.deep_health_check`;
+  let adapter;
+  try {
+    adapter = createAdapter(lang);
+  } catch (err) {
+    return {
+      id,
+      category: "lsp",
+      status: "fail",
+      message: `adapter construction failed`,
+      detail: err instanceof Error ? err.message : String(err),
+    };
+  }
+
+  const t0 = Date.now();
+  const work = (async (): Promise<DoctorCheck> => {
+    try {
+      await adapter.initialize(repoRoot);
+    } catch (err) {
+      return {
+        id,
+        category: "lsp",
+        status: "fail",
+        message: `initialize failed`,
+        detail: err instanceof Error ? err.message : String(err),
+      };
+    }
+
+    let sample: { file: string; symbol: { id: string; name: string } } | null;
+    try {
+      sample = await findSampleSymbol(adapter, repoRoot);
+    } catch (err) {
+      try {
+        await adapter.shutdown();
+      } catch {
+        // shutdown errors during failure recovery are best-effort;
+        // primary failure already captured below
+      }
+      return {
+        id,
+        category: "lsp",
+        status: "fail",
+        message: `sample symbol discovery failed`,
+        detail: err instanceof Error ? err.message : String(err),
+      };
+    }
+
+    if (sample === null) {
+      try {
+        await adapter.shutdown();
+      } catch {
+        // best-effort shutdown; warn outcome already determined
+      }
+      return {
+        id,
+        category: "lsp",
+        status: "warn",
+        message: `no source files / symbols found for sample traversal`,
+        detail:
+          `repoRoot has no ${lang} source files OR adapter listSymbols ` +
+          `returned empty for all candidates. Deep health check requires ` +
+          `at least one symbol; consider running on a populated repo.`,
+      };
+    }
+
+    try {
+      await adapter.findReferences(sample.symbol.id as never);
+    } catch (err) {
+      try {
+        await adapter.shutdown();
+      } catch {
+        // best-effort; primary findReferences failure captured below
+      }
+      return {
+        id,
+        category: "lsp",
+        status: "fail",
+        message: `findReferences traversal failed`,
+        detail:
+          (err instanceof Error ? err.message : String(err)) +
+          ` (sample: ${sample.symbol.name} at ${sample.file})`,
+      };
+    }
+
+    try {
+      await adapter.shutdown();
+    } catch (err) {
+      return {
+        id,
+        category: "lsp",
+        status: "fail",
+        message: `shutdown failed after deep traversal`,
+        detail: err instanceof Error ? err.message : String(err),
+      };
+    }
+
+    const dt = Date.now() - t0;
+    return {
+      id,
+      category: "lsp",
+      status: "pass",
+      message: `deep health completed in ${dt}ms`,
+      detail: `sample: ${sample.symbol.name} at ${sample.file}`,
+    };
+  })();
+
+  const timeout = new Promise<DoctorCheck>((resolve) =>
+    setTimeout(
+      () =>
+        resolve({
+          id,
+          category: "lsp",
+          status: "fail",
+          message: `deep health check exceeded ${DEEP_HEALTH_TIMEOUT_MS / 1000}s ceiling`,
+          detail:
+            "Deep health includes sample symbol traversal; if exceeding " +
+            "ceiling, adapter may be slow on listSymbols or findReferences " +
+            "on this repo. Investigate via per-adapter probe scripts.",
+        }),
+      DEEP_HEALTH_TIMEOUT_MS,
+    ),
+  );
+
+  return Promise.race([work, timeout]);
 }

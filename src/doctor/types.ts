@@ -17,7 +17,8 @@ export type CheckCategory =
   | "atlas"
   | "sha"
   | "lsp"
-  | "extraction";
+  | "extraction"
+  | "state-detection";
 
 export interface DoctorCheck {
   /**
