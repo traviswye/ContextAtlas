@@ -163,8 +163,20 @@ cost projection recalculation (Opus 4.7 = 1.67× Sonnet pricing per
 Step 2 finding #3). T-S scope; no dependencies; unblocks Stream B
 subset budgeting at Step 5.
 
-**Substeps.** Step 2.0 design-adjudication substep firms substep-
-level breakdown per Step N.0 cadence convention.
+**Substeps.**
+
+- [x] **Step 2.0** — Design adjudications: Q2.0.1-Q2.0.4 locks
+  (CLAUDE.md addition section name + two distinct substeps +
+  direct amendment + split documentation).
+- [ ] **Step 2.1** — E2 CLAUDE.md addition: "Cost-priors
+  interpretation discipline (v0.6 Step 2 / E2 lock)" section
+  alongside existing "Extraction cost framing" section.
+- [ ] **Step 2.2** — B15 ADR-19 §2 amendment: Opus 4.7 = 1.67×
+  Sonnet pricing; amendment marker + revision history entry per
+  v0.5 §4 amendment precedent.
+- [ ] **Step 2.3** — Step 2 close commit: progress log close
+  entry + cross-references between CLAUDE.md section + ADR-19
+  amendment.
 
 **Unblocks.** Step 5 Stream B subset cost-budgeting + execution.
 
@@ -335,6 +347,110 @@ B-with-explicit-launch-staging.
 ## Progress log
 
 *Entries added in reverse-chronological order as steps ship.*
+
+### Step 2.0 shipped — 2026-05-05
+
+V0.6 Step 2 (Stream B foundations: E2 priors interpretation
+discipline + B15 ADR-19 §2 cost projection recalculation) opens
+with Step 2.0 design-adjudication substep per Step N.0 cadence
+convention. Q2.0.1-Q2.0.4 design adjudications surfaced + locked
+per discipline #3 surface-inline-before-commit cadence applied to
+step-design-phase work.
+
+| Substep | branch | commit | Notes |
+|---|---|---|---|
+| 2.0 design adjudications | main | [this commit] | Q2.0.1-Q2.0.4 locks captured; Step 2 substep ladder firmed (2.0 → 2.1 → 2.2 → 2.3) |
+
+#### Q2.0.1 lock — E2 priors interpretation discipline documentation location
+
+**Locked:** (α) CLAUDE.md section addition. Section name:
+"Cost-priors interpretation discipline (v0.6 Step 2 / E2 lock)"
+matching v0.5 Step 10 precedent format ("Extraction cost framing
+(v0.4 Step 6 / Q5 lock; v0.5 Step 10 adaptive priors closure)").
+
+Methodology rationale: matches v0.5 Step 10.2 Pipeline Integration
+Discipline precedent — CLAUDE.md is canonical home for cycle-
+execution-time discipline guidance. E2 priors interpretation is
+analogous: discipline guidance for future cycles consuming
+versioned cost-priors snapshots; lives alongside existing
+Extraction cost framing section.
+
+#### Q2.0.2 lock — E2 + B15 substep structure
+
+**Locked:** (β) two distinct substeps. Step 2 substep ladder:
+- Step 2.0 — Design adjudications (this commit)
+- Step 2.1 — E2 CLAUDE.md addition
+- Step 2.2 — B15 ADR-19 §2 amendment
+- Step 2.3 — Step 2 close commit
+
+Methodology rationale: matches v0.5 Step 5 multi-substep precedent
+(5.0 design + 5.1 stats.ts + 5.2 reporting.ts + 5.3 scripts/lib/
+stats.mjs + 5.4 close). Substep-bounded ship-discipline preserves
+cleaner audit trail for archaeology readers.
+
+#### Q2.0.3 lock — B15 ADR-19 §2 amendment pattern
+
+**Locked:** (α) direct amendment to ADR-19 §2. Matches v0.5 Step
+5.0 §4 paired-t amendment at commit `05c9fc7` precedent. Amendment
+specifications:
+- §2 content updated with Opus 4.7 = 1.67× Sonnet pricing applied
+  (per Step 2 finding #3; Opus 4.7 verified pricing 2026-04-30)
+- Amendment marker: "**§2 amendment 2026-05-XX commit `[backfill
+  SHA]`** replaces Sonnet-baseline-referenced framing with current
+  Opus 4.7 pricing"
+- ADR-19 revision history entry mirroring v0.5 §4 amendment
+  revision-history pattern
+- Commit SHA backfill discipline per v0.5 SHA-placeholder-backfill
+  precedent
+
+Methodology rationale: maintains ADR canonical-decision-record
+property; precedent inheritance preserved; archaeology-reader
+navigation simple (single ADR-19 file with revision history showing
+amendments).
+
+#### Q2.0.4 lock — Cost-projection-discipline documentation scope split
+
+**Locked:** (α) split. Distinct purposes warrant distinct documents:
+- **ADR-19 §2 amendment (B15 work):** canonical-decision-record
+  updates only — Opus 4.7 pricing recalc; cost-projection
+  methodology-rigor for matrix-replication subset budgeting.
+- **CLAUDE.md cost-priors interpretation discipline section (E2
+  work):** cycle-execution-time discipline for future cycles
+  consuming versioned cost-priors snapshots (atlas-version-based
+  filter discipline + cumulative aggregation discipline + mid-
+  cycle priors-update variance discipline + cost-projection-vs-
+  priors-drift discipline).
+
+Bidirectional cross-reference pattern: CLAUDE.md section references
+ADR-19 §2 amendment for full pricing-model context; ADR-19 §2
+amendment references CLAUDE.md section for application-discipline
+context.
+
+#### Inheritance framing observation for Step 2.1
+
+The 4 sub-disciplines enumerated for CLAUDE.md addition are
+**inheritance from v0.5 substrate**, not v0.6-specific creation.
+Step 2.1 implementation explicitly cross-references v0.5 substrate
+sources:
+- Phase-9 ref-doc §10 limit #8 (mid-cycle priors-update variance)
+- v0.5 Step 10.1 Q4(i) lock (atlas-version-based filter forward-
+  applicable interpretation primary)
+- v0.5 Step 10.1 Q4(ii) lock (cumulative aggregation discipline;
+  rolling-N deferred to v0.6+ candidate per B16 closure)
+- v0.5 cost-priors-v0.5.json provenance (snapshot at benchmarks-
+  repo root; versioned discipline)
+
+Framing: discipline guidance for FUTURE cycles consuming versioned
+cost-priors snapshots, with v0.6 as first-cycle applying discipline.
+CLAUDE.md addition documents EXISTING discipline applicable to
+v0.6+ cycles, not new discipline introduced at v0.6.
+
+#### Step 2.0 unblock
+
+Step 2.1 (E2 CLAUDE.md addition) + Step 2.2 (B15 ADR-19 §2
+amendment) implementation work unblocked per Q2.0.1-Q2.0.4 locks.
+
+---
 
 ### Step 1.0 shipped — 2026-05-05
 
