@@ -238,8 +238,33 @@ A7 config setup per Q5 lock. UX flow per Q4 hybrid lock (automated
 default path + interactive missing-substrate path per H5 state-
 detection); specific message wording firms at Step 4 implementation.
 
-**Substeps.** Step 4.0 design-adjudication substep firms substep-
-level breakdown per Step N.0 cadence convention.
+**Substeps.**
+
+- [x] **Step 4.0** — Design adjudications: Q4.0.1-Q4.0.13 locks
+  (7-substep ladder; new init subcommand; H5 state-detection
+  reuse via stateDetectionChecks; two doctor runs; --cc-only
+  boolean opt-in per Q5 lock; runIndexSubcommand reuse; first-
+  symbol-from-atlas smoke test; structured sectioned success
+  message with [OK] ASCII marker; routing taxonomy 4 routes;
+  auto-register .mcp.json with idempotent behavior; minimal flag
+  surface; idempotent skip-when-present; unit + integration
+  tests).
+- [ ] **Step 4.1** — `init` subcommand entry-point + parseArgs
+  wiring + new file scaffold (`src/init/runner.ts`) per Q4.0.2
+  lock.
+- [ ] **Step 4.2** — Config setup walkthrough + B13-flags
+  `--cc-only` integration + `.contextatlas.yml` scaffold writer
+  per Q4.0.5 lock + Q5 lock applicability.
+- [ ] **Step 4.3** — Doctor invocation orchestration + H5 state-
+  driven routing decision module (`src/init/routing.ts`) per
+  Q4.0.3 + Q4.0.4 + Q4.0.9 locks.
+- [ ] **Step 4.4** — Atlas creation (runIndexSubcommand reuse) +
+  smoke test (first-symbol-from-atlas) + MCP registration
+  (`.mcp.json` upsert) per Q4.0.6 + Q4.0.7 + Q4.0.10 locks.
+- [ ] **Step 4.5** — Success message + first-query suggestion UX
+  (structured sectioned with [OK] ASCII marker) per Q4.0.8 lock.
+- [ ] **Step 4.6** — Step 4 close commit: progress log batching
+  for Steps 4.1 + 4.2 + 4.3 + 4.4 + 4.5 + 4.6.
 
 **Unblocks.** Step 6 Stream C tooling readiness (cohort feedback
 template + observability prerequisite); Step 7 cohort exposure
@@ -379,6 +404,289 @@ B-with-explicit-launch-staging.
 ## Progress log
 
 *Entries added in reverse-chronological order as steps ship.*
+
+### Step 4.0 shipped — 2026-05-05
+
+V0.6 Step 4 (Stream A pipeline assembly: A7 self-use onboarding
+pipeline + B13-flags `--cc-only` integration) opens with Step
+4.0 design-adjudication substep per Step N.0 cadence convention.
+Q4.0.1-Q4.0.13 design adjudications surfaced + locked per
+discipline #3 surface-inline-before-commit cadence applied to
+step-design-phase work. Heavier substep ladder than Step 3
+(7 substeps vs 5) per A7 user-facing UX breadth as predicted at
+Step 3.4 close.
+
+| Substep | branch | commit | Notes |
+|---|---|---|---|
+| 4.0 design adjudications | main | [this commit] | Q4.0.1-Q4.0.13 locks captured; Step 4 substep ladder firmed (4.0 → 4.1 → 4.2 → 4.3 → 4.4 → 4.5 → 4.6) |
+
+#### Q4.0.1 lock — Substep structure
+
+**Locked:** (β) distinct substeps. Step 4 substep ladder:
+- Step 4.0 — Design adjudications (this commit)
+- Step 4.1 — `init` subcommand entry-point + parseArgs wiring +
+  new file scaffold (`src/init/runner.ts`)
+- Step 4.2 — Config setup walkthrough + B13-flags `--cc-only`
+  integration + `.contextatlas.yml` scaffold writer
+- Step 4.3 — Doctor invocation orchestration + H5 state-driven
+  routing decision module (`src/init/routing.ts`)
+- Step 4.4 — Atlas creation (runIndexSubcommand reuse) + smoke
+  test + MCP registration (`.mcp.json` upsert)
+- Step 4.5 — Success message + first-query suggestion UX
+- Step 4.6 — Step 4 close commit
+
+Methodology rationale: matches v0.5 Step 5 + v0.6 Step 2 + v0.6
+Step 3 multi-substep precedent. Each substep ships discrete
+artifact; substep-bounded ship-discipline preserves cleaner audit
+trail; scope-anxiety pre-empted at design time per Q11-style
+refinement-anticipation pattern. Heavier ladder than Step 3
+(7 substeps vs Step 3's 5 after 3.2 split) per A7 user-facing
+UX breadth (entry-point + config setup + B13 + doctor + atlas
++ smoke + MCP registration + success UX).
+
+#### Q4.0.2 lock — A7 entry-point design
+
+**Locked:** (α) new `init` subcommand alongside existing
+`index` + `doctor`. Mirrors ADR-12 partition discipline ("flags
+compose, subcommands partition"). Concrete changes at Step 4.1:
+- `src/cli-args.ts`: add `"init"` to `KNOWN_SUBCOMMANDS`; remove
+  `init` from `SUBCOMMAND_SUGGESTIONS` (currently maps `init` →
+  `index`); add `Subcommand` union member; add init-specific
+  flag compatibility rules
+- `src/index.ts`: add `subcommand === "init"` dispatch branch
+  before MCP server setup (parallel to existing dispatches)
+- New file: `src/init/runner.ts` exports `runInitSubcommand`
+  (parallel to runDoctorSubcommand + runIndexSubcommand)
+
+#### Q4.0.3 lock — H5 state-detection integration shape
+
+**Locked:** (α) reuse `stateDetectionChecks(ctx)` and parse
+DoctorCheck statuses (id-based lookup) to derive routing
+decision in dedicated `src/init/routing.ts` module. Avoids
+duplicating detection logic; H5 detection-layer-separation
+observation preserved (A7 = consumer; H5 = detection layer);
+state-driven not state-enforcement per Travis personal-notes
+substrate. Routing decision module isolated for testable in
+isolation.
+
+#### Q4.0.4 lock — A6 doctor invocation pattern within A7
+
+**Locked:** (α) two doctor runs (start + end) per v0.6-SCOPE.md
+user-facing goal explicit specification (lines 143 + 152).
+Doctor-fail handling distinguished by run position:
+- First doctor run (state-detection-bearing): WARN proceeds with
+  H5-driven conditional guidance; FAIL aborts init with
+  actionable message
+- Second doctor run (post-atlas verification): WARN acceptable;
+  FAIL surfaces but doesn't abort (atlas already created)
+
+Reuses `collectChecks(repoRoot)` from src/doctor/runner.ts
+(in-process invocation; no subprocess spawn).
+
+#### Q4.0.5 lock — B13-flags integration point
+
+**Locked:** (α) flag writes to `.contextatlas.yml` only at v0.6.
+ContextAtlasConfig schema bump at Step 4.2 implementation adds
+`architecture` field (`"anthropic-api-claude-code" |
+"claude-code-only"`). Default: `"anthropic-api-claude-code"`
+(current dual-dependency; preserves backward compat).
+
+**Q5 lock applicability re-established (refinement to dev's
+Q4.0.5 surface).** Dev's Q4.0.5 surface re-introduced
+`--architecture=<api|claude-code-only>` form that conflated
+Section A v0.6-SCOPE.md placeholder framing with Q5 lock from
+Step 1.0 (commit `99bf42c`). Q5 lock applies per STEP-PLAN-V0.6
+§4 Step 4 scope text: "B13-flags `--cc-only` boolean opt-in
+integration into A7 config setup per Q5 lock."
+
+Flag UX: `--cc-only` boolean opt-in matching ADR-16
+`--narrow_attribution` precedent. Flag-to-field mapping:
+- `--cc-only` present → architecture = `"claude-code-only"`
+- `--cc-only` absent → architecture = `"anthropic-api-claude-code"`
+  (default)
+
+If Step 4.2 implementation reading surfaces empirical reason
+boolean opt-in is wrong, Q11-style explicit-flag pattern at
+Step 4.2 close progress log captures refinement. Otherwise Q5
+lock stands.
+
+Rejected (β) for v0.6: claude-code-only path's MCP-config
+implications not yet designed (v0.7 architectural decision);
+v0.6 captures usage data only without altering server shape.
+
+#### Q4.0.6 lock — Atlas creation step
+
+**Locked:** (α) reuse existing `runIndexSubcommand` (exported
+from src/extraction/cli-runner.ts:116). Init becomes pure
+orchestrator over existing primitives (doctor + index + smoke
+test); no duplicated extraction code; matches "extraction model
+unchanged" v0.6 scope discipline. Pre-population for A4 lazy-
+spawn benefit: extraction emits atlas.json + extracted_at_sha;
+subsequent smoke-test query through MCP server uses atlas-only
+mode (no adapter spawn cost); v0.6-SCOPE.md A4 framing realized
+at this composition.
+
+#### Q4.0.7 lock — Smoke test invocation
+
+**Locked:** (α) first-symbol-from-atlas (parallels findSampleSymbol
+logic from src/doctor/checks/sample-symbol.ts). In-process
+`buildBundle` invocation (NOT subprocess MCP server) — avoids
+stdio JSON-RPC protocol round-trip + spawning second contextatlas
+process during init.
+
+Smoke-test FAIL: surfaces error + actionable message ("Smoke
+test failed; atlas extraction may have produced empty atlas —
+verify ADRs are well-formed"); init exits with code **2**
+(post-atlas-but-smoke-test-fail) distinguishing from setup-fail
+(exit code 1).
+
+#### Q4.0.8 lock — Success message + first-query suggestion UX
+
+**Locked:** (α) structured sectioned message (Setup / Smoke /
+Suggestion / Re-run sections).
+
+**[OK] ASCII marker refinement (vs ✓ checkmark).** Replace
+✓ checkmark with `[OK]` ASCII for terminal output reliability
+across cohort participant terminal configurations. Per CLAUDE.md
+emoji guidance ("Only use emojis if the user explicitly requests
+it") + cohort-process discipline (terminal capability variance
+across participant environments).
+
+Refined sample shape:
+```
+[OK] ContextAtlas init complete
+
+Setup:
+  - Config: .contextatlas.yml created
+  - Atlas: .contextatlas/atlas.json (123 symbols extracted)
+  - MCP: .mcp.json registered (contextatlas server)
+
+Smoke test:
+  [OK] get_symbol_context returned bundle for sym:ts:src/foo.ts:bar
+       (5 claims, 12 references, 0.234s)
+
+Try in your next Claude Code session:
+  "What does the foo function do?" — invokes get_symbol_context
+  "Find symbols related to authentication" — invokes find_by_intent
+
+Re-run:
+  contextatlas doctor   # verify atlas + LSP health
+  contextatlas index    # refresh atlas (after ADR/code changes)
+```
+
+Specific wording firms at Step 4.5 implementation per Q11-style
+pattern. First-query suggestions language-aware if H5 detected
+language; smoke-test symbol's name plumbs into suggestion.
+
+#### Q4.0.9 lock — Interactive path message wording
+
+**Locked:** Routing taxonomy (4 routes) driven by H5 detection
+output:
+- **existing-repo-with-ADRs** (ADR count ≥1; code substantive)
+  → automated path (no interactive prompts)
+- **existing-repo-missing-ADRs** (code substantive; ADR count =0)
+  → interactive guidance (print + exit clean)
+- **new-project** (code <substantive threshold; no ADRs;
+  minimal/no README/DESIGN.md) → interactive guidance (print +
+  exit clean)
+- **substantive-content-warning** (e.g., README sparse but
+  >0 words) → advisory inline within automated path
+
+All paths default non-interactive (print guidance + exit
+cleanly; no prompts blocking on user input). v0.7 H1 layer adds
+interactive prompts based on cohort feedback. Specific wording
+defers to Step 4.3 surface (routing module) inline per Q4 lock
+framing + Q11-style pattern. UX shape (sectioned routing
+decision + actionable guidance + re-run instructions) is locked.
+
+#### Q4.0.10 lock — MCP server registration shape
+
+**Locked:** (α) auto-register at repo root `.mcp.json` per v0.6-
+SCOPE.md A7 framing explicit specification. Schema:
+```json
+{ "mcpServers": { "contextatlas": { "command": "node", "args": ["<absolute path to dist/index.js>"] } } }
+```
+
+Idempotent behavior:
+- `.mcp.json` exists with `contextatlas` server entry → leave
+  as-is + log info
+- Exists but no contextatlas entry → merge into existing
+  mcpServers preserving other entries
+- Absent → create with single contextatlas entry
+
+Args path resolution: walks from contextatlas binary
+`__dirname` to find `dist/index.js` (mirrors src/index.ts:50-55
+readPackageVersion pattern); falls back to `process.execPath`.
+
+#### Q4.0.11 lock — init flag surface
+
+**Locked:** (α) minimal flag surface for v0.6:
+- `--cc-only` (B13-flags per Q5 lock + Q4.0.5 refinement; boolean
+  opt-in)
+- `--config-root <path>` (ADR-08 inheritance)
+- `--json` (scriptable output; mirrors index/doctor pattern)
+
+Deferred flags (`--force`, `--dry-run`, `--skip-smoke-test`,
+`--non-interactive`) to v0.7+ contingent on cohort feedback per
+v0.6-SCOPE.md substrate-generation-not-feature-completion thesis.
+
+#### Q4.0.12 lock — Idempotency / re-run behavior
+
+**Locked:** (α) idempotent skip-when-present:
+- `.contextatlas.yml` exists → log info; skip config setup
+- `.contextatlas/atlas.json` exists + extracted_at_sha matches
+  HEAD → log info; skip extraction
+- `.mcp.json` has contextatlas entry → log info; skip
+  registration
+- All present + current → init becomes effective `doctor + smoke
+  test` orchestration
+
+Surfaces `--force` flag deferral cleanly (v0.7+ if cohort
+feedback warrants).
+
+#### Q4.0.13 lock — Test coverage scope
+
+**Locked:** (α) unit tests + integration tests per Q3.0.8
+inheritance + CLAUDE.md adjacent-tests discipline.
+
+Unit tests cover:
+- Routing decision module (`src/init/routing.ts`): 6+ tests
+  covering H5-state → route mapping (4 routes per Q4.0.9 lock)
+- MCP-registration upsert helper: idempotent behavior; merge-
+  into-existing case; create-fresh case; invalid-existing-shape
+  case
+- `.contextatlas.yml` scaffold writer: B13-flags plumbing;
+  default values; ContextAtlasConfig schema validation
+- Smoke test runner: success path; FAIL path with actionable
+  message + exit code 2
+
+Integration tests cover:
+- Happy-path: init contextatlas-on-itself dogfood (verifies
+  doctor pass + atlas extraction + smoke test pass + success
+  message rendered + .mcp.json written)
+- Missing-substrate: empty repo fixture (verifies new-project
+  routing path; interactive guidance message; no atlas created;
+  clean exit)
+- Existing-repo-missing-ADRs: code-only fixture (verifies
+  missing-ADRs routing path)
+- Idempotency: run init twice on same repo; second run skip-
+  when-present per Q4.0.12
+
+Cohort smoke tests deferred to Step 7 cohort exposure work per
+Q3.0.8 inheritance.
+
+#### Step 4.0 unblock
+
+Step 4.1 (`init` subcommand entry-point + parseArgs wiring +
+new file scaffold) work unblocked per Q4.0.1-Q4.0.13 locks.
+Step 4.1 surface should include:
+- Pre-implementation reading of cli-args.ts + index.ts dispatch
+  shape (already surveyed at Step 4.0 design phase)
+- Implementation specification per Q4.0.2 lock (subcommand +
+  parseArgs + new file scaffold)
+- Test coverage per Q4.0.13 lock (unit tests adjacent to source)
+
+---
 
 ### Step 3.4 shipped — 2026-05-05 (Step 3 close)
 
