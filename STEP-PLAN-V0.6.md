@@ -281,8 +281,31 @@ cell identities firm at Step 5.0 design-adjudication. Methodology
 infrastructure inherited from v0.5 (rubric / harness / paired-t
 stats per ADR-19 + Phase-9 reference doc) without modification.
 
-**Substeps.** Step 5.0 design-adjudication substep firms substep-
-level breakdown per Step N.0 cadence convention.
+**Substeps.**
+
+- [x] **Step 5.0** — Design adjudications: Q5.0.1-Q5.0.12 locks
+  (5-substep ladder; ca-favorable cell httpx/p3 + tie-bucket
+  cell hono/h10 + trick-bucket cell deferred-to-5.1; atlas-
+  version-tagging refinement at Q5.0.7 — fresh n=5 for all 8
+  cells; cost framing per honest-scope-narrative discipline;
+  explicit cost-approval gate at Step 5.2 surface).
+- [ ] **Step 5.1** — Methodology setup: trick-bucket prompt
+  inventory verification + cell-selection final lock + trial-
+  script wiring + dry-run smoke test on smallest cell to verify
+  harness end-to-end before committing to full cost (Step 5.2
+  cost-approval gate prerequisite).
+- [ ] **Step 5.2** — Full trial execution: 8 (or 7) cells × n=5 ×
+  2 conditions = 70-80 trials baseline; cost monitoring + per-
+  trial manifest writes; long wall-clock substep; cost-approval
+  gate before invocation.
+- [ ] **Step 5.3** — Statistical analysis + substrate aggregation:
+  paired-t per axis × 8 cells; cross-cell rollup at concatenated
+  N differences per Phase-9 ref-doc Option B-2; v0.5-vs-v0.6
+  tier-gradation comparison (CONFIRMS / DIVERGES classification);
+  cost-priors-v0.6.json snapshot generation; phase-10-v0.6-
+  reference-run.md drafting per Phase-9 §9 inheritance.
+- [ ] **Step 5.4** — Step 5 close commit: progress log batching
+  for Steps 5.1 + 5.2 + 5.3 + 5.4.
 
 **Unblocks.** v0.7 Stream B Q14 matrix-completion (substrate-
 handoff) + Q16 B3 evaluation (analysis pass on v0.6 trick-bucket
@@ -404,6 +427,254 @@ B-with-explicit-launch-staging.
 ## Progress log
 
 *Entries added in reverse-chronological order as steps ship.*
+
+### Step 5.0 shipped — 2026-05-05
+
+V0.6 Step 5 (Stream B targeted matrix-replication subset: 8 cells
+× n=5 × 2 conditions = ~80 trials per v0.6-SCOPE.md §7.1 Q2 lock)
+opens with Step 5.0 design-adjudication substep per Step N.0
+cadence convention. Q5.0.1-Q5.0.12 design adjudications surfaced
++ locked per discipline #3 surface-inline-before-commit cadence
+applied to step-design-phase work.
+
+Step 5 work shape transitions from Steps 3-4 code-implementation
+rhythm to empirical-evaluation rhythm (methodology setup +
+trial execution + statistical analysis + substrate aggregation).
+
+| Substep | branch | commit | Notes |
+|---|---|---|---|
+| 5.0 design adjudications | main | [this commit] | Q5.0.1-Q5.0.12 locks captured; Step 5 substep ladder firmed (5.0 → 5.1 → 5.2 → 5.3 → 5.4) |
+
+#### Q5.0.1 lock — Substep ladder shape
+
+**Locked:** (γ) 5-substep ladder. Step 5 substep ladder:
+- Step 5.0 — Design adjudications (this commit)
+- Step 5.1 — Methodology setup (cell-selection final lock + trial-
+  script wiring + dry-run smoke test)
+- Step 5.2 — Full trial execution (cost-bearing substep; explicit
+  approval gate)
+- Step 5.3 — Statistical analysis + substrate aggregation +
+  Phase-10 ref-doc drafting
+- Step 5.4 — Step 5 close commit
+
+Methodology rationale: trial execution is wall-clock-heavy + cost-
+bearing; isolating as own substep allows clean checkpoint after
+expensive execution. Step 5.3 batches analysis + aggregation per
+output→input coupling. Matches v0.5 Phase-9 reference run
+structure.
+
+#### Q5.0.2 lock — Cell selection (3 new cells)
+
+**Locked partial cells (specific identities firmed):**
+- **ca-favorable: httpx/p3-custom-auth.** Python win-bucket;
+  balances language coverage (v0.5 anchors are TS+Go heavy with
+  only p2/p4 representing Python). Tests v0.5 +0.370 factual_
+  correctness CLEAN generalization across language.
+- **tie-bucket: hono/h10-env-type-on-context.** First held-out
+  tie-bucket prompt; type-system question fits tie-bucket motif
+  (ContextAtlas atlas-claims may not capture runtime type
+  narrowing nuances better than baseline). Tests v0.5 +0.037
+  completeness NOT distinguishable generalization.
+- **trick-bucket: deferred-to-Step-5.1.** Trick-bucket prompt
+  inventory verification surfaces at Step 5.1 implementation.
+  If absent in current frozen prompt set, surfaces as rescope
+  candidate per scope-doc §Rescope conditions (drop trick-bucket
+  from v0.6 subset; defer B3 evaluation to v0.7 with broader
+  prompt-set work).
+
+Total v0.6 substrate: 5 anchor cells (httpx/p4 + cobra/c3 +
+httpx/p2 + hono/h1 + cobra/c4) + 3 new = 8 cells × n=5 × 2
+conditions = 80 trials baseline (or 7 cells × 70 trials if
+trick-bucket dropped).
+
+#### Q5.0.3 lock — Condition specification
+
+**Locked:** v0.5 inheritance. Condition A = ca (ContextAtlas);
+Condition B = beta-ca (baseline Claude Code without ContextAtlas
+MCP). Per v0.5 Phase-9 ref-doc + ADR-19 LLM-judge methodology
+specification. v0.6 inherits without modification per scope-doc
+"Stream B inherits methodology infrastructure from v0.5 without
+modification" framing.
+
+#### Q5.0.4 lock — n=5 trial count + auto-stretch policy
+
+**Locked:** v0.5 inheritance. n=5 baseline; auto-stretch n=5→8
+for cells exhibiting variance ≥ hono/h1 v0.5 baseline (calls
+range/μ ≥60% per Phase-9 ref-doc §5).
+
+Statistical power: n=5 paired-t with σ-typical = 0.5 axis-points
+detects effect size ≥0.4 at α=0.05 per v0.5 Step 6 power analysis.
+
+#### Q5.0.5 lock — Cost framing per honest-scope-narrative discipline
+
+**Locked:** Cost projection per CLAUDE.md "Extraction cost
+framing" Q5 lock + Phase-9 ref-doc cost-projection-vs-platform-
+billing 3x discipline:
+- Script-reported projection: ~$24-30 with Opus 4.7 1.67×
+  Sonnet adjustment per ADR-19 §2 amendment at Step 2.2
+- Platform-billed expected: ~$8-12 per cache-discount empirical
+  substrate (v0.5 cumulative $10.25 platform-billed vs $51-97
+  base envelope = ~12-20% ratio)
+- v0.6-SCOPE.md $14-22 envelope reads as platform-billed-target;
+  falls within envelope per cache-discount
+
+**Mid-cycle priors-update variance discipline** per CLAUDE.md
+"Cost-priors interpretation discipline (v0.6 Step 2 / E2 lock)"
++ Phase-9 ref-doc §10 limit #8: v0.6 uses static cost-priors-
+v0.5.json snapshot throughout Step 5 execution; no mid-cycle
+re-aggregation. Post-v0.6-cycle aggregation produces cost-priors-
+v0.6.json snapshot at Step 5.3 for v0.7 first-cycle consumption.
+
+**Rescope to 7 cells available** if Step 5.2 surfaces cost-
+approval concern OR if trick-bucket inventory absent (cell count
+naturally drops to 7).
+
+#### Q5.0.6 lock — Trial-execution infrastructure reuse
+
+**Locked:** v0.5 paired-t harness inheritance.
+- `scripts/run-reference.ts` — v0.5 trial execution harness
+- `scripts/lib/stats.mjs` — paired-t per ADR-19 §4 (23 tests
+  in stats.test.ts; mature)
+- `scripts/aggregate-cost-priors.mjs` — cost-priors aggregator
+- LLM-judge harness from v0.5 Step 2 (paired-mode anonymization
+  per ADR-19)
+
+New code at Step 5.3: v0.5-vs-v0.6 tier-gradation comparison
+rollup (lives in benchmarks-repo `scripts/v0.6-stepN-*.mjs` per
+existing per-step naming convention).
+
+#### Q5.0.7 lock — Statistical analysis pattern + atlas-version-tagging refinement
+
+**Locked:** ADR-19 §4 + Phase-9 methodology inheritance.
+- Per-axis paired-t per cell × condition: 8 cells × 4 axes = 32
+  paired-t evaluations
+- Cross-cell rollup at concatenated N differences per Phase-9
+  ref-doc Option B-2
+- Per-axis tier classification per ADR-19 thresholds: clean (CI
+  excludes ≥+0.05) / borderline (CI excludes ≥+0.001 but not
+  ≥+0.05) / not-distinguishable (CI includes 0)
+- Comparison rollup: v0.6 per-axis tier vs v0.5 per-axis tier;
+  CONFIRMS / DIVERGES classification (DIVERGES → rescope
+  condition trigger)
+
+**Atlas-version-tagging refinement applied (Q5.0.7 substantive
+refinement at Step 5.0 surface review).** LOCK: fresh n=5 for
+all 8 cells (40 trials × 2 conditions = 80 trials). NOT replay
+v0.5 substrate for anchor cells.
+
+Reasoning per Travis adjudication:
+- **Atlas-version-tagging discipline per E2 + Q4(i) lock at
+  Step 2.1 (commit `9aab055`):** v0.5 trial manifests are
+  contextatlas-version-tagged v0.5; v0.6 trial manifests
+  tagged v0.6. Replaying v0.5 substrate as v0.6 evidence
+  conflates atlas versions.
+- **Forward-applicable interpretation primary discipline** per
+  CLAUDE.md "Cost-priors interpretation discipline (v0.6 Step
+  2 / E2 lock)" — v0.6 substrate should be v0.6-extracted to be
+  valid v0.6 evidence.
+- Cost overhead methodologically defensible (~$24 script-
+  reported vs ~$5 if replay).
+
+N count under fresh-n=5 lock:
+- 8 cells × n=5 = 40 differences baseline
+- Auto-stretch budget headroom for ≥1 cell if hono/h1-baseline
+  variance pattern surfaces (n=5→8 same-cell extension)
+- Cross-cell rollup N ≈ 40 (no v0.5 inheritance arithmetic;
+  clean v0.6 evidence base)
+
+#### Q5.0.8 lock — Substrate-aggregation pattern
+
+**Locked:** v0.5 Phase-9 inheritance.
+- Per-trial manifests land in `benchmarks-repo/runs/<timestamp>/
+  run-manifest.json` (atlas-version-tagged via
+  `contextatlas.version_label`)
+- `cost-priors-v0.6.json` snapshot generated at Step 5.3 close
+  via `scripts/aggregate-cost-priors.mjs --window v0.4-v0.6`
+  (extends cost-priors-v0.5.json window per Q4(ii) cumulative
+  aggregation lock at Step 2)
+- Phase-10 ref-doc (`benchmarks-repo/research/phase-10-v0.6-
+  reference-run.md`) drafted at Step 5.3 close per Phase-9
+  inheritance pattern
+
+#### Q5.0.9 lock — Test coverage scope
+
+**Locked:** Reused stats.mjs already tested (23 tests; no new
+tests needed). New code at Step 5.3:
+- v0.5-vs-v0.6 tier-gradation comparison module: 4-6 new tests
+  (per-axis CONFIRMS/DIVERGES classification + edge cases)
+- Trial execution harness reuse: smoke-test against single cell
+  at Step 5.1 dry-run
+
+Specific test counts firm at Step 5.1 + Step 5.3 surface inline
+per Q11-style pattern.
+
+#### Q5.0.10 lock — Benchmarks-repo vs main-repo scope
+
+**Locked:** Step 5 work primarily in
+`C:/CodeWork/ContextAtlas-benchmarks/` (matches v0.5 Phase-9
+precedent: trial execution + statistical analysis + cost-priors
+aggregation + reference-doc all in benchmarks-repo).
+
+Main-repo touches:
+- Step 5.4 close: STEP-PLAN-V0.6.md progress log batching
+- ADR amendments (if methodology adjustment surfaces from
+  DIVERGES outcome): main-repo `docs/adr/` + bidirectional
+  cross-references per v0.5 ADR-19 §4 amendment precedent
+- v0.6-SCOPE.md: no edits expected unless rescope condition
+  triggers per scope-doc §Rescope conditions
+
+**Cross-repo SHA audit trail discipline** per v0.5 ship-gate
+inheritance: each Step 5 commit captures contextatlas SHA in
+benchmarks-repo run manifests; reverse cross-references at
+Step 5.4 close.
+
+#### Q5.0.11 lock — Cycle-emergent candidate-capture pattern
+
+**Locked:** Phase-9 ref-doc §9 inheritance. v0.6 cycle-emergent
+candidates surface during Step 5 execution → captured in
+`benchmarks-repo/research/phase-10-v0.6-reference-run.md` §9
+(cycle-emergent-only scope per v0.5 Q10 cycle-lock distinction).
+
+Phase-10 ref-doc drafted at Step 5.3 close as substrate for v0.7
+scope-doc consumption per Phase-9 → v0.6-SCOPE.md inheritance
+precedent.
+
+#### Q5.0.12 lock — Trick-bucket prompt selection (deferred to Step 5.1)
+
+**Locked:** Trick-bucket cell selection deferred to Step 5.1
+verification. Step 5.1 surface verifies trick-bucket inventory
+in current `prompts/*.yml` frozen set. If trick-bucket prompts
+exist → lock specific cell at Step 5.1 surface. If absent →
+surface to Travis with rescope option (drop trick-bucket from
+v0.6 subset; defer B3 evaluation to v0.7) per scope-doc §Rescope
+conditions.
+
+#### Cost-approval gate at Step 5.2 (per Q5.0.5 + Point 7 framing)
+
+Step 5.2 trial execution is the cost-bearing substep ($8-12
+estimated platform-billed; $24-30 script-reported with Opus 4.7
+1.67× adjustment). Explicit Travis cost approval at Step 5.2
+surface required before invoking trial harness; dry-run at Step
+5.1 (1-2 trials) confirms infrastructure cost-free before
+committing to full run.
+
+#### Step 5.0 unblock
+
+Step 5.1 (methodology setup + cell selection final lock + trial-
+script wiring + dry-run smoke test) work unblocked per
+Q5.0.1-Q5.0.12 locks. Step 5.1 surface should include:
+- Pre-implementation reading of `scripts/run-reference.ts`
+  benchmarks-repo trial-execution harness
+- Trick-bucket prompt inventory verification (Q5.0.12
+  verification step)
+- Cell-selection final lock (8 cells if trick-bucket inventory
+  exists; 7 cells if absent + rescope approved)
+- Trial-script wiring (parameters: 8/7 cells × 2 conditions ×
+  n=5 = 70-80 trials baseline; auto-stretch budget headroom)
+- Dry-run smoke test on smallest cell to verify harness end-to-
+  end before Step 5.2 cost-approval gate
+
+---
 
 ### Step 4.6 shipped — 2026-05-05 (Step 4 close)
 
