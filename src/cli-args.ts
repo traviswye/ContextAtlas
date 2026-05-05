@@ -70,6 +70,13 @@
  *                         Both `--narrow-attribution drop` and
  *                         `--narrow-attribution=drop` forms accepted.
  *
+ *   --cc-only             (v0.6 Step 4.1) Accepted only with `init`.
+ *                         Boolean opt-in for B13-flags single-
+ *                         dependency architecture (claude-code-only)
+ *                         per Q5 lock + v0.6 Step 4.0 Q4.0.5 + Q4.0.11
+ *                         locks. Default false ("anthropic-api-claude-
+ *                         code" current dual-dependency).
+ *
  * Unknown arguments throw with actionable errors. Unknown
  * subcommand names get the "did you mean?" suggestion treatment when
  * they're close to a real name (prominently "reindex" → "index", per
@@ -79,7 +86,7 @@
  * `main()` as a side effect of importing.
  */
 
-export type Subcommand = "mcp" | "index" | "doctor";
+export type Subcommand = "mcp" | "index" | "doctor" | "init";
 
 export interface ParsedArgs {
   /**
@@ -140,15 +147,24 @@ export interface ParsedArgs {
    * muddy-bundle mechanism).
    */
   narrowAttribution: "drop" | "drop-with-fallback" | null;
+  /**
+   * True when `--cc-only` was passed alongside `init`. Boolean opt-in
+   * for B13-flags single-dependency architecture (claude-code-only)
+   * per Q5 lock + v0.6 Step 4.0 Q4.0.5 + Q4.0.11 locks. Default false
+   * ("anthropic-api-claude-code" current dual-dependency). Rejected on
+   * any non-`init` invocation. v0.6 Stream A pipeline assembly Step
+   * 4.1.
+   */
+  ccOnly: boolean;
 }
 
 const USAGE =
-  "Usage: contextatlas [index] [--config-root <path>] [--config <file>] " +
-  "[--check] [--full] [--json] [--budget-warn <usd>] [--verbose] " +
-  "[--narrow-attribution <drop|drop-with-fallback>]  " +
+  "Usage: contextatlas [index|doctor|init] [--config-root <path>] [--config <file>] " +
+  "[--check] [--full] [--json] [--cc-only] [--budget-warn <usd>] [--verbose] " +
+  "[--narrow-attribution <drop|drop-with-fallback>] " +
   "(see ADR-08, ADR-11, ADR-12)";
 
-const KNOWN_SUBCOMMANDS: readonly Subcommand[] = ["index", "doctor"];
+const KNOWN_SUBCOMMANDS: readonly Subcommand[] = ["index", "doctor", "init"];
 
 /**
  * Common mistakes mapped to the right subcommand name. Kept small and
@@ -162,7 +178,6 @@ const SUBCOMMAND_SUGGESTIONS: Record<string, Subcommand> = {
   extract: "index",
   refresh: "index",
   build: "index",
-  init: "index",
 };
 
 export function parseArgs(argv: readonly string[]): ParsedArgs {
@@ -174,6 +189,7 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
   let budgetWarn: number | null = null;
   let verbose = false;
   let narrowAttribution: "drop" | "drop-with-fallback" | null = null;
+  let ccOnly = false;
   let subcommand: Subcommand = "mcp";
   let subcommandSeen = false;
 
@@ -386,6 +402,14 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
       i += 1;
       continue;
     }
+    if (arg === "--cc-only") {
+      if (ccOnly) {
+        throw new Error(`Flag --cc-only specified more than once. ${USAGE}`);
+      }
+      ccOnly = true;
+      i += 1;
+      continue;
+    }
     throw new Error(`Unknown argument '${arg}'. ${USAGE}`);
   }
 
@@ -402,9 +426,14 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
       `Flag --full is only accepted with the 'index' subcommand. ${USAGE}`,
     );
   }
-  if (json && subcommand !== "index" && subcommand !== "doctor") {
+  if (
+    json &&
+    subcommand !== "index" &&
+    subcommand !== "doctor" &&
+    subcommand !== "init"
+  ) {
     throw new Error(
-      `Flag --json is only accepted with the 'index' or 'doctor' subcommand. ${USAGE}`,
+      `Flag --json is only accepted with the 'index', 'doctor', or 'init' subcommand. ${USAGE}`,
     );
   }
   if (budgetWarn !== null && subcommand !== "index") {
@@ -422,6 +451,11 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
       `Flag --narrow-attribution is only accepted with the 'index' subcommand. ${USAGE}`,
     );
   }
+  if (ccOnly && subcommand !== "init") {
+    throw new Error(
+      `Flag --cc-only is only accepted with the 'init' subcommand. ${USAGE}`,
+    );
+  }
 
   return {
     subcommand,
@@ -433,6 +467,7 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
     budgetWarn,
     verbose,
     narrowAttribution,
+    ccOnly,
   };
 }
 

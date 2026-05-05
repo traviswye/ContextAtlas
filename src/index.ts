@@ -38,6 +38,7 @@ import { parseArgs } from "./cli-args.js";
 import { loadConfig } from "./config/parser.js";
 import { runDoctorSubcommand } from "./doctor/runner.js";
 import { runIndexSubcommand } from "./extraction/cli-runner.js";
+import { runInitSubcommand } from "./init/runner.js";
 import { log } from "./mcp/logger.js";
 import { createServer } from "./mcp/server.js";
 import { TOOLS } from "./mcp/schemas.js";
@@ -95,6 +96,20 @@ export async function main(): Promise<void> {
   if (subcommand === "doctor") {
     const result = await runDoctorSubcommand({
       repoRoot: configRoot,
+      json: parsed.json,
+    });
+    process.exit(result.exitCode);
+  }
+
+  // v0.6 Step 4 — Init subcommand orchestrates the v0.6 onboarding
+  // pipeline (A4 lazy-spawn + A6 doctor + H5 state-detection + atlas
+  // creation + smoke test + MCP registration). Per Q4.0.2 lock at
+  // v0.6 Step 4.0 design adjudications.
+  if (subcommand === "init") {
+    const result = await runInitSubcommand({
+      configRoot,
+      configFile: configFileArg,
+      ccOnly: parsed.ccOnly,
       json: parsed.json,
     });
     process.exit(result.exitCode);

@@ -18,6 +18,7 @@ const EMPTY: ParsedArgs = {
   budgetWarn: null,
   verbose: false,
   narrowAttribution: null,
+  ccOnly: false,
 };
 
 describe("parseArgs — baseline and --config-root", () => {
@@ -315,9 +316,9 @@ describe("parseArgs — `index` subcommand (ADR-12)", () => {
     );
   });
 
-  it("--json outside `index`/`doctor` rejects", () => {
+  it("--json outside `index`/`doctor`/`init` rejects", () => {
     expect(() => parseArgs(["--json"])).toThrow(
-      /--json is only accepted with the 'index' or 'doctor' subcommand/,
+      /--json is only accepted with the 'index', 'doctor', or 'init' subcommand/,
     );
   });
 
@@ -325,6 +326,109 @@ describe("parseArgs — `index` subcommand (ADR-12)", () => {
     const a = parseArgs(["doctor", "--json"]);
     expect(a.subcommand).toBe("doctor");
     expect(a.json).toBe(true);
+  });
+});
+
+describe("parseArgs — `init` subcommand (v0.6 Step 4.1)", () => {
+  it("bare `init` dispatches to the init subcommand", () => {
+    expect(parseArgs(["init"])).toEqual({
+      ...EMPTY,
+      subcommand: "init",
+    });
+  });
+
+  it("`init --cc-only` sets the ccOnly flag (B13-flags per Q5 lock)", () => {
+    expect(parseArgs(["init", "--cc-only"])).toEqual({
+      ...EMPTY,
+      subcommand: "init",
+      ccOnly: true,
+    });
+  });
+
+  it("`init --json` sets the json flag (Q4.0.11 minimal flag surface)", () => {
+    expect(parseArgs(["init", "--json"])).toEqual({
+      ...EMPTY,
+      subcommand: "init",
+      json: true,
+    });
+  });
+
+  it("`init --config-root <path>` parses correctly", () => {
+    expect(parseArgs(["init", "--config-root", "/abs/path"])).toEqual({
+      ...EMPTY,
+      subcommand: "init",
+      configRoot: "/abs/path",
+    });
+  });
+
+  it("`init --cc-only --json --config-root /r` combines cleanly", () => {
+    expect(
+      parseArgs(["init", "--cc-only", "--json", "--config-root", "/r"]),
+    ).toEqual({
+      ...EMPTY,
+      subcommand: "init",
+      ccOnly: true,
+      json: true,
+      configRoot: "/r",
+    });
+  });
+
+  it("flag-on-either-side parses identically (ADR-12 Implementation invariants)", () => {
+    const beforeShape = parseArgs([
+      "--config-root",
+      "/r",
+      "init",
+      "--cc-only",
+    ]);
+    const afterShape = parseArgs([
+      "init",
+      "--cc-only",
+      "--config-root",
+      "/r",
+    ]);
+    expect(beforeShape).toEqual(afterShape);
+    expect(beforeShape).toEqual({
+      ...EMPTY,
+      subcommand: "init",
+      configRoot: "/r",
+      ccOnly: true,
+    });
+  });
+
+  it("duplicate --cc-only rejects", () => {
+    expect(() => parseArgs(["init", "--cc-only", "--cc-only"])).toThrow(
+      /--cc-only specified more than once/,
+    );
+  });
+
+  it("--cc-only outside `init` rejects (no subcommand)", () => {
+    expect(() => parseArgs(["--cc-only"])).toThrow(
+      /--cc-only is only accepted with the 'init' subcommand/,
+    );
+  });
+
+  it("--cc-only with `index` subcommand rejects", () => {
+    expect(() => parseArgs(["index", "--cc-only"])).toThrow(
+      /--cc-only is only accepted with the 'init' subcommand/,
+    );
+  });
+
+  it("--cc-only with `doctor` subcommand rejects", () => {
+    expect(() => parseArgs(["doctor", "--cc-only"])).toThrow(
+      /--cc-only is only accepted with the 'init' subcommand/,
+    );
+  });
+
+  it("`init --full` rejects (--full is index-only)", () => {
+    expect(() => parseArgs(["init", "--full"])).toThrow(
+      /--full is only accepted with the 'index' subcommand/,
+    );
+  });
+
+  it("`init --check` rejects (ADR-12 flag/subcommand rule)", () => {
+    expect(() => parseArgs(["init", "--check"])).toThrow(
+      /--check cannot be combined with subcommand 'init'/,
+    );
   });
 });
 
@@ -337,7 +441,6 @@ describe("parseArgs — unknown subcommand 'did you mean?' suggestions (ADR-12)"
     ["extract", "index"],
     ["refresh", "index"],
     ["build", "index"],
-    ["init", "index"],
   ])("'%s' suggests '%s'", (typo, suggestion) => {
     expect(() => parseArgs([typo])).toThrow(
       new RegExp(
