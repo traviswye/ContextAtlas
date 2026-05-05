@@ -195,8 +195,25 @@ dimension state-detection logic (existing-repo-vs-new-project
 branching + ADRs/code/README/DESIGN.md/language/git substrate
 detection).
 
-**Substeps.** Step 3.0 design-adjudication substep firms substep-
-level breakdown per Step N.0 cadence convention.
+**Substeps.**
+
+- [x] **Step 3.0** — Design adjudications: Q3.0.1-Q3.0.8 locks
+  (distinct substeps; sample symbol traversal; independent
+  detection; entry-check lazy-spawn; A4→A6→H5 ordering; atlas
+  + HEAD-match detection; hybrid threshold pattern with refined
+  placeholders; unit + integration tests).
+- [ ] **Step 3.1** — A4 buildBundle lazy-spawn implementation
+  (entry-check + method-signature classification per Q3.0.4 +
+  Q3.0.6 locks).
+- [ ] **Step 3.2** — A6 doctor script implementation (deep LSP
+  health check sequence + sample symbol traversal per Q3.0.2;
+  A6 framework structure for H5 integration).
+- [ ] **Step 3.3** — H5 multi-dimension state-detection logic
+  implementation (independent per-dimension detection per
+  Q3.0.3; hybrid threshold pattern per Q3.0.7 with refined
+  placeholders firmed at Step 3.3 design).
+- [ ] **Step 3.4** — Step 3 close commit: progress log batching
+  for Steps 3.1 + 3.2 + 3.3 + 3.4.
 
 **Unblocks.** Step 4 Stream A pipeline assembly.
 
@@ -351,6 +368,167 @@ B-with-explicit-launch-staging.
 ## Progress log
 
 *Entries added in reverse-chronological order as steps ship.*
+
+### Step 3.0 shipped — 2026-05-05
+
+V0.6 Step 3 (Stream A foundations: A4 buildBundle lazy-spawn +
+A6 doctor script + H5 multi-dimension state-detection) opens
+with Step 3.0 design-adjudication substep per Step N.0 cadence
+convention. Q3.0.1-Q3.0.8 design adjudications surfaced + locked
+per discipline #3 surface-inline-before-commit cadence applied
+to step-design-phase work.
+
+| Substep | branch | commit | Notes |
+|---|---|---|---|
+| 3.0 design adjudications | main | [this commit] | Q3.0.1-Q3.0.8 locks captured; Step 3 substep ladder firmed (3.0 → 3.1 → 3.2 → 3.3 → 3.4) |
+
+#### Q3.0.1 lock — Substep structure
+
+**Locked:** (β) distinct substeps. Step 3 substep ladder:
+- Step 3.0 — Design adjudications (this commit)
+- Step 3.1 — A4 buildBundle lazy-spawn implementation
+- Step 3.2 — A6 doctor script implementation
+- Step 3.3 — H5 multi-dimension state-detection logic
+- Step 3.4 — Step 3 close commit
+
+Methodology rationale: matches v0.5 Step 5 + v0.6 Step 2 multi-
+substep precedent. Each item ships discrete artifact (A4
+buildBundle code path; A6 doctor script; H5 detection logic
+module); substep-bounded ship-discipline preserves cleaner audit
+trail.
+
+#### Q3.0.2 lock — A6 deep LSP health check sequence + symbol-traversal scope
+
+**Locked:** (α) sample symbol traversal. Full sequence per v0.6-
+SCOPE.md Stream A: `initialize → didOpen → diagnostic-arrival →
+shutdown` with symbol traversal. Sample scope: 1 symbol per
+language adapter detected (TS/Python/Go); verify findReferences
+returns. Catches gopls workspace-load failure on `go.mod`-less
+directories (v0.5+ candidate #6 motivating example) without
+sampling-cost-explosion at every `contextatlas init` invocation.
+
+#### Q3.0.3 lock — H5 multi-dimension detection implementation pattern
+
+**Locked:** (α) independent detection per substrate dimension.
+Each detector module checks one dimension (ADRs / code / README
+/ DESIGN.md / language / git); state report aggregates flags
+from each. Matches v0.6-SCOPE.md Section A user-facing-goal
+explicit specification + flexibility-as-feature design principle.
+Q4 hybrid UX lock verbose-mode summary requires per-dimension
+reporting which (α) supports cleanly.
+
+#### Q3.0.4 lock — A4 lazy-spawn integration pattern
+
+**Locked:** (α) entry-check with atlas-only mode detection. Detect
+atlas-only mode at buildBundle entry; if so, skip adapter spawn
+entirely; else spawn-as-usual. Method-signature classification
+handles spawn-on-demand for live-data needs (atlas-only-safe vs
+lsp-live-required methods). Simpler than thunk/lazy-init pattern;
+matches v0.5+ candidate #4 fix-shape spec.
+
+#### Q3.0.5 lock — Step 3 substep ordering
+
+**Locked:** (α) A4 → A6 → H5. Per v0.6-SCOPE.md §Sequencing +
+dependency analysis. A4 lazy-spawn independent (touches
+buildBundle code path; standalone-implementable); A6 doctor
+independent of A4 but logically follows; H5 depends on A6
+(detection logic plugs into A6 doctor framework as sub-module).
+Sequential ordering matches warmup-substep discipline (smallest
+scope first per Step 5 v0.5 precedent).
+
+#### Q3.0.6 lock — A4 atlas-only-mode detection logic
+
+**Locked:** (α) atlas.json existence + extracted_at_sha HEAD-
+match. Auto-detection minimizes user-facing UX changes; matches
+ADR-06 "committed atlas as canonical artifact" inheritance.
+Methods requiring LSP-live data (diagnostic resolution; recently-
+edited file re-symbolization) override via internal method-
+signature check; spawn happens lazily when these methods invoked
+even after entry-check succeeds.
+
+Specific implementation detail: query method classifies as
+"atlas-only-safe" or "lsp-live-required"; entry-check sets atlas-
+only mode flag; lsp-live-required methods invoke spawn-on-demand
+via small wrapper.
+
+#### Q3.0.7 lock — H5 missing-substrate threshold + substantive-content detection
+
+**Locked:** (γ) hybrid pattern — file-existence binary +
+substantive-content advisory. Doctor's verbose-mode output uses
+advisory information ("README detected but sparse — for best
+results, expand to include architecture overview").
+
+**Refined placeholder thresholds** (firms further at Step 3.3 H5
+implementation design):
+- README ≥ 300 words (revised from initial placeholder 100; 100
+  too low to discriminate "sparse" from "non-existent" — README
+  with title + 3-line description is ~30 words)
+- DESIGN.md ≥ 500 words (revised from initial placeholder 200;
+  ADR-bootstrap-pattern input needs substantive architectural
+  intent communication)
+- ADRs ≥ 1 ADR (binary count unchanged; quality threshold
+  deferred to v0.7 H2 ADR generation work per v0.6-SCOPE.md
+  Methodology limit #14)
+
+Specific threshold values still firm at Step 3.3 H5
+implementation design phase via discipline #3 surface-inline
+cadence (consistent with v0.6 cycle pattern of threshold details
+deferred to implementation step). Refined values are improved
+placeholders; Step 3.3 surface re-confirms or refines further.
+
+#### Q3.0.8 lock — Test coverage scope
+
+**Locked:** (β) unit tests + integration tests. Unit tests cover:
+A4 atlas-only-mode classification logic; A6 LSP health check
+state machine; H5 per-dimension detection logic. Integration
+tests cover: A6 against real TS/Python/Go adapters on
+contextatlas + cobra HEAD (matches v0.4 doctor script integration
+test discipline). Cohort smoke tests deferred to Step 7 cohort
+exposure work.
+
+Matches v0.5+ existing test discipline (CLAUDE.md "Tests adjacent
+to source. `foo.ts` + `foo.test.ts`. Use Vitest") + v0.4
+conformance suite precedent.
+
+#### H5 detection-layer separation observation
+
+H5 detection layer is shared substrate for three concerns; clean
+separation worth capturing for archaeology readers:
+
+- **H5 = detection layer:** detects state per-dimension
+  (independent detection logic per Q3.0.3 lock); no enforcement;
+  no UX rendering; pure detection module
+- **A6 doctor = consumer of H5 output for verbose-mode UX:**
+  doctor's verbose-mode summary uses H5 state report + Q3.0.7
+  substantive-content advisory thresholds to render user-facing
+  guidance
+- **Cohort recruitment infrastructure = consumer of H5 output
+  for participant selection criteria:** existing-ADR-repos biased
+  selection per v0.6 cohort recruitment criteria (Item 6 lock at
+  Step 6 implementation)
+
+Q3.0.7 dev recommendation framing slightly conflated H5 threshold
++ cohort selection bias. Clean framing per Travis adjudication:
+H5 implementation focuses on detection layer; doctor verbose-mode
+UX firms at Step 3.2 A6 implementation; cohort selection criteria
+firm at Step 6 recruitment infrastructure. Each consumer
+references H5 detection output for its own purpose without
+coupling H5 implementation to consumer concerns.
+
+#### Step 3.0 unblock
+
+Step 3.1 (A4 buildBundle lazy-spawn implementation) work
+unblocked per Q3.0.1-Q3.0.8 locks. Step 3.1 surface should
+include:
+- Pre-implementation reading of buildBundle code path (current
+  state)
+- Implementation specification per Q3.0.4 + Q3.0.6 locks
+- Method-signature classification logic (atlas-only-safe vs
+  lsp-live-required)
+- Test coverage per Q3.0.8 lock (unit tests adjacent to source
+  + integration tests against benchmark targets)
+
+---
 
 ### Step 2.3 shipped — 2026-05-05 (Step 2 close)
 
