@@ -1,0 +1,48 @@
+{
+  "pair_uuid": "f2b2a99f2890a732",
+  "cell_id": "cobra/c6-execute-signature",
+  "trial_index": 4,
+  "step5_3_run_uuid": "9cdc1bd7-54cd-4da8-bca9-ca57740a9938",
+  "rubric_version": "Step-3-canonical (commit 6ed89ce; ADR-19 §3)",
+  "anonymize_assignment_parity": "even",
+  "anonymize_assignment": {
+    "A": "ca",
+    "B": "beta-ca"
+  },
+  "scores": {
+    "scoresA": {
+      "factual_correctness": 2,
+      "completeness": 3,
+      "actionability": 2,
+      "hallucination": 2
+    },
+    "scoresB": {
+      "factual_correctness": 2,
+      "completeness": 3,
+      "actionability": 2,
+      "hallucination": 2
+    }
+  },
+  "scores_recovered_by_condition": {
+    "ca": {
+      "factual_correctness": 2,
+      "completeness": 3,
+      "actionability": 2,
+      "hallucination": 2
+    },
+    "beta-ca": {
+      "factual_correctness": 2,
+      "completeness": 3,
+      "actionability": 2,
+      "hallucination": 2
+    }
+  },
+  "usage": {
+    "inputTokens": 2730,
+    "outputTokens": 73
+  },
+  "costUsd": 0.009285,
+  "model": "claude-sonnet-4-6",
+  "createdAt": "2026-05-06T16:31:53.343Z",
+  "cross_order_regrade": false
+}
