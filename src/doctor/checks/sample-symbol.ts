@@ -12,7 +12,7 @@
  * user-repo state).
  */
 
-import { readdirSync } from "node:fs";
+import { readdirSync, type Dirent } from "node:fs";
 import path from "node:path";
 
 import type { LanguageAdapter, Symbol as AtlasSymbol } from "../../types.js";
@@ -96,7 +96,13 @@ export function walkForSourceFiles(
 
   function walk(dir: string, depth: number): void {
     if (depth > maxDepth) return;
-    let entries: ReturnType<typeof readdirSync>;
+    // Dirent<string>[] is the actual return type when calling
+    // readdirSync(path, { withFileTypes: true }) without `recursive:
+    // true`. ReturnType<typeof readdirSync> picks the union's last
+    // overload (Dirent<NonSharedBuffer>[] from the recursive variant);
+    // explicit Dirent<string>[] annotation matches actual runtime
+    // return per Node fs typings.
+    let entries: Dirent<string>[];
     try {
       entries = readdirSync(dir, { withFileTypes: true });
     } catch {

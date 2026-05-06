@@ -21,6 +21,7 @@ const CATEGORY_LABEL: Record<CheckCategory, string> = {
   sha: "SHA / Schema",
   lsp: "LSP",
   extraction: "Extraction prerequisites",
+  "state-detection": "State detection",
 };
 
 const STATUS_MARK: Record<CheckStatus, string> = {
@@ -43,8 +44,16 @@ export function formatText(result: DoctorResult): string {
     grouped.set(c.category, arr);
   }
 
-  // Walk categories in fixed order (matches scope-doc).
-  const order: CheckCategory[] = ["config", "atlas", "sha", "lsp", "extraction"];
+  // Walk categories in fixed order (matches scope-doc + Step 3.3
+  // state-detection addition per CheckCategory union).
+  const order: CheckCategory[] = [
+    "config",
+    "atlas",
+    "sha",
+    "lsp",
+    "extraction",
+    "state-detection",
+  ];
   for (const cat of order) {
     const checks = grouped.get(cat);
     if (!checks || checks.length === 0) continue;
