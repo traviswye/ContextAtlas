@@ -611,6 +611,72 @@ describe("loadConfig — source block (ADR-08 runtime)", () => {
     );
     expect(() => loadConfig(tmp)).toThrow(/Invalid 'mcp'/);
   });
+
+  // ---------------------------------------------------------------
+  // observability section (v0.6 Step 6.2 — ADR-20)
+  // ---------------------------------------------------------------
+
+  it("observability.enabled = true → parses with default logPath absent", () => {
+    writeCfg(
+      "version: 1\nlanguages: [typescript]\nadrs: { path: docs/adr/ }\n" +
+        "observability:\n  enabled: true\n",
+    );
+    expect(loadConfig(tmp).observability).toEqual({ enabled: true });
+  });
+
+  it("observability.enabled = true with log_path → both fields parse", () => {
+    writeCfg(
+      "version: 1\nlanguages: [typescript]\nadrs: { path: docs/adr/ }\n" +
+        "observability:\n  enabled: true\n  log_path: .contextatlas/observe-log.jsonl\n",
+    );
+    expect(loadConfig(tmp).observability).toEqual({
+      enabled: true,
+      logPath: ".contextatlas/observe-log.jsonl",
+    });
+  });
+
+  it("observability section absent → cfg.observability is undefined", () => {
+    writeCfg(
+      "version: 1\nlanguages: [typescript]\nadrs: { path: docs/adr/ }\n",
+    );
+    expect(loadConfig(tmp).observability).toBeUndefined();
+  });
+
+  it("observability.enabled = false → parses (explicit-off form)", () => {
+    writeCfg(
+      "version: 1\nlanguages: [typescript]\nadrs: { path: docs/adr/ }\n" +
+        "observability:\n  enabled: false\n",
+    );
+    expect(loadConfig(tmp).observability).toEqual({ enabled: false });
+  });
+
+  it("observability.enabled non-boolean → rejected with actionable error", () => {
+    writeCfg(
+      "version: 1\nlanguages: [typescript]\nadrs: { path: docs/adr/ }\n" +
+        "observability:\n  enabled: yes-please\n",
+    );
+    expect(() => loadConfig(tmp)).toThrow(
+      /Invalid 'observability\.enabled'.*expected boolean/,
+    );
+  });
+
+  it("observability.enabled missing → rejected (required when section present)", () => {
+    writeCfg(
+      "version: 1\nlanguages: [typescript]\nadrs: { path: docs/adr/ }\n" +
+        "observability:\n  log_path: foo.jsonl\n",
+    );
+    expect(() => loadConfig(tmp)).toThrow(/Invalid 'observability\.enabled'/);
+  });
+
+  it("unknown key under observability → rejected with actionable error", () => {
+    writeCfg(
+      "version: 1\nlanguages: [typescript]\nadrs: { path: docs/adr/ }\n" +
+        "observability:\n  enabled: true\n  bogus: 1\n",
+    );
+    expect(() => loadConfig(tmp)).toThrow(
+      /Unknown key 'observability\.bogus'/,
+    );
+  });
 });
 
 function captureError(fn: () => unknown): Error {

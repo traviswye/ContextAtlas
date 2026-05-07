@@ -42,6 +42,7 @@ import { runInitSubcommand } from "./init/runner.js";
 import { log } from "./mcp/logger.js";
 import { createServer } from "./mcp/server.js";
 import { TOOLS } from "./mcp/schemas.js";
+import { createObservabilityWriter } from "./observability/observe.js";
 import { checkStaleness, exitCodeFor } from "./staleness.js";
 import { importAtlasFile } from "./storage/atlas-importer.js";
 import { openDatabase } from "./storage/db.js";
@@ -110,6 +111,7 @@ export async function main(): Promise<void> {
       configRoot,
       configFile: configFileArg,
       ccOnly: parsed.ccOnly,
+      observe: parsed.observe,
       json: parsed.json,
     });
     process.exit(result.exitCode);
@@ -225,6 +227,30 @@ export async function main(): Promise<void> {
   //    hotness threshold (ADR-11). symbolContextBM25 (ADR-16) is the
   //    Step 6 Fix 3 flag — defaults false; when true, get_symbol_context
   //    BM25-ranks claims against an optional caller-provided query.
+  //
+  //    Observability (v0.6 Step 6.2 / Q6.0.4 hybrid + ADR-20): enabled
+  //    when EITHER config.observability.enabled is true OR --observe
+  //    flag was passed. --observe flag is per-session override (Q6.0.4
+  //    hybrid lock) — does not require config edit.
+  const observabilityEnabled =
+    parsed.observe || config.observability?.enabled === true;
+  const observabilityWriter = observabilityEnabled
+    ? createObservabilityWriter({
+        logPath: pathResolve(
+          configRoot,
+          config.observability?.logPath ?? ".contextatlas/observe-log.jsonl",
+        ),
+        contextatlasVersion: version,
+      })
+    : undefined;
+  if (observabilityEnabled) {
+    log.info(
+      `Cohort observability enabled (ADR-20). Log path: ${pathResolve(
+        configRoot,
+        config.observability?.logPath ?? ".contextatlas/observe-log.jsonl",
+      )}`,
+    );
+  }
   const server = createServer({
     name: "ContextAtlas",
     version,
@@ -236,6 +262,9 @@ export async function main(): Promise<void> {
         ? { symbolContextBM25: true }
         : {}),
     },
+    ...(observabilityWriter
+      ? { observabilityWriter, observabilityCwd: configRoot }
+      : {}),
   });
 
   log.info(`Registered tools: ${TOOLS.map((t) => t.name).join(", ")}`);

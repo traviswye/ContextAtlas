@@ -19,6 +19,7 @@ const EMPTY: ParsedArgs = {
   verbose: false,
   narrowAttribution: null,
   ccOnly: false,
+  observe: false,
 };
 
 describe("parseArgs — baseline and --config-root", () => {
@@ -428,6 +429,59 @@ describe("parseArgs — `init` subcommand (v0.6 Step 4.1)", () => {
   it("`init --check` rejects (ADR-12 flag/subcommand rule)", () => {
     expect(() => parseArgs(["init", "--check"])).toThrow(
       /--check cannot be combined with subcommand 'init'/,
+    );
+  });
+});
+
+describe("parseArgs — --observe flag (v0.6 Step 6.2 / Q6.0.4 hybrid)", () => {
+  it("`init --observe` sets the observe flag", () => {
+    expect(parseArgs(["init", "--observe"])).toEqual({
+      ...EMPTY,
+      subcommand: "init",
+      observe: true,
+    });
+  });
+
+  it("`--observe` (no subcommand → mcp default) sets the observe flag", () => {
+    expect(parseArgs(["--observe"])).toEqual({
+      ...EMPTY,
+      observe: true,
+    });
+  });
+
+  it("`mcp --observe` sets the observe flag (per-session override)", () => {
+    // mcp is the no-subcommand default; users invoke via flag-only form
+    expect(parseArgs(["--observe", "--config-root", "/r"])).toEqual({
+      ...EMPTY,
+      observe: true,
+      configRoot: "/r",
+    });
+  });
+
+  it("`init --observe --cc-only` combines cleanly", () => {
+    expect(parseArgs(["init", "--observe", "--cc-only"])).toEqual({
+      ...EMPTY,
+      subcommand: "init",
+      observe: true,
+      ccOnly: true,
+    });
+  });
+
+  it("duplicate --observe rejects", () => {
+    expect(() => parseArgs(["init", "--observe", "--observe"])).toThrow(
+      /--observe specified more than once/,
+    );
+  });
+
+  it("--observe with `index` subcommand rejects", () => {
+    expect(() => parseArgs(["index", "--observe"])).toThrow(
+      /--observe is only accepted with the 'init' or 'mcp' subcommand/,
+    );
+  });
+
+  it("--observe with `doctor` subcommand rejects", () => {
+    expect(() => parseArgs(["doctor", "--observe"])).toThrow(
+      /--observe is only accepted with the 'init' or 'mcp' subcommand/,
     );
   });
 });

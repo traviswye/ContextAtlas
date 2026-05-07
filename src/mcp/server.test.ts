@@ -1538,3 +1538,238 @@ describe("MCP server with runtime context — impact_of_change (ADR-11)", () => 
     );
   });
 });
+
+// ---------------------------------------------------------------------------
+// v0.6 Step 6.2 — Cohort observability writer (ADR-20)
+//
+// Server-level interception captures observations on every tools/call
+// dispatch. Tests verify: writer fires on success / fires on error /
+// does NOT fire when no writer / does NOT fire for tools/list / arg
+// sanitization happens before writer sees the observation.
+// ---------------------------------------------------------------------------
+
+describe("MCP server — observability writer integration (v0.6 Step 6.2)", () => {
+  let client: Client;
+  let server: ReturnType<typeof createServer>;
+  let db: ReturnType<typeof openDatabase>;
+  let observations: Array<Parameters<NonNullable<Parameters<typeof createServer>[0]["observabilityWriter"]>>[0]>;
+
+  beforeEach(async () => {
+    db = openDatabase(":memory:");
+    const symbol: AtlasSymbol = {
+      id: "sym:ts:src/orders/processor.ts:OrderProcessor",
+      name: "OrderProcessor",
+      kind: "class",
+      path: "src/orders/processor.ts",
+      line: 42,
+      signature: "class OrderProcessor",
+      language: "typescript",
+      fileSha: "abc",
+    };
+    upsertSymbols(db, [symbol]);
+    insertClaims(db, [
+      {
+        source: "ADR-07",
+        sourcePath: "docs/adr/ADR-07.md",
+        sourceSha: "s",
+        severity: "hard",
+        claim: "must be idempotent",
+        symbolIds: [symbol.id],
+      },
+    ]);
+    observations = [];
+    server = createServer({
+      name: "ContextAtlas",
+      version: "0.0.1-test",
+      context: {
+        db,
+        adapters: new Map([["typescript", stubAdapter({})]]),
+        gitRecentCommits: 5,
+      },
+      observabilityWriter: (o) => observations.push(o),
+      observabilityCwd: "/repo",
+    });
+    client = new Client(
+      { name: "test-client", version: "0.0.1" },
+      { capabilities: {} },
+    );
+    const [clientTransport, serverTransport] =
+      InMemoryTransport.createLinkedPair();
+    await Promise.all([
+      server.connect(serverTransport),
+      client.connect(clientTransport),
+    ]);
+  });
+
+  afterEach(async () => {
+    await client.close();
+    await server.close();
+    db.close();
+  });
+
+  it("fires writer on successful tool call (status: success + latency_ms)", async () => {
+    await client.request(
+      {
+        method: "tools/call",
+        params: {
+          name: TOOL_NAMES.getSymbolContext,
+          arguments: { symbol: "OrderProcessor" },
+        },
+      },
+      CallToolResultSchema,
+    );
+    expect(observations).toHaveLength(1);
+    const obs = observations[0]!;
+    expect(obs.tool).toBe(TOOL_NAMES.getSymbolContext);
+    expect(obs.response.status).toBe("success");
+    expect(typeof obs.response.latency_ms).toBe("number");
+    expect(obs.response.latency_ms).toBeGreaterThanOrEqual(0);
+    expect(typeof obs.session_id).toBe("string");
+    expect(obs.timestamp).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+  });
+
+  it("fires writer on error tool call (status: error + sanitized error_message)", async () => {
+    await expect(
+      client.request(
+        {
+          method: "tools/call",
+          params: { name: "no_such_tool", arguments: {} },
+        },
+        CallToolResultSchema,
+      ),
+    ).rejects.toThrow();
+    // no_such_tool errors before reaching the observation path —
+    // verify a *handler-error* path instead by calling a registered
+    // tool with InvalidParams.
+    observations.length = 0;
+    await expect(
+      client.request(
+        {
+          method: "tools/call",
+          params: {
+            name: TOOL_NAMES.findByIntent,
+            arguments: { query: "" },
+          },
+        },
+        CallToolResultSchema,
+      ),
+    ).rejects.toThrow();
+    expect(observations).toHaveLength(1);
+    const obs = observations[0]!;
+    expect(obs.response.status).toBe("error");
+    expect(typeof obs.response.error_message).toBe("string");
+  });
+
+  it("does NOT fire writer for tools/list (only tools/call observed)", async () => {
+    await client.request(
+      { method: "tools/list" },
+      ListToolsResultSchema,
+    );
+    expect(observations).toHaveLength(0);
+  });
+
+  it("sanitizes request_args before writer sees them (PII stripped)", async () => {
+    await client.request(
+      {
+        method: "tools/call",
+        params: {
+          name: TOOL_NAMES.findByIntent,
+          arguments: { query: "contact alice@example.com about retries" },
+        },
+      },
+      CallToolResultSchema,
+    );
+    expect(observations).toHaveLength(1);
+    const obs = observations[0]!;
+    const args = obs.request_args as { query?: string };
+    expect(args.query).toContain("<redacted>");
+    expect(args.query).not.toContain("alice@example.com");
+  });
+
+  it("captures session_id stable across multiple calls in same process", async () => {
+    await client.request(
+      {
+        method: "tools/call",
+        params: {
+          name: TOOL_NAMES.getSymbolContext,
+          arguments: { symbol: "OrderProcessor" },
+        },
+      },
+      CallToolResultSchema,
+    );
+    await client.request(
+      {
+        method: "tools/call",
+        params: {
+          name: TOOL_NAMES.findByIntent,
+          arguments: { query: "idempotent" },
+        },
+      },
+      CallToolResultSchema,
+    );
+    expect(observations).toHaveLength(2);
+    expect(observations[0]!.session_id).toBe(observations[1]!.session_id);
+  });
+});
+
+describe("MCP server — observability writer absent (default)", () => {
+  let client: Client;
+  let server: ReturnType<typeof createServer>;
+  let db: ReturnType<typeof openDatabase>;
+
+  beforeEach(async () => {
+    db = openDatabase(":memory:");
+    upsertSymbols(db, [
+      {
+        id: "sym:ts:src/orders/processor.ts:OrderProcessor",
+        name: "OrderProcessor",
+        kind: "class",
+        path: "src/orders/processor.ts",
+        line: 42,
+        signature: "class OrderProcessor",
+        language: "typescript",
+        fileSha: "abc",
+      },
+    ]);
+    server = createServer({
+      name: "ContextAtlas",
+      version: "0.0.1-test",
+      context: {
+        db,
+        adapters: new Map([["typescript", stubAdapter({})]]),
+        gitRecentCommits: 5,
+      },
+      // observabilityWriter intentionally absent
+    });
+    client = new Client(
+      { name: "test-client", version: "0.0.1" },
+      { capabilities: {} },
+    );
+    const [clientTransport, serverTransport] =
+      InMemoryTransport.createLinkedPair();
+    await Promise.all([
+      server.connect(serverTransport),
+      client.connect(clientTransport),
+    ]);
+  });
+
+  afterEach(async () => {
+    await client.close();
+    await server.close();
+    db.close();
+  });
+
+  it("tool calls succeed without observation (writer absent)", async () => {
+    const result = await client.request(
+      {
+        method: "tools/call",
+        params: {
+          name: TOOL_NAMES.getSymbolContext,
+          arguments: { symbol: "OrderProcessor" },
+        },
+      },
+      CallToolResultSchema,
+    );
+    expect(result.isError).toBeFalsy();
+  });
+});

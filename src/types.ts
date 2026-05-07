@@ -370,6 +370,28 @@ export interface ContextAtlasConfig {
     commitMessageFilter?: string[];
   };
   /**
+   * Optional cohort observability section per v0.6 Step 6.2 /
+   * Q6.0.4 hybrid wiring (init writes config + mcp per-session
+   * override) + Q6.2 ADR-20 cohort observability contract.
+   *
+   * `enabled`: when true, MCP server records per-tool-invocation
+   * observations to `logPath`. Default false (no observation when
+   * section absent OR enabled=false).
+   *
+   * `logPath`: filesystem path where observability log is written
+   * (newline-delimited JSON; one observation per line). Defaults
+   * to `.contextatlas/observe-log.jsonl` when section absent.
+   *
+   * `--observe` flag IS the consent signal per Q6.0.4 hybrid lock;
+   * cohort participants opt-in by passing `--observe` to init or
+   * mcp subcommand. Per ADR-20 cohort observability contract for
+   * data handling + retention + participant rights.
+   */
+  observability?: {
+    enabled: boolean;
+    logPath?: string;
+  };
+  /**
    * Optional MCP-server query-time knobs (v0.3 Theme 1.2 Fix 3).
    * These affect how the MCP server ranks/composes responses from
    * an already-extracted atlas; they do not affect extraction.

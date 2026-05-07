@@ -77,6 +77,16 @@
  *                         locks. Default false ("anthropic-api-claude-
  *                         code" current dual-dependency).
  *
+ *   --observe             (v0.6 Step 6.2) Accepted with `init` (writes
+ *                         `observability.enabled: true` into the config
+ *                         file) and with `mcp` (per-session override
+ *                         that enables observation logging without
+ *                         editing the config file). The flag IS the
+ *                         consent signal per Q6.0.4 hybrid wiring lock
+ *                         + ADR-20 cohort observability contract.
+ *                         Rejected with `index` or `doctor` (no MCP
+ *                         tool surface to observe).
+ *
  * Unknown arguments throw with actionable errors. Unknown
  * subcommand names get the "did you mean?" suggestion treatment when
  * they're close to a real name (prominently "reindex" → "index", per
@@ -156,13 +166,22 @@ export interface ParsedArgs {
    * 4.1.
    */
   ccOnly: boolean;
+  /**
+   * True when `--observe` was passed. Accepted with `init` (writes
+   * `observability.enabled: true` into the config file) and with
+   * `mcp` (per-session override that enables observation logging
+   * without editing the config). The flag IS the consent signal per
+   * Q6.0.4 hybrid wiring lock + ADR-20 cohort observability contract.
+   * Rejected on `index` or `doctor` invocations. v0.6 Step 6.2.
+   */
+  observe: boolean;
 }
 
 const USAGE =
   "Usage: contextatlas [index|doctor|init] [--config-root <path>] [--config <file>] " +
-  "[--check] [--full] [--json] [--cc-only] [--budget-warn <usd>] [--verbose] " +
+  "[--check] [--full] [--json] [--cc-only] [--observe] [--budget-warn <usd>] [--verbose] " +
   "[--narrow-attribution <drop|drop-with-fallback>] " +
-  "(see ADR-08, ADR-11, ADR-12)";
+  "(see ADR-08, ADR-11, ADR-12, ADR-20)";
 
 const KNOWN_SUBCOMMANDS: readonly Subcommand[] = ["index", "doctor", "init"];
 
@@ -190,6 +209,7 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
   let verbose = false;
   let narrowAttribution: "drop" | "drop-with-fallback" | null = null;
   let ccOnly = false;
+  let observe = false;
   let subcommand: Subcommand = "mcp";
   let subcommandSeen = false;
 
@@ -410,6 +430,14 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
       i += 1;
       continue;
     }
+    if (arg === "--observe") {
+      if (observe) {
+        throw new Error(`Flag --observe specified more than once. ${USAGE}`);
+      }
+      observe = true;
+      i += 1;
+      continue;
+    }
     throw new Error(`Unknown argument '${arg}'. ${USAGE}`);
   }
 
@@ -456,6 +484,12 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
       `Flag --cc-only is only accepted with the 'init' subcommand. ${USAGE}`,
     );
   }
+  if (observe && subcommand !== "init" && subcommand !== "mcp") {
+    throw new Error(
+      `Flag --observe is only accepted with the 'init' or 'mcp' subcommand ` +
+        `(no MCP tool surface to observe under '${subcommand}'). ${USAGE}`,
+    );
+  }
 
   return {
     subcommand,
@@ -468,6 +502,7 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
     verbose,
     narrowAttribution,
     ccOnly,
+    observe,
   };
 }
 

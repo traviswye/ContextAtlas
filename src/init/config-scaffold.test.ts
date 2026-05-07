@@ -102,3 +102,52 @@ describe("writeConfigScaffold (idempotent writer)", () => {
     expect(onDisk).toBe(existingContent);
   });
 });
+
+describe("buildConfigScaffold — observability section (v0.6 Step 6.2)", () => {
+  it("omits observability section when observe is absent (default off)", () => {
+    const yamlOut = buildConfigScaffold({
+      architecture: "anthropic-api-claude-code",
+      languages: ["typescript"],
+    });
+    expect(yamlOut).not.toContain("observability");
+  });
+
+  it("omits observability section when observe is false", () => {
+    const yamlOut = buildConfigScaffold({
+      architecture: "anthropic-api-claude-code",
+      languages: ["typescript"],
+      observe: false,
+    });
+    expect(yamlOut).not.toContain("observability");
+  });
+
+  it("emits observability.enabled: true when observe is true", () => {
+    const yamlOut = buildConfigScaffold({
+      architecture: "anthropic-api-claude-code",
+      languages: ["typescript"],
+      observe: true,
+    });
+    expect(yamlOut).toContain("observability:");
+    expect(yamlOut).toContain("enabled: true");
+  });
+
+  it("observe-true scaffold round-trips through loadConfig", async () => {
+    const tmpRoot = await mkdtemp(
+      path.join(tmpdir(), "scaffold-observe-roundtrip-"),
+    );
+    try {
+      const yamlOut = buildConfigScaffold({
+        architecture: "anthropic-api-claude-code",
+        languages: ["typescript"],
+        observe: true,
+      });
+      const cfgPath = path.join(tmpRoot, ".contextatlas.yml");
+      await writeFile(cfgPath, yamlOut, "utf8");
+
+      const cfg = loadConfig(tmpRoot);
+      expect(cfg.observability).toEqual({ enabled: true });
+    } finally {
+      await rm(tmpRoot, { recursive: true, force: true });
+    }
+  });
+});

@@ -64,6 +64,13 @@ export interface InitRunOptions {
    * false → "anthropic-api-claude-code" (default dual-dependency).
    */
   readonly ccOnly?: boolean;
+  /**
+   * `--observe` boolean opt-in (v0.6 Step 6.2 / Q6.0.4 hybrid wiring +
+   * ADR-20 cohort observability contract). True → scaffold writes
+   * `observability: { enabled: true }`. The flag IS the consent
+   * signal; default false (no observability section).
+   */
+  readonly observe?: boolean;
   /** Emit JSON-formatted output to stdout instead of text. */
   readonly json?: boolean;
   /** Test seam: override stdout writer (default `process.stdout.write`). */
@@ -180,12 +187,17 @@ export async function runInitSubcommand(
     configRoot: options.configRoot,
     architecture,
     languages,
+    observe: options.observe === true,
   });
   log.info(
     scaffoldResult.status === "created"
       ? `init: config scaffold created at ${scaffoldResult.path}`
       : `init: existing config preserved at ${scaffoldResult.path}`,
-    { architecture, languages: [...languages] },
+    {
+      architecture,
+      languages: [...languages],
+      observability: options.observe === true,
+    },
   );
 
   // First doctor run (gateway check) per Q4.0.4 lock.

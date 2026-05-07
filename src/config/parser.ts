@@ -61,6 +61,7 @@ export const TOP_LEVEL_KEYS = [
   "source",
   "extraction",
   "mcp",
+  "observability",
 ] as const;
 const TOP_LEVEL_KEY_SET = new Set<string>(TOP_LEVEL_KEYS);
 
@@ -159,6 +160,7 @@ function validate(
   const source = validateSource(parsed.source, configPath);
   const extraction = validateExtraction(parsed.extraction, configPath);
   const mcp = validateMcp(parsed.mcp, configPath);
+  const observability = validateObservability(parsed.observability, configPath);
 
   const out: ContextAtlasConfig = {
     version: 1,
@@ -173,6 +175,7 @@ function validate(
   if (source !== undefined) out.source = source;
   if (extraction !== undefined) out.extraction = extraction;
   if (mcp !== undefined) out.mcp = mcp;
+  if (observability !== undefined) out.observability = observability;
   return out;
 }
 
@@ -616,6 +619,65 @@ function validateMcp(
   }
 
   if (Object.keys(out).length === 0) return undefined;
+  return out;
+}
+
+/**
+ * Validate the optional `observability` section per v0.6 Step 6.2 /
+ * Q6.0.4 hybrid wiring + Q6.2 ADR-20 cohort observability contract.
+ *
+ * Two fields:
+ *   - `enabled` (required when section present): boolean. When true,
+ *     MCP server records per-tool-invocation observations.
+ *   - `log_path` (optional): filesystem path where observation log
+ *     is written (newline-delimited JSON). Defaults to
+ *     `.contextatlas/observe-log.jsonl` at use-site when absent.
+ *
+ * Section absent → returns undefined (default disabled). The
+ * `--observe` flag IS the consent signal per Q6.0.4 hybrid lock;
+ * the section is written by `init --observe` and may be overridden
+ * per-session by `mcp --observe`.
+ */
+function validateObservability(
+  raw: unknown,
+  configPath: string,
+): ContextAtlasConfig["observability"] | undefined {
+  if (raw === undefined) return undefined;
+  if (!isObject(raw)) {
+    throw cfgError(
+      configPath,
+      `Invalid 'observability': expected object, got ${describeType(raw)}.`,
+    );
+  }
+  rejectUnknownKeys(
+    raw,
+    new Set(["enabled", "log_path"]),
+    "observability.",
+    configPath,
+  );
+
+  const enabled = raw.enabled;
+  if (typeof enabled !== "boolean") {
+    throw cfgError(
+      configPath,
+      `Invalid 'observability.enabled': expected boolean, got ${describeType(enabled)}. ` +
+        "See ADR-20 for the cohort observability contract.",
+    );
+  }
+
+  const out: NonNullable<ContextAtlasConfig["observability"]> = { enabled };
+
+  const logPath = raw.log_path;
+  if (logPath !== undefined) {
+    if (typeof logPath !== "string" || logPath.length === 0) {
+      throw cfgError(
+        configPath,
+        `Invalid 'observability.log_path': expected non-empty string, got ${describeType(logPath)}.`,
+      );
+    }
+    out.logPath = normalizePath(logPath);
+  }
+
   return out;
 }
 

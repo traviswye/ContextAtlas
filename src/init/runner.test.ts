@@ -228,6 +228,42 @@ describe("runInitSubcommand — doctor + routing + atlas + smoke + MCP orchestra
     expect(cfg).toContain("architecture: anthropic-api-claude-code");
   });
 
+  it("--observe true → scaffold writes observability.enabled: true (v0.6 Step 6.2)", async () => {
+    await setupAutomatedRouteFixture(tmpRoot);
+    await runInitSubcommand({
+      configRoot: tmpRoot,
+      observe: true,
+      writeStdout: captureStdout,
+      detectLanguagesOverride: () => ["typescript"],
+      collectChecksOverride: async () => makeDoctorResult(PASSING_AUTOMATED_CHECKS),
+      runIndexSubcommandOverride: SUCCESS_INDEX_OVERRIDE,
+      resolveBinaryPathOverride: "/synthetic/dist/index.js",
+    });
+    const cfg = await readFile(
+      path.join(tmpRoot, ".contextatlas.yml"),
+      "utf8",
+    );
+    expect(cfg).toContain("observability:");
+    expect(cfg).toContain("enabled: true");
+  });
+
+  it("--observe absent → no observability section in scaffold (default off)", async () => {
+    await setupAutomatedRouteFixture(tmpRoot);
+    await runInitSubcommand({
+      configRoot: tmpRoot,
+      writeStdout: captureStdout,
+      detectLanguagesOverride: () => ["typescript"],
+      collectChecksOverride: async () => makeDoctorResult(PASSING_AUTOMATED_CHECKS),
+      runIndexSubcommandOverride: SUCCESS_INDEX_OVERRIDE,
+      resolveBinaryPathOverride: "/synthetic/dist/index.js",
+    });
+    const cfg = await readFile(
+      path.join(tmpRoot, ".contextatlas.yml"),
+      "utf8",
+    );
+    expect(cfg).not.toContain("observability");
+  });
+
   it("preserves existing .contextatlas.yml (idempotent skip-when-present per Q4.0.12)", async () => {
     await setupAutomatedRouteFixture(tmpRoot);
     const cfgPath = path.join(tmpRoot, ".contextatlas.yml");
