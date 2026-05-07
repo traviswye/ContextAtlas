@@ -337,9 +337,33 @@ ADR-20 cohort observability contract drafting + recruitment
 infrastructure (recruitment process + trialist screening criteria
 + structured feedback template + pre-trial onboarding documentation).
 
-**Substeps.** Step 6.0 design-adjudication substep firms substep-
-level breakdown per Step N.0 cadence convention. ADR-20 drafting
-alongside `--observe` flag UX implementation.
+**Substeps.**
+
+- [x] **Step 6.0** — Design adjudications: Q6.0.1-Q6.0.9 locks
+  (5-substep per-item ladder; markdown cohort feedback template
+  at research/cohort/feedback-template.md; server-level
+  observability interception; --observe hybrid wiring
+  init+mcp; ADR-20 8-section structure with consent framing
+  earlier; research/cohort/ subdirectory; sanitize.ts hybrid
+  privacy treatment with ~12-15 tests; ~25-33 net new tests
+  for Step 6.2 observability code; clean Step 6 → Step 7
+  coupling).
+- [ ] **Step 6.1** — B17 cohort feedback template (markdown at
+  research/cohort/feedback-template.md per scope-doc §Stream C
+  lines 418-427 specification).
+- [ ] **Step 6.2** — Tool-description observability (--observe
+  flag + ContextAtlasConfig observability section + server-
+  level interception + sanitize.ts privacy filter +
+  observe.ts log writer + tests; ~25-33 net new tests).
+- [ ] **Step 6.3** — ADR-20 cohort observability contract
+  drafting (8 sections per Q6.0.5 refinement: Scope; Consent
+  process; Data collected; Storage; Use; Retention;
+  Participant rights; Cross-references).
+- [ ] **Step 6.4** — Recruitment infrastructure (3 docs at
+  research/cohort/{recruitment-process,screening-criteria,
+  pre-trial-onboarding}.md).
+- [ ] **Step 6.5** — Step 6 close commit: progress log
+  batching for Steps 6.1 + 6.2 + 6.3 + 6.4 + 6.5.
 
 **Unblocks.** Step 7 cohort exposure (recruitment infrastructure
 ready) + cohort feedback collection (template + observability
@@ -442,6 +466,209 @@ B-with-explicit-launch-staging.
 ## Progress log
 
 *Entries added in reverse-chronological order as steps ship.*
+
+### Step 6.0 shipped — 2026-05-06
+
+V0.6 Step 6 (Stream C tooling: B17 cohort feedback template +
+tool-description observability + ADR-20 cohort observability
+contract drafting + recruitment infrastructure) opens with
+Step 6.0 design-adjudication substep per Step N.0 cadence
+convention. Q6.0.1-Q6.0.9 design adjudications surfaced +
+locked per discipline #3 surface-inline-before-commit cadence
+applied to step-design-phase work.
+
+Stream C work has NOT been touched yet through cycle execution
+(per Step 1.0 §Sequencing recommended execution order); design-
+adjudication phase substantively new work. Greenfield substrate
+verified: no existing `--observe` flag in cli-args.ts; no
+existing observability hooks in src/mcp/server.ts.
+
+| Substep | branch | commit | Notes |
+|---|---|---|---|
+| 6.0 design adjudications | main | [this commit] | Q6.0.1-Q6.0.9 locks captured; Step 6 substep ladder firmed (6.0 → 6.1 → 6.2 → 6.3 → 6.4 → 6.5); 5-substep per-item ladder per Step 4 precedent |
+
+#### Q6.0.1 lock — Substep ladder shape
+
+**Locked:** (β) 5-substep per-item ladder. Step 6 substep ladder:
+- Step 6.0 — Design adjudications (this commit)
+- Step 6.1 — B17 cohort feedback template
+- Step 6.2 — Tool-description observability
+- Step 6.3 — ADR-20 cohort observability contract drafting
+- Step 6.4 — Recruitment infrastructure
+- Step 6.5 — Step 6 close commit
+
+Methodology rationale: matches Step 4 per-item implementation
+pattern; per-substep ship-discipline preserves cleaner audit
+trail; each item is substantive standalone work (markdown
+template + observability code + ADR documentation +
+recruitment infrastructure).
+
+#### Q6.0.2 lock — B17 cohort feedback template format + location
+
+**Locked:** (α) markdown template. Format: markdown narrative
+with template fields cohort participants fill. Cohort
+participants more likely to engage with markdown than
+structured YAML; aggregation can parse via simple regex when
+needed; matches v0.5 research/ doc pattern.
+
+**Refinement applied:** file location lock to
+`research/cohort/feedback-template.md` per Q6.0.6 cohort-
+substrate co-location consistency. Resolves dev's surface
+ambiguity between Q6.0.2 v0.6-cohort-feedback-template.md
+framing and Q6.0.6 subdirectory framing.
+
+Template scope per v0.6-SCOPE.md §Stream C lines 418-427:
+session-level fields (did Claude invoke atlas tool; usefulness
+rating; free-text on missed/wrong invocations) + per-session
+tool-invocation log (auto-captured via observability; template
+references) + codebase-characteristics + setup-walkthrough-
+friction.
+
+#### Q6.0.3 lock — Tool-description observability instrumentation point
+
+**Locked:** (β) server-level interception. Single observability
+gate; consistent shape across tools; minimal handler-touching.
+Wraps the request handler chain at src/mcp/server.ts; logs
+incoming request + outgoing response.
+
+**What gets logged per request:**
+- Tool name (e.g., `get_symbol_context`)
+- Request args (sanitized — strip PII via Q6.0.7 privacy
+  treatment)
+- Response shape: success/error + latency + symbol-id-or-result-
+  count
+- Timestamp + session-id (anonymized hash of conversation
+  context)
+- NOT logged: user prompt content; full conversational history;
+  PII
+
+#### Q6.0.4 lock — `--observe` flag wiring
+
+**Locked:** (γ) hybrid wiring. `init --observe` writes to
+`.contextatlas.yml` `observability.enabled: true` field
+(persistent cohort consent); MCP server reads config + activates
+observability; `mcp --observe` flag override available for per-
+session opt-in/out without config edit.
+
+**Config schema addition:** new top-level `observability`
+section in ContextAtlasConfig (`enabled: boolean` +
+`log_path: string` defaults to `.contextatlas/observe-log.jsonl`).
+
+#### Q6.0.5 lock — ADR-20 cohort observability contract sections
+
+**Locked:** 8 sections per Q6 (Step 1.0) lock + Step 6.0
+section-ordering refinement.
+
+**Section-ordering refinement applied:** place Consent process
+earlier (section 2); add Scope as section 1 per ADR convention.
+Cohort participants reading ADR-20 should see consent framing
+before data-collection details; participant-facing reading
+flow.
+
+8-section ordering:
+1. Scope (what observability covers)
+2. Consent process (opt-in default; init walkthrough explicit
+   prompt; participant-facing language)
+3. Data collected (concrete enumeration)
+4. Storage (local-only file; no remote upload at v0.6)
+5. Use (v0.7 H2/H1/slash-command design substrate)
+6. Retention (cohort exposure window)
+7. Participant rights (access; deletion-on-request; portability)
+8. Cross-references (recruitment + screening + feedback template
+   + B17 hybrid capture)
+
+#### Q6.0.6 lock — Recruitment infrastructure file structure
+
+**Locked:** (β) `research/cohort/` subdirectory. Each component
+substantive ~50-150 LOC; subdirectory keeps related substrate
+organized; aligns with v0.5 research/ structuring patterns.
+
+Files:
+- `research/cohort/recruitment-process.md` (Travis network
+  outreach + early-access framing)
+- `research/cohort/screening-criteria.md` (TS/Python/Go + ADRs
+  preferred + structured feedback willingness)
+- `research/cohort/pre-trial-onboarding.md` (what to expect;
+  how to provide feedback; time commitment; scope-disclaimer)
+- `research/cohort/feedback-template.md` (Q6.0.2 lock)
+
+#### Q6.0.7 lock — Privacy treatment (sanitize.ts hybrid)
+
+**Locked:** hybrid (denylist + allowlist). Strip absolute paths
+(replace with relative or `<repo-root>`); strip user-identifiable
+strings (email-shaped patterns; common identity-leak patterns);
+preserve tool names + symbol kinds + latencies + response sizes.
+
+**Sanitize test rigor refinement applied:** privacy treatment
+is load-bearing for ADR-20 contract; if sanitize fails to strip
+PII, observability framework violates consent contract. Higher
+test coverage rigor than typical Stream C documentation work.
+
+Suggested ~12-15 tests for sanitize.ts:
+- Path-stripping tests (absolute → relative; `<repo-root>`
+  substitution; Windows + Unix edge cases)
+- Identity-pattern tests (email shapes; common identity-leak
+  patterns)
+- Allowlist preservation tests (tool names; symbol kinds;
+  latencies; response sizes)
+- Defensive edge-case tests (null inputs; deeply nested objects;
+  circular references; unicode)
+
+#### Q6.0.8 lock — Test coverage scope
+
+**Locked:** per Q4.0.13 inheritance + Q6.0.7 sanitize refinement.
+
+Test counts:
+- `src/observability/observe.ts` (NEW; log writer): ~6-8 tests
+  covering log-shape correctness + file-write atomicity +
+  rotation if log size exceeds threshold
+- `src/observability/sanitize.ts` (NEW; PII filter): ~12-15
+  tests per Q6.0.7 refinement
+- Server-level interception: ~4-6 integration tests verifying
+  observability fires on tool invocation; verifying NO
+  observability when disabled
+- cli-args.ts --observe parsing: ~3-4 unit tests (similar to
+  --cc-only pattern)
+
+**Total Step 6.2 net new tests: ~25-33**
+
+No test coverage: ADR-20 (documentation); cohort feedback
+template (markdown); recruitment markdown (documentation).
+
+#### Q6.0.9 lock — Step 6 → Step 7 coupling
+
+**Locked:** clean boundary. Step 6 ships infrastructure
+(tooling + documentation); Step 7 cohort exposure invokes
+infrastructure with actual cohort participants.
+
+Step 7 dependencies on Step 6 outputs:
+- B17 feedback template ready
+- Observability instrumentation operational
+- ADR-20 contract published (consent baseline)
+- Recruitment infrastructure documented (Travis can invoke)
+
+#### Cost projection — zero API spend
+
+Stream C work: zero API spend (documentation + code
+instrumentation; no Anthropic API calls). Wall-clock medium
+weight (~1-2 weeks if substantive cohort outreach +
+observability code). Per-substep estimates:
+- 6.1 cohort feedback template: ~2-4 hours
+- 6.2 tool-description observability: ~1-2 days (instrumentation
+  + sanitize + flag wiring + tests)
+- 6.3 ADR-20 contract: ~4-8 hours
+- 6.4 recruitment infrastructure: ~4-8 hours
+
+No cost-approval gate required (matches Steps 3-4 zero-API-
+spend framing).
+
+#### Step 6.0 unblock
+
+Step 6.1 (B17 cohort feedback template markdown at
+research/cohort/feedback-template.md) work unblocked per
+Q6.0.1-Q6.0.9 locks.
+
+---
 
 ### Step 5.4 shipped — 2026-05-06 (Step 5 close)
 
