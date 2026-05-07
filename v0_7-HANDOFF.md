@@ -193,20 +193,37 @@ of v0.7's 4 streams consumes specific v0.6 substrate dimensions:
   cycles considering extensions to other LLM-coding-tool surfaces;
   H1 is concrete Claude-Code-priming implementation.
 
-### Stream B — Matrix-completion (3 items)
+### Stream B — Matrix-completion (3 items + methodology amendment work per v0.6 F1-F9)
+
+**Substantively expanded by v0.6 cycle execution per F1-F9
+findings.** Original 3 items below preserved; methodology
+amendment work absorbed per v0.6-SCOPE §Rescope (2 axes
+DIVERGE in v0.5-vs-v0.6 tier-gradation comparison per Step
+5.3.b Phase-10 §8 Table 6).
 
 - **Full matrix-replication completion** — remaining cells × n=5
   trials × 2 conditions = ~248 trials minus v0.6 8-cell subset
   (~80 trials) = ~168 trials remaining. Closes v1.0 ship-gate
-  criterion #1 statistically-meaningful-wins gate. If v0.6 subset
-  diverges from v0.5 tier-gradation, v0.7 absorbs methodology
-  amendment work.
+  criterion #1 statistically-meaningful-wins gate. **v0.6 subset
+  DIVERGED on 2 of 4 axes** (factual_correctness CLEAN→BORDERLINE;
+  actionability BORDERLINE→NOT-distinguishable per Phase-10 §8);
+  v0.7 absorbs methodology amendment work alongside completion.
 - **B3** Trick-bucket override Axis 3 empirical validation —
   analysis pass on v0.6 trick-bucket substrate (Q2 v0.6 Stream B
-  3-cell minimum).
+  3-cell minimum); cobra/c6-execute-signature substrate available
+  per Step 5.2 + 5.3.a-b shipping.
 - **B4** Hono h1 beta-ca bimodal exploration root-cause
   investigation — F5; v0.7 Stream B if matrix-completion surfaces
   root-cause organically.
+- **NEW: Atlas-version-control methodology amendment** (per F1
+  + F9 substantive findings) — cross-cycle tier-gradation
+  comparison must control for atlas-substrate-version. Concrete
+  mechanism options at v0.7 design-time: (a) re-measure v0.5
+  anchor cells against v0.5.0 atlas (50 trials × ~$20 platform-
+  billed control cohort); (b) document confound + treat v0.6 as
+  new baseline; (c) hybrid both. Causal mechanism investigation
+  (atlas-content-volume vs quality vs time-of-measurement vs
+  sample variance) deferred from v0.6 to v0.7 per F1 refinement.
 
 ### Stream C — Trial-execution (2 items)
 
@@ -317,10 +334,105 @@ V0.7 H2 ADR generation pipeline absorbs:
 
 ---
 
+## v0.6 cycle execution substrate (F1-F9 + methodology amendments)
+
+**Added 2026-05-06 at v0.6 Step 5.4 close** per Path α handoff
+amendment lock (matches v0.5→v0.6 inheritance pattern of curated
+canonical-bridge capture). v0.6 cycle execution surfaced
+substantive empirical findings + methodology amendment scope
+substantively expanding original Stream B + Cycle-pre-planning
+insights substrate.
+
+**Canonical full substrate:** `../ContextAtlas-benchmarks/research/phase-10-v0.6-reference-run.md`
+(11-section + 9 F-findings; auto-generated at Step 5.3.b commit
+`23dd385`).
+
+**Honest scope-acknowledgment.** v0.7 cycle scope substantively
+expanded by v0.6 empirical findings beyond original Phase 2
+substrate-handoff dimensions. Envelope projections (cost / wall-
+clock / scope-bounds) firm at v0.7 cycle pre-planning per
+substrate absorption — not silent-carry-forward from v0.6
+projections.
+
+### F1-F9 substantive findings (Phase-10 ref-doc §11)
+
+- **F1 PRIMARY — Atlas-substrate-version confound surfaces in
+  v0.5-vs-v0.6 tier-gradation comparison.** v0.5 baseline
+  measured against v0.4.0 atlas; v0.6 measurements against
+  v0.5.0 atlas. 5 v0.5 anchor cells (identical prompts;
+  identical methodology) attenuate 28-100% on ALL 4 axes when
+  re-run against v0.5.0 substrate. Decomposition rules out (β)
+  noise-increase; primary mechanism atlas-substrate-version-
+  correlated effect shift (γ); causal mechanism deferred to
+  v0.7. 2 axes DIVERGE; 2 axes CONFIRM.
+- **F2** — Anchor-cell attenuation pattern direction-uniform
+  across all 4 axes (no axis strengthens; suggests atlas
+  substrate evolution direction reduces ca-vs-beta-ca gap
+  globally).
+- **F3** — Cell-selection methodology lacked empirical
+  differentiation pre-screen (3 v0.6 new cells contributed
+  mixed effects per decomposition; theoretical bucket-tier
+  framing alone insufficient).
+- **F4** — F6 reframing as 2-axis retry policy (v0.5 F6
+  position-deterministic framing → stochastic-failure with
+  retry-same-config + swap-config orthogonal recovery axes;
+  Path A swap-retry harness extension shipped at Step 5.3.a).
+- **F5** — All 8 cells trigger variance threshold (vs v0.5
+  5/5 anchors); 4 of 5 v0.5 anchors INCREASED variance in
+  v0.6 substrate. Substrate-quality observation.
+- **F6** — Cross-order agreement attenuated on hallucination
+  axis specifically (Sonnet position-blindness reduced).
+- **F7** — Cost-projection accuracy improved over v0.5
+  baseline.
+- **F8** — F6 reproduction at higher incidence (3/5 vs 1/5).
+- **F9 METHODOLOGY-DESIGN GAP — tag-only-not-control
+  pattern.** v0.6 cycle Q5.0.7 atlas-version-tagging
+  discipline captured the tag in trial manifests but did NOT
+  specify methodology-comparison-must-control-for-atlas-
+  version. F1 confound emerges from this gap. Generalizable
+  v0.7+ design discipline lesson.
+
+### 5 methodology amendment scope items for v0.7 absorption
+
+1. **Atlas-version-control methodology amendment** (F1 + F9) —
+   cross-cycle tier-gradation comparison must control for
+   atlas-substrate-version (re-measurement against current
+   atlas; OR document confound + treat as new baseline; OR
+   hybrid).
+2. **Cell-selection empirical pre-screen methodology
+   amendment** (F3) — n=2 dry-run trials per candidate cell
+   before n=5 commitment.
+3. **2-axis retry policy methodology** (F4) — retry-same-
+   config + swap-config orthogonal recovery axes; Path A
+   harness extension at Step 5.3.a ships methodology
+   improvement; v0.7 inheritance.
+4. **Variance-control auto-stretch refinement** (F5) — extend
+   stretch to high-variance non-hono cells with budget-
+   controlled limit.
+5. **Causal mechanism investigation for atlas-version-
+   correlated attenuation** (F1 deferred work) — disambiguate
+   atlas-content-volume vs quality vs time-of-measurement vs
+   sample variance via re-measurement + content-source
+   ablation studies.
+
+### Cross-references
+
+- Phase-10 ref-doc full §11 narrative:
+  `../ContextAtlas-benchmarks/research/phase-10-v0.6-reference-run.md`
+- v0.6 Step 5 close progress log batching:
+  `STEP-PLAN-V0.6.md` Step 5.4 entry (commit `f2e0c08`)
+- Decomposition analysis substrate:
+  `../ContextAtlas-benchmarks/scripts/v0.6-step5.3-decomposition.mjs`
+- cost-priors-v0.6.json cumulative snapshot:
+  `../ContextAtlas-benchmarks/cost-priors-v0.6.json`
+
+---
+
 ## Cycle-pre-planning insights (substrate for v0.7 scope-doc)
 
-Substrate observations from v0.6 cycle-pre-planning that inform
-v0.7 scope-doc-drafting beyond Phase 2 lock specifics:
+Substrate observations from v0.6 cycle-pre-planning + v0.6
+cycle-execution that inform v0.7 scope-doc-drafting beyond
+Phase 2 lock specifics:
 
 - **Adversarial debate format empirically validates cycle-
   architecture decisions.** 8-item debate phase + 2 reconsiders
@@ -358,7 +470,47 @@ v0.7 scope-doc-drafting beyond Phase 2 lock specifics:
 - **Cycle-weight calibration concern is real.** v0.7 ~2-2.5× v0.5
   estimate at Phase 2 surface; substantial. Mitigations available
   but warrant explicit attention at v0.7 scope-doc drafting; not
-  silent-defer-to-execution.
+  silent-defer-to-execution. **v0.6 cycle execution further
+  expanded v0.7 scope per F1-F9 findings + 5 methodology
+  amendment scope items**; v0.7 envelope projections firm at
+  pre-planning per substrate absorption.
+
+- **F9 tag-only-not-control methodology-design pattern (NEW
+  v0.6 cycle execution observation).** v0.6 cycle Q5.0.7 atlas-
+  version-tagging discipline captured the tag in trial manifests
+  but did NOT specify methodology-comparison-must-control-for-
+  atlas-version. Pattern: design-time discipline locks must
+  specify what comparison frameworks must enforce, not just
+  what trial substrate must record. v0.7+ design discipline
+  inheritance: tag-AND-control pattern.
+
+- **Substantive-interpretation cadence pattern (NEW v0.6 cycle
+  execution observation).** Discipline #3 surface-inline-before-
+  commit cadence applied at substantive-INTERPRETATION moments
+  (not just substantive-implementation moments) materially
+  improved F-finding framing quality. v0.6 Step 5.3.b
+  decomposition surface refined F1 PRIMARY framing from generic
+  "v0.5 tier-gradation does NOT fully generalize" to specific
+  mechanism-attributed "atlas-substrate-version confound" via
+  Path B decomposition analysis. Pattern: when paired-t outcomes
+  surface unexpected results, surface decomposition INTERPRETATION
+  inline before committing F-finding framing — captures more
+  substantively-grounded substrate for downstream consumption.
+  v0.7+ cycle-pre-planning + execution: apply discipline #3
+  cadence at substantive-interpretation moments not just
+  substantive-implementation moments.
+
+- **Cycle-emergent candidate-capture at Phase-10 §9 inheritance
+  (NEW v0.6 cycle execution observation).** v0.6 surfaced 6
+  cycle-emergent candidates per Phase-10 §9 (529 retry-coverage;
+  h10 held_out filter; F6 reframing as 2-axis retry policy;
+  variance trigger discipline; atlas-substrate-version-control
+  methodology amendment; cell-selection empirical-pre-screen
+  methodology amendment). Pattern matches Phase-9 §9 inheritance
+  (cycle-emergent-only scope per v0.5 Q10 lock distinction);
+  benchmarks-repo Phase-N ref-doc §9 is canonical cycle-emergent
+  candidate inventory. v0.7 pre-planning consumes from Phase-10
+  §9 directly.
 
 ---
 
@@ -371,3 +523,21 @@ v0.7 scope-doc-drafting beyond Phase 2 lock specifics:
   cycle close. Lifecycle: consumed at v0.7 Phase 1 enumeration;
   retired after v0.7-SCOPE.md drafts substrate into canonical
   scope-doc form.
+
+- **2026-05-06** — Path α handoff amendment at v0.6 Step 5.4
+  close per v0.5→v0.6 inheritance pattern (curated canonical-
+  bridge capture for v0.7 cycle pre-planning). Three sections
+  amended: Stream B Matrix-completion expanded with atlas-
+  version-control methodology amendment item; NEW section
+  "v0.6 cycle execution substrate (F1-F9 + methodology
+  amendments)" inserted before Cycle-pre-planning insights
+  (captures F1 atlas-substrate-version confound primary finding
+  + F9 methodology-design gap + 5 methodology amendment scope
+  items + Phase-10 ref-doc cross-reference); Cycle-pre-planning
+  insights augmented with 3 NEW v0.6 cycle execution observations
+  (cycle-weight calibration v0.6 expansion; F9 tag-only-not-
+  control pattern; substantive-interpretation cadence pattern;
+  cycle-emergent candidate-capture at Phase-10 §9 inheritance).
+  Honest scope-acknowledgment annotation: v0.7 envelope
+  projections firm at pre-planning per substrate absorption (not
+  silent-carry-forward from v0.6 projections).
