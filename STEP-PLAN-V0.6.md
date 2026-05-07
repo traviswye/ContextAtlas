@@ -289,23 +289,38 @@ stats per ADR-19 + Phase-9 reference doc) without modification.
   version-tagging refinement at Q5.0.7 — fresh n=5 for all 8
   cells; cost framing per honest-scope-narrative discipline;
   explicit cost-approval gate at Step 5.2 surface).
-- [ ] **Step 5.1** — Methodology setup: trick-bucket prompt
-  inventory verification + cell-selection final lock + trial-
-  script wiring + dry-run smoke test on smallest cell to verify
-  harness end-to-end before committing to full cost (Step 5.2
-  cost-approval gate prerequisite).
-- [ ] **Step 5.2** — Full trial execution: 8 (or 7) cells × n=5 ×
-  2 conditions = 70-80 trials baseline; cost monitoring + per-
-  trial manifest writes; long wall-clock substep; cost-approval
-  gate before invocation.
-- [ ] **Step 5.3** — Statistical analysis + substrate aggregation:
-  paired-t per axis × 8 cells; cross-cell rollup at concatenated
-  N differences per Phase-9 ref-doc Option B-2; v0.5-vs-v0.6
-  tier-gradation comparison (CONFIRMS / DIVERGES classification);
-  cost-priors-v0.6.json snapshot generation; phase-10-v0.6-
-  reference-run.md drafting per Phase-9 §9 inheritance.
+- [x] **Step 5.1** — Methodology setup: cell-selection final
+  lock (httpx/p3 + hono/h10 + cobra/c6 trick-bucket) + trial-
+  script wiring (NEW v0.6-step5-orchestrator.mjs) + dry-run
+  smoke test on cobra/c4.
+- [x] **Step 5.2** — Full trial execution: 8 cells × n=5 × 2
+  conditions = 86 trials (with hono/h1 auto-stretch); $33.39
+  script-reported / ~$15.80 platform-billed actual; recovered
+  from 529 outage + filterStep7 h10→h5 substitution at trial 67.
+- [x] **Step 5.3.a** — Production grading harness (Q5.3.1 split
+  refinement applied): 43 base pairs + 9 cross-order regrades
+  + 2 swap-retry recoveries; cobra/c3 effective n=5/5; v0.5 F6
+  reframing as 2-axis retry policy (Path A swap-retry harness
+  extension).
+- [x] **Step 5.3.b** — Statistical analysis + Phase-10 ref-doc
+  + cost-priors-v0.6.json snapshot: tier-gradation-compare
+  module; aggregate-cost-priors constant bumps; doc-gen hybrid
+  generation; decomposition analysis. Substantive empirical
+  finding: F1 atlas-substrate-version confound (5 anchors
+  attenuate 28-100% on ALL 4 axes against v0.5.0 substrate);
+  F9 methodology-design gap (tag-only-not-control pattern);
+  9 F-findings drafted.
 - [ ] **Step 5.4** — Step 5 close commit: progress log batching
-  for Steps 5.1 + 5.2 + 5.3 + 5.4.
+  for Steps 5.0 + 5.1 + hotfix + 5.2 + 5.3.a + 5.3.b + 5.4
+  close synthesis + v0.7 methodology amendment scope capture.
+
+**Substep ladder refinement audit trail.** Original Q5.0.1 lock
+at Step 5.0 specified 5-substep ladder (5.0/5.1/5.2/5.3/5.4).
+Q5.3.1 refinement at Step 5.3 surface review applied Q11-style
+explicit-flag pattern: Step 5.3 split into 5.3.a (grading
+orchestration) + 5.3.b (statistical analysis + ref-doc); matches
+Step 3.2 → 3.2.a/3.2.b precedent + v0.5 Step 8/9 split structure.
+Final ladder: 5.0 → 5.1 → 5.2 → 5.3.a → 5.3.b → 5.4.
 
 **Unblocks.** v0.7 Stream B Q14 matrix-completion (substrate-
 handoff) + Q16 B3 evaluation (analysis pass on v0.6 trick-bucket
@@ -427,6 +442,401 @@ B-with-explicit-launch-staging.
 ## Progress log
 
 *Entries added in reverse-chronological order as steps ship.*
+
+### Step 5.4 shipped — 2026-05-06 (Step 5 close)
+
+V0.6 Step 5 closes per Stream B targeted matrix-replication
+subset specification at v0.6-SCOPE.md. Empirical substrate
+generated + statistical findings published + Phase-10 ref-doc
+substrate handed forward to v0.7 + cost-priors-v0.6.json
+cumulative snapshot for v0.7 consumption per Q5.0.10 cross-
+repo work split lock.
+
+| Substep | branch | commit | Notes |
+|---|---|---|---|
+| 5.4 close | main | [this commit] | Step 5 close + progress log batching for Steps 5.0 + 5.1 + hotfix + 5.2 + 5.3.a + 5.3.b + 5.4 close synthesis + v0.7 methodology amendment scope capture |
+
+#### Step 5 cumulative outcome — Stream B subset shipped
+
+Stream B targeted matrix-replication subset shipped per v0.6-
+SCOPE.md §7.1 Q2 lock + Q5.0.1-Q5.0.12 + Q5.3.1-Q5.3.6 +
+Q5.3.b.1-Q5.3.b.5 sub-adjudication clusters. Cumulative
+deliverables:
+- 86/86 trials complete (8 cells × n=5 × 2 conditions + hono/h1
+  auto-stretch +6) per v0.6-SCOPE.md substrate-generation
+  thesis
+- 52 LLM-judge grades (43 effective base + 9 cross-order
+  regrades) per ADR-19 §3 paired-mode anonymization methodology
+  inheritance from v0.5
+- Phase-10 v0.6 reference-run doc shipped (~224 LOC; 11-section
+  structure per Phase-9 inheritance) with 9 F-findings drafted
+- cost-priors-v0.6.json cumulative snapshot (156 source runs
+  aggregated from v0.4 + v0.5 + v0.6 cycle substrate per Q4(ii)
+  cumulative aggregation lock at Step 2)
+- Total cycle cost: $34.07 script-reported / ~$16.48 platform-
+  billed (within $40 cap + $14-22 envelope)
+
+v0.6-SCOPE.md success criterion #1 (Stream B 8-cell subset
+complete) ✓ MET. Statistically-meaningful-wins gate work
+continues at v0.7 with methodology amendments absorbed per F1
++ F9 substantive findings.
+
+#### Substantive empirical finding — F1 PRIMARY atlas-substrate-version confound
+
+Per Step 5.3.b Phase-10 ref-doc §11 F1 PRIMARY finding +
+Step 5.3.b decomposition analysis: 5 v0.5 anchor cells
+(identical prompts; identical methodology) attenuate 28-100%
+on ALL 4 axes when re-run against v0.5.0 atlas substrate (vs
+v0.5 baseline measured against v0.4.0 atlas):
+- factual_correctness: 0.370 → 0.250 (32% attenuation; tier
+  CLEAN→BORDERLINE)
+- completeness: 0.037 → 0.000 (100% attenuation; both not-dist)
+- actionability: 0.148 → 0.071 (52% attenuation; tier
+  BORDERLINE→NOT-distinguishable)
+- hallucination: 0.296 → 0.214 (28% attenuation; tier
+  BORDERLINE→NOT-distinguishable)
+
+Decomposition rules out (β) noise-increase as primary driver
+(anchor-cell CIs comparable width across versions). Primary
+mechanism is atlas-substrate-version-correlated effect shift
+(γ); causal mechanism deferred to v0.7 investigation. 2 of 4
+axes DIVERGE in tier-gradation comparison; 2 CONFIRM.
+
+#### F9 METHODOLOGY-DESIGN GAP — tag-only-not-control pattern
+
+v0.6 cycle design (Step 5.0 Q5.0.7 atlas-version-tagging
+discipline lock) captured atlas-version-tag in trial manifests
+but did NOT specify methodology-comparison-must-control-for-
+atlas-version. F1 atlas-substrate-version-confound finding
+emerges from this gap. Pattern observation: tag-only-not-
+control methodology gap. Generalizable lesson for v0.7+ design
+discipline.
+
+#### v0.7 methodology amendment scope (captured for v0.7-SCOPE.md absorption)
+
+Per v0.6-SCOPE.md §Rescope: "If v0.6 subset DIVERGES: v0.7
+absorbs methodology amendment work alongside dogfood trial."
+2 axes DIVERGE per Step 5.3.b Phase-10 §8 Table 6.
+
+Substantive amendments expanded from F-findings:
+
+1. **Atlas-version-control methodology amendment** (F1 + F9) —
+   Cross-cycle tier-gradation comparison must control for
+   atlas-substrate-version. Concrete mechanism: re-measure v0.5
+   anchor cells against v0.5.0 atlas at v0.7 (50 trials × ~$20
+   platform-billed) OR document confound + treat v0.6 as new
+   baseline. Hybrid option: both as control + ongoing-substrate.
+
+2. **Cell-selection empirical pre-screen methodology amendment**
+   (F3) — 3 v0.6 new cells contributed mixed effects per
+   decomposition; theoretical bucket-tier framing alone
+   insufficient. Empirical pre-screen via n=2 dry-run per
+   candidate cell before n=5 commitment.
+
+3. **2-axis retry policy methodology** (F4 F6 reframing) —
+   v0.5 F6 framing refined from position-deterministic to
+   stochastic-failure-with-orthogonal-recovery-axes (retry-
+   same-config + swap-config). Path A harness extension at
+   Step 5.3.a ships methodology improvement; v0.7 inheritance
+   applies across grading harnesses.
+
+4. **Variance-control auto-stretch refinement** (F5) — v0.6
+   substrate ALL 8 cells trigger ≥0.2 variance threshold (vs
+   v0.5 5/5); auto-stretch policy currently hono/h1-only;
+   methodology candidate to extend stretch to high-variance
+   non-hono cells with budget-controlled limit.
+
+5. **Causal mechanism investigation for atlas-version-correlated
+   attenuation** (F1 deferred work) — Multiple plausible
+   mechanisms (atlas-content-volume; quality; time-of-
+   measurement; sample variance). v0.7 investigation could
+   disambiguate via re-measurement (per #1) + content-source
+   ablation studies.
+
+#### Six cycle-execution observations from Step 5
+
+1. **Q11-style execution-time refinement pattern applied
+   multiple times in Step 5**: Q5.3.1 substep ladder split to
+   5.3.a + 5.3.b at Step 5.3 surface; Q5.0.7 atlas-version-
+   tagging framing refinement at Step 5.1; Q5.0.2 cell-
+   selection refinement at Step 5.2 trial-67 h10→h5
+   substitution. Pattern preserves audit trail while allowing
+   substantive design-time-locks to refine at execution-time
+   per empirical evidence.
+
+2. **Discipline #3 cadence-catch instances 18-23 in Step 5**:
+   - 18th — state-detection silent-drop bug at Step 5.1 dist
+     rebuild (hotfix commit `68a1dc9`; pre-existing tech debt
+     from Step 3.3)
+   - 19th — hono/h10 held_out filter at Step 5.2 trial-67
+     (Q5.0.2 design-time substrate-verification gap)
+   - 20-22nd — F6 reframing during Step 5.3.a swap-retry
+     implementation (count discrepancy verification + organic-
+     retry-vs-swap-retry disambiguation + cobra/c3 empirical
+     n=5/5 achievement)
+   - 23rd — substantive-interpretation cadence-catch at Step
+     5.3.b decomposition surface (Path B disambiguation refined
+     F1 PRIMARY framing from generic "DIVERGES" to specific
+     mechanism-attributed atlas-substrate-version-confound
+     finding)
+
+3. **Honest-scope-acknowledgment per discipline #4 applied at
+   multiple deferrals**: h5 task_category divergence at Step
+   5.2 (h10 absent → h5 impact); F6 reproduction interpretation
+   ambiguity at Step 5.3.a (judge-model-unchanged verification
+   refined framing); causal mechanism deferral at Step 5.3.b
+   F1 (correlation vs causation distinction).
+
+4. **Cost projection iteration discipline refinement**: Step
+   5.0 estimate ($24-30) used cost-priors-v0.5.json platform-
+   billed baseline conflated with script-reported framing;
+   Step 5.1 surface refined projection ($36-39); Step 5.2
+   actual ($33.39) within both bounds. Cycle-observation
+   pattern: cost-projection-methodology requires explicit
+   script-reported-vs-platform-billed framing at design-time;
+   refinement candidate for v0.7+ cycle-pre-planning template.
+
+5. **Empirical-evaluation rhythm shift observation**: Steps
+   5 substantive work shape transitioned from code-
+   implementation (Steps 3-4) to methodology-execution +
+   statistical-inference. Discipline #3 cadence applied across
+   rhythm shift at consistent rigor; surface format adapted
+   appropriately (methodology-inheritance reading + cell-
+   selection criteria + cost-projection + statistical analysis
+   pattern + cost-approval-gate framework vs pre-implementation
+   reading + spec + drafts + tests pattern). Pattern carries
+   forward to v0.7+ empirical-evaluation cycles.
+
+6. **Substantive-interpretation cadence observation (NEW
+   pattern)**: Discipline #3 surface-inline-before-commit
+   cadence applied at substantive-INTERPRETATION moments (not
+   just substantive-implementation moments) materially
+   improved F-finding framing quality. Step 5.3.b decomposition
+   surface refined F1 PRIMARY from generic "v0.5 tier-
+   gradation does NOT fully generalize" to specific mechanism-
+   attributed "atlas-substrate-version confound" via Path B
+   decomposition analysis. Pattern: when paired-t outcomes
+   surface unexpected results, surface decomposition INTERPRETATION
+   inline before committing F-finding framing — captures more
+   substantively-grounded substrate for v0.7+ consumption.
+
+---
+
+### Step 5.3.b shipped — 2026-05-06
+
+V0.6 Step 5.3.b ships statistical analysis + Phase-10
+reference-doc + cost-priors-v0.6.json cumulative snapshot per
+Q5.3.b.1-Q5.3.b.5 sub-adjudications locked at Step 5.3.b
+surface review.
+
+| Substep | branch | commit | Notes |
+|---|---|---|---|
+| 5.3.b | benchmarks | 23dd385 | 5 sub-adjudications locked; tier-gradation-compare module + tests; aggregate-cost-priors constant bumps; doc-gen hybrid generation; decomposition analysis; Phase-10 ref-doc 11-section structure; F1-F9 F-findings drafted |
+
+#### Implementation summary
+
+Five sub-adjudications locked at Step 5.3.b surface (Q5.3.b.1-
+Q5.3.b.5):
+- Q5.3.b.1 (γ) hybrid ref-doc generation strategy (auto-fill
+  §1-§8 tables + dev-prefilled §9-§11 narrative)
+- Q5.3.b.2 (β) bump aggregate-cost-priors.mjs constants
+  directly (OUTPUT_PATH → cost-priors-v0.6.json;
+  ORCHESTRATOR_DIR_PATTERNS adds /^v0\.6-step\d+/)
+- Q5.3.b.3 two-function tier-gradation-compare signature
+  (classifyTier + compareTierGradations)
+- Q5.3.b.4 (α) hardcode v0.5 outcomes from Phase-9 §6 Table 2
+  with comment annotation
+- Q5.3.b.5 Phase-10 ref-doc location:
+  benchmarks/research/phase-10-v0.6-reference-run.md
+
+#### F1 PRIMARY substantive finding
+
+Atlas-substrate-version confound surfaces in v0.5-vs-v0.6
+tier-gradation comparison. Per Step 5.3.b decomposition
+analysis: 5 v0.5 anchor cells attenuate 28-100% on ALL 4 axes
+when re-run against v0.5.0 atlas substrate. Decomposition
+rules out (β) noise-increase as primary driver. Primary
+mechanism is atlas-substrate-version-correlated effect shift
+(γ); causal mechanism deferred to v0.7 investigation.
+
+#### F9 METHODOLOGY-DESIGN GAP — tag-only-not-control
+
+Q5.0.7 atlas-version-tagging discipline captured the tag in
+trial manifests but did NOT specify methodology-comparison-
+must-control-for-atlas-version. v0.7 methodology amendment
+must include explicit-control-for-atlas-version-when-comparing-
+tier-gradations.
+
+#### Step 5.3.b unblock
+
+Step 5.4 close (progress log batching + v0.7 methodology
+amendment scope capture) unblocked next per Q5.0.10 cross-
+repo work split lock.
+
+---
+
+### Step 5.3.a shipped — 2026-05-06
+
+V0.6 Step 5.3.a ships production grading harness + 43 base
+pairs + 9 cross-order regrades + 2 swap-retry recoveries per
+Q5.3.1-Q5.3.6 locks at Step 5.3 surface review (sub-substep
+split refinement applied per Q11-style pattern).
+
+| Substep | branch | commit | Notes |
+|---|---|---|---|
+| 5.3.a | main | c2aabc4 | 6 sub-adjudications + harness extension Phase 3 swap-retry; cobra/c3 effective n=5/5; F6 reframing as 2-axis retry policy |
+
+#### Implementation summary
+
+Six sub-adjudications locked at Step 5.3 surface (Q5.3.1-
+Q5.3.6) including (β) Q5.3.1 split refinement to 5.3.a + 5.3.b
+substeps (matches Step 3.2.a/3.2.b precedent + v0.5 Step 8/9
+structure).
+
+NEW: scripts/v0.6-step5.3-grading-harness.mjs (~700 LOC;
+mirrors v0.5-step8 pattern with v0.6-specific config + Phase 3
+swap-retry extension). Total grades: 52 (43 effective base —
+41 Phase 1 + 2 Phase 3 swap-retry — + 9 cross-order regrades).
+$0.6829 script-reported (well within $5 cap + $2 budget).
+
+#### Substantive F6 reframing finding
+
+cobra/c3 trial-0 recovered organically via Phase 1 retry on
+resume (no swap needed; same anonymization parameters worked
+on retry); trials 2 + 4 recovered via Phase 3 swap-retry with
+forceSwapAB. Refines v0.5 F6 framing from position-deterministic
+to stochastic-failure-with-orthogonal-recovery-axes.
+
+#### Step 5.3.a unblock
+
+Step 5.3.b (statistical analysis + Phase-10 ref-doc + cost-
+priors-v0.6.json snapshot) unblocked next per Q5.3.1 split
+ladder.
+
+---
+
+### Step 5.2 shipped — 2026-05-06
+
+V0.6 Step 5.2 ships full 86-trial production replication per
+v0.6-SCOPE.md §7.1 Q2 lock + Step 5.0 + Step 5.1 substrate.
+
+| Substep | branch | commit | Notes |
+|---|---|---|---|
+| 5.2 (CELLS edit) | benchmarks | 8ce2646 | h10 → h5 substitution per Q11-style refinement at trial-67 pause |
+
+#### Implementation summary
+
+86/86 trials complete per orchestrator final state. $33.39
+script-reported / ~$15.80 platform-billed cumulative. 0
+failures (after recovery). Two execution incidents handled:
+
+1. **Trial-67 pause: hono/h10 stripped by filterStep7**
+   (bucket=held_out). Q5.0.2 cell-selection design-time
+   substrate-verification gap. Q11-style refinement applied:
+   h10 → h5-hono-generics substitution. 19th discipline #3
+   cadence-catch instance.
+
+2. **529 outage during resume** (15:22-15:29 UTC; 8 trial
+   failures; 0 cost incurred per run-reference halted pre-
+   manifest). Recovered via simple retry per existing
+   Z_ANTHROPIC_529_OUTAGE methodology substrate. Path B
+   retry-coverage-of-529 cycle-emergent candidate captured
+   for Phase-10 §9.
+
+#### Variance check observation
+
+ALL 8 cells triggered ≥0.2 token range/μ threshold. 7 non-hono
+triggers accepted per Path α methodology-consistency lock
+(matches v0.5 Phase-9 precedent of accepting non-hono variance
++ documenting as methodology limit; n=5 paired-t maintained).
+4 of 5 v0.5 anchors INCREASED variance in v0.6 substrate.
+
+#### Step 5.2 unblock
+
+Step 5.3.a (production grading harness) unblocked next per
+Q5.3.1 split ladder.
+
+---
+
+### Hotfix shipped — 2026-05-05
+
+State-detection CheckCategory missing from doctor text formatter
++ sample-symbol type annotation hotfix.
+
+| Substep | branch | commit | Notes |
+|---|---|---|---|
+| hotfix | main | 68a1dc9 | Pre-existing tech debt surfaced at Step 5.1 dist rebuild |
+
+#### Implementation summary
+
+Two TypeScript build errors blocking benchmarks-repo trial
+execution:
+
+1. **src/doctor/output/text.ts CATEGORY_LABEL Record missing
+   "state-detection" key** — Step 3.3 added "state-detection"
+   to CheckCategory union but didn't update CATEGORY_LABEL
+   Record OR `order` array. Result: state-detection checks
+   silently dropped from doctor text output since Step 3.3
+   ship.
+
+2. **src/doctor/checks/sample-symbol.ts:99-113 type annotation**
+   — `let entries: ReturnType<typeof readdirSync>` picked
+   union's last overload; corrected to `Dirent<string>[]`.
+
+8 bug-prevention tests added (CATEGORY_LABEL completeness +
+section-header rendering for all 6 CheckCategory values).
+Pre-commit suite: 1251/1251 PASS (1243 baseline + 8 new).
+
+18th discipline #3 cadence-catch instance + tier-extension
+pattern observation: caught at downstream Step 5.1 dist
+rebuild rather than upstream Step 3.3 surface-inline.
+
+---
+
+### Step 5.1 shipped — 2026-05-06
+
+V0.6 Step 5.1 ships methodology setup + cell-selection final
+lock + trial-script wiring + dry-run smoke test per Q5.1.1-
+Q5.1.4 sub-adjudications locked at Step 5.1 surface.
+
+| Substep | branch | commit | Notes |
+|---|---|---|---|
+| 5.1 (amended) | benchmarks | 2ab0b5a | 4 sub-adjudications; final cell list 8 cells (2/3/3); orchestrator (~430 LOC); dry-run smoke verified; pre-push amend per Path X precedent (missing Co-Authored-By trailer fix) |
+
+#### Implementation summary
+
+Four sub-adjudications locked at Step 5.1 surface:
+- Q5.1.1 trick-bucket cell: cobra/c6-execute-signature
+  (Go-balanced final 2 hono / 3 httpx / 3 cobra distribution)
+- Q5.1.2 NEW scripts/v0.6-step5-orchestrator.mjs per per-
+  cycle pattern
+- Q5.1.3 (α) atlas-version-tagging via current 0.5.0 + cycle-
+  version-via-run-uuid-prefix; v0.5 precedent followed; fresh-
+  evidence-base intent satisfied
+- Q5.1.4 cobra/c4-subcommand-resolution as dry-run smoke cell
+
+NEW: scripts/v0.6-step5-orchestrator.mjs (~430 LOC; mirrors
+v0.5-step7 with v0.6-specific config + COST_CAP_USD=40 script-
+reported semantic verified at Step 5.1 surface).
+
+Cost projection iteration documented: Step 5.0 estimate
+$24-30 → Step 5.1 surface refined $36-39 → smoke empirical
+$0.70/trial → Step 5.2 actual $33.39 (closer to surface
+estimate than smoke outlier).
+
+Hotfix surfacing cross-reference (commit 68a1dc9): smoke
+preflight detected dist staleness + ANTHROPIC_API_KEY env-
+var fix; both resolved before smoke verification.
+
+Pre-push amend per Path X precedent: 73415e0 → 2ab0b5a
+(Co-Authored-By trailer added; convention consistency).
+
+#### Step 5.1 unblock
+
+Step 5.2 (cost-approval gate + full trial execution) unblocked
+next per Step 5.0 lock.
+
+---
 
 ### Step 5.0 shipped — 2026-05-05
 
