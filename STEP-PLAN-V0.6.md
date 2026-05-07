@@ -348,22 +348,30 @@ infrastructure (recruitment process + trialist screening criteria
   privacy treatment with ~12-15 tests; ~25-33 net new tests
   for Step 6.2 observability code; clean Step 6 → Step 7
   coupling).
-- [ ] **Step 6.1** — B17 cohort feedback template (markdown at
+- [x] **Step 6.1** — B17 cohort feedback template (markdown at
   research/cohort/feedback-template.md per scope-doc §Stream C
-  lines 418-427 specification).
-- [ ] **Step 6.2** — Tool-description observability (--observe
+  lines 418-427 specification). Shipped 2026-05-07; commit
+  `69548f4`; 234 LOC NEW; 5 refinements applied.
+- [x] **Step 6.2** — Tool-description observability (--observe
   flag + ContextAtlasConfig observability section + server-
   level interception + sanitize.ts privacy filter +
-  observe.ts log writer + tests; ~25-33 net new tests).
-- [ ] **Step 6.3** — ADR-20 cohort observability contract
+  observe.ts log writer + tests). Shipped 2026-05-07; commit
+  `a624390`; 16 files; +1289/-6; 52 net new tests
+  (1251 → 1303); 6 sub-adjudications + 3 refinements.
+- [x] **Step 6.3** — ADR-20 cohort observability contract
   drafting (8 sections per Q6.0.5 refinement: Scope; Consent
   process; Data collected; Storage; Use; Retention;
-  Participant rights; Cross-references).
-- [ ] **Step 6.4** — Recruitment infrastructure (3 docs at
+  Participant rights; Cross-references). Shipped 2026-05-07;
+  commit `dcd3c4d`; 1 file; +361 LOC; 5 open questions
+  resolved + 0 cross-reference discrepancies surfaced.
+- [x] **Step 6.4** — Recruitment infrastructure (3 docs at
   research/cohort/{recruitment-process,screening-criteria,
-  pre-trial-onboarding}.md).
-- [ ] **Step 6.5** — Step 6 close commit: progress log
-  batching for Steps 6.1 + 6.2 + 6.3 + 6.4 + 6.5.
+  pre-trial-onboarding}.md). Shipped 2026-05-07; commit
+  `e9601e8`; 3 files; +574 LOC; 5 open questions resolved +
+  2 refinements applied.
+- [x] **Step 6.5** — Step 6 close commit: progress log
+  batching for Steps 6.1 + 6.2 + 6.3 + 6.4 + 6.5 close
+  synthesis + 6 cycle-execution observations.
 
 **Unblocks.** Step 7 cohort exposure (recruitment infrastructure
 ready) + cohort feedback collection (template + observability
@@ -466,6 +474,488 @@ B-with-explicit-launch-staging.
 ## Progress log
 
 *Entries added in reverse-chronological order as steps ship.*
+
+### Step 6.5 shipped — 2026-05-07 (Step 6 close)
+
+V0.6 Step 6 closes per Stream C tooling specification at
+v0.6-SCOPE.md. 4 Stream C items shipped (B17 cohort feedback
+template + tool-description observability + ADR-20 cohort
+observability contract + recruitment infrastructure); cohort
+exposure substrate operational for Step 7 execution.
+
+| Substep | branch | commit | Notes |
+|---|---|---|---|
+| 6.5 close | main | [this commit] | Step 6 close + progress log batching for Steps 6.1 + 6.2 + 6.3 + 6.4 + 6.5 close synthesis + 6 cycle-execution observations |
+
+#### Step 6 cumulative outcome — Stream C tooling shipped
+
+Stream C tooling shipped per v0.6-SCOPE.md §Stream C
+specification + Q6.0.1-Q6.0.9 + Q6.2.1-Q6.2.6 sub-adjudication
+clusters. Cumulative deliverables:
+
+- **B17 cohort feedback template** (Step 6.1; commit `69548f4`)
+  — 234 LOC structured markdown; per-session + post-trial
+  split; cohort-collegial framing
+- **Tool-description observability** (Step 6.2; commit
+  `a624390`) — 16 files / +1289 LOC; sanitize.ts (PII
+  denylist + SAFE_FIELDS allowlist + path-stripping) +
+  observe.ts (JSONL writer + session_id + Observation shape)
+  + parser.ts validateObservability + cli-args.ts --observe
+  flag + init/runner.ts plumbing + mcp/server.ts server-level
+  interception + index.ts startup wiring
+- **ADR-20 cohort observability contract** (Step 6.3; commit
+  `dcd3c4d`) — 361 LOC; 8-section ADR per Q6.0.5 refinement
+  (Scope first; Consent early); 5 open questions resolved
+- **Recruitment infrastructure** (Step 6.4; commit `e9601e8`)
+  — 574 LOC across 3 markdown docs (recruitment-process
+  internal-facing + screening-criteria internal-facing +
+  pre-trial-onboarding participant-facing); Item 6 4-substrate-
+  component coverage
+
+**Step 6 deliverable counts:**
+- 5 commits (6.0 + 6.1 + 6.2 + 6.3 + 6.4)
+- ~2,460 LOC across substantive substeps (1289 Step 6.2 +
+  361 Step 6.3 + 574 Step 6.4 + 234 Step 6.1 + 230 Step 6.0
+  STEP-PLAN edit)
+- 52 net new tests at Step 6.2 (1251 → 1303 baseline)
+- Test count: 1303/1303 PASS at Step 6.2 close (final Step 6
+  baseline)
+
+v0.6-SCOPE.md success criterion #3 (Stream C cohort
+observability instrumentation shipped) PARTIALLY ADVANCED at
+Step 6: instrumentation + contract + recruitment infrastructure
+shipped; cohort exposure execution deferred to Step 7 per Item 6
+v0.6-ships-infrastructure / v0.7-executes-scaled-trial split.
+
+#### Cycle-execution observations from Step 6 batch
+
+Six substantive observations captured during Step 6 execution
+worth carrying forward to v0.7+ cycle-execution discipline
+substrate:
+
+**(a) ADR-implementation cross-reference verification
+discipline** — Step 6.3 cross-reference verification table
+surfaced 0 discrepancies between ADR-20 commitments and Step
+6.2 implementation behavior. Contract-first design discipline
+(Q6.2 sub-adjudications at Step 6.2 design phase anticipated
+ADR-20 commitments substantively) prevented post-implementation
+contract drift. Pattern observation: load-bearing contract-
+implementation pairs benefit from contract-anticipating
+implementation-design at substep boundary, not contract-
+documents-whatever-shipped pattern. Substrate for v0.7+
+contract-implementation work.
+
+**(b) Privacy-load-bearing test rigor observation** — ~52 net
+new tests at Step 6.2; ~18 sanitize.ts tests with +3-6 over
+projection per Q6.0.7 substantive risk profile. Substantively
+heaviest single-substep test count growth in v0.6 cycle.
+Methodology pattern: privacy-load-bearing implementation
+warrants higher test coverage rigor than typical utility
+modules. Generalizes for v0.7+ privacy-relevant substrate (e.g.,
+centralized telemetry if shipped post-v0.6 ADR-20 §Limitations
+expansion).
+
+**(c) Cohort-facing tone inheritance pattern** — Feedback
+template at Step 6.1 → ADR-20 at Step 6.3 → recruitment
+infrastructure at Step 6.4: consistent collegial framing
+across cohort-facing artifacts (plain language; participant-
+collaborator framing; honest substrate-generation thesis
+disclosure; explicit consent + opt-out paths). Substrate for
+v0.7+ cohort-facing artifact authoring; tone inheritance
+pattern documents how new cohort-facing artifacts maintain
+consistency.
+
+**(d) Step 6 weight comparison vs Steps 3-4** — Step 6 lighter
+than Step 4 by LOC (~3,000 LOC Step 4 cumulative vs ~2,460 LOC
+Step 6 cumulative) but heavier by privacy + cohort
+consideration density per substep. Privacy-load-bearing
+dimension at Step 6.2 + cohort-facing interpretive work at
+Step 6.3 + Step 6.4 add cognitive load not present in Steps
+3-4 internal-facing pipeline work. Pattern: LOC-only weight
+comparison undersells consideration-density-load on cohort/
+privacy/contract-shaped substeps.
+
+**(e) Substantive-interpretation cadence pattern at Step 6.3**
+— Similar to F1 PRIMARY framing at Step 5.3.b decomposition
+analysis; 24th discipline #3 cadence-catch instance in v0.6
+cycle execution. Cross-reference verification at substantive-
+interpretive moments (cohort-contract-anticipating
+implementation behavior alignment) materially improved
+cohort-contract framing quality vs commit-without-verification
+counterfactual. Substantive-interpretive moments warrant
+discipline #3 cadence-catch even when scope appears mechanical
+(ADR drafting against shipped substrate looks mechanical;
+verification reveals 0 discrepancies but only because contract-
+first design anticipated commitments).
+
+**(f) Q11-style execution-time refinement at Step 6.2** —
+config-scaffold.ts new module addition during implementation
+not in original Step 6.2 surface; Q11-style scope-clarifying
+refactor separating scaffold-writing logic from runner.ts.
+Matches Step 4.3 detect-then-scaffold reorder + Step 5.2
+h10→h5 substitution + Step 5.3 ladder split pattern. Pattern
+observation: execution-time refinements at substep boundaries
+preserve substrate quality without scope creep when refactor
+is genuinely scope-clarifying (separation of concerns) rather
+than scope-expanding (new feature surface).
+
+#### Step 6 unblock — Step 7 cohort exposure operational
+
+Step 7 cohort exposure cross-cutting work unblocked. Recruitment
+infrastructure operational (Step 6.4); observability
+instrumentation operational (Step 6.2); consent contract drafted
+(Step 6.3); feedback template operational (Step 6.1).
+
+Step 7.0 design-adjudication substep firms cross-cutting
+documentation discipline + cohort recruitment kickoff per Step
+N.0 cadence convention.
+
+---
+
+### Step 6.4 shipped — 2026-05-07
+
+Recruitment infrastructure shipped per v0.6 Step 6.4 lock at
+Step 6.4 surface review (Q6.0.6 file-structure lock; 5 open
+questions resolved + 2 minor refinements applied).
+
+| Substep | branch | commit | Notes |
+|---|---|---|---|
+| 6.4 recruitment infrastructure | main | `e9601e8` | 3 files; +574 LOC; recruitment-process.md (~140 LOC internal-facing) + screening-criteria.md (~135 LOC internal-facing) + pre-trial-onboarding.md (~210 LOC participant-facing) |
+
+#### Item 6 4-substrate-component coverage
+
+Per v0.6-SCOPE.md §Stream C Item 6 specification (4 substrate
+components):
+
+- **Recruitment process documentation** → recruitment-process.md
+  (cohort target sizing 3-8; Travis-network outreach channels;
+  outreach framing talking points; application/screening flow;
+  initial conversation expectations)
+- **Trialist screening criteria** → screening-criteria.md (5
+  required qualifying criteria: language coverage; codebase
+  characteristics; time commitment; structured-feedback
+  willingness; existing Claude Code familiarity; out-of-scope
+  + soft-preference criteria enumerated)
+- **Structured feedback template integration** → pre-trial-
+  onboarding.md "How to provide feedback" + screening-criteria.md
+  soft-preference signals
+- **Pre-trial onboarding documentation** → pre-trial-onboarding.md
+  (welcome + collaborator framing; trial scope + duration;
+  v0.6 scope-disclaimer; time commitment; two-stream feedback
+  manual + observability; setup walkthrough; consent + opt-out
+  paths; first-session expectations; Q&A contact)
+
+#### Open questions resolved (5)
+
+- Q1 cohort target size: 3-8 participants (substantive lower
+  bound for selection-bias mitigation; cycle-close synthesis
+  manageability upper bound)
+- Q2 compensation framing: "no compensation at v0.6 cycle"
+  explicit clarity (recompense implicit via early-access
+  relationship + influence on v0.7 design)
+- Q3 first-session example patterns: 3 examples covering
+  atlas-tool target patterns (architectural / symbol-level /
+  impact-analysis)
+- Q4 Q&A contact channel: ambiguous-by-design — operational
+  flexibility for Travis network variation
+- Q5 submission instructions: deferred to Step 7 cohort
+  exposure execution per-cohort specifics
+
+#### Refinements applied (2)
+
+- **Refinement A** (recruitment-process.md L47): talking-points
+  framing clarification — "These talking points represent
+  substantive content to convey; adapt language to match
+  candidate + relationship; substantive points are what
+  matters, not verbatim wording" — clarifies talking-points
+  pattern serves substantive-content-coverage rather than
+  scripted-language-prescription
+- **Refinement B** (pre-trial-onboarding.md cross-references):
+  scope cleanup — removed internal-facing docs (recruitment-
+  process.md + screening-criteria.md) from participant-facing
+  cross-references; kept ADR-20 + feedback-template.md only;
+  cross-references serve participant's needs without creating
+  curiosity-friction
+
+Cohort-collegial framing inheritance from feedback template
+(Step 6.1 commit `69548f4`) + ADR-20 (Step 6.3 commit
+`dcd3c4d`): plain language; non-bureaucratic; active voice +
+second-person where participant-facing; time commitment
+surfaced up-front; consent + opt-out paths explicit;
+substrate-generation thesis transparent.
+
+#### Step 6.4 unblock
+
+Step 6.5 (Step 6 close commit batching progress log entries)
+unblocked. Recruitment infrastructure operational substrate
+for Step 7 cohort exposure execution.
+
+---
+
+### Step 6.3 shipped — 2026-05-07
+
+ADR-20 cohort observability contract drafted per v0.6 Step 6.3
+lock at Step 6.3 surface review (Q6.0.5 section-ordering
+refinement; 5 open questions resolved; substantive interpretive
+moment of Step 6 per discipline #3 surface-inline-before-commit
+cadence).
+
+| Substep | branch | commit | Notes |
+|---|---|---|---|
+| 6.3 ADR-20 cohort observability contract | main | `dcd3c4d` | 1 file; +361 LOC; 8-section ADR-20 per Q6.0.5 section-ordering refinement |
+
+#### 8-section structure per Q6.0.5 section-ordering refinement
+
+1. **Scope** (in/out enumeration; MCP tools/call boundary;
+   explicit out-of-scope: user prompts, source code, atlas
+   content, identity-revealing PII, network telemetry)
+2. **Consent process** (--observe flag IS consent signal per
+   Q6.0.4 hybrid wiring; two opt-in pathways: init writes
+   config + per-session mcp override; v0.6 opt-out via config
+   edit; --no-observe deferred to v0.7+ per Q6.2.6)
+3. **Data collected** (concrete table of 9 observation fields;
+   session_id derivation SHA256(pid:timestamp).slice(0,16);
+   sanitization enumeration; What's NOT logged reiterated)
+4. **Storage** (local-only; .contextatlas/observe-log.jsonl
+   default; JSONL append-only; no remote upload; no log
+   rotation v0.6; submission framing generic with Step 6.4
+   forward-pointer)
+5. **Use** (4 enumerated v0.7 design substrates; use boundaries)
+6. **Retention** (cohort exposure window + cycle-close
+   synthesis; specifics firm at v0.7 per cohort-scale empirical;
+   deletion process)
+7. **Participant rights** (Access + Deletion + Portability +
+   Refusal of submission; no identity correlation by design)
+8. **Cross-references** (Step 6.2 implementation; Step 6.1
+   feedback template; Step 6.4 forward-pointers; related ADRs)
+
+#### Cross-reference verification surfaced 0 discrepancies
+
+ADR-20 commitments verified against Step 6.2 implementation
+behavior (commit `a624390`) — 0 discrepancies surfaced. Cross-
+reference verification covered:
+- "Email patterns redacted" ↔ PII_PATTERNS sanitize.ts:28 ✓
+- "Home-dir paths replaced" ↔ stripPaths Unix + Windows ✓
+- "Tool name + kind preserved verbatim" ↔ SAFE_FIELDS allowlist ✓
+- "session_id anonymized; not user-correlatable" ↔
+  SHA256(pid:timestamp).slice(0,16) cached per process ✓
+- "JSONL append-only" ↔ appendFileSync(line + "\n") ✓
+- "--observe IS consent signal" ↔ cli-args.ts flag accepted
+  init+mcp; rejected index/doctor ✓
+- "Per-session override via mcp --observe" ↔ index.ts
+  parsed.observe || config.observability?.enabled ✓
+- "tools/list NOT observed" ↔ server.ts interception only on
+  CallToolRequestSchema ✓
+
+Contract-first design discipline (Q6.2 sub-adjudications at
+Step 6.2 design phase anticipated ADR-20 commitments
+substantively) prevented post-implementation contract drift.
+Substrate observation captured at Step 6.5 close synthesis (a)
+above.
+
+#### Open questions resolved (5)
+
+- Q1 severity: hard (privacy commitments load-bearing; ADR-19
+  precedent)
+- Q2 symbols frontmatter: 5 entries (createObservabilityWriter,
+  getSessionId, sanitize, stripPaths, stripPII)
+- Q3 §4 storage submission framing: generic with Step 6.4
+  forward-pointer (premature commitment without recruitment-
+  infrastructure substrate)
+- Q4 §6 retention day-count: generic with v0.7 cycle pre-
+  planning firm-up annotation
+- Q5 §3 PII pattern completeness: v0.6 v1 minimal-defensible-
+  baseline disclosure (honest disclosure substantively more
+  transparent than unspecified "we strip PII")
+
+Plain-language participant-facing tone inheritance from
+feedback template (Step 6.1 commit `69548f4`); 24th discipline
+#3 cadence-catch instance in v0.6 cycle execution
+(substantive-interpretation cadence pattern observation
+captured at Step 6.5 close synthesis (e) above).
+
+#### Step 6.3 unblock
+
+Step 6.4 (recruitment infrastructure) unblocked. ADR-20
+contract substrate operational for cross-references in
+recruitment-process.md + pre-trial-onboarding.md.
+
+---
+
+### Step 6.2 shipped — 2026-05-07
+
+Tool-description observability implementation shipped per v0.6
+Step 6.2 lock at Step 6.2 surface review (Q6.2.1-Q6.2.6 sub-
+adjudications + 3 refinements; single-commit cadence per
+Point 7 lock batching 7 implementation slices).
+
+| Substep | branch | commit | Notes |
+|---|---|---|---|
+| 6.2 tool-description observability | main | `a624390` | 16 files; +1289/-6; 4 new in src/observability/ + 12 modified across config/cli-args/init/mcp/index/types; 52 net new tests (1251 → 1303) |
+
+#### Six sub-adjudications locked
+
+- **Q6.2.1 JSONL format** (newline-delimited JSON; one
+  observation per line; atomic single-line writes via
+  fs.appendFileSync; log rotation deferred to v0.7+ pending
+  size empirical)
+- **Q6.2.2 observation shape** (timestamp + session_id + tool
+  + request_args + response{status, latency_ms, result_summary?,
+  error_message?}; Refinement 1 adds contextatlas_version
+  field per cycle-version provenance)
+- **Q6.2.3 sanitize hybrid** (PII denylist + SAFE_FIELDS
+  allowlist + path-stripping; PII_PATTERNS v0.6 v1 minimal-
+  defensible-baseline annotated for v0.7+ extension per
+  Refinement 2)
+- **Q6.2.4 server interception via CreateServerOptions**
+  (observabilityWriter + observabilityCwd; wraps tools/call
+  dispatch; tools/list NOT observed; defensive try/catch
+  swallows writer errors so observability never breaks tool
+  surface)
+- **Q6.2.5 --observe flag IS the consent signal** (Q4.0.9
+  non-blocking + Q6.0.4 hybrid wiring; flag accepted by both
+  init [writes config observability.enabled: true] and mcp
+  [per-session override]; rejected by index/doctor)
+- **Q6.2.6 --no-observe deferred to v0.7+** pending cohort
+  empirical feedback per Refinement 3 + scope-doc Stream C
+
+#### Three refinements applied
+
+- **Refinement 1** (contextatlas_version observation field):
+  cycle-version provenance per Q5.1.3 atlas-version-tagging
+  discipline inheritance; computed at writer-creation time
+  from package.json
+- **Refinement 2** (sanitize.ts v0.7+ extension annotation):
+  PII_PATTERNS scoped to email shapes only at v0.6 v1; honest-
+  scope-acknowledgment per Q5 lock + Phase-10 §9 cycle-emergent
+  candidate framing
+- **Refinement 3** (--no-observe deferral annotation):
+  docstring notes deferral with v0.7+ cohort-feedback gate;
+  v0.6 cycle cohort participants opt-in via --observe;
+  opt-out is config-edit (set observability.enabled: false)
+
+Single-commit cadence per Point 7 lock batched 7
+implementation slices spanning 8 files (incl. config-scaffold.ts
+scope-clarifying refactor — emits observability section into
+scaffold per Q6.0.4 hybrid wiring; not in original Step 6.2
+surface but emerged during implementation per Q11-style
+refinement pattern observation captured at Step 6.5 close
+synthesis (f) above).
+
+#### Test count growth: 1251 → 1303 (+52 net new across 7 files)
+
+- sanitize.test.ts: 18 tests (privacy-load-bearing rigor per
+  Q6.0.7; +3-6 over projection appropriate per substantive
+  risk profile — path-stripping Unix+Windows; PII patterns;
+  allowlist preservation; defensive cycles+depth+unicode)
+- observe.test.ts: 8 tests (JSONL append-only; multi-call
+  order; parent dir creation; contextatlas_version field
+  presence; error path; session-id stability)
+- parser.test.ts: +7 (validateObservability happy/empty/
+  invalid/unknown-key paths)
+- cli-args.test.ts: +7 (--observe init+mcp accepted; index+
+  doctor rejected; duplicate rejected; combines with --cc-only)
+- config-scaffold.test.ts: +4 (observe absent/false → no
+  section; observe true → enabled: true; round-trip via
+  loadConfig)
+- runner.test.ts: +2 (--observe true/absent scaffold writes)
+- server.test.ts: +6 (writer fires on success+error; tools/list
+  not observed; PII sanitized before writer; session-id stable
+  across calls; absent writer baseline)
+
+Substantively heaviest single-substep test count growth in
+v0.6 cycle (privacy-load-bearing observation captured at Step
+6.5 close synthesis (b) above).
+
+#### Consent contract enforcement
+
+- Default: observability.enabled = false
+- Cohort participants opt-in via --observe flag (writes
+  enabled: true into config OR per-session override)
+- --observe flag IS the consent signal — no separate prompt
+- Two-layer consent: feedback-template-voluntary +
+  observability-flag-opt-in
+- Sanitization happens server-side before writer sees args —
+  PII never lands in observe-log.jsonl
+
+ADR-20 forward-pointer landed at Step 6.3 (commit `dcd3c4d`)
+documenting what Step 6.2 substrate does.
+
+#### Step 6.2 unblock
+
+Step 6.3 (ADR-20 cohort observability contract drafting)
+unblocked. Implementation substrate operational for cross-
+reference verification at Step 6.3 surface review.
+
+---
+
+### Step 6.1 shipped — 2026-05-07
+
+B17 cohort feedback template shipped per v0.6 Step 6.1 lock at
+Step 6.1 surface review (Q6.0.2 markdown format + Q6.0.6
+research/cohort/ subdirectory location + 5 refinements applied
+per Travis adjudication).
+
+| Substep | branch | commit | Notes |
+|---|---|---|---|
+| 6.1 B17 cohort feedback template | main | `69548f4` | 1 file; +234 LOC NEW research/cohort/feedback-template.md |
+
+#### Per-session + post-trial split structure
+
+Template structured into two complementary sections per cohort-
+process discipline:
+
+- **Per-session feedback** (fill when atlas-relevant; ~5-10
+  min/session): Session ID auto-generated by --observe; atlas
+  tool invocation outcome (5 options); usefulness rating (5
+  options); free-text missed/wrong invocations; surprise/
+  noteworthy capture
+- **Post-trial structured feedback** (fill once at end of
+  cohort exposure; ~30-45 min): trial scope; codebase
+  characteristics (language; LOC bucket; ADR presence); setup
+  walkthrough friction; tool-description tuning targets;
+  natural-routing failure modes; missing-functionality
+  signals
+
+Three failure modes isolated per cohort-process discipline:
+natural-routing failure / tool-description failure / missing-
+functionality failure.
+
+#### Five refinements applied per Travis adjudication
+
+- Active-voice first option (positive-framing precedence
+  pattern; "Claude correctly invoked an atlas tool" precedes
+  failure modes)
+- Trial scope subsection (calendar window + session count +
+  average session length captured separately from codebase
+  characteristics)
+- Two-layer consent clarification (feedback template
+  voluntary at every point; observability data capture
+  governed separately by --observe flag opt-in)
+- LOC-only repo size buckets (symbol count auto-captured via
+  observability log; no double-counting at template fill time)
+- Per-session filling cadence (sparse-is-OK; honest sparse
+  beats forced verbose; sessions doing unrelated work don't
+  need feedback entries)
+
+Cohort-collegial tone inheritance pattern (substrate observation
+captured at Step 6.5 close synthesis (c) above): plain language;
+participant-collaborator framing; honest substrate-generation
+thesis disclosure.
+
+Cross-references to ADR-20 (Step 6.3 forward-pointer at
+template-write time; closed at Step 6.3 commit `dcd3c4d`) +
+Step 6.4 work products (TBD recruitment-process.md +
+screening-criteria.md + pre-trial-onboarding.md forward-
+pointers; closed at Step 6.4 commit `e9601e8`).
+
+#### Step 6.1 unblock
+
+Step 6.2 (tool-description observability) unblocked. Feedback
+template substrate operational for cohort-feedback / observability
+two-layer consent framing referenced at ADR-20 §1 (Step 6.3).
+
+---
 
 ### Step 6.0 shipped — 2026-05-06
 
