@@ -257,14 +257,21 @@ DIVERGE in v0.5-vs-v0.6 tier-gradation comparison per Step
 
 ## V1.0 ship-gate criteria closure timeline
 
-| Criterion | Status post-v0.5 | Status post-v0.6 (projected) | Closes at |
+| Criterion | Status post-v0.5 | Status post-v0.6 | Closes at |
 |---|---|---|---|
 | #1 quality-axis methodology parenthetical | ✓ CLOSED at v0.5 | ✓ CLOSED | — |
-| #1 statistically-meaningful-wins gate | Open (matrix-replication v0.6+) | PARTIALLY ADVANCED (8-cell subset) | v0.7 matrix-completion |
-| #2 onboarding pipeline shipped | Open | PARTIALLY ADVANCED (early-access pipeline-mechanics) | v0.7 onboarding-completion (H1 + H2 + H3 + C3 + B12) |
-| #3 external dogfood trial | Open | Open (v0.6 ships recruitment infrastructure; not trial execution) | v0.7 trial execution |
+| #1 statistically-meaningful-wins | Open (matrix-replication v0.6+) | PARTIAL (8-cell subset at v0.6; DIVERGED 2-of-4 axes) | v0.8+ matrix-completion |
+| #2 onboarding pipeline shipped | Open | PARTIAL (early-access pipeline-mechanics at v0.6 Step 4.5) | v0.7 (empirical verification per launch-bearing reframe) |
+| #3 external dogfood trial | Open | NOT MET (Tier 3 cancellation at v0.6 Step 7.5; recruitment infrastructure shipped) | v0.8+ post-launch cohort exposure execution |
 
-V1.0 closure post-v0.7: all ship-gate criteria #1-#3 closed.
+V1.0 closure post-v0.7 (per launch-bearing reframe at Step 8.2):
+honest 2-of-3 MET (criterion #1 parenthetical CLOSED at v0.5 +
+criterion #2 closes at v0.7 empirical verification) + criterion
+#1 statistically-meaningful-wins PARTIAL via 8-cell subset
+(carried forward to v0.8+ matrix-completion) + criterion #3
+carried forward to v0.8+ post-launch cohort exposure execution.
+See "## v0.7 cycle launch-bearing reframe (Travis pivot at v0.6
+Step 7.5)" section below for full reframe scope.
 
 ---
 
@@ -428,6 +435,138 @@ projections.
 
 ---
 
+## v0.7 cycle launch-bearing reframe (Travis pivot at v0.6 Step 7.5)
+
+**Added 2026-05-08 at v0.6 Step 8.2 close** per Q8.0.5 Refinement
+lock. Travis pivot at Step 7.5 (cohort exposure cancellation +
+v0.7 launch-bearing direction) substantively reframes v0.7 cycle
+character. Original Phase 2 4-stream framing
+(`## V0.7 4-stream item-level descriptions (from Phase 2 lock)`
+section above) preserved as historical record per Q1 lock; this
+section captures the launch-bearing reframe with implications-
+block annotation pointing back.
+
+### Reframe rationale
+
+Substrate-generation thesis (v0.6-SCOPE.md cycle-thesis) preserved
+via post-launch infrastructure inheritance — recruitment +
+observability + consent contract + feedback template + onboarding
+documentation ship at v1.0 ready for post-launch real-world cohort
+exposure (per Step 7.5 close framing at `STEP-PLAN-V0.6.md` commit
+`11e0ddc`). v0.7 cycle character shifts from substrate-generation-
+completion to launch-bearing feature-completion targeting 4-5 day
+timeline to v1.0 launch.
+
+### PRIMARY — claude-code-only extraction path
+
+B13 functional implementation. v0.6 ships flag-shape stub per Item
+2 reconsider lock (B13 path b — flags-with-explicit-pending-
+resolution); v0.7 ships single-dependency claude-code-only
+extraction path as functional implementation.
+
+ADR-02 amendment scope: extraction-sole-API-caller framing →
+extraction-via-multiple-paths (Anthropic API direct vs Claude
+Code session context). Cost model shift: API-pay-per-use →
+subscription-bounded for claude-code-only path.
+
+Substrate inheritance: v0.6 flag-shape stub at A7 onboarding
+pipeline + Step 4 architecture decisions; v0.7 promotes to
+functional implementation.
+
+### SECONDARY — Install + setup pipeline real-repo verification
+
+A7 onboarding pipeline (Stream A in original Phase 2 framing)
+real-repo empirical testing beyond Step 4.4 smoke test. Travis-
+side dogfooding on real codebases validates pipeline-mechanics
+shipped at v0.6 Step 4.5 against actual onboarding friction
+points before v1.0 launch.
+
+V1.0 ship-gate criterion #2 (onboarding pipeline shipped) closes
+at v0.7 empirical verification per launch-bearing reframe.
+
+### TERTIARY — Backlog-drain launch-blocking items
+
+Specific items locked at v0.7 cycle pre-planning. Expected scope:
+small. Triages v0.6/v0.7 deferred backlog for items genuinely
+launch-blocking (not v1.x-deferrable) per Travis direction at
+Step 7.5.
+
+### DEFERRED to v0.8+ post-launch cycle
+
+- **F1-F9 methodology amendments** (5 items per `## v0.6 cycle
+  execution substrate` section above): atlas-version-control
+  methodology amendment (F1 + F9); cell-selection empirical
+  pre-screen (F3); 2-axis retry policy (F4 F6 reframing);
+  variance-control auto-stretch (F5); causal mechanism
+  investigation (F1 deferred work). Methodology rigor work
+  not launch-blocking; v0.8+ post-launch absorbs alongside
+  matrix-completion.
+- **Cohort exposure execution.** Tier 3 pre-registration
+  applied at Step 7.5 per Q7.0.9 lock. Recruitment
+  infrastructure + observability instrumentation + ADR-20
+  consent contract + feedback template + pre-trial onboarding
+  ship at v1.0 ready for post-launch real-world cohort.
+  v0.8+ post-launch cycle re-attempts cohort exposure against
+  carried-forward substrate.
+- **Stream B matrix-completion.** Full matrix-completion (~168
+  trials remaining beyond v0.6 8-cell subset); statistically-
+  meaningful-wins gate work for v1.0 ship-gate criterion #1.
+  v0.8+ post-launch absorbs alongside F1-F9 methodology
+  amendments.
+
+### v0.7 cycle target
+
+4-5 day timeline to v1.0 launch.
+
+### V1.0 ship-gate criteria status post-v0.7 launch
+
+| Criterion | Status at v1.0 launch | Closure path |
+|---|---|---|
+| #1 quality-axis methodology parenthetical | ✓ CLOSED at v0.5 | — |
+| #1 statistically-meaningful-wins | PARTIAL via v0.6 Stream B 8-cell subset (DIVERGED 2-of-4 axes) | v0.8+ matrix-completion + F1-F9 methodology amendments |
+| #2 onboarding pipeline shipped | MET via v0.6 Step 4.5 pipeline-mechanics + v0.7 empirical real-repo verification | — |
+| #3 external dogfood trial | NOT MET at v1.0 launch | v0.8+ post-launch cohort exposure execution against carried-forward recruitment infrastructure |
+
+**Honest scope-acknowledgment.** v1.0 ships with 2-of-3 ship-gate
+criteria MET + 1 carried forward (criterion #3) per Travis pivot
+launch-timing trade-off. Substrate-generation thesis preserved
+via post-launch infrastructure inheritance (not abandoned).
+Criterion #1 statistically-meaningful-wins PARTIAL framing honors
+8-cell subset evidence without over-claiming full-matrix
+completion.
+
+### Implications for original Phase 2 4-stream framing
+
+`## V0.7 4-stream item-level descriptions (from Phase 2 lock)`
+section above preserved as historical record per Q1 lock.
+Launch-bearing reframe implications:
+
+- **Stream A onboarding-completion** — narrows to install/setup
+  pipeline real-repo verification (SECONDARY above). H1 hook/
+  kickoff + H2 ADR generation pipeline + H3 routing logic +
+  C3 README parsing + B12 session-state context engine items
+  defer to v0.8+ post-launch (not launch-blocking).
+- **Stream B matrix-completion** — defers to v0.8+ post-launch
+  per DEFERRED list above. F1-F9 methodology amendment work
+  bundled.
+- **Stream C trial-execution** — defers to v0.8+ post-launch
+  cohort exposure execution per DEFERRED list above. v0.6-
+  shipped recruitment infrastructure carries forward.
+- **Stream D task-shape-API + B13-decision + substrate-gaps**
+  — B13 architectural decision PROMOTED to PRIMARY above (B13
+  functional implementation as v0.7 launch-bearing primary
+  feature). C1 task-shaped queries + slash commands + A1/A2/A3
+  substrate gaps defer to v0.8+ post-launch.
+
+V0.7 envelope projections (~2-2.5× v0.5 weight at original
+Phase 2 surface; substantively heavier given F1-F9 expansion at
+Step 5.4 close) materially shrink under launch-bearing reframe.
+v0.7 cycle pre-planning at v0.6 cycle close drafts revised
+envelope per launch-bearing scope (PRIMARY + SECONDARY +
+TERTIARY only); ~2-2.5× projection no longer applicable.
+
+---
+
 ## Cycle-pre-planning insights (substrate for v0.7 scope-doc)
 
 Substrate observations from v0.6 cycle-pre-planning + v0.6
@@ -512,6 +651,61 @@ Phase 2 lock specifics:
   candidate inventory. v0.7 pre-planning consumes from Phase-10
   §9 directly.
 
+- **Step 6.5 close cumulative cycle-execution observations (a-f)
+  (NEW v0.6 cycle execution substrate).** Six Step 6.5 close
+  synthesis observations captured cycle-execution substrate
+  beyond F1-F9 finding-level work:
+  - (a) ADR-implementation cross-reference verification
+    discipline at substantive-interpretive moments (0
+    discrepancies between ADR-20 and Step 6.2 implementation
+    via contract-first design)
+  - (b) Privacy-load-bearing test rigor observation (~52 net
+    new tests at Step 6.2; sanitize.ts +3-6 over projection)
+  - (c) Cohort-facing tone inheritance pattern across feedback-
+    template + ADR-20 + recruitment infrastructure
+  - (d) Step 6 weight comparison vs Steps 3-4 (LOC-only weight
+    undersells consideration-density-load on cohort/privacy/
+    contract-shaped substeps)
+  - (e) Substantive-interpretation cadence pattern at Step 6.3
+    (24th discipline #3 cadence-catch instance in v0.6 cycle)
+  - (f) Q11-style execution-time refinement at Step 6.2
+    (config-scaffold.ts scope-clarifying refactor)
+
+  Forward-pointer: `STEP-PLAN-V0.6.md` Step 6.5 progress-log
+  entry (commit `5ba1893`) for full per-observation framing.
+
+- **Step 7.5 cohort exposure cancellation pre-registration-
+  discipline-preserved observation (NEW v0.6 cycle execution
+  substrate).** Q7.0.9 3-tier cohort evaluation framing locked
+  at Step 7.0 design adjudications (commit `77e523e`) BEFORE
+  recruitment outcome known; Tier 3 (0 cohort substrate)
+  classification applied at Step 7.5 (commit `11e0ddc`) against
+  actual outcome (Travis pivot to feature-bearing v0.7 cycle;
+  cohort exposure cancelled at v0.6). Pre-registration
+  discipline preserved honest-scope acknowledgment — Tier 3 is
+  documented framework application, not retrofit. Pattern:
+  cycle-thesis-bearing pre-registrations anchor cycle-close
+  synthesis honesty even when cycle execution diverges from
+  original thesis. Forward-pointer: `STEP-PLAN-V0.6.md` Step 7.5
+  progress-log entry + v0.6-SCOPE.md Q7.0.9 lock.
+
+- **Step 8.1 cycle-close layered pre-registration discipline
+  observation (NEW v0.6 cycle execution substrate).** Cycle-
+  close evaluations (B1 NO-TRIGGER + B17 ✓ MET + Q10 0 tier-1
+  elevations) all mapped directly to pre-registered paths
+  without post-hoc rationalization. Layered pre-registration
+  framings in operation: Q9 B1 conditional refinement (scope-
+  doc) + Q8 B17 three-option synthesis (scope-doc) + Q10 tier-2
+  elevation gate (scope-doc) + Q7.0.9 3-tier cohort evaluation
+  (Step 7.0 design adjudications). Each evaluation outcome pre-
+  determined by framing; cycle-close cognitive load substantively
+  reduced. Generalizable v0.7+ cycle-close synthesis discipline
+  inheritance pattern: pre-register evaluation framings at
+  scope-doc + substep design phases; cycle-close evaluation
+  becomes mechanical mapping not narrative-fitting-to-outcome.
+  Forward-pointer: `STEP-PLAN-V0.6.md` Step 8.1 progress-log
+  entry (commit `a80a0a9`) for B1/B17/Q10 mechanical recording.
+
 ---
 
 ## Revision history (v0_7-HANDOFF.md)
@@ -541,3 +735,26 @@ Phase 2 lock specifics:
   Honest scope-acknowledgment annotation: v0.7 envelope
   projections firm at pre-planning per substrate absorption (not
   silent-carry-forward from v0.6 projections).
+
+- **2026-05-08** — Step 8.2 close amendment applying Q8.0.5
+  Refinement lock per locked 4-amendment scope. Amendment A:
+  NEW "## v0.7 cycle launch-bearing reframe (Travis pivot at
+  v0.6 Step 7.5)" section after "## v0.6 cycle execution
+  substrate" (PRIMARY claude-code-only extraction path +
+  SECONDARY install/setup verification + TERTIARY backlog-drain
+  + DEFERRED-to-v0.8+ enumeration; original Phase 2 4-stream
+  framing preserved as historical record per Q1 lock with
+  implications-block annotation). Amendment B: Cycle-pre-
+  planning insights augmentation per Q8.0.4 aggregation lock
+  (3 cumulative entries — Step 6.5 (a-f) cumulative observations
+  + Step 7.5 cohort cancellation pre-registration-discipline
+  observation + Step 8.1 cycle-close layered pre-registration
+  discipline observation; each with progress-log forward-
+  pointers). Amendment C: V1.0 ship-gate criteria closure
+  timeline table updated (criterion #2 closes v0.7 empirical
+  verification; criterion #1 statistical-wins + criterion #3
+  carry to v0.8+ post-launch with honest 2-of-3 MET + 1 carried
+  forward framing). Amendment D: this revision history entry.
+  Pre-registration discipline working-as-designed cycle-
+  execution observation captured for v0.7+ inheritance per
+  Step 8.1 generalizable pattern.

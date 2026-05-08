@@ -446,11 +446,12 @@ substrate + B17 captured substrate aggregated).
 - [x] **Step 8.1** — Cycle-close evaluations bundle (B1 +
   B17 + Q10 mechanically recorded per Q8.0.2 + Q8.0.3 +
   Q8.0.7 locks). Shipped 2026-05-08; commit `[this commit]`.
-- [ ] **Step 8.2** — v0_7-HANDOFF.md amendment + Step 8
+- [x] **Step 8.2** — v0_7-HANDOFF.md amendment + Step 8
   close (substantive interpretive — Travis pivot direction
   reframe per Q8.0.5 Refinement; cycle-execution observation
   aggregation per Q8.0.4; ~2-4 hours wall-clock; surface
-  inline before commit per discipline #3 cadence).
+  inline before commit per discipline #3 cadence). Shipped
+  2026-05-08; commit `[this commit]`.
 
 **Unblocks.** Step 9 ship gate (Step 8 entire arc is
 prerequisite per Q8.0.6 lock).
@@ -494,6 +495,180 @@ B-with-explicit-launch-staging.
 ## Progress log
 
 *Entries added in reverse-chronological order as steps ship.*
+
+### Step 8.2 shipped — 2026-05-08 (Step 8 close)
+
+V0.6 Step 8.2 v0_7-HANDOFF.md amendment + Step 8 close shipped
+per Q8.0.5 Refinement launch-bearing reframe lock + Q8.0.4
+cycle-execution observation aggregation lock. Substantively
+interpretive — discipline #3 surface-inline-before-commit
+cadence applied to handoff doc amendment per Q8.0.1 dedicated
+substep framing.
+
+| Substep | branch | commit | Notes |
+|---|---|---|---|
+| 8.2 close | main | [this commit] | v0_7-HANDOFF.md 4-amendment scope applied (Q8.0.5 launch-bearing reframe + Q8.0.4 cycle-execution observation aggregation + ship-gate criteria table update + revision history entry); Step 8 entire arc complete; Step 9 ship gate prerequisites met per Q8.0.6 lock |
+
+#### Cross-reference verification
+
+Verification pass between Q8.0.5 reframe scope (locked at Step
+8.0 commit `864aeb9`) and Travis pivot direction at Step 7.5
+(commit `11e0ddc`):
+
+- PRIMARY claude-code-only extraction path framing matches
+  Step 7.5 "Priority feature: claude-code-only extraction path
+  (B13 functional implementation; ADR-02 amendment scope)"
+- SECONDARY install/setup pipeline real-repo verification
+  framing matches Step 7.5 cycle-thesis preservation framing
+  (recruitment infrastructure carried forward; v0.7 dogfooding)
+- TERTIARY backlog-drain matches Step 7.5 "Backlog drain: items
+  from v0.6/v0.7 deferred backlog triaged at v0.7 scope-doc
+  drafting time"
+- DEFERRED-to-v0.8+ enumeration matches Step 7.5 "Methodology
+  amendments from v0.6 F1-F9 substrate ... likely deferred to
+  v0.8+" + Tier 3 cohort cancellation framing
+- 4-5 day timeline matches Step 7.5 "Timeline: 4-5 day target"
+- V1.0 ship-gate criteria status (#1 PARTIAL + #2 MET + #3 NOT
+  MET) matches Step 7.5 "v1.0 launch trigger: post-v0.7 ship"
+  framing
+
+Outcome: 0 discrepancies between Q8.0.5 reframe scope and Travis
+pivot direction at Step 7.5. Q8.0.5 Refinement applied verbatim
+at Step 8.2 amendment.
+
+#### Amendment A — v0.7 cycle launch-bearing reframe section
+
+NEW `## v0.7 cycle launch-bearing reframe (Travis pivot at v0.6
+Step 7.5)` section inserted after existing `## v0.6 cycle
+execution substrate` section per Q2 chronological accumulation
+order lock. Content per Q8.0.5 Refinement scope:
+
+- Reframe rationale (substrate-generation thesis preserved via
+  post-launch infrastructure inheritance)
+- PRIMARY claude-code-only extraction path (B13 functional +
+  ADR-02 amendment + cost model shift)
+- SECONDARY install + setup pipeline real-repo verification
+  (A7 onboarding empirical testing beyond Step 4.4 smoke test)
+- TERTIARY backlog-drain launch-blocking items
+- DEFERRED-to-v0.8+ enumeration (F1-F9 methodology amendments;
+  cohort exposure execution; Stream B matrix-completion)
+- v0.7 cycle target 4-5 day timeline to v1.0 launch
+- V1.0 ship-gate criteria status post-v0.7 launch table
+- Implications for original Phase 2 4-stream framing per Q1
+  preservation lock (4-stream sections preserved as historical
+  record with implications-block annotation pointing back)
+
+#### Amendment B — Cycle-pre-planning insights augmentation
+
+Per Q8.0.4 aggregation lock — cycle-execution observations
+aggregate into existing v0_7-HANDOFF.md "Cycle-pre-planning
+insights" section (vs creating parallel surface). 3 cumulative
+entries appended:
+
+- Step 6.5 (a-f) cumulative cycle-execution observations
+  (one-line summary each; STEP-PLAN-V0.6.md Step 6.5 progress-
+  log forward-pointer to commit `5ba1893` for full per-
+  observation framing)
+- Step 7.5 cohort exposure cancellation pre-registration-
+  discipline-preserved observation (Q7.0.9 3-tier framing
+  locked at Step 7.0 commit `77e523e` before outcome known;
+  Tier 3 application at Step 7.5 commit `11e0ddc` is honest-
+  scope discipline not retrofit)
+- Step 8.1 cycle-close layered pre-registration discipline
+  observation (Q9 + Q8 + Q10 + Q7.0.9 layered framings
+  prevented post-hoc rationalization; generalizable v0.7+
+  cycle-close synthesis discipline inheritance pattern)
+
+#### Amendment C — V1.0 ship-gate criteria closure timeline table
+
+Existing 4-row table at v0_7-HANDOFF.md "## V1.0 ship-gate
+criteria closure timeline" section replaced with updated 4-row
+table. Status post-v0.6 column updated from projected status
+to actual outcome:
+
+- Criterion #1 statistically-meaningful-wins: PARTIAL via
+  8-cell subset at v0.6 with DIVERGED 2-of-4 axes; closes at
+  v0.8+ matrix-completion (per launch-bearing reframe — was
+  v0.7 matrix-completion; defers post-launch)
+- Criterion #2 onboarding pipeline shipped: PARTIAL via early-
+  access pipeline-mechanics at v0.6 Step 4.5; closes at v0.7
+  empirical verification per launch-bearing reframe (was v0.7
+  onboarding-completion full-stream; narrows to install/setup
+  verification)
+- Criterion #3 external dogfood trial: NOT MET via Tier 3
+  cancellation at v0.6 Step 7.5; recruitment infrastructure
+  ships at v1.0; closes at v0.8+ post-launch cohort exposure
+  execution (was v0.7 trial execution; defers post-launch)
+
+V1.0 closure framing: honest 2-of-3 MET + 1 carried forward
+(criterion #3 to v0.8+; criterion #1 statistically-meaningful-
+wins also carries forward via PARTIAL framing). Substrate-
+generation thesis preserved via post-launch infrastructure
+inheritance.
+
+#### Amendment D — Revision history entry
+
+2026-05-08 entry appended per dev-drafted shape covering 4-
+amendment scope summary.
+
+#### Step 8 cumulative outcome
+
+Step 8 entire arc complete (3-substep compressed split per
+Q8.0.1 lock):
+
+- Step 8.0 design adjudications (commit `864aeb9`): Q8.0.1-
+  Q8.0.8 locks captured; Step 8 substep ladder firmed; Q8.0.5
+  Refinement scope captured for Step 8.2 amendment
+- Step 8.1 cycle-close evaluations bundle (commit `a80a0a9`):
+  B1 NO-TRIGGER per Tier 3 + B17 ✓ MET via progress-log-
+  distributed synthesis + Q10 7-item tier-2 walkthrough 0
+  elevations
+- Step 8.2 v0_7-HANDOFF.md amendment + Step 8 close (this
+  commit): 4-amendment scope applied per locked spec
+
+Step 9 ship gate prerequisites met per Q8.0.6 lock — Step 8
+entire arc is Step 9 prerequisite. Ship gate template ready
+for execution: pre-flight verification (npm test main +
+benchmarks); apply working content; stage explicit-paths;
+ship commit via HEREDOC; v0.6.0 tag operation; Step 7.5 post-
+execution verification; cross-repo back-reference.
+
+#### Cycle-execution observation — pre-registration discipline working as designed (Step 8 cumulative)
+
+Step 8 entire arc demonstrates pre-registration discipline
+working-as-designed cycle-execution pattern. Layered pre-
+registrations across cycle execution:
+
+- Q7.0.9 3-tier cohort evaluation framing (Step 7.0 design
+  adjudications) → Tier 3 application at Step 7.5
+- Q9 B1 conditional refinement framing (scope-doc) → NO-
+  TRIGGER mechanical mapping at Step 8.1
+- Q8 B17 three-option synthesis framing (scope-doc) → ✓ MET
+  via progress-log-distributed synthesis at Step 8.1
+- Q10 tier-2 elevation gate framing (scope-doc) → 0 tier-1
+  elevations 7-item walkthrough at Step 8.1
+- Q8.0.5 Refinement launch-bearing reframe scope (Step 8.0
+  design adjudications) → Step 8.2 amendment verbatim
+  application
+
+Pattern: cycle-thesis-bearing pre-registrations + step-design-
+phase pre-registrations layer to substantively reduce cycle-
+close cognitive load + prevent narrative-fitting-to-outcome
+bias. Generalizable v0.7+ cycle-close synthesis discipline
+inheritance pattern (already captured at Amendment B v0_7-
+HANDOFF.md augmentation).
+
+#### Step 8.2 unblock — Step 9 ship gate
+
+Step 9 ship gate substantively unblocked. Step 9.0 design-
+adjudication substep next per Step N.0 cadence convention.
+v0.6 ship gate executes per v0.5+ canonical 9-step locked
+sequence inheritance (pre-flight verification + apply working
+content + stage explicit-paths + ship commit HEREDOC + v0.6.0
+tag operation + Step 7.5 post-execution verification + cross-
+repo back-reference).
+
+---
 
 ### Step 8.1 shipped — 2026-05-08
 
