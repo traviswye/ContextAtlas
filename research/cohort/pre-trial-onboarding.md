@@ -116,8 +116,12 @@ out with submission instructions. Submission is out-of-band:
   recruitment).
 - **Observability log:** Optional. If you choose to submit, send
   `.contextatlas/observe-log.jsonl` via the same channel.
-  You can review it first; you can redact lines if anything
-  looks off; you can decline submission entirely.
+
+  **Before submitting your `observe-log.jsonl`, please inspect it
+  (it's plain JSONL; any text editor or `jq` works). Per ADR-20 §7
+  right (4), you can redact any lines that look off, or decline
+  submission entirely. Submission is voluntary at every point;
+  inspection-before-submission is your participant right.**
 
 ## Setup walkthrough
 

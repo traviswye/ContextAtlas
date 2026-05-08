@@ -393,19 +393,28 @@ cohort observation surfaces (append-when-observed semantics per B17
 hybrid capture; sparse-is-OK; cycle-close synthesis decision per
 Q9 evaluates running-log substrate volume honestly).
 
-**Substeps.** Step 7.0 design-adjudication substep firms cross-
-cutting documentation discipline + cohort recruitment kickoff per
-Step N.0 cadence convention. Subsequent substeps emergent during
-execution:
+**Substeps** (firmed at Step 7.0 per Q7.0.1 cross-cutting
+substep ladder lock):
 
-- Cohort recruitment (initial outreach to Travis network)
-- First-cohort-exposure (initial early-access invitations
-  honored)
-- Ongoing feedback collection (cohort feedback template applied
-  to each cohort participant; tool-description observability data
-  captured for opt-in consent participants)
-- B17 hybrid capture (progress-log self-use observations +
-  research/v0.6-self-use-log.md cross-cutting captures)
+- [x] **Step 7.0** — Design adjudications (Q7.0.1-Q7.0.12 locks;
+  cross-cutting Step 7 ladder shape; 3-tier honest evaluation
+  framing pre-registration; framed-stub surfaces ready;
+  pre-trial-onboarding.md amendment for inspection checkpoint
+  visibility).
+- [ ] **Step 7 cross-cutting** — Cohort exposure execution
+  (cross-cutting; not substep-bounded per Q7.0.1 lock).
+  Optional sub-commits append to progress log when substantive
+  observations surface (per B17 Q3 lock append-when-observed
+  semantics). Activities span: cohort recruitment outreach;
+  first-participant onboarding; ongoing feedback collection
+  (template + observability); B17 hybrid capture (progress-
+  log self-use observations + research/v0.6-self-use-log.md
+  cross-cutting + research/v0.6-cohort-substrate.md cohort
+  observations).
+- [ ] **Step 7.5** — Step 7 close commit: cohort substrate
+  aggregation + cycle-emergent candidate cross-reference
+  + 3-tier evaluation framing applied to actual recruitment
+  outcome.
 
 **Unblocks.** Step 8 cycle-close evaluations (cohort feedback
 substrate + B17 captured substrate aggregated).
@@ -474,6 +483,209 @@ B-with-explicit-launch-staging.
 ## Progress log
 
 *Entries added in reverse-chronological order as steps ship.*
+
+### Step 7.0 shipped — 2026-05-07
+
+V0.6 Step 7 (cohort exposure cross-cutting) opens with Step 7.0
+design-adjudication substep per Step N.0 cadence convention.
+Q7.0.1-Q7.0.12 design adjudications surfaced + locked per
+discipline #3 surface-inline-before-commit cadence applied to
+step-design-phase work.
+
+Step 7 transitions to cross-cutting cohort exposure execution
+rhythm — documentation-bearing rather than implementation-
+bearing; wall-clock cohort-cadence-dependent (~2-4 weeks per
+pre-trial-onboarding.md framing); Travis-side recruitment
+outreach + cohort participant communication + substrate
+aggregation.
+
+| Substep | branch | commit | Notes |
+|---|---|---|---|
+| 7.0 design adjudications | main | [this commit] | Q7.0.1-Q7.0.12 locks captured; Step 7 substep ladder firmed (cross-cutting + Step 7.5 close per Q7.0.1 lock); 2 framed-stub surfaces created (research/v0.6-self-use-log.md + research/v0.6-cohort-substrate.md); pre-trial-onboarding.md amended for inspection checkpoint visibility per Q7.0.12 refinement |
+
+#### Q7.0.1 lock — Substep ladder shape
+
+**Locked:** (β) single cross-cutting substep + optional sub-
+commits when substantive observations surface + Step 7.5 close.
+
+Reasoning: scope-doc Q7 lock explicitly framed Step 7 as "cross-
+cutting substep for cohort feedback / B17 capture; cycle-close
+substep for B1 + B17 synthesis." v0.6 ladder diverges from v0.5
+step-by-step pattern intentionally for cross-cutting items.
+Cohort cadence is participant-driven, not substep-driven.
+Splitting Step 7 into 6 phases would impose substep-boundary
+rhythm on inherently cross-cutting work.
+
+#### Q7.0.2 lock — Recruitment activation timeline
+
+**Locked:** (β) post-Step-7.0-landing.
+
+Surfaces design-adjudication-locked discipline; Step 7.0
+establishes what cohort exposure "execution" means before
+outreach starts. Travis can begin outreach at any pace
+post-7.0 lock; no calendar-bound trigger imposed.
+
+#### Q7.0.3 lock — Substrate aggregation pattern
+
+**Locked:** (γ) two-surface split — `research/v0.6-cohort-
+substrate.md` (cohort participants) + `research/v0.6-self-use-
+log.md` (Travis self-use B17).
+
+Reasoning: cohort substrate is participant-submitted material
+(different consent + provenance dimension per ADR-20); self-use-
+log is Travis-side B17 capture. Conflating creates provenance
+ambiguity at v0.7 substrate consumption — when v0.7 cycle pre-
+planning reads "substrate observation X", was X observed by
+Travis using ContextAtlas on ContextAtlas (B17) or by cohort
+participant Y using ContextAtlas on their own repo? Different
+generalizability-claim weight. Two-surface split preserves
+provenance.
+
+#### Q7.0.4 lock — Cohort participant submission mechanism
+
+**Locked:** (δ) channel-matched submission (Q5 deferred from
+Step 6.4 closed).
+
+Per-participant: whichever channel was used during recruitment
+(matching pre-trial-onboarding.md "channel you used during
+recruitment"). Preserves operational flexibility per Q4 lock at
+Step 6.4 ambiguous-by-design contact channel; reduces friction
+for cohort participants. Encrypted-attachment guidance handled
+per-participant if any participant flags concern.
+
+#### Q7.0.5 lock — Cycle-close timing relative to cohort exposure window
+
+**Locked:** (γ) target post-cohort-exposure window with honest
+acknowledgment fallback.
+
+Substrate-quality-respects-cohort-cadence is consistent with
+v0.6 substrate-generation thesis. Concrete framing: target
+~2-4 weeks cohort exposure window per pre-trial-onboarding.md;
+if window slips past target without recruitment success, cycle
+close on (α) fallback path with explicit framing per Q7.0.9
+3-tier evaluation pre-registration. Cycle does not extend
+indefinitely waiting for cohort.
+
+#### Q7.0.6 lock — Step 7 cost-bearing dimension
+
+**Locked:** (α) zero direct API spend on Travis-side + explicit
+caveat.
+
+- Cohort participants run their own ContextAtlas → their own
+  Anthropic API usage (participant-side; Travis does not bear)
+- Travis-side recruitment outreach: zero cost
+- Substrate aggregation at cycle close: zero cost (analysis
+  pass on submitted markdown + JSONL; no API spend)
+- Cohort observability instrumentation cost is participant-
+  bearing per ADR-20 §1
+
+Captures matches v0.6 cycle envelope estimates (Stream C zero
+direct API spend per scope-doc §Cost framing).
+
+#### Q7.0.7 lock — Test coverage scope per CLAUDE.md
+
+**Locked:** (α) not-applicable + rescope-trigger caveat.
+
+Step 7 work shape is execution + documentation; code changes
+expected: 0; test count baseline preserved at 1303/1303 through
+Step 7.
+
+Rescope-trigger caveat: if mid-Step-7 cohort observations
+surface critical pipeline-mechanics gaps requiring code changes
+(per scope-doc §12 risk #6), rescope event triggers; code
+changes shipped under separate substep with full test coverage
+per CLAUDE.md test discipline. Step 7 baseline-preserve
+discipline holds otherwise.
+
+#### Q7.0.8 lock — Cycle-emergent candidate-capture pattern
+
+**Locked:** (β) two-surface split per Q7.0.3 + cycle-close
+cross-reference into v0.7 absorption.
+
+- Friction observed by Travis → `research/v0.6-self-use-log.md`
+- Friction observed by cohort participants → `research/v0.6-
+  cohort-substrate.md`
+- Substep-bounded observations → progress-log Self-use
+  observation sub-blocks (primary B17 capture surface)
+- Cycle-close synthesis cross-references all three into v0.7-
+  candidates.md absorption at v0.7 cycle pre-planning
+
+#### Q7.0.9 lock — 3-tier honest evaluation framing pre-registration
+
+**Locked:** Cycle thesis-bearing pre-registration; anchors
+Step 8 cycle-close synthesis (Q8 lock) + Step 9 ship gate
+framing.
+
+- **Tier 1 (≥3 participants):** Cohort substrate framed as
+  "directional + selection-biased Travis-network"; v0.7 cycle
+  pre-planning consumes substrate with selection-bias
+  acknowledgment.
+- **Tier 2 (1-2 participants):** Cohort substrate framed as
+  "anecdotal-only; cycle-thesis preserves substrate-generation
+  framing without statistical claims"; v0.7 cycle pre-planning
+  consumes substrate as case-study material.
+- **Tier 3 (0 participants):** Cycle-thesis re-evaluation per
+  v0.6-SCOPE.md §12 risk #12; v0.6 ships pipeline-mechanics +
+  methodology rigor without cohort substrate; v0.7 inherits
+  recruitment infrastructure and re-attempts cohort exposure.
+
+Pre-registration discipline: tier evaluation framing locks
+honest-scope discipline; cycle close evaluates against pre-
+registered tiers rather than retrofitting framing to recruitment
+outcome.
+
+#### Q7.0.10 lock — research/v0.6-self-use-log.md + cohort-substrate.md creation timing
+
+**Locked:** (γ) framed stub at Step 7.0 for both files.
+
+Both `research/v0.6-self-use-log.md` and `research/v0.6-cohort-
+substrate.md` created at Step 7.0 with brief framing headers +
+no entries until substantive observations surface (sparse-is-OK
+per B17 Q3 lock). Mirrors `research/cohort/feedback-template.md`
+pattern (substrate present + ready before cohort exposure)
+without substrate-pollution. Both files created in this commit.
+
+#### Q7.0.11 lock — pre-trial-onboarding.md delivery mechanism
+
+**Locked:** (γ) participant-channel-matched delivery.
+
+Operational flexibility consistent with Q4 ambiguous-channel lock
+at Step 6.4. Repo-link option for GitHub-comfortable participants;
+copy-paste for participants without GitHub access; either approach
+preserves non-bureaucratic framing.
+
+#### Q7.0.12 lock — Cohort observability data participant-inspection step
+
+**Locked:** (β) explicit checkpoint WITH refinement on placement.
+
+**Refinement applied:** Path A — amend `research/cohort/pre-
+trial-onboarding.md` (Step 6.4 commit `e9601e8`) with explicit
+inspection checkpoint sentence in §How to submit feedback
+subsection on observability log. Reasoning: pre-trial-onboarding.
+md is the canonical participant-facing artifact; inspection-
+before-submission flow should be visible there at onboarding
+time, not only at Step 7 substrate aggregation documentation.
+Participants reading pre-trial-onboarding.md before trial start
+should see complete submission flow framing. Alternative defer
+to recruitment outreach verbal communication is documentation-
+drift risk; canonical written framing should match operational
+reality.
+
+Amendment landed in this commit (~5 LOC at L117-122 of pre-
+trial-onboarding.md).
+
+#### Step 7.0 unblock
+
+Recruitment activation unblocked per Q7.0.2 lock. Travis begins
+cohort outreach at desired pace post-Step-7.0-landing.
+
+Mid-Step-7 commits surface optionally if substantive cohort
+observations land OR if rescope events trigger code changes
+per Q7.0.7 caveat. Step 7.5 close commit aggregates cohort
+substrate at cycle close per Q7.0.5 timing lock + Q7.0.9
+3-tier evaluation framing.
+
+---
 
 ### Step 6.5 shipped — 2026-05-07 (Step 6 close)
 
