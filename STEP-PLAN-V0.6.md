@@ -401,20 +401,18 @@ substep ladder lock):
   framing pre-registration; framed-stub surfaces ready;
   pre-trial-onboarding.md amendment for inspection checkpoint
   visibility).
-- [ ] **Step 7 cross-cutting** — Cohort exposure execution
-  (cross-cutting; not substep-bounded per Q7.0.1 lock).
-  Optional sub-commits append to progress log when substantive
-  observations surface (per B17 Q3 lock append-when-observed
-  semantics). Activities span: cohort recruitment outreach;
-  first-participant onboarding; ongoing feedback collection
-  (template + observability); B17 hybrid capture (progress-
-  log self-use observations + research/v0.6-self-use-log.md
-  cross-cutting + research/v0.6-cohort-substrate.md cohort
-  observations).
-- [ ] **Step 7.5** — Step 7 close commit: cohort substrate
-  aggregation + cycle-emergent candidate cross-reference
-  + 3-tier evaluation framing applied to actual recruitment
-  outcome.
+- [x] **Step 7 cross-cutting** — Cohort exposure execution
+  CANCELLED at Step 7.5 per Travis pivot to feature-bearing
+  v0.7 cycle (claude-code-only architectural work + v1.0
+  launch target). Tier 3 evaluation framing applied per
+  Q7.0.9 pre-registration. Recruitment infrastructure (Step
+  6.4) + observability instrumentation (Step 6.2) + ADR-20
+  contract (Step 6.3) carry forward to v0.7+ post-launch
+  cycle for cohort exposure re-attempt.
+- [x] **Step 7.5** — Step 7 close commit: Tier 3 framing
+  application + cohort exposure cancellation rationale
+  documented + framed-stub surfaces preserved for v0.7+
+  inheritance. Shipped 2026-05-08; commit `[this commit]`.
 
 **Unblocks.** Step 8 cycle-close evaluations (cohort feedback
 substrate + B17 captured substrate aggregated).
@@ -483,6 +481,118 @@ B-with-explicit-launch-staging.
 ## Progress log
 
 *Entries added in reverse-chronological order as steps ship.*
+
+### Step 7.5 shipped — 2026-05-08 (Step 7 close)
+
+V0.6 Step 7 closes per Travis cycle-execution direction lock
+2026-05-08: cohort exposure execution cancelled at v0.6 cycle;
+Tier 3 evaluation framing pre-registration applied per Q7.0.9
+lock; recruitment infrastructure carries forward to v0.7+
+post-launch cycle.
+
+| Substep | branch | commit | Notes |
+|---|---|---|---|
+| 7.5 close | main | [this commit] | Step 7 close + Tier 3 framing application + cohort exposure cancellation rationale documented + framed-stub surfaces preserved |
+
+#### Cohort exposure cancellation rationale
+
+Travis pivot to feature-bearing v0.7 cycle targeting v1.0 launch
+in 4-5 day timeline. Cohort exposure execution at v0.6 deferred
+to v0.7+ post-launch cycle. Substantive reasoning:
+
+- v0.6 cycle scope-doc thesis (substrate-generation under
+  cohort exposure) preserved in spirit via Stream A pipeline-
+  mechanics + Stream B methodology rigor + Stream C tooling
+  shipped; cohort exposure execution would extend cycle wall-
+  clock by ~2-4 weeks per pre-trial-onboarding.md framing
+- Travis priority shift: claude-code-only architectural work
+  (B13 functional implementation; ADR-02 amendment scope) is
+  v1.0-launch-bearing; 4-5 day timeline doesn't accommodate
+  cohort exposure window
+- Cohort exposure infrastructure shipped at Step 6 substantively
+  inherits to v0.7+ — no infrastructure rework needed; v0.7+
+  cycle re-attempts against carried-forward substrate
+  (recruitment + screening + onboarding + feedback template +
+  observability instrumentation + ADR-20 consent contract)
+- 3-tier evaluation framing pre-registration at Q7.0.9
+  anticipated this fallback path explicitly; Tier 3
+  classification is honest-scope discipline, not retrofit
+
+#### Tier 3 evaluation framing application per Q7.0.9 pre-registration
+
+**Tier 3 (0 participants) classification.** Cohort substrate
+quality: zero direct cohort substrate generated at v0.6 cycle.
+Cycle-thesis re-evaluation per v0.6-SCOPE.md §12 risk #12: v0.6
+ships pipeline-mechanics + methodology rigor without cohort
+substrate; v0.7 inherits recruitment infrastructure and re-
+attempts cohort exposure post-v1.0-launch.
+
+This matches the Tier 3 pre-registered framing exactly. Pre-
+registration discipline preserved — tier evaluation locked at
+Step 7.0 (commit `77e523e`) before recruitment outcome known;
+applied at Step 7.5 against actual recruitment outcome
+(cancelled). Honest-scope discipline anchors Step 8 cycle-
+close synthesis + Step 9 ship gate framing.
+
+#### Cohort substrate empty-state honest acknowledgment
+
+- `research/v0.6-cohort-substrate.md`: 0 cohort submissions
+  landed (Tier 3); framed-stub preserved for v0.7+ inheritance
+  with status update at top noting Tier 3 application
+- `research/v0.6-self-use-log.md`: 0 entries landed; cycle-
+  execution observations captured at primary B17 surface
+  (STEP-PLAN-V0.6.md progress-log Step 6.5 close synthesis
+  (a-f) + this Step 7.5 entry); framed-stub preserved for
+  v0.7+ inheritance with status update at top noting cycle-
+  close synthesis decision per Q8 lock as ✓ MET via progress-
+  log-distributed synthesis
+
+Q3 lock (B17 hybrid capture) + Q8 lock (cycle-close synthesis
+decision) both honored — sparse-is-OK; substantive substrate
+captured at primary progress-log surface; cycle-close
+synthesis frames substrate quality honestly per pre-registered
+discipline.
+
+#### Cycle-emergent candidates surfaced at Step 7.5
+
+**Cohort exposure carry-forward to v0.7+ post-launch cycle.**
+Recruitment infrastructure + observability instrumentation +
+ADR-20 contract substantively complete at v0.6 ship; v0.7+
+post-launch cycle re-attempts cohort exposure against carried-
+forward substrate. Captured for v0.7+ candidates absorption.
+
+#### v0.7 cycle pre-planning substantive reframe
+
+Travis direction at Step 7.5 cancellation:
+- **Priority feature:** claude-code-only extraction path (B13
+  functional implementation; ADR-02 amendment scope —
+  extraction prompting in Claude Code session context vs
+  Anthropic API direct)
+- **Backlog drain:** items from v0.6/v0.7 deferred backlog
+  triaged at v0.7 scope-doc drafting time
+- **Timeline:** 4-5 day target
+- **v1.0 launch trigger:** post-v0.7 ship
+- **Methodology amendments from v0.6 F1-F9 substrate** (atlas-
+  version-control; cell-selection empirical pre-screen;
+  others): likely deferred to v0.8+ given launch focus
+- **Cohort exposure infrastructure carry-forward:** recruitment
+  + observability ship at v1.0 ready for post-launch real-world
+  cohort
+
+v0.7 scope-doc drafting surfaces inline for Travis review
+before commit per discipline #3 cadence at scope-doc level.
+
+#### Step 7.5 unblock
+
+Step 8 cycle-close evaluations unblocked. Steps 8-9 are dev-
+bearing cycle-close synthesis + ship-packaging work; lighter
+weight than Steps 1-6 substantive implementation per scope-doc
+§Sequencing item 8 (B1 rubric anchor refinement evaluation;
+deferred to cycle close) + item 9 (v0.6 cycle close + ship
+gate per 9-step locked sequence inheritance from v0.5 including
+Step 7.5 post-execution verification).
+
+---
 
 ### Step 7.0 shipped — 2026-05-07
 
