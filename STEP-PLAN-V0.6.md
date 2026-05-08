@@ -443,9 +443,9 @@ substrate + B17 captured substrate aggregated).
   ✓ MET via progress-log-distributed synthesis; Q10 tier-2
   7-item walkthrough; v0.7 launch-bearing reframe scope
   captured for Step 8.2 amendment).
-- [ ] **Step 8.1** — Cycle-close evaluations bundle (B1 +
+- [x] **Step 8.1** — Cycle-close evaluations bundle (B1 +
   B17 + Q10 mechanically recorded per Q8.0.2 + Q8.0.3 +
-  Q8.0.7 locks; ~1-2 hours wall-clock).
+  Q8.0.7 locks). Shipped 2026-05-08; commit `[this commit]`.
 - [ ] **Step 8.2** — v0_7-HANDOFF.md amendment + Step 8
   close (substantive interpretive — Travis pivot direction
   reframe per Q8.0.5 Refinement; cycle-execution observation
@@ -494,6 +494,135 @@ B-with-explicit-launch-staging.
 ## Progress log
 
 *Entries added in reverse-chronological order as steps ship.*
+
+### Step 8.1 shipped — 2026-05-08
+
+V0.6 Step 8.1 cycle-close evaluations bundle shipped per
+Q8.0.1 compressed split lock + Q8.0.2 + Q8.0.3 + Q8.0.7 sub-
+adjudication outcomes. Mechanical recording of pre-registered
+evaluation outcomes; documentation-bearing only; zero API
+spend.
+
+| Substep | branch | commit | Notes |
+|---|---|---|---|
+| 8.1 evaluations bundle | main | [this commit] | B1 NO-TRIGGER per Tier 3 + B17 ✓ MET via progress-log-distributed synthesis + Q10 7-item tier-2 walkthrough 0 elevations |
+
+#### B1 rubric anchor refinement evaluation — NO-TRIGGER per Tier 3
+
+Q9 lock at scope-doc framing: "Evaluates against v0.6 cohort
+feedback substrate at cycle close. Refinement only IF cohort
+surfaces concerns about Axis 1 (factual_correctness) or Axis 4
+(hallucination) anchor calibration."
+
+**Cohort outcome:** Tier 3 (0 cohort substrate) per Step 7.5
+close. Cohort exposure execution cancelled at v0.6 cycle per
+Travis pivot to feature-bearing v0.7 cycle.
+
+**B1 evaluation outcome:** NO-TRIGGER. Pre-registered
+conditional refinement-only-IF-cohort path; 0 cohort substrate
+= NO-TRIGGER by pre-registered framing.
+
+**F1-F9 substrate non-applicability check:** F1-F9 substrate is
+methodology-substrate (atlas-version-confound, methodology-
+design-gap, retry-policy reframing, etc.), not anchor-
+calibration-substrate. F1 is atlas-version-confound; F9 is
+methodology-design-gap; neither is rubric-anchor-calibration
+concern. Q9 framing explicitly scoped to cohort surfacing
+Axis 1 or Axis 4 calibration concerns; F1-F9 do not satisfy
+this trigger.
+
+**Carry-forward annotation:** Conditional re-evaluation gate
+carried forward to v0.7+ cohort substrate landing. When v0.7+
+post-launch cohort exposure executes against v1.0-shipped
+recruitment infrastructure, B1 re-evaluation triggers if
+cohort participants surface Axis 1 or Axis 4 anchor calibration
+concerns. Until cohort substrate lands, anchor-calibration
+status remains v0.5-validated baseline.
+
+#### B17 self-use logging cycle-close synthesis decision — ✓ MET
+
+Q8 lock at scope-doc pre-registered three options:
+- ✓ MET (substantive substrate across both surfaces)
+- △ PARTIAL (sparse with v0.7 forward-pointer)
+- progress-log-distributed synthesis (Item 4 procedural pattern)
+
+**Decision:** ✓ MET via progress-log-distributed synthesis.
+
+**Substrate volume across surfaces:**
+- **Primary surface** (STEP-PLAN-V0.6.md progress-log
+  `**Self-use observation:**` sub-blocks + cycle-execution
+  observation entries): Substantive — Step 6.5 close synthesis
+  captured 6 cycle-execution observations (a-f); Step 5.4
+  close captured F1-F9 substantive findings; Step 7.5 close
+  captured cohort exposure cancellation rationale + Tier 3
+  application.
+- **Secondary surface** (`research/v0.6-self-use-log.md`):
+  Empty — sparse-is-OK per Q3 lock; cycle-execution
+  observations fit substep-bounded shape rather than cross-
+  cutting shape.
+
+**Decision recording:** Step 7.5 close already established
+"✓ MET via progress-log-distributed synthesis" via self-use-log
+status update. Step 8.1 records the decision formally without
+adding new aggregation surface (avoids substrate-pollution per
+Q3 framing; sparse-is-OK preserved at secondary surface).
+
+**v0.7+ inheritance:** B17 hybrid capture pattern (primary
+progress-log + secondary self-use-log) carries forward to
+v0.7+ cycle execution per scope-doc Q3 lock procedural pattern
+inheritance.
+
+#### Q10 tier-2 bundled deferral 7-item cycle-close re-evaluation
+
+Pre-registration framing at scope-doc Q10: "if any item
+surfaces as load-bearing during v0.6 execution, elevates to
+tier-1 at cycle close." Per-item walkthrough per Q8.0.7 lock:
+
+| Item | v0.6 surface? | Outcome | Carry forward |
+|---|---|---|---|
+| **B2** per-axis direction-agreement metric reformulation | NOT surfaced | tier-2 default | v0.8+ |
+| **B5** cost-projection cache-discount calculator | NOT surfaced | tier-2 default | v0.8+ |
+| **B6** variance trigger threshold language domain-specificity | NOT surfaced | tier-2 default | v0.8+ |
+| **B7** output substrate density LOC inflation driver | NOT surfaced | tier-2 default | v0.8+ |
+| **B9** failed-call cost-tracking gap | PARTIAL (F8 cost-projection accuracy + failed-call gap framing in Phase-9 ref-doc; v0.6 Phase-10 inherits framing without new issue) | tier-2 default with annotation | v0.8+ |
+| **B11** explicit cache-control header configuration | NOT surfaced | tier-2 default | v0.8+ |
+| **E1** MAD threshold empirically unanchored | NOT surfaced | tier-2 default | v0.8+ |
+
+**Outcome:** 0 tier-1 elevations. All 7 carry to v0.8+ default
+per pre-registered framing. Q10 cycle-close re-evaluation
+prevents indefinite organic-refinement-without-refinement
+per dev-rigor-lens survival-bias concern from Item 7 debate;
+explicit checkpoint addressed without surfacing forced
+elevations against substrate.
+
+#### Cycle-execution observation — pre-registration discipline working as designed
+
+Pre-registered framing at Step N.0 design phases (Q9 B1
+conditional refinement + Q8 B17 three-option synthesis + Q10
+tier-2 elevation gate; layered with Q7.0.9 3-tier cohort
+evaluation framing) prevented post-hoc rationalization at
+cycle close. Each evaluation outcome (B1 NO-TRIGGER + B17 ✓
+MET + Q10 0 elevations) maps directly to a pre-registered
+path; no retrofitting needed.
+
+This pattern observation generalizes for v0.7+ cycle-close
+synthesis discipline: pre-registration at substep design phase
+substantively reduces cycle-close synthesis cognitive load +
+prevents narrative-fitting-to-outcome bias. Cycle-thesis-
+bearing pre-registrations (like Q7.0.9 3-tier framing)
+particularly benefit from explicit pre-registration locks at
+design-phase substeps.
+
+#### Step 8.1 unblock
+
+Step 8.2 (v0_7-HANDOFF.md amendment + Step 8 close) unblocked.
+Step 8.2 substantively interpretive — handoff doc amendment
+per Q8.0.5 Refinement launch-bearing reframe + cycle-execution
+observation aggregation per Q8.0.4 lock; surface inline before
+commit per discipline #3 cadence at substantively-interpretive
+moments.
+
+---
 
 ### Step 8.0 shipped — 2026-05-08
 
