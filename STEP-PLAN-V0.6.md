@@ -436,11 +436,24 @@ substrate + B17 captured substrate aggregated).
   cycle warranting v0.7 elevation OR remain v1.x default per Item
   7 procedural pattern.
 
-**Substeps.** Step 8.0 design-adjudication substep firms cycle-
-close evaluation order + synthesis criteria per Step N.0 cadence
-convention.
+**Substeps** (firmed at Step 8.0 per Q8.0.1 compressed split lock):
 
-**Unblocks.** Step 9 ship gate.
+- [x] **Step 8.0** — Design adjudications (Q8.0.1-Q8.0.8 locks;
+  3-substep compressed split; B1 NO-TRIGGER per Tier 3; B17
+  ✓ MET via progress-log-distributed synthesis; Q10 tier-2
+  7-item walkthrough; v0.7 launch-bearing reframe scope
+  captured for Step 8.2 amendment).
+- [ ] **Step 8.1** — Cycle-close evaluations bundle (B1 +
+  B17 + Q10 mechanically recorded per Q8.0.2 + Q8.0.3 +
+  Q8.0.7 locks; ~1-2 hours wall-clock).
+- [ ] **Step 8.2** — v0_7-HANDOFF.md amendment + Step 8
+  close (substantive interpretive — Travis pivot direction
+  reframe per Q8.0.5 Refinement; cycle-execution observation
+  aggregation per Q8.0.4; ~2-4 hours wall-clock; surface
+  inline before commit per discipline #3 cadence).
+
+**Unblocks.** Step 9 ship gate (Step 8 entire arc is
+prerequisite per Q8.0.6 lock).
 
 ---
 
@@ -481,6 +494,224 @@ B-with-explicit-launch-staging.
 ## Progress log
 
 *Entries added in reverse-chronological order as steps ship.*
+
+### Step 8.0 shipped — 2026-05-08
+
+V0.6 Step 8 (cycle-close evaluations) opens with Step 8.0
+design-adjudication substep per Step N.0 cadence convention.
+Q8.0.1-Q8.0.8 design adjudications surfaced + locked per
+discipline #3 surface-inline-before-commit cadence applied to
+step-design-phase work.
+
+Step 8 work shape: documentation-bearing only; zero API spend
+per Step 7.0 Q7.0.6 inheritance; test coverage not applicable
+(1303/1303 baseline preserved); lighter weight than Steps 1-6
+substantive implementation per scope-doc §Sequencing item 8.
+
+| Substep | branch | commit | Notes |
+|---|---|---|---|
+| 8.0 design adjudications | main | [this commit] | Q8.0.1-Q8.0.8 locks captured; Step 8 substep ladder firmed (3-substep compressed split per Q8.0.1: 8.0 design / 8.1 evaluations bundle / 8.2 forward-pointer + close); v0.7 launch-bearing reframe scope captured for Step 8.2 amendment per Q8.0.5 Refinement |
+
+#### Q8.0.1 lock — Substep ladder shape
+
+**Locked:** (γ) compressed split — 8.0 design / 8.1 evaluations
+bundle (B1 + B17 + Q10) / 8.2 forward-pointer + close.
+
+Reasoning: each cycle-close evaluation is mechanical given pre-
+registered framing — B1 evaluates against cohort substrate
+(none per Tier 3); B17 partially honored at Step 7.5 (progress-
+log-distributed synthesis); Q10 is checklist walk through 7
+bundled items. Splitting each into its own substep imposes
+ceremony without substantive content. Compressed split preserves
+substep boundary discipline (clean audit trail) while batching
+the mechanical evaluations. v0.7 forward-pointer drafting +
+Step 8 close warrants own substep because v0_7-HANDOFF.md
+amendment is substantively interpretive (Travis pivot direction
+substrate; v0.7 cycle reframe).
+
+#### Q8.0.2 lock — B1 rubric anchor refinement evaluation
+
+**Locked:** (α) NO-TRIGGER per Tier 3 + (γ) carry-forward
+annotation.
+
+Reasoning: Q9 framing at scope-doc is explicit — "Refinement
+only IF cohort surfaces concerns." Tier 3 = 0 cohort = NO-
+TRIGGER by pre-registered framing. F1-F9 substrate is
+methodology-substrate, not anchor-calibration-substrate; F1 is
+atlas-version-confound, F9 is methodology-design-gap — neither
+is rubric-anchor-calibration concern. Carry-forward annotation
+captures conditional re-evaluation gate for v0.7+ cohort
+substrate landing.
+
+Recorded at Step 8.1 evaluations bundle.
+
+#### Q8.0.3 lock — B17 cycle-close synthesis pattern
+
+**Locked:** (α) affirm progress-log-distributed synthesis ✓ MET.
+
+Reasoning: Q8 lock pre-registered three options — ✓ MET / △
+PARTIAL with v0.7 forward-pointer / progress-log-distributed
+synthesis per Item 4. Step 7.5 already established "✓ MET via
+progress-log-distributed synthesis" via self-use-log status
+update. Step 8 records the decision formally; doesn't need new
+aggregation surface. Adding cumulative surface would substrate-
+pollute (Q3 lock explicitly framed sparse-is-OK; secondary
+surface should not be retrofit-aggregated).
+
+Recorded at Step 8.1 evaluations bundle.
+
+#### Q8.0.4 lock — Cycle-execution observation aggregation pattern
+
+**Locked:** (γ) aggregate into v0_7-HANDOFF.md "Cycle-pre-
+planning insights" section.
+
+Reasoning: v0_7-HANDOFF.md is canonical bridge surface for v0.7
+cycle pre-planning per its lifecycle. Existing "Cycle-pre-
+planning insights" section already exists (L431). Step 5.4
+close already amended this doc with F1-F9 + 5 methodology
+amendments. Aggregating cycle-execution observations into
+existing canonical surface preserves substrate continuity;
+alternative parallel surface would create duplicate-substrate
+risk.
+
+Specifically: amend v0_7-HANDOFF.md "Cycle-pre-planning
+insights" section with cumulative observation set (Step 6.5
+(a-f) + Step 7.5 Tier 3 application + cohort cancellation
+substrate) at Step 8.2.
+
+#### Q8.0.5 lock — v0.7 scope-doc forward-pointers framing
+
+**Locked:** (β) amend v0_7-HANDOFF.md with substantive v0.7
+cycle reframe section + Refinement applied (explicit launch-
+bearing reframe).
+
+**Refinement applied:** v0.7 cycle is launch-bearing not
+substrate-generation-bearing per Travis pivot at Step 7.5.
+Original handoff framing (Stream B matrix-completion + 5
+methodology amendments + cohort-exposure carry-forward)
+substantively reframed.
+
+**v0.7 cycle reframe scope (to be applied at Step 8.2 amendment):**
+
+PRIMARY:
+- claude-code-only extraction path (B13 functional implementation;
+  ADR-02 amendment from extraction-sole-API-caller to extraction-
+  via-multiple-paths; cost model shift from API-pay-per-use to
+  subscription-bounded)
+
+SECONDARY:
+- Install + setup pipeline real-repo verification (A7 onboarding
+  pipeline tested empirically beyond Step 4.4 smoke test;
+  Travis-side dogfooding on real codebases)
+
+TERTIARY:
+- Backlog-drain items launch-blocking (specific items locked at
+  v0.7 cycle pre-planning; expected scope: small)
+
+DEFERRED TO v0.8+:
+- F1-F9 methodology amendments (atlas-version-control [F1]; cell-
+  selection empirical pre-screen [F3]; 2-axis retry policy [F4
+  F6 reframing]; variance-control auto-stretch [F5]; causal
+  mechanism investigation [F1 deferred]; F9 tag-only-not-control
+  pattern observation)
+- Cohort exposure execution (Tier 3 pre-registration applied at
+  Step 7.5; recruitment infrastructure ships at v1.0 ready for
+  post-launch real-world cohort)
+- Stream B matrix-completion (full 8-cell vs partial subset;
+  statistically-meaningful-wins gate work)
+
+**v0.7 cycle target:** 4-5 day timeline to v1.0 launch.
+
+**v1.0 ship-gate criteria status post-launch:**
+- #1 statistically-meaningful-wins: PARTIAL via v0.6 Stream B
+  subset; full matrix at v0.8+
+- #2 onboarding pipeline shipped: MET via v0.6 Step 4.5 + v0.7
+  empirical verification
+- #3 external dogfood trial: NOT MET at v1.0 launch; v1.0 ships
+  with cohort exposure infrastructure ready for post-launch
+  real-world cohort
+
+**Honest scope-acknowledgment:** v1.0 ship with NOT-MET on
+criterion #3 is explicit trade-off for launch timing per Travis
+pivot. Cohort substrate-generation thesis preserved via post-
+launch recruitment infrastructure inherited from v0.6 cycle.
+
+Reasoning: Travis pivot at Step 7.5 substantively reframes v0.7
+as launch-bearing not substrate-generation-bearing. Without
+amendment, v0.7 scope-doc drafting consumes contradictory
+signals (handoff doc original framing vs Step 7.5 progress log
+Travis direction). Amendment preserves substrate continuity per
+v0.5→v0.6 precedent (Step 5.4 close amended handoff doc with
+F1-F9 substrate per Path α).
+
+Substep 8.2 substantively interpretive — discipline #3 cadence
+applies; surface inline before commit per Q8.0.1 dedicated
+substep framing.
+
+#### Q8.0.6 lock — Step 9 ship gate prerequisites from Step 8
+
+**Locked:** (γ) Step 8 entire arc is Step 9 prerequisite.
+
+Reasoning: ship-gate template is sequenced (pre-flight
+verification first; ship commit references cumulative cycle
+substrate; v0.6.0 tag message references cycle-close
+evaluations). Without Step 8 close, ship commit message is
+incomplete. v0.5 precedent (Step 11 ship gate followed Step 10
+close) followed sequential pattern. Step 8 close commit
+unblocks Step 9 substep ladder execution.
+
+#### Q8.0.7 lock — Q10 tier-2 bundled deferral cycle-close re-evaluation
+
+**Locked:** 7-item tier-2 walkthrough; 0 tier-1 elevations;
+all 7 carry to v0.8+ default.
+
+Per-item evaluation:
+
+| Item | Surface during v0.6? | Outcome |
+|---|---|---|
+| B2 (per-axis direction-agreement metric reformulation) | NOT surfaced | tier-2 default; carry to v0.8+ |
+| B5 (cost-projection cache-discount calculator) | NOT surfaced | tier-2 default; carry to v0.8+ |
+| B6 (variance trigger threshold language domain-specificity) | NOT surfaced | tier-2 default; carry to v0.8+ |
+| B7 (output substrate density LOC inflation driver) | NOT surfaced | tier-2 default; carry to v0.8+ |
+| B9 (failed-call cost-tracking gap) | PARTIAL — F8 cost-projection accuracy + failed-call gap inherits Phase-9 framing | tier-2 default; carry to v0.8+ with annotation |
+| B11 (explicit cache-control header configuration) | NOT surfaced | tier-2 default; carry to v0.8+ |
+| E1 (MAD threshold empirically unanchored) | NOT surfaced | tier-2 default; carry to v0.8+ |
+
+Pre-registered framing at scope-doc Q10: "if any item surfaces
+as load-bearing during v0.6 execution, elevates to tier-1 at
+cycle close." 0 elevations confirms tier-2 bundled deferral
+default holds; prevents indefinite organic-refinement-without-
+refinement per dev-rigor-lens survival-bias concern from Item 7
+debate.
+
+Recorded at Step 8.1 evaluations bundle.
+
+#### Q8.0.8 lock — Step 8 commit cadence
+
+**Locked:** (α) 3 commits per substep matching Q8.0.1
+compressed split.
+
+Reasoning: substep boundary discipline preserves clean audit
+trail per Steps 2-6 precedent. 8.0 design adjudication is its
+own commit (this commit). 8.1 evaluations bundle is mechanical
+but substantively records B1/B17/Q10 cycle-close decisions —
+separate commit aids v0.7 substrate readers. 8.2 forward-
+pointer + close is substantively interpretive (handoff doc
+amendment) — separate commit per Step 5.4 close + v0_7-
+HANDOFF.md amendment precedent.
+
+#### Step 8.0 unblock
+
+Step 8.1 (cycle-close evaluations bundle) unblocked.
+Mechanical work — B1 NO-TRIGGER + B17 ✓ MET + Q10 7-item
+walkthrough recorded into substep close progress log entry.
+
+Step 8.2 substantively interpretive at Step 8.1 close —
+v0_7-HANDOFF.md amendment surface inline before commit per
+discipline #3 cadence; Q8.0.5 Refinement scope documented at
+this entry serves as drafting anchor.
+
+---
 
 ### Step 7.5 shipped — 2026-05-08 (Step 7 close)
 
