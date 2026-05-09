@@ -100,27 +100,53 @@ v0.1 ──┬── v0.2 (language adapter breadth)         — SHIPPED
        │                                             doctor script foundation +
        │                                             bounded validity
        │
-       └── v0.5 (LLM-judge methodology +           — SHIPPED;
-            quality-axis measurement)                paired-t cross-cell rollup
-                                                     at N=27 + Phase-9 reference
-                                                     doc + adaptive cost priors
+       ├── v0.5 (LLM-judge methodology +           — SHIPPED;
+       │    quality-axis measurement)                paired-t cross-cell rollup
+       │                                             at N=27 + Phase-9 reference
+       │                                             doc + adaptive cost priors
+       │
+       └── v0.6 (early-access pipeline-mechanics + — SHIPPED;
+            8-cell matrix-replication subset +       Stream A pipeline-mechanics +
+            cohort infrastructure)                   Stream B 8-cell DIVERGED
+                                                     2-of-4 axes + F1 atlas-
+                                                     substrate-version confound +
+                                                     Stream C cohort
+                                                     infrastructure + Tier 3
+                                                     cohort exposure cancellation
 
-v0.6+ (must-ship-before-v1.0; flexible)            — onboarding pipeline (most
-                                                     natural v0.6); task-shaped
-                                                     queries; semantic layer
-                                                     (evidence-gated); remaining
-                                                     claim sources; team workflow
+v0.7 (launch-bearing cycle to v1.0)                — PLANNED; PRIMARY claude-
+                                                     code-only extraction path +
+                                                     SECONDARY install/setup
+                                                     pipeline real-repo
+                                                     verification + TERTIARY
+                                                     backlog-drain launch-blocking;
+                                                     launch-bearing timeline
+                                                     to v1.0
+
+v0.8+ (post-launch substrate)                      — full matrix-completion +
+                                                     F1-F9 methodology amendments
+                                                     + cohort exposure execution +
+                                                     task-shaped queries + post-
+                                                     launch enrichment items
 
 v1.0+ (post-launch enrichment)                     — orthogonal; each graduates
                                                      to own version
 
-v1.0 (public launch)                               — gates: onboarding pipeline +
-                                                     quality-axis methodology +
-                                                     community evidence +
-                                                     external dogfood
+v1.0 (public launch via v0.7)                      — gates honest 2-of-3 MET +
+                                                     1 carried forward: criterion
+                                                     #1 quality-axis parenthetical
+                                                     CLOSED (v0.5) + criterion #2
+                                                     onboarding pipeline shipped
+                                                     (v0.7) + criterion #1
+                                                     statistical-wins PARTIAL
+                                                     (v0.6 8-cell subset → v0.8+
+                                                     full matrix) + criterion #3
+                                                     external dogfood NOT MET
+                                                     (carried forward to v0.8+
+                                                     post-launch cohort exposure)
 ```
 
-Practical implication: v0.4 shipped 2026-04-29; v0.5 shipped 2026-05-04; v0.6+ specific version assignments at per-version scope-doc time, not now. v1.0 gates land via v0.99 final pre-launch scope-doc.
+Practical implication: v0.4 shipped 2026-04-29; v0.5 shipped 2026-05-04; v0.6 shipped 2026-05-09; v0.7 launch-bearing cycle to v1.0 per launch-bearing reframe (Travis pivot at v0.6 Step 7.5); v0.8+ post-launch substrate (matrix-completion + cohort exposure execution + F1-F9 methodology amendments). v1.0 gates honest 2-of-3 MET + 1 carried forward per launch-bearing reframe.
 
 ### v0.1 — Serving architecture with hand-authored intent [SHIPPED]
 
@@ -495,150 +521,244 @@ external dogfood) carry forward to v0.6+ scope.
 
 ---
 
-### v0.6 — Early-access onboarding pipeline + targeted methodology validation [PLANNED]
+### v0.6 — Early-access onboarding pipeline + targeted methodology validation [SHIPPED]
 
-**Thesis:** Substrate-generation-not-feature-completion. Early-
-access onboarding pipeline cycle generates empirical substrate
-for v0.7 production-launch design work. v0.6 ships install +
-doctor + config walkthrough + atlas creation + smoke test
-pipeline-mechanics under early-access cohort exposure (minimum
-bar 1-2 Travis network developers; ideal range 5-15); generates
-cohort UX feedback + tool-description observability + targeted
-matrix-replication substrate + self-use observations + B13-flag
-usage data — all consumed at v0.7 production-launch design work.
+**Thesis (preserved via post-launch infrastructure inheritance
+per launch-bearing reframe):** Substrate-generation-not-feature-
+completion. Early-access onboarding pipeline cycle ships
+infrastructure substrate for v0.8+ post-launch cohort exposure
+execution; v0.7 cycle pivots to launch-bearing per Travis
+direction at v0.6 Step 7.5 (cohort exposure execution cancelled
+at v0.6 cycle per Tier 3 pre-registration framing; recruitment
+infrastructure carries forward to v1.0 ready for post-launch
+real-world cohort).
 
 The cycle architecture exists specifically to avoid the v0.5-
 Step-6-mistake-pattern at multi-cycle scale: design-without-
 empirical-operating-regime produces conclusions that reverse
 when operating regime arrives.
 
-**Delivers (3 streams per [`v0.6-SCOPE.md`](v0.6-SCOPE.md)
+**Delivered (3 streams per [`v0.6-SCOPE.md`](v0.6-SCOPE.md)
 commit `a8d01eb`):**
 
 - **Stream A pipeline-mechanics** (5 items): A4 lazy-spawn + A6
-  doctor script (deep LSP health check) + A7 self-use onboarding
-  pipeline + H5 doctor multi-dimension state-detection + B13-
-  flags optional-flags-with-explicit-pending-resolution
+  doctor deep LSP health check + A7 self-use onboarding pipeline
+  + H5 doctor multi-dimension state-detection + B13-flag stub
+  per pending-resolution architecture (path b reconsider lock —
+  flags-with-explicit-pending-resolution; v0.7 functional
+  implementation per launch-bearing reframe PRIMARY).
 - **Stream B methodology-rigor + matrix-replication subset** (4
   items): E2 priors interpretation discipline + B15 ADR-19 §2
   cost projection recalculation + B1 rubric anchor refinement
-  cycle-close evaluation + targeted matrix-replication subset
-  (3 cells at tier-gradation test points; 8-cell × n=5 × 2
-  conditions = ~80 trials)
+  cycle-close evaluation (NO-TRIGGER per Tier 3 cohort
+  cancellation) + targeted matrix-replication subset (8 cells ×
+  n=5 × 2 conditions = ~80 trials; 2 of 4 axes DIVERGED in
+  v0.5-vs-v0.6 tier-gradation comparison per Phase-10 §8;
+  factual_correctness CLEAN→BORDERLINE; actionability
+  BORDERLINE→NOT distinguishable; hallucination + completeness
+  preserved).
 - **Stream C cohort/instrumentation + B17 self-use logging** (4
   items): cohort feedback template + tool-description
-  observability + recruitment infrastructure + B17 hybrid capture
-  (progress-log + lightweight `research/v0.6-self-use-log.md`
-  append-when-observed)
+  observability per ADR-20 consent contract + recruitment
+  infrastructure (4 markdown docs at `research/cohort/`) + B17
+  hybrid capture (progress-log primary + lightweight `research/
+  v0.6-self-use-log.md` framed-stub secondary; cycle-close ✓
+  MET via progress-log-distributed synthesis per Q8 lock).
+
+**Empirical findings (Phase-10 reference doc):**
+
+- **F1 PRIMARY — atlas-substrate-version confound surfaces in
+  v0.5-vs-v0.6 tier-gradation comparison.** v0.5 baseline
+  measured against v0.4.0 atlas; v0.6 measurements against
+  v0.5.0 atlas. 5 v0.5 anchor cells (identical prompts;
+  identical methodology) attenuate 28-100% on ALL 4 axes when
+  re-run against v0.5.0 substrate. Decomposition rules out
+  noise-increase as primary mechanism; atlas-substrate-version-
+  correlated effect shift is primary. Causal mechanism
+  investigation deferred to v0.8+ post-launch cycle.
+- **F9 METHODOLOGY-DESIGN GAP — tag-only-not-control pattern.**
+  v0.6 cycle Q5.0.7 atlas-version-tagging discipline captured
+  the tag in trial manifests but did NOT specify methodology-
+  comparison-must-control-for-atlas-version. F1 confound emerges
+  from this gap. Tag-AND-control pattern (not just tag-only) for
+  v0.7+ design discipline inheritance.
+- **F2-F8** finding inventory at Phase-10 §11.
+
+**Tier 3 cohort exposure cancellation (per Q7.0.9 pre-
+registration framing).** Cohort substrate quality: zero direct
+cohort substrate generated at v0.6 cycle. Q7.0.9 3-tier framing
+locked at Step 7.0 (commit `77e523e`) BEFORE recruitment outcome
+known; Tier 3 (0 participants) classification applied at Step
+7.5 (commit `11e0ddc`) against actual outcome (Travis pivot to
+feature-bearing v0.7 cycle). Pre-registration discipline
+preserved honest-scope acknowledgment — Tier 3 is documented
+framework application, not retrofit. Recruitment infrastructure
++ observability instrumentation + ADR-20 consent contract +
+feedback template + pre-trial onboarding ship at v1.0 ready for
+v0.8+ post-launch real-world cohort exposure execution.
+
+**Cumulative cycle spend.** TBD at Step 9.6 ship commit per
+cycle-close cumulative reconstruction (matches v0.5 ~$10.25
+platform-billed reconstructed precedent). Atlas API spend zero
+across Steps 6-9 (Stream C tooling + cycle close + ship gate
+all documentation-bearing); cycle execution cost driver is
+Step 5 Stream B 8-cell matrix-replication subset.
+
+**Status:** Shipped 2026-05-09 (tag `v0.6.0`). All 15
+v0.6-SCOPE.md success criteria evaluated honestly: 14/15 ✓ MET +
+1/15 ✗ MISSED honest-scope (#6 cohort exposure execution; Tier
+3 cancellation). 0/15 △ PARTIAL.
+
+**v0.7+ candidate observations queued.** Multiple complementary
+substrates per launch-bearing reframe: (1)
+[`v0_7-HANDOFF.md`](v0_7-HANDOFF.md) v0.7 launch-bearing
+reframe section is canonical bridge document for v0.7 cycle
+pre-planning; (2) [Phase-10 reference doc §9](https://github.com/traviswye/ContextAtlas-benchmarks/blob/main/research/phase-10-v0.6-reference-run.md)
+captures cycle-emergent v0.7+ candidates; (3)
+[`research/v0.5-candidates.md`](research/v0.5-candidates.md)
+remains canonical for residual unabsorbed v0.5+ items.
 
 **V1.0 ship-gate criteria closure status (post-v0.6 ship
-projected):**
+actual; honest 2-of-3 MET + 1 carried forward per launch-
+bearing reframe):**
 
 | Criterion | Status | Closes at |
 |---|---|---|
 | #1 quality-axis methodology parenthetical | ✓ CLOSED at v0.5 | — |
-| #1 statistically-meaningful-wins gate | PARTIALLY ADVANCED (8-cell subset) | v0.7 matrix-completion |
-| #2 onboarding pipeline shipped | PARTIALLY ADVANCED (early-access pipeline-mechanics) | v0.7 onboarding-completion |
-| #3 external dogfood trial | Open (recruitment infrastructure shipped; execution at v0.7) | v0.7 trial execution |
+| #1 statistically-meaningful-wins | PARTIAL via v0.6 8-cell subset (DIVERGED 2-of-4 axes per Phase-10 §8) | v0.8+ matrix-completion + F1-F9 methodology amendments |
+| #2 onboarding pipeline shipped | PARTIAL via v0.6 Step 4.5 pipeline-mechanics | v0.7 empirical verification per launch-bearing reframe |
+| #3 external dogfood trial | NOT MET via Tier 3 cancellation at v0.6 Step 7.5 (recruitment infrastructure shipped) | v0.8+ post-launch cohort exposure execution against carried-forward recruitment infrastructure |
 
-**Cycle-weight estimate:** ~$15-25 platform-billed reconstructed
-(~1.3-1.5× v0.5 cycle weight). 3 streams within thesis-narrowed
-envelope discipline matching v0.5 multi-stream precedent.
-
-**Status:** [PLANNED] — Phase 3 v0.6-SCOPE.md committed 2026-05-05
-(commit `a8d01eb`). Cycle launches at STEP-PLAN-V0.6.md
-initialization (Step 1.0 work per Q7 ladder-shape adjudication).
-See [`v0.6-SCOPE.md`](v0.6-SCOPE.md) for full scope-doc
-including Q-list (22 entries) + methodology limits (14 items) +
-success criteria (15 items) + rescope conditions (7 items) +
-cycle-pre-planning narrative (Phase 1 enumeration + 8-item
-adversarial debate phase + 2 reconsiders + Phase 2 triage).
+**Why this version:** Bridge-cycle infrastructure substrate for
+post-launch cohort exposure execution. Pre-registration
+discipline (Q7.0.9 3-tier framing locked at Step 7.0 before
+recruitment outcome known) preserved honest-scope at cycle close
+when Travis pivot reframed v0.7 as launch-bearing. Substrate-
+generation thesis preserved via post-launch infrastructure
+inheritance — recruitment + observability + consent contract +
+feedback template + onboarding documentation ship at v1.0 ready
+for v0.8+ post-launch real-world cohort.
 
 ---
 
-### v0.7 — Production-launch-substrate cycle [PLANNED]
+### v0.7 — Launch-bearing cycle to v1.0 [PLANNED]
 
-**Thesis:** Production-launch-substrate cycle consuming v0.6
-empirical substrate via 4 streams to close v1.0 ship-gate
-criteria #1-#3 substantively. Strategy B-with-explicit-launch-
-staging cycle-architecture: v0.6 = early-access cycle generating
-empirical substrate; v0.7 = production-launch-substrate cycle
-designing against v0.6 substrate; v1.0 = public production launch
-with all ship-gate criteria closed.
+**Thesis:** Launch-bearing cycle targeting v1.0 public launch
+per Travis pivot at v0.6 Step 7.5. Substantive reframe from
+original Phase 2 v0.6-cycle-pre-planning 4-stream production-
+launch-substrate framing (preserved as historical record at
+[`v0_7-HANDOFF.md`](v0_7-HANDOFF.md) §V0.7 4-stream item-level
+descriptions). Substrate-generation thesis preserved via post-
+launch infrastructure inheritance — recruitment + observability
++ consent contract + feedback template + onboarding documentation
+ship at v1.0 ready for v0.8+ post-launch real-world cohort
+exposure execution.
 
-**Delivers (4 streams per [`v0.6-SCOPE.md`](v0.6-SCOPE.md) §v0.7
-forward-pointers; firms at v0.7-SCOPE.md drafting time post-v0.6
-cycle close):**
+**Delivers (3-tier scope per launch-bearing reframe; firms at
+v0.7-SCOPE.md drafting time post-v0.6 ship):**
 
-- **Stream A onboarding-completion** (5 items): H1 hook/kickoff
-  script for Claude Code priming (returning-session UX; designed
-  against v0.6 first-session empirical signal); H2 ADR generation
-  pipeline (substrate-flexibility input dimension; flexibility-as-
-  feature design principle; single pipeline accepting available
-  substrate — code patterns + commits + README + DESIGN.md as
-  present); H3 first-session-vs-returning-session routing logic
-  (coupled to H1); C3 README/`docs/` parsing (folds into H2); B12
-  session-state context engine general architectural pattern (H1
-  is concrete realization).
-- **Stream B matrix-completion** (3 items): Full matrix-replication
-  completion (~168 trials remaining after v0.6 8-cell subset
-  shipped); B3 trick-bucket override Axis 3 empirical validation
-  (analysis pass on v0.6 trick-bucket substrate); B4 hono h1 beta-
-  ca bimodal exploration root-cause investigation.
-- **Stream C trial-execution** (2 items): External dogfood trial
-  execution against v0.6-shipped recruitment infrastructure; B8
-  Sonnet output stability dependence on input ordering analysis
-  pass on v0.7 trial substrate.
-- **Stream D task-shape-API + B13-decision + substrate-gaps** (6
-  items): C1 task-shaped queries (`why_does_this_fail`,
-  `onboard_to_feature`, `audit_change`); slash commands (designed
-  against v0.6 demand signal); B13 architectural decision (with
-  v0.6 flag-usage substrate); A1 `classifyError` catch-all; A2
-  `extractDocstringsForFile` non-idempotent; A3 `pipeline.ts`
-  Stage 5 deletion handling.
+- **PRIMARY — claude-code-only extraction path.** B13 functional
+  implementation: v0.6 ships flag-shape stub per Item 2
+  reconsider lock (path b — flags-with-explicit-pending-
+  resolution); v0.7 ships single-dependency claude-code-only
+  extraction path as functional implementation. ADR-02 amendment
+  scope: extraction-sole-API-caller framing → extraction-via-
+  multiple-paths (Anthropic API direct vs Claude Code session
+  context). Cost model shift: API-pay-per-use → subscription-
+  bounded for claude-code-only path.
+- **SECONDARY — Install + setup pipeline real-repo verification.**
+  A7 onboarding pipeline real-repo empirical testing beyond v0.6
+  Step 4.4 smoke test. Travis-side dogfooding on real codebases
+  validates pipeline-mechanics shipped at v0.6 Step 4.5 against
+  actual onboarding friction points before v1.0 launch. V1.0
+  ship-gate criterion #2 closes at this empirical verification.
+- **TERTIARY — Backlog-drain launch-blocking items.** Specific
+  items locked at v0.7 cycle pre-planning. Expected scope: small.
+  Triages v0.6/v0.7 deferred backlog for items genuinely launch-
+  blocking (not v1.x-deferrable) per Travis direction at Step
+  7.5.
 
 **Closes:**
 
-- **V1.0 ship-gate criterion #1 statistically-meaningful-wins
-  gate** via Stream B full matrix-replication completion (closes
-  the gate that v0.5 quality-axis methodology parenthetical
-  closure left open; v0.6 8-cell subset PARTIALLY ADVANCED;
-  v0.7 full matrix completes)
 - **V1.0 ship-gate criterion #2 onboarding pipeline shipped** via
-  Stream A onboarding-completion (closes the criterion that v0.6
-  early-access pipeline-mechanics ship left at PARTIALLY ADVANCED)
+  SECONDARY install/setup empirical verification (closes the
+  criterion that v0.6 early-access pipeline-mechanics ship left
+  at PARTIAL).
+
+**Carries forward to v0.8+ post-launch (per launch-bearing
+reframe):**
+
+- **V1.0 ship-gate criterion #1 statistically-meaningful-wins**
+  via full matrix-completion + F1-F9 methodology amendments
+  bundled (atlas-version-control methodology amendment per F1 +
+  F9; cell-selection empirical pre-screen per F3; 2-axis retry
+  policy per F4 + F6 reframing; variance-control auto-stretch
+  per F5; causal mechanism investigation per F1 deferred work).
 - **V1.0 ship-gate criterion #3 external dogfood trial** via
-  Stream C trial-execution against v0.6-shipped recruitment
-  infrastructure ("at least one trial completed" minimum bar)
+  cohort exposure execution against v0.6-shipped recruitment
+  infrastructure (Tier 3 pre-registration applied at v0.6 Step
+  7.5; v0.8+ re-attempts cohort exposure against carried-forward
+  substrate).
+
+**v0.7 cycle target:** launch-bearing timeline to v1.0.
+
+**V1.0 ship-gate status post-v0.7 launch:** honest 2-of-3 MET
+(criterion #1 parenthetical CLOSED at v0.5 + criterion #2 closes
+at v0.7 empirical verification) + criterion #1 statistical-
+wins PARTIAL via 8-cell subset carried forward to v0.8+ +
+criterion #3 NOT MET carried forward to v0.8+ post-launch.
 
 **Status:** [PLANNED] — cycle-pre-planning at v0.6 cycle close
 (post-v0.6 ship); v0.7-SCOPE.md drafts then; cycle launches at
 scope-doc lock. Substrate-preservation document
-[`v0_7-HANDOFF.md`](v0_7-HANDOFF.md) captures detailed cycle-
-pre-planning substrate from v0.6 cycle-pre-planning session
-(2026-05-05) for v0.7 Phase 1 enumeration consumption.
+[`v0_7-HANDOFF.md`](v0_7-HANDOFF.md) captures detailed launch-
+bearing reframe substrate + original Phase 2 4-stream framing
+preserved as historical record.
 
-**Cycle-weight calibration concern (per Phase 2 Adjudication 4):**
-v0.7 estimated ~2-2.5× v0.5 cycle weight at Phase 2 surface;
-substantively heavier than v0.5 + v0.6 cycles. Mitigations
-available at v0.7 scope-doc drafting time:
-- **Stream rebalancing:** descope substantively-heavier streams
-  to v1.x post-launch
-- **Cycle splitting:** v0.7 + v0.8 → v1.0 instead of v0.7 → v1.0
+**Why this version:** Travis pivot at v0.6 Step 7.5 reframed
+v0.7 as launch-bearing not substrate-generation-bearing.
+Substrate-generation thesis preserved via post-launch
+infrastructure inheritance (not abandoned). Original Phase 2
+4-stream framing (Stream A onboarding-completion + Stream B
+matrix-completion + Stream C trial-execution + Stream D task-
+shape-API + B13-decision + substrate-gaps) preserved at
+v0_7-HANDOFF.md as historical record per Q1 lock; launch-bearing
+reframe applies implications-block annotation. Stream A narrows
+to install/setup verification (SECONDARY); Stream B + Stream C
+defer to v0.8+ post-launch; Stream D B13 architectural decision
+PROMOTED to PRIMARY (B13 functional implementation as v0.7
+launch-bearing primary feature); other Stream D items defer to
+v0.8+.
 
-V0.6 cycle execution + close empirical signal informs realistic
-v0.7 envelope.
+---
 
-**Why this version:** v0.6 substrate-generation cycle generates
-empirical substrate (cohort feedback + tool-description
-observability + matrix-replication subset validation + B17 self-
-use observations + B13-flag usage + recruitment infrastructure)
-that v0.7 design work consumes. Pure-v0.7 design without v0.6
-empirical substrate would repeat v0.5-Step-6-mistake-pattern at
-multi-cycle scale (designing in vacuum; reversing when operating
-regime arrives). Strategy B-with-explicit-launch-staging
-methodology-defensible per 8-item adversarial debate phase + 2
-reconsiders during v0.6 cycle-pre-planning (2026-05-05).
+### v0.8+ — Post-launch substrate cycle [PLANNED]
+
+**Thesis:** Post-launch substrate cycle absorbing v0.7-deferred
+work after v1.0 launch lands. Closes carried-forward V1.0 ship-
+gate criteria + executes F1-F9 methodology amendments against
+carried-forward substrate.
+
+**Delivers (firms at v0.8-SCOPE.md drafting time post-v1.0 ship):**
+
+- **Full matrix-completion** (~remaining trials beyond v0.6
+  8-cell subset; statistically-meaningful-wins gate work for
+  V1.0 ship-gate criterion #1 closure)
+- **F1-F9 methodology amendments** (5 items per v0_7-HANDOFF.md
+  v0.6 cycle execution substrate section): atlas-version-
+  control methodology amendment (F1 + F9); cell-selection
+  empirical pre-screen (F3); 2-axis retry policy (F4 F6
+  reframing); variance-control auto-stretch (F5); causal
+  mechanism investigation (F1 deferred work)
+- **Cohort exposure execution** against v0.6-shipped recruitment
+  infrastructure (V1.0 ship-gate criterion #3 closure work)
+- **Stream D backlog absorption** (C1 task-shaped queries;
+  slash commands; A1/A2/A3 substrate gaps) per v0_7-HANDOFF.md
+  preserved 4-stream framing
+- **Post-launch enrichment items** per v1.0+ POST-LAUNCH section
+  below as evidence-gates trigger
+
+**Status:** [PLANNED] — cycle-pre-planning post-v1.0 launch.
 
 ---
 
@@ -793,29 +913,37 @@ launch (gate criteria below).
 - ContextAtlas is production-installable on user codebases, not
   just authors' test repos.
 
-**Ship criteria** (testable gates for the v0.x → v1.0 transition):
+**Ship criteria** (testable gates for the v0.x → v1.0 transition;
+honest 2-of-3 MET + 1 carried forward per launch-bearing reframe
+post-v0.6):
 
-- Four-layer fusion proved on the cobra/httpx/hono benchmark
-  substrate (or expanded substrate per scope decisions) with
-  statistically-meaningful wins on both the efficiency and
-  quality axes (✓ full quality-axis methodology landed at v0.5
-  per ADR-19 + paired-t cross-cell rollup; see v0.5 section.
-  Statistically-meaningful-wins gate remains open — v0.5
-  established the measurement instrument; v0.6+ uses the
-  instrument under expanded substrate)
-- Developer onboarding pipeline shipped (configuration helper +
-  ADR bootstrap + warm-up + lifecycle); doctor script foundation
-  exists (v0.4) and full pipeline composes
-- At least one external dogfood trial completed — reviewer,
-  friend, or open solicitation. (Full external adoption is a
-  v1.x story, not a v1.0 blocker. The gate is "someone else ran
-  it on their code and reported back.")
+- ✓ Four-layer fusion proved on the cobra/httpx/hono benchmark
+  substrate with quality-axis methodology landed (criterion #1
+  parenthetical CLOSED at v0.5 per ADR-19 + paired-t cross-cell
+  rollup; see v0.5 section). Statistically-meaningful-wins gate
+  PARTIAL via v0.6 8-cell subset (DIVERGED 2-of-4 axes per
+  Phase-10 §8); CARRIED FORWARD to v0.8+ full matrix-completion
+  + F1-F9 methodology amendments per launch-bearing reframe.
+- ✓ Developer onboarding pipeline shipped (Stream A pipeline-
+  mechanics shipped at v0.6 Step 4.5; full pipeline empirical
+  verification closes at v0.7 launch-bearing cycle SECONDARY).
+- ✗ NOT MET — At least one external dogfood trial completed.
+  Tier 3 cancellation at v0.6 Step 7.5 per Q7.0.9 pre-
+  registration framing; recruitment infrastructure ships at v1.0
+  ready for v0.8+ post-launch cohort exposure execution.
+  CARRIED FORWARD to v0.8+ per launch-bearing reframe (not
+  v1.0 launch blocker per Travis pivot).
 - No pending scope-affecting ADRs — the architectural surface is
-  frozen at ship
+  frozen at ship.
 - Benchmark reproduces across Claude model versions without
-  per-model tuning
-- Launch-document drafted (Travis personal notes consolidated
-  into public launch artifact)
+  per-model tuning.
+
+**Honest scope-acknowledgment.** v1.0 ships with 2-of-3 ship-
+gate criteria MET + 1 carried forward (criterion #3 to v0.8+;
+criterion #1 statistically-meaningful-wins also carries forward
+via PARTIAL framing). Substrate-generation thesis preserved via
+post-launch infrastructure inheritance (not abandoned per
+Travis pivot launch-timing trade-off).
 
 **Specific v1.0 gate criteria** lock at late-cycle scope-doc
 (v0.99 or whatever the final pre-v1.0 cycle becomes); items
@@ -860,9 +988,12 @@ ContextAtlas has multiple docs serving different readers. This roadmap is the st
 - **[DESIGN.md](DESIGN.md)** — Architectural design in technical detail
 - **[docs/adr/](docs/adr/)** — Specific architectural decisions with rationale
 - **[CLAUDE.md](CLAUDE.md)** — Guidance for AI collaborators working on this repo
-- **[v0.4-SCOPE.md](v0.4-SCOPE.md)** — Current-version scope anchor (v0.4 in progress; commit `e8b5114`)
+- **[v0.6-SCOPE.md](v0.6-SCOPE.md)** — Current-version scope anchor (v0.6 shipped 2026-05-09; commit `a8d01eb`)
+- **[v0_7-HANDOFF.md](v0_7-HANDOFF.md)** — v0.7 cycle pre-planning substrate (launch-bearing reframe canonical bridge document)
+- **[v0.5-SCOPE.md](v0.5-SCOPE.md)** — v0.5 scope anchor (shipped 2026-05-04; preserved as historical record)
+- **[v0.4-SCOPE.md](v0.4-SCOPE.md)** — v0.4 scope anchor (shipped 2026-04-29; preserved as historical record)
 - **[v0.3-SCOPE.md](v0.3-SCOPE.md)** — v0.3 scope anchor (shipped 2026-04-28; preserved as historical record)
-- **STEP-\*-PLAN.md** — Per-version build plan (v0.4 plan drafting next session)
+- **[STEP-PLAN-V0.6.md](STEP-PLAN-V0.6.md)** — Per-version build plan (current); v0.5/v0.4/v0.3/v0.2 step plans preserved as historical record
 - **[RUBRIC.md](../ContextAtlas-benchmarks/RUBRIC.md)** (in benchmarks repo) — Measurement methodology
 
 ## Open questions (tracked, not decided)
@@ -890,6 +1021,38 @@ Tracked here, not committed to a version. Each gets its own ADR when approached.
 ---
 
 ## Revision history
+
+- **2026-05-09 — v0.6 ship.** Tag `v0.6.0`. v0.6 section
+  status flipped `[PLANNED]` → `[SHIPPED]` with substantive
+  cycle outcome paragraphs (3 streams shipped + Tier 3 cohort
+  exposure cancellation per Q7.0.9 pre-registration framing +
+  F1 PRIMARY atlas-substrate-version confound + F9 methodology-
+  design-gap pattern + 8-cell subset DIVERGED 2-of-4 axes per
+  Phase-10 §8). V1.0 ship-gate criteria table updated to
+  post-v0.6 actual status: criterion #1 parenthetical CLOSED
+  preserved + criterion #1 statistical-wins PARTIAL → v0.8+ +
+  criterion #2 PARTIAL → v0.7 + criterion #3 NOT MET → v0.8+
+  per launch-bearing reframe (Travis pivot at v0.6 Step 7.5).
+  v0.7 section substantively reframed from "Production-launch-
+  substrate cycle" 4-stream framing to "Launch-bearing cycle to
+  v1.0" 3-tier (PRIMARY claude-code-only extraction path +
+  SECONDARY install/setup verification + TERTIARY backlog-drain;
+  original 4-stream framing preserved as historical record at
+  v0_7-HANDOFF.md per Q1 lock). NEW v0.8+ post-launch substrate
+  cycle section absorbs deferred F1-F9 methodology amendments +
+  cohort exposure execution + Stream B matrix-completion + Stream
+  D backlog. Version dependency graph updated (v0.6 SHIPPED;
+  v0.7 PLANNED launch-bearing; v0.8+ PLANNED post-launch).
+  v1.0 ship-gate criteria reframed honest 2-of-3 MET + 1 carried
+  forward (launch-document bullet removed per ship-criteria-
+  list-stability discipline; launch-document polish is launch-
+  readiness work not v1.0 ship-gate criterion). Practical-
+  implication line refreshed (v0.6 shipped 2026-05-09; v0.8+
+  post-launch substrate). "How this document relates to others"
+  section refreshed (3-cycle stale references caught at 9.1
+  working-content-gap-inventory; v0.6/v0.7/v0.5/v0.4/v0.3
+  scope-doc references updated; STEP-PLAN-V0.6.md current).
+  Net delta TBD at ship commit.
 
 - **2026-05-04 — v0.5 ship.** Tag `v0.5.0`. New v0.5 section
   added between v0.4 and v0.5+ backlog with full SHIPPED

@@ -26,20 +26,20 @@ describe("computeCostUsd", () => {
   });
 
   it("mixed tokens compose linearly", () => {
-    // 100k input @ $15/M = $1.50; 50k output @ $75/M = $3.75; total $5.25
+    // 100k input @ $5/M = $0.50; 50k output @ $25/M = $1.25; total $1.75
     expect(
       computeCostUsd({ inputTokens: 100_000, outputTokens: 50_000 }),
-    ).toBeCloseTo(5.25, 6);
+    ).toBeCloseTo(1.75, 6);
   });
 
   it("fractional token counts retain precision", () => {
     // 1234 input + 567 output
-    // input: 1234/1e6 * 15 = 0.01851
-    // output: 567/1e6 * 75 = 0.042525
-    // total: 0.061035
+    // input: 1234/1e6 * 5 = 0.00617
+    // output: 567/1e6 * 25 = 0.014175
+    // total: 0.020345
     expect(
       computeCostUsd({ inputTokens: 1234, outputTokens: 567 }),
-    ).toBeCloseTo(0.061035, 6);
+    ).toBeCloseTo(0.020345, 6);
   });
 });
 

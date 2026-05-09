@@ -65,11 +65,84 @@ These are decisions already made. Do not relitigate them.
 
 ## Current Version
 
-- **Current:** v0.5 shipped 2026-05-04. v0.6 planning queues next;
-  not yet started.
+- **Current:** v0.6 shipped 2026-05-09 (tag `v0.6.0`). v0.7
+  planning queues next per launch-bearing reframe (Travis pivot
+  at v0.6 Step 7.5).
 - **Strategic arc:** [`ROADMAP.md`](ROADMAP.md) covers v0.1 → v1.0.
-- **v0.5 outcome:** LLM-judge methodology + quality-axis blind-
-  grading methodology shipped. Stream A rubric + anonymization
+- **v0.6 outcome:** Early-access pipeline-mechanics + targeted
+  matrix-replication subset + cohort infrastructure shipped.
+  Stream A pipeline-mechanics (5 items): A4 lazy-spawn + A6
+  doctor deep LSP health check + A7 self-use onboarding pipeline
+  + H5 doctor multi-dimension state-detection + B13-flag stub
+  per pending-resolution architecture. Stream B methodology-
+  rigor + matrix-replication subset (4 items): E2 priors
+  interpretation discipline + B15 ADR-19 §2 cost recalc + B1
+  rubric anchor refinement cycle-close evaluation (NO-TRIGGER
+  per Tier 3) + targeted matrix-replication subset (8 cells ×
+  n=5 × 2 conditions = ~80 trials; 2 of 4 axes DIVERGED in
+  v0.5-vs-v0.6 tier-gradation comparison per Phase-10 §8;
+  factual_correctness CLEAN→BORDERLINE; actionability
+  BORDERLINE→NOT distinguishable; hallucination + completeness
+  preserved). Stream C cohort/instrumentation + B17 self-use
+  logging (4 items): cohort feedback template + tool-description
+  observability per ADR-20 consent contract + recruitment
+  infrastructure + B17 hybrid capture (✓ MET via progress-log-
+  distributed synthesis per Q8 lock). 9 named findings (full
+  text at Phase-10 ref-doc §11): F1 PRIMARY atlas-substrate-
+  version confound surfaces in v0.5-vs-v0.6 tier-gradation
+  comparison (atlas-version-correlated effect shift primary
+  mechanism; causal investigation deferred to v0.8+); F9
+  METHODOLOGY-DESIGN GAP tag-only-not-control pattern (v0.6
+  cycle Q5.0.7 atlas-version-tagging discipline captured the
+  tag in trial manifests but did NOT specify methodology-
+  comparison-must-control-for-atlas-version; tag-AND-control
+  pattern for v0.7+ inheritance); F2-F8 finding inventory at
+  Phase-10 §11. Tier 3 cohort exposure cancellation per Q7.0.9
+  pre-registration framing locked at Step 7.0 (commit `77e523e`)
+  before recruitment outcome known; applied at Step 7.5 (commit
+  `11e0ddc`) against actual outcome (Travis pivot to feature-
+  bearing v0.7 cycle); recruitment infrastructure ships at v1.0
+  ready for v0.8+ post-launch cohort exposure execution.
+  Substrate-generation thesis preserved via post-launch
+  infrastructure inheritance (not abandoned). Cumulative cycle
+  spend reconstructed at Step 9.6 ship commit (matches v0.5
+  ~$10.25 platform-billed reconstructed precedent). V1.0 ship-
+  gate status post-v0.6: criterion #1 parenthetical CLOSED at
+  v0.5 (preserved); criterion #1 statistically-meaningful-wins
+  PARTIAL via 8-cell subset → v0.8+ matrix-completion;
+  criterion #2 PARTIAL via Step 4.5 pipeline-mechanics → v0.7
+  empirical verification per launch-bearing reframe; criterion
+  #3 NOT MET via Tier 3 cancellation → v0.8+ post-launch.
+  Honest 2-of-3 MET + 1 carried forward framing.
+- **Methodology limits acknowledged in v0.6 ship narrative:**
+  Atlas-substrate-version confound (F1) primary methodology
+  limit at v0.6 cycle close — cross-cycle tier-gradation
+  comparison must control for atlas-substrate-version; v0.6
+  measurements against v0.5.0 atlas (not v0.4.0 atlas v0.5
+  baseline used) is methodological substrate-shift; causal
+  mechanism investigation deferred to v0.8+ per F1 deferred
+  work. F9 methodology-design-gap tag-only-not-control pattern
+  observation captures generalizable v0.7+ design discipline
+  inheritance: tag-AND-control pattern (not just tag-only) for
+  cross-cycle methodology comparison frameworks. 8-cell subset
+  matrix-replication (not full matrix-completion; v0.8+ post-
+  launch closes statistically-meaningful-wins gate per launch-
+  bearing reframe). Tier 3 cohort exposure cancellation (zero
+  direct cohort substrate generated at v0.6 cycle; Q7.0.9 pre-
+  registration framing preserved honest-scope acknowledgment;
+  v0.8+ post-launch re-attempts cohort exposure against
+  carried-forward recruitment infrastructure). Single-judge-
+  model methodology preserved from v0.5 limit (cross-vendor
+  judge-panel graduation deferred to v0.8+). v0.6 cycle
+  introduces cycle-execution-time discipline observations: pre-
+  registration discipline working-as-designed (Q9 + Q8 + Q10 +
+  Q7.0.9 layered framings prevented post-hoc rationalization at
+  cycle close); cycle-execution observations captured at
+  `v0_7-HANDOFF.md` "Cycle-pre-planning insights" section per
+  Q8.0.4 aggregation lock.
+- **v0.5 outcome (preserved as historical record):** LLM-judge
+  methodology + quality-axis blind-grading methodology shipped.
+  Stream A rubric + anonymization
   (single + paired rubric prompts; 5-step anonymization pipeline
   per ADR-19; position-bias post-hoc 0.538 NO TRIGGER below
   strict 0.60). Stream B paired-t statistical methodology +
@@ -155,22 +228,28 @@ These are decisions already made. Do not relitigate them.
   baseline established across hono (TypeScript), httpx (Python), and
   cobra (Go). Stream A + Stream B both shipped. v0.2 thesis ("works
   across languages and repos") empirically validated.
-- **v0.6+ candidates.** Two complementary substrates per Q10
-  cycle-lock two-substrate distinction:
-  (1) `research/v0.5-candidates.md` remains canonical for the
-  9 remaining items not absorbed at v0.5; absorbed-item
-  in-place annotations mark #7/#8/#9/#12 v0.5-Step-10 closures.
-  (2) `../ContextAtlas-benchmarks/research/phase-9-v0.5-reference-run.md`
-  §9 captures cycle-emergent candidates surfaced during v0.5
-  execution (canonical list; surfaces beyond v0.5-candidates.md
-  inventory scope per Q10 cycle-emergent-only scope lock).
-  v0.6 thesis selection at per-version scope-doc drafting time;
-  likely candidate is developer onboarding pipeline (originally
-  #13 in v0.5-candidates.md inventory) per ROADMAP framing.
-- **Historical references:** `STEP-PLAN-V0.5.md` + `STEP-PLAN-V0.4.md`
-  + `STEP-PLAN-V0.3.md` + `STEP-PLAN-V0.2.md` progress logs document
-  per-step execution arcs; `v0.5-SCOPE.md` + `v0.4-SCOPE.md` +
-  `v0.3-SCOPE.md` + `v0.2-SCOPE.md` are the scope anchors as shipped.
+- **v0.7+ candidates.** Multiple complementary substrates per
+  launch-bearing reframe:
+  (1) `v0_7-HANDOFF.md` v0.7 launch-bearing reframe section is
+  canonical bridge document for v0.7 cycle pre-planning (PRIMARY
+  claude-code-only extraction path + SECONDARY install/setup
+  empirical verification + TERTIARY backlog-drain; v0.8+ post-
+  launch absorbs F1-F9 methodology amendments + cohort exposure
+  execution + Stream B matrix-completion).
+  (2) `../ContextAtlas-benchmarks/research/phase-10-v0.6-reference-run.md`
+  §9 captures cycle-emergent v0.7+ candidates surfaced during
+  v0.6 execution (canonical inventory beyond v0_7-HANDOFF.md
+  scope per cycle-emergent-only scope discipline).
+  (3) `research/v0.5-candidates.md` remains canonical for
+  residual unabsorbed v0.5+ items (absorbed-item in-place
+  annotations mark #7/#8/#9/#12 v0.5-Step-10 closures).
+  v0.7 cycle target: launch-bearing timeline to v1.0.
+- **Historical references:** `STEP-PLAN-V0.6.md` + `STEP-PLAN-V0.5.md`
+  + `STEP-PLAN-V0.4.md` + `STEP-PLAN-V0.3.md` + `STEP-PLAN-V0.2.md`
+  progress logs document per-step execution arcs; `v0.6-SCOPE.md` +
+  `v0.5-SCOPE.md` + `v0.4-SCOPE.md` + `v0.3-SCOPE.md` + `v0.2-SCOPE.md`
+  are the scope anchors as shipped; `v0_7-HANDOFF.md` is the
+  v0.7 cycle pre-planning canonical bridge document.
 
 When making architectural decisions, check ADRs first. ADR-13
 (Pyright) and ADR-14 (gopls) document the language-adapter LSP
@@ -186,8 +265,15 @@ FALSIFIED). v0.4 shipped Stream C bounded-validity replication
 (BOUNDED outcome; n=2 across 5 cells). v0.5 shipped Phase-9
 reference run with paired-t cross-cell rollup quality-axis
 methodology (factual_correctness CLEAN; hallucination + actionability
-BORDERLINE; completeness NOT distinguishable per ADR-19). Historical
-MVP build-plan details live in git history, not this file.
+BORDERLINE; completeness NOT distinguishable per ADR-19). v0.6
+shipped Phase-10 reference run with 8-cell matrix-replication
+subset (DIVERGED 2-of-4 axes; F1 PRIMARY atlas-substrate-version
+confound + F9 methodology-design-gap pattern + 9 named findings)
++ Tier 3 cohort exposure cancellation (per Q7.0.9 pre-registration
+framing) + early-access pipeline-mechanics under launch-bearing
+reframe (Travis pivot at Step 7.5; v0.7 = launch-bearing not
+substrate-generation per `v0_7-HANDOFF.md`). Historical MVP build-
+plan details live in git history, not this file.
 
 ## Tool scope philosophy
 

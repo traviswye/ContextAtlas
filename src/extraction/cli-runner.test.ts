@@ -260,8 +260,8 @@ describe("runIndexSubcommand (ADR-12)", () => {
   it("key=value summary includes input_tokens, output_tokens, cost_usd", async () => {
     // ADR present so the stub client is actually called; usage is
     // stamped by the stub (defaults: inputTokens=100, outputTokens=50
-    // per file). One file → cost = (100/1M * 15) + (50/1M * 75)
-    // = 0.0015 + 0.00375 = 0.00525 USD.
+    // per file). One file → cost = (100/1M * 5) + (50/1M * 25)
+    // = 0.0005 + 0.00125 = 0.00175 USD.
     writeFileSync(
       pathJoin(tmp, "docs", "adr", "ADR-01.md"),
       "---\nid: ADR-01\n---\nbody\n",
@@ -280,7 +280,7 @@ describe("runIndexSubcommand (ADR-12)", () => {
     const text = stdout.joined();
     expect(text).toMatch(/input_tokens=100/);
     expect(text).toMatch(/output_tokens=50/);
-    expect(text).toMatch(/cost_usd=0\.0053/);
+    expect(text).toMatch(/cost_usd=0\.0018/);
   });
 
   it("--json summary includes input_tokens, output_tokens, cost_usd as numbers", async () => {
@@ -303,7 +303,7 @@ describe("runIndexSubcommand (ADR-12)", () => {
     expect(parsed.input_tokens).toBe(100);
     expect(parsed.output_tokens).toBe(50);
     expect(typeof parsed.cost_usd).toBe("number");
-    expect(parsed.cost_usd).toBeCloseTo(0.00525, 4);
+    expect(parsed.cost_usd).toBeCloseTo(0.00175, 4);
   });
 
   it("zero-file run reports zero cost", async () => {

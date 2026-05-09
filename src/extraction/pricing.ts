@@ -1,8 +1,11 @@
 /**
  * Cost model for extraction-pipeline API spend (v0.2 Stream A #2).
  *
- * Opus 4.7 pricing as of 2026-04-23.
- * Verify against current Anthropic pricing before trusting for
+ * Opus 4.7 pricing verified 2026-05-09 at v0.6 Step 9.6 ship gate
+ * (B14 housekeeping fix; prior stale $15/$75 values from 2026-04-23
+ * draft corrected to verified $5/$25 per ADR-19 §2 amendment 2026-
+ * 05-03 + Opus 4.7 = 1.67× Sonnet 4.6 anchor per v0.5 Step 2 finding
+ * #3). Verify against current Anthropic pricing before trusting for
  * cost-critical usage. See:
  * https://www.anthropic.com/pricing
  *
@@ -13,8 +16,8 @@
  * `prompt.ts`.
  */
 
-export const OPUS_47_INPUT_USD_PER_MTOKEN = 15.0;
-export const OPUS_47_OUTPUT_USD_PER_MTOKEN = 75.0;
+export const OPUS_47_INPUT_USD_PER_MTOKEN = 5.0;
+export const OPUS_47_OUTPUT_USD_PER_MTOKEN = 25.0;
 
 /**
  * Token accounting from a single Anthropic SDK response.

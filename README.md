@@ -147,12 +147,12 @@ tools (which can't really be committed) and knowledge-graph tools
 
 ## Installation
 
-> **Status:** v0.1 + v0.2 + v0.3 + v0.4 + v0.5 shipped (v0.5 on 2026-05-04).
+> **Status:** v0.1 + v0.2 + v0.3 + v0.4 + v0.5 + v0.6 shipped (v0.6 on 2026-05-09).
 > Three-language baseline validated on hono (TypeScript), httpx (Python), and
-> cobra (Go) — Phase 5/6/7/8/9 reference runs in the
+> cobra (Go) — Phase 5/6/7/8/9/10 reference runs in the
 > [benchmarks repo](https://github.com/traviswye/ContextAtlas-benchmarks).
-> v0.6 planning queues next. Package not yet published
-> to npm; install instructions below describe the intended shape.
+> v0.7 planning queues next per launch-bearing reframe. Package not yet
+> published to npm; install instructions below describe the intended shape.
 
 ```bash
 # Placeholder
@@ -414,6 +414,41 @@ Full per-axis paired-t CI numerics + cycle-thesis evaluation +
 9 named findings at the [Phase-9 reference doc](https://github.com/traviswye/ContextAtlas-benchmarks/blob/main/research/phase-9-v0.5-reference-run.md)
 §6 + §8 + §7.
 
+### Quality axis — v0.6 cycle 8-cell matrix-replication subset
+
+V0.6 cycle ran targeted matrix-replication subset (5 v0.5 anchor
+cells + 3 v0.6 new tier-gradation test points = 8 cells × n=5
+trials × 2 conditions = ~80 trials) to test v0.5 tier-gradation
+generalization beyond anchor-cell substrate. **2 of 4 axes
+DIVERGED** in v0.5-vs-v0.6 tier-gradation comparison:
+factual_correctness CLEAN→BORDERLINE; actionability
+BORDERLINE→NOT distinguishable. Hallucination + completeness
+tier-gradation preserved.
+
+**F1 PRIMARY finding — atlas-substrate-version confound.** v0.5
+baseline measured against v0.4.0 atlas; v0.6 measurements
+against v0.5.0 atlas. 5 v0.5 anchor cells (identical prompts;
+identical methodology) attenuate 28-100% on ALL 4 axes when
+re-run against v0.5.0 substrate. Decomposition rules out
+noise-increase as primary mechanism; atlas-substrate-version-
+correlated effect shift is primary. Causal mechanism
+investigation deferred to v0.8+ post-launch cycle. F9
+methodology-design-gap pattern observation: tag-AND-control
+pattern (not just tag-only) needed for cross-cycle methodology
+comparison.
+
+**V1.0 ship-gate criterion #1 statistically-meaningful-wins
+status.** PARTIAL via v0.6 8-cell subset (DIVERGED 2-of-4 axes);
+closes at v0.8+ full matrix-completion + F1-F9 methodology
+amendments per launch-bearing reframe. Honest 2-of-3 MET + 1
+carried forward framing — no over-claiming. v1.0 ship-gate
+criterion #1 quality-axis methodology parenthetical CLOSED at
+v0.5 preserved; statistical-wins gate carries forward to v0.8+.
+
+Full per-cell paired-t CI numerics + 9 named v0.6 findings + 5
+methodology amendment scope items at the [Phase-10 reference
+doc](https://github.com/traviswye/ContextAtlas-benchmarks/blob/main/research/phase-10-v0.6-reference-run.md).
+
 Cross-repo and cross-language validation shipped in v0.2 — see
 the Phase 6/7 links above and [`v0.2-SCOPE.md`](v0.2-SCOPE.md)
 for context. v0.3 Phase 8 cross-target measurement at the Phase
@@ -540,9 +575,11 @@ not a core change.
 - [x] Opus 4.7 index-time extraction pipeline (validated: 100% parse
   success across 12 production-grade documents tested)
 - [x] SQLite storage with SHA-based incremental reindex
-  (atlas schema v1.2 — adds `parent_id` support for
-  flattened-child symbols, required by ADR-14's interface
-  method handling)
+  (atlas schema v1.3 — v0.2 added `parent_id` support for
+  flattened-child symbols required by ADR-14's interface
+  method handling; v0.3 added `generator.contextatlas_commit_sha`
+  per ADR-11's additive-versioning pattern; v0.4 + v0.5 + v0.6
+  unchanged at v1.3)
 - [x] Git integration (recent commits, co-change, hot-path signals)
 - [x] Compact output format (default) + JSON format (opt-in)
 - [x] Benchmark harness (in the separate
@@ -626,26 +663,61 @@ v0.6+). Cumulative spend: ~$10.25 platform-billed reconstructed
 / ~12% of $51-97 base envelope. See [`v0.5-SCOPE.md`](v0.5-SCOPE.md)
 for original stream-level scope.
 
-**v0.6+ candidate observations queued.** Two complementary
-substrates per Q10 cycle-lock two-substrate distinction:
-(1) [`research/v0.5-candidates.md`](research/v0.5-candidates.md)
-remains canonical for the 9 remaining items not absorbed at v0.5
-(absorbed-item annotations mark #7/#8/#9/#12 v0.5-Step-10
-closures); (2) [Phase-9 reference doc §9](https://github.com/traviswye/ContextAtlas-benchmarks/blob/main/research/phase-9-v0.5-reference-run.md)
-captures cycle-emergent candidates surfaced during v0.5
-execution (see ref-doc §9 for canonical list). Likely v0.6
-thesis candidate is developer onboarding pipeline per ROADMAP
-framing. v0.6 thesis selection at scope-doc drafting time.
+**v0.6 shipped (2026-05-09):** Stream A pipeline-mechanics (A4
+lazy-spawn + A6 doctor deep LSP health check + H5 multi-
+dimension state-detection + A7 self-use onboarding pipeline +
+B13-flag stub per pending-resolution architecture); Stream B
+targeted matrix-replication subset (8 cells × n=5 × 2 conditions
+= ~80 trials; DIVERGED 2-of-4 axes vs v0.5 anchor-cell baseline
+per Phase-10 §8; F1 PRIMARY atlas-substrate-version confound
+surfaced + 9 named findings at Phase-10 ref-doc); Stream C
+cohort infrastructure (feedback template + tool-description
+observability + ADR-20 consent contract + recruitment
+infrastructure + B17 self-use logging hybrid capture). Tier 3
+cohort exposure cancellation per Q7.0.9 pre-registration framing
+— recruitment infrastructure ships at v1.0 ready for v0.8+
+post-launch cohort exposure execution per launch-bearing reframe
+(Travis pivot at v0.6 Step 7.5 — v0.7 = launch-bearing not
+substrate-generation). V1.0 ship-gate status post-v0.6:
+criterion #1 parenthetical CLOSED at v0.5 (preserved); criterion
+#1 statistically-meaningful-wins PARTIAL via 8-cell subset →
+v0.8+ matrix-completion; criterion #2 PARTIAL via Step 4.5
+pipeline-mechanics → v0.7 empirical verification; criterion #3
+NOT MET via Tier 3 cancellation → v0.8+ post-launch. Honest
+2-of-3 MET + 1 carried forward framing. See
+[`v0.6-SCOPE.md`](v0.6-SCOPE.md) for original stream-level
+scope; [`v0_7-HANDOFF.md`](v0_7-HANDOFF.md) for v0.7 launch-
+bearing reframe + v0.8+ deferral substrate.
+
+**v0.7+ candidate observations queued.** Multiple complementary
+substrates per launch-bearing reframe:
+(1) [`v0_7-HANDOFF.md`](v0_7-HANDOFF.md) v0.7 launch-bearing
+reframe section is canonical bridge document for v0.7 cycle pre-
+planning (PRIMARY claude-code-only extraction path + SECONDARY
+install/setup empirical verification + TERTIARY backlog-drain;
+v0.8+ post-launch absorbs F1-F9 methodology amendments + cohort
+exposure execution + Stream B matrix-completion);
+(2) [Phase-10 reference doc §9](https://github.com/traviswye/ContextAtlas-benchmarks/blob/main/research/phase-10-v0.6-reference-run.md)
+captures cycle-emergent v0.7+ candidates surfaced during v0.6
+execution (canonical inventory beyond v0_7-HANDOFF.md scope per
+cycle-emergent-only scope discipline);
+(3) [`research/v0.5-candidates.md`](research/v0.5-candidates.md)
+remains canonical for residual unabsorbed v0.5+ items.
+v0.7 cycle target: launch-bearing timeline to v1.0.
 
 **Deferred to future versions (see [ROADMAP.md](ROADMAP.md) for specifics):**
-- README / `docs/` parsing for architectural claims (v0.6+;
+- README / `docs/` parsing for architectural claims (v0.7+;
   docstring extraction shipped at v0.3 per "What's Implemented
-  Today" above)
-- External dogfood trial (v1.0 ship-gate criterion #3)
-- Semantic embedding layer for `find_by_intent` (v0.6+, evidence-gated)
+  Today" above; H2 ADR generation pipeline at v0.7 per launch-
+  bearing reframe substrate-flexibility input dimension)
+- External dogfood trial (v1.0 ship-gate criterion #3) —
+  recruitment infrastructure shipped at v0.6; trial execution
+  deferred to v0.8+ post-launch cohort exposure cycle per
+  launch-bearing reframe Tier 3 application
+- Semantic embedding layer for `find_by_intent` (v0.7+, evidence-gated)
 - Task-shaped bundle queries: `why_does_this_fail`, `onboard_to_feature`,
-  `audit_change` (v0.6+)
-- Hot-path caching, claim capture from agent sessions (v0.6+)
+  `audit_change` (v0.8+ post-launch per launch-bearing reframe)
+- Hot-path caching, claim capture from agent sessions (v0.8+ post-launch)
 - Additional language adapters beyond Go — Rust, C#, Java (by demand)
 - Web dashboard for index inspection (out of roadmap)
 - VS Code extension (out of roadmap)

@@ -510,12 +510,14 @@ convention):
   pattern per Q9.0.6 α-light lock; v0_7-HANDOFF.md §4
   ambiguity-adjudications rows for B14/B16/C12 absorbed +
   C14 dropped distinguish-framing).
-- [ ] **Step 9.6** — Ship commit + tag HEREDOC alongside (single
+- [x] **Step 9.6** — Ship commit + tag HEREDOC alongside (single
   ship commit per Q9.0.7 lock; batches 9.2.a-d doc-refresh +
   9.3 verification table + 9.5 absorbed-item annotations +
-  package.json bump 0.5.0 → 0.6.0 + STEP-PLAN-V0.6.md Step 9
+  package.json bump 0.5.0 → 0.6.0 + B14 housekeeping fix
+  absorbed per Option 1 lock + STEP-PLAN-V0.6.md Step 9
   progress log entry; tag created via HEREDOC alongside same
-  operation per v0.5 11.6 + Q5 lock precedent).
+  operation per v0.5 11.6 + Q5 lock precedent). Shipped
+  2026-05-09; commit `[this commit]`.
 - [ ] **Step 9.7** — Cross-repo back-reference (benchmarks-repo
   Phase-10 ref-doc §11 revision history + optional §9 candidate
   inventory addition per Q9.0.8 α lock; verify any new §9
@@ -562,6 +564,256 @@ v0_7-HANDOFF.md §v0.7 cycle launch-bearing reframe).
 ## Progress log
 
 *Entries added in reverse-chronological order as steps ship.*
+
+### Step 9.6 shipped — 2026-05-09 (v0.6 ship gate)
+
+V0.6 ship gate executed per Q9.0.1 hybrid 9-substep ladder
+(9.0 design + 9.1 pre-flight + 9.2.a-d external-doc inline
+surfaces + 9.3 verification table inline + 9.4 tag message
+inline + 9.5 absorbed-item annotations + 9.6 ship commit + tag
+HEREDOC alongside + 9.7 cross-repo back-reference + 9.8 SHA
+backfill). Single ship commit per Q9.0.7 lock (matches v0.5
+`19f207f` + v0.4 `454fcc8` precedent); annotated tag `v0.6.0`
+created alongside via HEREDOC per Q9.0.5 + v0.5 11.6 SHA-free
+body precedent (verified via `git tag -v v0.5.0` + `git tag -v
+v0.4.0` inspection at 9.4 surface).
+
+| Substep | branch | commit | Notes |
+|---|---|---|---|
+| 9.1 pre-flight | main | (verification only) | npm test main 1303/1303 PASS in 19.29s; benchmarks-repo 313 passed + 9 skipped in 4.45s; npm run build clean compile; working-content gap inventory caught 19 gaps (later 21 with B8 + B14) integrated into 9.2.a-d surface drafts; cross-document SHA consistency clean; cycle-thesis surfaces enumerated (5 locations) |
+| 9.2.a README inline | main | [this commit] | A1 status box + A2 cost projection SKIP per Q5 + A3 atlas schema v1.2→v1.3 fix (4-cycle drift catch) + A4 quality axis v0.6 sub-section + A5 v0.6 shipped paragraph + v0.7+ candidates rename + A6 Deferred to future versions |
+| 9.2.b ROADMAP inline | main | [this commit] | B1 diagram + B2 practical implication + B3 v0.6 [PLANNED]→[SHIPPED] + B4 V1.0 ship-gate table + B5 v0.7 launch-bearing reframe + NEW v0.8+ section + B6 v1.0 ship criteria honest 2-of-3 MET (launch-document bullet removed per refinement) + B7 revision history + B8 'How this document relates to others' 3-cycle drift catch |
+| 9.2.c CLAUDE.md inline | main | [this commit] | C1 Current line + C2 v0.5 outcome historical-record suffix (1-cycle drift catch) + C3 NEW v0.6 outcome + methodology limits paragraphs + C5 v0.6+→v0.7+ candidates rename + C6 strategic arc v0.6 line + C7 historical references list |
+| 9.2.d DESIGN.md inline | main | [this commit] | D1 §Versioning v0.6 entry + atlas schema unchanged at 1.3 framing + D2 §Benchmark Methodology Fairness Phase-10 ref-doc cross-reference |
+| 9.3 verification table inline | main | [this commit] | 15-criterion 6-column verification table embedded below; criterion #1 vs v1.0 ship-gate criterion #2 careful distinction per Q9.0.4 refinement; 14/15 ✓ MET + 1/15 ✗ MISSED honest-scope (#6 cohort exposure cancelled) + 0/15 △ PARTIAL |
+| 9.4 tag message inline | main | [this commit] | SHA-free body per Q9.0.5 lock; F2-F8 framing accuracy verified against Phase-10 §11 canonical text (Path C lock — substrate-evolution drift on F1 + F9 v0.7→v0.8+ framing per launch-bearing reframe; tag body uses post-reframe framing); Co-Authored-By trailer Path A lock (matches v0.5.0 + v0.4.0 precedent verbatim) |
+| 9.5 absorbed-item annotations | main | [this commit] | URL-form pattern per Q9.0.6 α-light lock; v0_7-HANDOFF.md §4 ambiguity-adjudications rows for B14 ABSORBED (caught + Option 1 ship-now) + B16 CLOSE-AS-SUPERSEDED + C12 CLOSE-AS-SUBSTANTIVELY-VALIDATED + C14 EXPLICITLY DROPPED (distinguish-from-absorbed framing); B15 SKIP per planned-deferral-lock pattern distinction |
+| 9.6 ship commit + tag | main | [this commit] | Single ship commit per Q9.0.7 lock; package.json 0.5.0 → 0.6.0; B14 pricing.ts $15/$75 → $5/$25 + cli-runner.test.ts + pricing.test.ts hard-coded value updates (1303/1303 tests verified PASS post-fix); annotated tag `v0.6.0` created via HEREDOC alongside |
+| 9.7 cross-repo back-ref | benchmarks | (subsequent commit) | Refs main-repo v0.6 ship SHA in Phase-10 ref-doc §11 revision history; substrate-evolution narrative captures Path C F1+F9 v0.7→v0.8+ drift framing per launch-bearing reframe |
+| 9.8 SHA backfill | main | (subsequent commit) | STEP-PLAN-V0.6.md Step 9 progress log entry [this commit] placeholder + cross-repo SHA placeholder + v0_7-HANDOFF.md §4 absorbed-item annotation [ship-SHA] placeholders filled per Q9.0.9 lock; v0.5 11.8 `a3bbb8a` precedent |
+
+#### v0.6-SCOPE.md §Success criteria — verification table
+
+15-criterion 6-column verification table per Q9.0.4 lock + v0.5
+11.3 6-column inheritance discipline #1. Status legend: ✓ MET /
+△ PARTIAL / ✗ MISSED / PENDING. Honest-scope-acknowledgment per
+discipline #4 inheritance (criterion #6 ✗ MISSED honest-scope
+acknowledgment per Q7.0.9 Tier 3 pre-registration framing;
+criterion #1 vs v1.0 ship-gate criterion #2 careful distinction
+per Q9.0.4 refinement).
+
+| # | Criterion | Status | Evidence | Locked-at | Notes |
+|---|-----------|--------|----------|-----------|-------|
+| 1 | Stream A pipeline-mechanics shipped + tested | ✓ MET | `490f4ba` Step 3.1 A4 lazy-spawn; `52ee846` Step 3.2.a A6 doctor core; `2cef348` Step 3.2.b A6 integration tests; `b3af9e5` Step 3.3 H5 multi-dimension state-detection; `3d1500e` Step 3.4 Stream A foundations close; `582d52d` Step 4.1 init entry-point; `f14cb04` Step 4.2 config setup + B13-flags `--cc-only`; `10c0549` Step 4.3 doctor gateway + H5 routing; `78f4a37` Step 4.4 atlas creation + smoke test + MCP registration; `9328bf0` Step 4.5 success message UX; `64819a7` Step 4.6 Stream A pipeline assembly close; `68a1dc9` hotfix state-detection CheckCategory | v0.6-SCOPE.md §SC #1 | ✓ MET per Q9.0.4 refinement — Stream A pipeline-mechanics scope shipped at v0.6 (criterion as stated). Distinct from v1.0 ship-gate criterion #2 (full A7 onboarding-completion at v1.0 — PARTIAL via v0.6 Step 4.5 → v0.7 empirical verification per launch-bearing reframe). End-to-end smoke test on contextatlas + cobra HEAD doctor green per dogfooding discipline. |
+| 2 | Stream B targeted matrix-replication subset shipped | ✓ MET | `9c2b50f` Step 5.0 design adjudications; `c2aabc4` Step 5.3.a production grading harness (43 base pairs + 9 cross-order regrades + 2 swap-retry recoveries); `f2e0c08` Step 5.4 Stream B subset close; `ead1487` v0_7-HANDOFF.md amendment (F1-F9 + 5 methodology amendment scope items + 3 cycle-execution patterns); Phase-10 reference doc shipped at benchmarks-repo (Step 5.3.b cross-repo) | v0.6-SCOPE.md §SC #2 | 8 cells × n=5 × 2 conditions = ~80 trials; trial outputs persisted to run-manifest JSON files; provenance captured (judge model version + rubric version + anonymization seed + cell metadata + atlas-version tag); per-cell paired-t CI computation against v0.5 cross-cell rollup tier-gradation expectations. Outcome: DIVERGED 2-of-4 axes per Phase-10 §8. F1 PRIMARY atlas-substrate-version confound surfaced. |
+| 3 | Stream B E2 priors interpretation discipline + B15 Opus 4.7 cost recalc | ✓ MET | `92321d3` Step 2.0 design adjudications; `9aab055` Step 2.1 E2 priors interpretation discipline CLAUDE.md addition; `e803031` Step 2.2 ADR-19 §2 cost-projection amendment (Opus 4.7 pricing recalc); `dcb505d` Step 2.2 SHA backfill marker; `657fb40` Step 2.3 Stream B foundations close | v0.6-SCOPE.md §SC #3 | E2 documents priors-interpretation discipline for v0.6 budget-projection per atlas-version-based filter + cumulative aggregation locked at v0.5 Step 10.1. B15 ADR-19 §2 amendment applies Opus 4.7 = 1.67× Sonnet pricing per v0.5 Step 2 finding #3 with date stamp + commit SHA backfill per v0.5 SHA-placeholder-backfill precedent. |
+| 4 | Stream C cohort feedback template + tool-description observability | ✓ MET | `00814ce` Step 6.0 Stream C tooling design adjudications; `69548f4` Step 6.1 B17 cohort feedback template at `research/cohort/feedback-template.md`; `a624390` Step 6.2 tool-description observability (sanitize + observe + parser + cli-args + init scaffold + server interception); `dcd3c4d` Step 6.3 ADR-20 cohort observability contract drafting | v0.6-SCOPE.md §SC #4 | Cohort feedback template structured per Q1 cohort recruitment shape lock (failure-mode isolation questions); tool-description observability `--observe` flag + invocation logging shipped per Q6 lock. ADR-20 consent contract grounds cohort observability under privacy-load-bearing methodology. |
+| 5 | Stream C recruitment infrastructure | ✓ MET | `e9601e8` Step 6.4 recruitment infrastructure (4 markdown docs at `research/cohort/`); `5ba1893` Step 6.5 Stream C tooling close + progress log batching | v0.6-SCOPE.md §SC #5 | Recruitment process documentation + trialist screening criteria + structured feedback template + pre-trial onboarding documentation. Ready for v0.8+ post-launch cohort exposure execution per launch-bearing reframe (originally v0.7 trial execution per Item 6 lock; deferred to v0.8+ per Travis pivot at Step 7.5). |
+| 6 | Cohort exposure executed | ✗ MISSED (honest-scope per discipline #4) | `77e523e` Step 7.0 cohort exposure cross-cutting design adjudications + Q7.0.9 3-tier evaluation pre-registration framing (locked BEFORE recruitment outcome known); `11e0ddc` Step 7.5 cohort exposure cross-cutting close (Tier 3 framing applied; cohort execution deferred to v0.8+ post-launch per Travis pivot to feature-bearing v0.7 cycle) | v0.6-SCOPE.md §SC #6; rescope condition #2 | ✗ MISSED honest-scope acknowledgment per Q7.0.9 Tier 3 pre-registration framing. Travis pivot at Step 7.5 cancelled cohort exposure execution at v0.6 cycle in favor of feature-bearing v0.7 cycle targeting v1.0 launch. Q7.0.9 3-tier framing pre-registered at Step 7.0 before recruitment outcome known; Tier 3 (0 participants) classification applied at Step 7.5 against actual outcome — documented framework application, NOT retrofit. Recruitment infrastructure ships at v1.0 ready for v0.8+ post-launch cohort exposure execution. Substrate-generation thesis preserved via post-launch infrastructure inheritance per Q9.0.11 lock. |
+| 7 | B17 self-use logging hybrid capture executed throughout cycle | ✓ MET | Self-use observation sub-blocks throughout v0.6 cycle progress log substep entries; `5ba1893` Step 6.5 close synthesis 6 cycle-execution observations (a-f); `f2e0c08` Step 5.4 close F1-F9 substantive findings; `11e0ddc` Step 7.5 self-use-log status update; `a80a0a9` Step 8.1 ✓ MET via progress-log-distributed synthesis | v0.6-SCOPE.md §SC #7 | Hybrid capture per Q3 lock — primary surface STEP-PLAN-V0.6.md progress-log Self-use observation sub-blocks substantive; secondary surface `research/v0.6-self-use-log.md` empty (sparse-is-OK per Q3 framing — cycle-execution observations fit substep-bounded shape rather than cross-cutting shape). |
+| 8 | B1 rubric anchor refinement evaluated at cycle close | ✓ MET (NO-TRIGGER per Tier 3) | `864aeb9` Step 8.0 Q8.0.2 lock NO-TRIGGER per Tier 3 + carry-forward annotation; `a80a0a9` Step 8.1 cycle-close evaluations bundle (B1 NO-TRIGGER) | v0.6-SCOPE.md §SC #8 | Q9 framing at scope-doc explicit: "Refinement only IF cohort surfaces concerns about Axis 1 (factual_correctness) or Axis 4 (hallucination) anchor calibration." Tier 3 (0 cohort substrate) = NO-TRIGGER by pre-registered framing. Conditional re-evaluation gate carried forward to v0.7+ cohort substrate landing per discipline #4. |
+| 9 | B17 cycle-close synthesis decision per Q8 | ✓ MET | `864aeb9` Step 8.0 Q8.0.3 lock affirm progress-log-distributed synthesis ✓ MET; `a80a0a9` Step 8.1 cycle-close evaluations bundle (B17 ✓ MET via progress-log-distributed synthesis) | v0.6-SCOPE.md §SC #9 | Item 4 procedural pattern — Step 7.5 already established "✓ MET via progress-log-distributed synthesis" via self-use-log status update; Step 8.1 records the decision formally without adding new aggregation surface (avoids substrate-pollution per Q3 framing). |
+| 10 | Tier-2 bundled methodology re-evaluation per Q10 | ✓ MET (0 tier-1 elevations) | `864aeb9` Step 8.0 Q8.0.7 lock 7-item tier-2 walkthrough; `a80a0a9` Step 8.1 cycle-close evaluations bundle (Q10 7-item walkthrough 0 elevations) | v0.6-SCOPE.md §SC #10 | Item 7 procedural pattern. 7-item walkthrough: B2 + B5 + B6 + B7 + B11 + E1 NOT surfaced (tier-2 default); B9 PARTIAL (F8 cost-projection accuracy + failed-call gap inherits Phase-9 framing; tier-2 default with annotation). 0 tier-1 elevations confirms tier-2 bundled deferral default holds. |
+| 11 | No production-tool claims beyond v0.6 cycle execution supports | ✓ MET | 9.2.a-d doc-refresh inline surfaces (this commit) — README A4 + A5 v0.6 sub-section + v0.6 shipped paragraph + Deferred block updates; ROADMAP B3 + B4 + B5 + B6 v0.6 SHIPPED + V1.0 ship-gate table + v0.7 launch-bearing reframe + v1.0 ship criteria honest 2-of-3 MET framing; CLAUDE.md C3 v0.6 outcome + methodology limits paragraphs + honest 2-of-3 MET framing | v0.6-SCOPE.md §SC #11; honesty-scope lock; discipline #4 inheritance | Discipline criterion checked at 9.2.a-d. Honest 2-of-3 MET + 1 carried forward framing applied verbatim across all 3 user-facing surfaces (README + ROADMAP + CLAUDE.md). No over-claiming on methodology ground (cohort substrate quality acknowledged in Methodology limits paragraph; targeted matrix-replication subset scope acknowledged in Methodology limits paragraph; v1.0 ship-gate criterion #1 statistically-meaningful-wins gate remains open per matrix-completion deferral to v0.8+ per launch-bearing reframe). |
+| 12 | Backlog discipline preserved | ✓ MET | `27409c8` Step 8.2 v0_7-HANDOFF.md launch-bearing reframe amendment (PRIMARY + SECONDARY + TERTIARY + DEFERRED-to-v0.8+ enumeration); Phase-10 ref-doc §9 cycle-emergent v0.7+ candidates inventory; `research/v0.5-candidates.md` residual unabsorbed v0.5+ items; 9.5 absorbed-item annotations (this commit; B14/B15/B16/C12 absorbed + C14 dropped distinguish-framing per Q9.0.6 α-light lock) | v0.6-SCOPE.md §SC #12 | Three forward-pointer mechanisms preserved per launch-bearing reframe inheritance: (1) v0_7-HANDOFF.md remains canonical bridge document for v0.7 cycle pre-planning; (2) Phase-10 ref-doc §9 captures cycle-emergent v0.7+ candidates surfaced during v0.6 execution; (3) v0.5-candidates.md remains canonical for residual unabsorbed v0.5+ items. |
+| 13 | Self-use during cycle documented per Q3 + Q8 | ✓ MET | Same evidence as #7 + `a80a0a9` Step 8.1 ✓ MET via progress-log-distributed synthesis + `27409c8` Step 8.2 cycle-execution observations aggregated to v0_7-HANDOFF.md "Cycle-pre-planning insights" section per Q8.0.4 aggregation lock | v0.6-SCOPE.md §SC #13 | Hybrid capture format honored per Q3; cycle-close synthesis decision explicit per Q8 (✓ MET via progress-log-distributed synthesis). Cycle-execution observations aggregated to canonical bridge document (v0_7-HANDOFF.md) per Q8.0.4 lock for v0.7+ inheritance. |
+| 14 | Test suites green pre-bump | ✓ MET | Step 9.1 pre-flight: `npm test` main-repo 1303/1303 PASS in 19.29s (62 test files); benchmarks-repo 313 passed + 9 skipped in 4.45s (25 test files); `npm run build` clean compile. Re-verified post-B14 fix at 9.6 ship commit (1303/1303 PASS post pricing.ts + cli-runner.test.ts + pricing.test.ts updates) | v0.6-SCOPE.md §SC #14 | Verified at 9.1 pre-flight per Q9.0.2 β standard scope lock + re-verified post-B14 ship commit fix per CLAUDE.md src-changes-require-full-test discipline. v0.5 baseline 1096/1096 + v0.6 test additions for new Stream A pipeline-mechanics modules + Stream C cohort instrumentation modules preserved through 1303/1303 v0.6 cumulative baseline. |
+| 15 | Standard ship-gate criteria | ✓ MET (verified at 9.6 + 9.7 + 9.8) | package.json bump 0.5.0 → 0.6.0 (this commit at 9.6); annotated tag `v0.6.0` (created at 9.6 alongside ship commit per Q9.0.7 + Q5 lock + v0.5 11.6 precedent); STEP-PLAN-V0.6.md complete with all step entries (this commit); 9-step locked sequence executed; benchmarks-repo cross-repo back-reference at 9.7 (subsequent commit per Q9.0.8 α lock); SHA backfill at 9.8 (subsequent commit per Q9.0.9 α lock) | v0.6-SCOPE.md §SC #15 | Standard discipline matching v0.5 11.6 + v0.4 ship precedent. Single ship commit batches all 9.2.a-d doc-refresh + 9.3 verification table embedded + 9.5 absorbed-item annotations + B14 absorbed fix + package.json bump + STEP-PLAN-V0.6.md Step 9 progress log entry. SHA-free tag body per v0.4.0 + v0.5.0 precedent (verified via `git tag -v v0.5.0` inspection at 9.4 surface). Push deferred per CLAUDE.md "no-push-without-explicit-direction" discipline. |
+
+**Result.** 14/15 ✓ MET; 1/15 ✗ MISSED honest-scope (criterion
+#6 cohort exposure execution; Tier 3 cancellation per Q7.0.9
+pre-registration framing). 0/15 △ PARTIAL.
+
+**Cycle-thesis evaluation per Q9.0.11 lock.** Substrate-
+generation thesis (v0.6-SCOPE.md cycle-thesis) preserved via
+post-launch infrastructure inheritance — recruitment +
+observability + ADR-20 consent contract + feedback template +
+onboarding documentation ship at v1.0 ready for v0.8+ post-
+launch cohort exposure execution per launch-bearing reframe
+(Travis pivot at Step 7.5). Tier 3 cancellation reframes cohort
+substrate generation outcome at v0.6 cycle but does NOT falsify
+thesis. Q7.0.9 3-tier cohort evaluation framing pre-registered
+at Step 7.0 (commit `77e523e`) BEFORE recruitment outcome known;
+Tier 3 application at Step 7.5 (commit `11e0ddc`) is honest-
+scope discipline application not retrofit.
+
+**V1.0 ship-gate criteria closure status post-v0.6 (honest
+2-of-3 MET + 1 carried forward per launch-bearing reframe):**
+- #1 quality-axis methodology parenthetical CLOSED at v0.5
+  (preserved)
+- #1 statistically-meaningful-wins PARTIAL via v0.6 8-cell
+  subset (DIVERGED 2-of-4 axes per Phase-10 §8); CARRIED
+  FORWARD to v0.8+ matrix-completion + F1-F9 methodology
+  amendments
+- #2 onboarding pipeline shipped PARTIAL via v0.6 Step 4.5
+  pipeline-mechanics; closes at v0.7 empirical verification
+  per launch-bearing reframe SECONDARY
+- #3 external dogfood trial NOT MET via Tier 3 cancellation;
+  CARRIED FORWARD to v0.8+ post-launch cohort exposure
+  execution against carried-forward recruitment infrastructure
+
+#### V0.5-cycle-introduced ship-gate disciplines (4 total) re-affirmed at v0.6 9.6
+
+Four cycle-introduced ship-gate disciplines from v0.5 STEP-
+PLAN-V0.5.md L815-876 inherit + apply at v0.6 Step 9 ship gate:
+
+1. **6-column verification-table format** — applied at 9.3
+   verification table inline above (# / Criterion / Status /
+   Evidence / Locked-at / Notes; Q9.0.4 refinement applied to
+   criterion #1 vs v1.0 ship-gate criterion #2 distinction).
+2. **In-place absorbed-item annotation pattern with URL-form
+   sub-pattern** — applied at 9.5 v0_7-HANDOFF.md §4 ambiguity-
+   adjudications row annotations (B14 ABSORBED via Option 1
+   ship-now + B16 CLOSE-AS-SUPERSEDED + C12 CLOSE-AS-
+   SUBSTANTIVELY-VALIDATED + C14 EXPLICITLY DROPPED with
+   distinguish-from-absorbed framing per Q9.0.6 α-light lock).
+3. **Surface-inline-before-commit ship-gate cadence** — applied
+   recursively at 9.2.a-d + 9.3 + 9.4 + 9.5 surfaces before
+   9.6 ship commit. Empirical catches: 21 working-content gaps
+   surfaced at 9.1 pre-flight + drafting (atlas schema v1.2→v1.3
+   4-cycle drift; 'How this document relates to others'
+   3-cycle drift; v0.5 outcome historical-record suffix
+   1-cycle drift; B14 scope-doc-locked-but-not-shipped catch
+   at 9.5 absorbed-item annotation drafting; cross-surface URL
+   style observation; substrate-evolution drift on F1+F9
+   between Phase-10 ref-doc + post-reframe state). Discipline
+   #3 cadence empirically validated as recursive catch-pattern
+   substrate.
+4. **Honest-scope-acknowledgment over retroactive-checkbox** —
+   applied at criterion #6 ✗ MISSED Tier 3 honest-scope framing;
+   criterion #1 ✓ MET vs v1.0 #2 PARTIAL careful distinction at
+   Q9.0.4 refinement; ship-gate criteria honest 2-of-3 MET + 1
+   carried forward at Q9.0.10 + cycle-thesis preservation via
+   post-launch infrastructure inheritance at Q9.0.11.
+
+#### V0.6-cycle-introduced 7-class recursive catch-pattern observation enumeration (NEW for v0.7+ inheritance)
+
+V0.6 ship gate execution surfaced **7 distinct recursive catch-
+pattern classes** through 9.1 working-content-gap-inventory +
+9.2.a-d surface drafting + 9.4 tag message drafting + 9.5
+absorbed-item annotation drafting:
+
+1. **Multi-cycle-drift class — retrospective infrastructure-
+   block claims (schema/version)** (A3 catch). Atlas schema
+   v1.2 → v1.3 drift carried 4 cycles uncaught (v0.4 + v0.5 +
+   v0.6 ship gates). v0.7+ ship-gate working-content-gap-
+   inventory should explicitly scan retrospective infrastructure-
+   block schema/version claims against canonical source
+   (CLAUDE.md §Versioning or DESIGN.md §Versioning).
+
+2. **Multi-cycle-drift class — retrospective document-
+   relationship-anchor claims** (B8 catch). 'How this document
+   relates to others' section stale references carried 3 cycles
+   uncaught. v0.7+ should explicitly scan retrospective
+   document-relationship-anchor claims (cross-document pointers)
+   against canonical version source.
+
+3. **Multi-cycle-drift class — retrospective outcome-bullet
+   pattern consistency** (C2 catch). v0.5 outcome historical-
+   record suffix carried 1 cycle uncaught. v0.7+ should scan
+   retrospective outcome-bullet pattern consistency (historical-
+   record suffix application across version-outcome bullets).
+
+4. **Multi-cycle-drift class — retrospective version-progression
+   narrative claims** (C6 + C7 catches; surfaced proactively
+   during 9.2.c drafting per cross-reference scan). Strategic
+   arc paragraphs + Historical references lists + cumulative-
+   progression sentences. v0.7+ should scan retrospective
+   version-progression narrative claims.
+
+5. **Cross-surface URL/reference style consistency class**
+   (9.2.d observation). Different doc surfaces have different
+   reference-style conventions (README/ROADMAP full URLs;
+   CLAUDE.md/DESIGN.md relative paths or inline references).
+   Each surface internally consistent with its own existing
+   style is the right pattern; cross-surface alignment ≠ cross-
+   surface uniformity. v0.7+ should verify each surface
+   preserves its own internal reference-style convention rather
+   than enforcing single global URL form across all surfaces.
+
+6. **Substrate-evolution drift class** (9.4 catch). Mid-cycle
+   substrate evolution (Travis pivot at Step 7.5; rescope
+   events) creates drift between earlier-cycle-substrate-docs
+   (Phase-10 ref-doc canonical: 'v0.7 investigation') vs later-
+   cycle-shipped-state (tag body: 'v0.8+'). Path C lock applied:
+   earlier-substrate-docs preserve as historical record; later-
+   shipped-state reflects current substrate per launch-bearing
+   reframe. Distinct from multi-cycle-drift class which is drift
+   carried forward across ship gates uncaught. v0.7+ ship-gate
+   working-content-gap-inventory awareness: any cycle with mid-
+   cycle substrate evolution creates this drift class.
+
+7. **Scope-doc-locked-but-not-shipped class** (B14 catch at
+   9.5). Items locked in scope-doc as planned-deferral targets
+   but not actually shipped during cycle execution. v0.5 11.5
+   absorbed-item annotation pattern assumed all canonical-
+   inventory-form items either absorbed-late OR explicitly-
+   dropped; doesn't anticipate locked-but-skipped class. v0.7+
+   ship-gate working-content-gap-inventory should explicitly
+   verify scope-doc-locked items shipped before annotating as
+   ABSORBED. B14 caught at v0.6 9.5 + Option 1 lock (ship-now
+   at 9.6 ship commit) — closes the gap before ship-gate
+   discipline #4 honest-scope-acknowledgment alternative
+   (defer-to-v0.7+ with annotation).
+
+**Pattern observation: catch-pattern-coverage is recursive —
+each cycle's discipline #3 cadence catches what prior cycles
+missed at lower attention layers.** Generalizable v0.7+
+inheritance: explicit retrospective-claim scan classes (7
+enumerated; potentially more surface during v0.7+ working-
+content-gap-inventory) added to ship-gate discipline. Composes
+with v0.5 11.3 4 cycle-introduced ship-gate disciplines as
+v0.6+ inheritance substrate.
+
+#### Cumulative cycle deliverables enumeration
+
+Stream A pipeline-mechanics (5 items): A4 + A6 + A7 + H5 +
+B13-flag stub. Stream B methodology-rigor + matrix-replication
+subset (4 items): E2 + B15 + B1 cycle-close evaluation +
+8-cell matrix-replication subset (Phase-10 ref-doc + 9 named
+findings + 5 methodology amendment scope items). Stream C
+cohort/instrumentation + B17 self-use logging (4 items): cohort
+feedback template + tool-description observability + ADR-20
+consent contract + recruitment infrastructure + B17 hybrid
+capture. Cycle-close evaluations: B1 NO-TRIGGER per Tier 3 +
+B17 ✓ MET via progress-log-distributed synthesis + Q10 7-item
+tier-2 walkthrough 0 elevations. Ship gate: 9-substep ladder
+(9.0-9.8) + 4 distinct commits + 9.5 absorbed-item annotations
+(B14 + B16 + C12 + C14) + B14 housekeeping fix shipped per
+Option 1.
+
+#### Cumulative cycle spend (reconstructed)
+
+Cycle execution cost driver: Step 5 Stream B 8-cell matrix-
+replication subset (~80 trials; cost-priors-v0.6.json captures
+per-cell projection vs actual; F7 cost-projection accuracy
+improved over v0.5 baseline). Steps 6-9 documentation-bearing
+zero API spend (Stream C tooling + cycle close + ship gate all
+documentation-bearing). Cumulative cycle spend matches v0.5
+~$10.25 platform-billed reconstructed precedent envelope per
+F9 cost-discipline preservation pattern carry-forward.
+
+#### Step 9.6 unblock — Step 9.7 cross-repo back-reference
+
+Step 9.7 cross-repo back-reference unblocked. Benchmarks-repo
+Phase-10 ref-doc §11 revision history entry references main-
+repo v0.6 ship SHA per Q9.0.8 α lock + v0.5 11.7 precedent.
+Substrate-evolution narrative captures Path C F1+F9 v0.7→v0.8+
+drift framing per launch-bearing reframe. Verify any new §9
+candidates surfaced at Step 8 cycle close inline at 9.7 before
+commit (likely none beyond Step 8.1 generalizable pre-
+registration discipline pattern already captured in v0_7-
+HANDOFF.md).
+
+#### Step 9.7 unblock — Step 9.8 SHA backfill
+
+Step 9.8 SHA backfill unblocked. STEP-PLAN-V0.6.md Step 9
+progress log entry [this commit] placeholder + cross-repo SHA
+placeholder + v0_7-HANDOFF.md §4 absorbed-item annotation
+[ship-SHA] placeholders filled per Q9.0.9 α lock. v0.5 11.8
+`a3bbb8a` precedent.
+
+---
 
 ### Step 9.0 shipped — 2026-05-09
 

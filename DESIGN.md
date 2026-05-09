@@ -901,9 +901,15 @@ Full methodology in RUBRIC.md. Brief outline:
   (calibration).
 - **Fairness:** Same model version both sides. Blind LLM-judge
   grading under paired-mode anonymization (per ADR-19 + Phase-9
-  reference doc); v0.5 uses n=5 trials per cell with paired-t
-  cross-cell rollup at N=27 differences per axis. Pre-registered
-  rubric per threshold pre-registration discipline.
+  reference doc for v0.5 baseline + Phase-10 reference doc for
+  v0.6 8-cell matrix-replication subset substrate); v0.5 uses
+  n=5 trials per cell with paired-t cross-cell rollup at N=27
+  differences per axis; v0.6 8-cell subset (5 v0.5 anchor cells
+  + 3 v0.6 new tier-gradation test points × n=5 × 2 conditions
+  = ~80 trials; DIVERGED 2-of-4 axes per Phase-10 §8 vs v0.5
+  baseline; F1 PRIMARY atlas-substrate-version confound per
+  Phase-10 §11). Pre-registered rubric per threshold pre-
+  registration discipline.
 
 ## Risks and Open Questions
 
@@ -950,12 +956,13 @@ v2 concern.
 
 This document tracks the shipped architecture; v0.1 + v0.2 shipped
 (2026-04-25); v0.3 shipped (2026-04-28); v0.4 shipped (2026-04-29);
-v0.5 shipped (2026-05-04). Material changes to the tool interface,
-storage schema, or config schema bump the minor version. Atlas schema
-versioning is additive within minor versions (v0.2 bumped 1.1 → 1.2;
-v0.3 bumped 1.2 → 1.3 to add `generator.contextatlas_commit_sha`, all
-following ADR-11's pattern; v0.4 + v0.5 atlas schema unchanged at 1.3
-— substrate-hardening and methodology cycles respectively). Per-version
-release notes start with v0.3; v0.1 + v0.2 historical record lives in
-[`STEP-PLAN-V0.2.md`](STEP-PLAN-V0.2.md) progress logs and the
-benchmarks-repo Phase 5/6/7 synthesis docs.
+v0.5 shipped (2026-05-04); v0.6 shipped (2026-05-09). Material changes
+to the tool interface, storage schema, or config schema bump the minor
+version. Atlas schema versioning is additive within minor versions
+(v0.2 bumped 1.1 → 1.2; v0.3 bumped 1.2 → 1.3 to add
+`generator.contextatlas_commit_sha`, all following ADR-11's pattern;
+v0.4 + v0.5 + v0.6 atlas schema unchanged at 1.3 — substrate-hardening,
+methodology, and substrate-cohort-infrastructure cycles respectively).
+Per-version release notes start with v0.3; v0.1 + v0.2 historical
+record lives in [`STEP-PLAN-V0.2.md`](STEP-PLAN-V0.2.md) progress logs
+and the benchmarks-repo Phase 5/6/7 synthesis docs.
