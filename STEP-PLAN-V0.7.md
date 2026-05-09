@@ -157,12 +157,17 @@ lock — Q1.0.2 verification as explicit gate-substep refinement):
   refinements applied: Q1.0.8 γ-2 soft deprecation + Q1.0.9
   7-substep gate-substep refinement). Shipped 2026-05-09; commit
   `[this commit]`.
-- [ ] **Step 1.1** — Q1.0.2 verification (explicit gate-substep
+- [x] **Step 1.1** — Q1.0.2 verification (explicit gate-substep
   per Q1.0.9 refinement; rescope condition #1 trigger surface).
   Read Claude Code Skills + Slash Commands documentation; verify
-  extraction-pipeline use case support. Outcome A clears →
-  proceed to Step 1.2; Outcome B fails → rescope condition #1
-  triggers; PRIMARY scope adjusts via Path A; Travis call.
+  extraction-pipeline use case support. **Outcome A** cleared
+  cleanly: α Skills mechanism supports use case; β Slash Commands
+  functionally identical (skill-with-frontmatter); γ + δ
+  architecturally incompatible. Q1.0.2 sub-shape locked α Skills
+  primary + β Slash Commands invocation surface (opt-in); skill
+  canonical location `.claude/skills/index-atlas/SKILL.md` per
+  existing `/claude-api` skill precedent. Shipped 2026-05-09;
+  commit `[this commit]`.
 - [ ] **Step 1.2** — ADR-02 amendment (per Q1.0.11 β lock;
   AFTER Q1.0.2 verification clears; β substantive scope per
   Q1.0.1 — extraction-sole-API-caller framing →
@@ -365,6 +370,148 @@ timeline; not blocking).
 ## Progress log
 
 *Entries added in reverse-chronological order as steps ship.*
+
+### Step 1.1 shipped — 2026-05-09 (Q1.0.2 verification cleared)
+
+V0.7 Step 1.1 Q1.0.2 verification cleared cleanly (Outcome A) per
+explicit gate-substep treatment locked at Step 1.0 Q1.0.9
+7-substep ladder refinement. Claude Code session context API
+surface verified support extraction-pipeline use case via α
+Skills mechanism; PRIMARY scope proceeds normally; rescope
+condition #1 NOT triggered.
+
+Documentation reading delegated to `claude-code-guide` subagent
+(specialized for Claude Code features research); subagent
+reviewed official Anthropic Claude Code documentation:
+- `https://code.claude.com/docs/en/skills.md` — Skills mechanism
+- `https://code.claude.com/docs/en/mcp-servers.md` — MCP server
+  integration
+- `https://platform.claude.com/docs/en/integrations/mcp-connector.md`
+  — MCP connector
+
+| Substep | branch | commit | Notes |
+|---|---|---|---|
+| 1.1 Q1.0.2 verification | main | [this commit] | Outcome A cleared; α Skills (primary) + β Slash Commands (opt-in) architecture shape locked; canonical skill location `.claude/skills/index-atlas/SKILL.md`; 4-shape capability assessment table embedded below; 4 cycle-execution observations captured |
+
+#### 4-shape capability assessment
+
+| Shape | Mechanism Exists | Surface Prompt + Doc Content | Session Tokens (Subscription-Bounded) | Persist JSON Output | Viability |
+|---|---|---|---|---|---|
+| **α Skills** | ✓ Yes | ✓ Yes (dynamic context injection via `` !`command` `` syntax) | ✓ Yes (consumes Claude Code session tokens, NOT direct API tokens) | ✓ Yes (Write tool inside session) | **CLEAN FIT** |
+| **β Slash Commands** | ✓ Yes (slash commands ARE skills with frontmatter; difference is invocation mechanism) | ✓ Yes (same as α) | ✓ Yes (same as α) | ✓ Yes (same as α) | **FUNCTIONALLY IDENTICAL TO α** |
+| **γ Sub-process orchestration** | ✗ Doesn't fit | N/A | N/A | N/A | **NO FIT** — Claude Code has no documented IPC or parent-session-communication mechanism |
+| **δ External tool (MCP) invocation** | ✗ Doesn't fit | N/A | N/A | N/A | **NO FIT** — MCP tools called BY Claude not callers OF Claude; ContextAtlas already MCP server (inverted relationship undocumented) |
+
+#### Q1.0.2 lock — Architecture shape
+
+**Locked:** α Skills (primary) + β Slash Commands (opt-in
+invocation surface).
+
+**Skill canonical location:** `.claude/skills/index-atlas/SKILL.md`
+per existing `/claude-api` skill precedent in same project.
+Substrate continuity: existing /claude-api skill provides
+implementation pattern reference for index-atlas skill at Step
+1.3 + Step 1.4 implementation substeps.
+
+**Slash command surface:** ships at v0.7 alongside α Skills (no
+v0.8+ deferral); β is "free" given α implementation
+(skill-with-frontmatter pattern); comprehensive user-facing
+surfacing benefit at v1.0 launch.
+
+**Implementation shape per α:**
+1. Package extraction prompt at `.claude/skills/index-atlas/SKILL.md`
+2. Bundled helper scripts handle file walking + JSON validation
+   invoked via `` !`command` `` dynamic context injection
+3. Write tool persists `atlas.json` from session execution
+4. User invokes skill from Claude Code session OR via slash
+   command surface (β); subscription-bounded extraction execution
+
+#### Cycle-execution observation 1 — Token consumption model verification
+
+**Subscription-bounded cost model framing per v0.7-SCOPE.md
+PRIMARY scope confirmed accurate.** Skills execute entirely
+within Claude Code session tools (Bash, Edit, Read, Write);
+consume Claude Code session tokens NOT direct API tokens. Q1.0.5
+δ separate cost_model field lock applies — cost_usd remains
+numeric ($0 for claude-code-only path); cost_model captures
+subscription-bounded path semantics.
+
+#### Cycle-execution observation 2 — β Slash Commands architectural equivalence to α Skills
+
+**Functionally identical mechanism.** Slash commands ARE skills
+with frontmatter; not separate primitive. Initial 4-shape
+framing at Step 1.0 Q1.0.2 surface treated α + β as distinct
+implementation shapes; verification revealed they're the same
+mechanism with different invocation patterns (manual via skill
+invocation vs automatic via slash command surface).
+
+Architectural simplification: ship α Skills primary +
+β Slash Commands as opt-in invocation surface in single
+implementation cluster (not two separate primitives). Reduces
+Step 1.3 + Step 1.4 implementation scope vs treating-as-distinct
+counterfactual.
+
+#### Cycle-execution observation 3 — γ + δ architecturally incompatible with extension model
+
+**Both shapes ruled out at verification time.**
+
+- **γ Sub-process orchestration:** Claude Code has no documented
+  IPC or parent-session-communication mechanism. Stdio MCP
+  servers run as subprocess tools but cannot callback into
+  Claude Code's session for extraction calls. `contextatlas
+  index` running as a subprocess cannot orchestrate Claude
+  Code session token consumption from outside.
+- **δ MCP invocation (inverted):** MCP tools are called BY
+  Claude, not callers OF Claude. ContextAtlas is already MCP
+  server; δ would invert the relationship (contextatlas
+  calling Claude Code rather than Claude Code calling
+  contextatlas). No documented path for inverted MCP pattern.
+
+α + β suffice; γ + δ would have required architectural
+extension to Claude Code itself (out of scope for v0.7 ContextAtlas
+work). Verification-substrate ruled out shapes that require
+upstream Claude Code changes.
+
+#### Cycle-execution observation 4 — Existing /claude-api skill precedent in same project
+
+`.claude/skills/claude-api/` (or similar location) provides
+substrate continuity for index-atlas skill implementation at
+Step 1.3 + Step 1.4. Pattern reference for:
+- SKILL.md frontmatter structure (skill name + description)
+- Bundled helper script patterns
+- Dynamic context injection usage
+- File persistence patterns
+
+Substrate continuity reduces Step 1.3 wrapper module + Step 1.4
+path-routing dispatch implementation friction; existing skill
+provides reference implementation for index-atlas skill shape.
+
+#### Step 1.1 unblock — Step 1.2 ADR-02 amendment
+
+Step 1.2 ADR-02 amendment unblocked per Q1.0.11 β lock + locked
+α Skills architecture shape. Substantive scope per Q1.0.1 β
+lock:
+
+- Reframe ADR-02 from "extraction is sole Anthropic API caller"
+  to "extraction is sole research-time-extraction-caller;
+  alternative paths permitted (Claude Code session context via
+  Skills mechanism)"
+- Preserve query-time-no-API-calls invariant verbatim (load-
+  bearing invariant unchanged)
+- Update CI enforcement grep pattern to extend permitted-modules
+  framing (research-time/index-time invariant preserved;
+  alternative path accommodated)
+- Cross-reference α Skills architecture shape per Step 1.1
+  lock
+- Cross-reference v0.7-SCOPE.md PRIMARY scope + Q-pre-1 +
+  Q1.0.1 + Q1.0.2 + Q1.0.11 lock chain
+
+ADR-02 amendment text drafted inline at Step 1.2 surface
+before commit per discipline #3 cadence applied to substantive
+ADR amendment work (matches v0.5 + v0.6 ADR amendment surface
+pattern).
+
+---
 
 ### Step 1.0 shipped — 2026-05-09
 
