@@ -479,22 +479,449 @@ sequence inheritance:
 9. (Cross-repo back-reference at separate commit + 9.8-style
    backfill if applicable per v0.5 ship-gate precedent)
 
-**Substeps.** Substep-level breakdown follows v0.5 Step 11
-substep-ladder pattern; v0.6 substeps numbered 9.1, 9.2.a-d, 9.3,
-9.4, 9.5, 9.6, 9.7, 9.8 mirroring v0.5 Step 11.1, 11.2.a-d, 11.3,
-11.4, 11.5, 11.6, 11.7, 11.8 substep structure (pre-flight +
-external-doc inline surfaces + verification table + tag message
-+ absorbed-item annotations + ship commit + tag operation + cross-
-repo back-reference + SHA backfill if applicable).
+**Substeps** (firmed at Step 9.0 per Q9.0.1 hybrid 9-substep
+ladder lock — v0.5 Step 11.1-11.8 mirror + explicit Step N.0
+design substep added per cycle-execution Step N.0 cadence
+convention):
+
+- [x] **Step 9.0** — Design adjudications (Q9.0.1-Q9.0.12 locks
+  with 2 refinements: Q9.0.3 README coordination Path 1
+  canonical-state-first; Q9.0.4 v0.6 §SC #1 vs v1.0 ship-gate
+  criterion #2 distinction).
+- [ ] **Step 9.1** — Pre-flight verification (npm test main
+  1303/1303 PASS + benchmarks green + npm run build clean +
+  working-content gap inventory + cross-document consistency
+  verification + cycle-thesis surface enumeration; verification-
+  only, no commit per Q9.0.2 standard scope lock).
+- [ ] **Step 9.2.a-d** — External-doc inline surfaces (README +
+  ROADMAP + CLAUDE.md + DESIGN.md per Q9.0.3 lock; Path 1
+  README coordination — full doc-refresh at 9.2.a; Travis
+  launch-document polish post-ship in separate session).
+- [ ] **Step 9.3** — Verification table inline (15-criterion
+  6-column verification table per Q9.0.4 lock; v0.5 11.3
+  6-column inheritance; criterion #1 vs v1.0 #2 distinction
+  refinement applied at table draft).
+- [ ] **Step 9.4** — Tag message inline (SHA-free body per
+  Q9.0.5 lock; v0.4.0 + v0.5.0 precedent verified via `git
+  tag -v v0.5.0` inspection at 9.4 surface; F1 + F9 substantive
+  findings + 8-cell DIVERGED + Tier 3 + honest 2-of-3 MET
+  framing).
+- [ ] **Step 9.5** — Absorbed-item annotations (URL-form
+  pattern per Q9.0.6 α-light lock; v0_7-HANDOFF.md §4
+  ambiguity-adjudications rows for B14/B16/C12 absorbed +
+  C14 dropped distinguish-framing).
+- [ ] **Step 9.6** — Ship commit + tag HEREDOC alongside (single
+  ship commit per Q9.0.7 lock; batches 9.2.a-d doc-refresh +
+  9.3 verification table + 9.5 absorbed-item annotations +
+  package.json bump 0.5.0 → 0.6.0 + STEP-PLAN-V0.6.md Step 9
+  progress log entry; tag created via HEREDOC alongside same
+  operation per v0.5 11.6 + Q5 lock precedent).
+- [ ] **Step 9.7** — Cross-repo back-reference (benchmarks-repo
+  Phase-10 ref-doc §11 revision history + optional §9 candidate
+  inventory addition per Q9.0.8 α lock; verify any new §9
+  candidates surfaced at Step 8 cycle close inline before
+  commit).
+- [ ] **Step 9.8** — SHA backfill (STEP-PLAN-V0.6.md Step 9
+  progress log entry [this commit] placeholder + cross-repo
+  SHA placeholder per Q9.0.9 α lock; v0.5 11.8 `a3bbb8a`
+  precedent).
+
+**9-step locked sequence (v0.5+ canonical inheritance).** Per
+v0.6-SCOPE.md §SC #15:
+1. Pre-flight verification (npm test main + benchmarks)
+2. Apply working content (doc updates per ship discipline)
+3. Stage explicit-paths
+4. Create ship commit via HEREDOC
+5. Verify commit landed
+6. Create annotated tag `v0.6.0` via HEREDOC per v0.5 SHA-free
+   precedent
+7. Verify tag created
+7.5. **Post-execution verification (canonical Step 7.5 inheritance):
+   inspect committed body + tagged body for HEREDOC escape artifacts;
+   encoding issues; formatting drift; cross-document SHA reference
+   accuracy. STOP if artifacts caught; apply Path X amend + tag re-
+   create per pre-push window affordance.**
+8. Capture ship-commit SHA
+9. (Cross-repo back-reference at separate commit + 9.8-style
+   backfill if applicable per v0.5 ship-gate precedent)
+
+**Commit cadence.** 4 distinct commits total per Q9.0.12 α lock:
+9.0 design (this commit) + 9.6 ship commit + tag HEREDOC
+alongside (main-repo) + 9.7 cross-repo back-reference (benchmarks-
+repo) + 9.8 SHA backfill (main-repo). 9.1 pre-flight
+verification-only. 9.2.a-d + 9.3 + 9.4 + 9.5 surface inline before
+9.6 ship commit per discipline #3 cadence; batched into single
+ship commit per v0.5 11.1-11.6 batching precedent.
 
 **Unblocks.** v0.6 cycle close; v0.7 cycle-pre-planning per Strategy
-B-with-explicit-launch-staging.
+B-with-explicit-launch-staging (per launch-bearing reframe at
+v0_7-HANDOFF.md §v0.7 cycle launch-bearing reframe).
 
 ---
 
 ## Progress log
 
 *Entries added in reverse-chronological order as steps ship.*
+
+### Step 9.0 shipped — 2026-05-09
+
+V0.6 Step 9 (ship gate) opens with Step 9.0 design-adjudication
+substep per Step N.0 cadence convention. Q9.0.1-Q9.0.12 design
+adjudications surfaced + locked per discipline #3 surface-inline-
+before-commit cadence applied to step-design-phase work; 12
+sub-adjudications locked with 2 refinements (Q9.0.3 README
+coordination Path 1; Q9.0.4 v0.6 §SC #1 vs v1.0 ship-gate
+criterion #2 distinction).
+
+Step 9 work shape: documentation-bearing + ship-mechanics work;
+zero API spend; ~1 day wall-clock for 9-substep ladder; test
+coverage not applicable (1303/1303 baseline preserved through
+Step 9 absent rescope events); 4 distinct commits total per
+Q9.0.12 α lock.
+
+| Substep | branch | commit | Notes |
+|---|---|---|---|
+| 9.0 design adjudications | main | [this commit] | Q9.0.1-Q9.0.12 locks captured; Step 9 substep ladder firmed (9-substep hybrid: 9.0 design + 9.1-9.8 mirror of v0.5 11.1-11.8 per Q9.0.1 γ lock); 12 sub-adjudications locked with 2 refinements |
+
+#### Q9.0.1 lock — Substep ladder shape
+
+**Locked:** (γ) hybrid 9-substep ladder — 9.0 design + 9.1
+pre-flight + 9.2.a-d external-doc inline surfaces + 9.3
+verification table inline + 9.4 tag message inline + 9.5
+absorbed-item annotations + 9.6 ship commit + tag HEREDOC
+alongside + 9.7 cross-repo back-reference + 9.8 SHA backfill.
+
+Reasoning: v0.5 Step 11.1-11.8 surface-inline-before-commit
+cadence empirically caught 9 doc-refresh + content-drift
+instances at three recursion levels (STEP-PLAN-V0.5.md L840-855);
+compressing to 5-substep simpler ladder loses catches. Adding
+explicit 9.0 design substep matches v0.6 cycle-execution Step
+N.0 cadence convention applied at every step (2.0/3.0/4.0/5.0/
+6.0/7.0/8.0). Substep-level 9.5 absorbed-item annotations may
+be lighter than v0.5 (v0.6 has fewer absorbed items per Q9.0.6
+α-light lock) but discipline preserved.
+
+#### Q9.0.2 lock — Pre-flight verification scope (Step 9.1)
+
+**Locked:** (β) standard pre-flight verification.
+
+Scope: npm test main 1303/1303 PASS + benchmarks-repo green +
+npm run build clean compile + working-content gap inventory +
+cross-document consistency verification + cycle-thesis surface
+enumeration. Verification-only at 9.1; no commit.
+
+Reasoning: v0.5 11.1 working-content-gap-inventory caught 5
+instances pre-execution (instances 1-5; README "What's
+Implemented Today" missed v0.4 update; CLAUDE.md historical-
+references missed STEP-PLAN-V0.4 + v0.4-SCOPE; etc.). γ extended
+adds dogfood verification cost without proportional catch yield
+at ship-gate moment (dogfood already operationally validated
+through cycle execution). β preserves discipline #3 + #4 ship-
+gate substrate.
+
+#### Q9.0.3 lock — Doc-refresh inline surfaces scope (Step 9.2.a-d)
+
+**Locked:** All 4 doc-refresh surfaces (README + ROADMAP +
+CLAUDE.md + DESIGN.md) per v0.5 11.2.a-d inheritance.
+
+**REFINEMENT 1 applied — README coordination Path 1 (canonical-
+state-first).** Travis launch-document drafting (Reddit posts;
+blog post; README header rewrite) handled separately in
+parallel session. Path 1 ordering: Step 9.2.a covers full
+README doc-refresh (What's Implemented Today + Installation +
+ship-gate criteria status + v0.6 [SHIPPED] block + v0.7 launch-
+bearing reframe pointer + candidates rename + revision history);
+Travis launch-side README header rewrite happens AFTER Step 9
+ship gate lands. Cleaner sequencing: ship-gate verification
+table validates against canonical README state at Step 9; post-
+ship launch-document polish happens against stable canonical
+state.
+
+Surface scope per surface:
+
+- **9.2.a README** — v0.6 [SHIPPED] block + v0.5 → v0.6 What's
+  Implemented Today + v0.7 launch-bearing reframe pointer +
+  v0.6+ candidates → v0.7+ candidates rename + Installation
+  status box update + ship-gate criteria status (#1 PARTIAL
+  via 8-cell subset + #2 PARTIAL via Step 4.5 + #3 NOT MET
+  honest framing per launch-bearing reframe per Q9.0.10 lock)
+- **9.2.b ROADMAP** — v0.6 [SHIPPED] section + v0.7 [PLANNED]
+  launch-bearing-reframe section + v0.8+ post-launch matrix-
+  completion + cohort-exposure section + v1.0 ship-gate
+  criteria #1+#3 carry-forward annotation + revision history
+  entry
+- **9.2.c CLAUDE.md** — v0.6 outcome paragraph (F1 PRIMARY
+  atlas-substrate-version confound + F9 methodology-design-gap
+  + 8-cell subset DIVERGED 2-of-4 axes + Tier 3 cohort
+  cancellation + 4-amendment v0_7-HANDOFF.md substrate); v0.5
+  outcome reframed as historical; "Current Version" updated
+  v0.5 → v0.6; v0.7 launch-bearing reframe pointer; methodology
+  limits #11/#12/#13 v0.6 cycle entries
+- **9.2.d DESIGN.md** — §Versioning v0.6 ship-date entry;
+  §Benchmark Methodology Fairness Phase-10 cross-reference
+  (Phase-10 ref-doc shipped at 5.3.b commit `23dd385`)
+
+#### Q9.0.4 lock — Verification table scope (Step 9.3)
+
+**Locked:** 6-column 15-criterion verification table per v0.5
+11.3 6-column inheritance (# / Criterion / Status / Evidence /
+Locked-at / Notes).
+
+**REFINEMENT 2 applied — criterion #1 verification framing.**
+v0.6-SCOPE.md §SC #1 reads "Stream A pipeline-mechanics shipped
++ tested" (Stream A pipeline-mechanics scope), not "full A7
+onboarding-completion shipped". Step 4.5 close shipped pipeline-
+mechanics per scope-doc Stream A specification; criterion #1
+✓ MET applies at v0.6 §SC reading.
+
+The △ PARTIAL framing applies to **v1.0 ship-gate criterion #2**
+(full onboarding pipeline shipped at v1.0), not v0.6 success
+criterion #1. Both can be honest:
+- v0.6 §SC #1 ✓ MET (Stream A pipeline-mechanics scope shipped
+  at v0.6)
+- v1.0 ship-gate criterion #2 PARTIAL (full onboarding pipeline
+  closes at v0.7 empirical verification per launch-bearing
+  reframe)
+
+Distinction surfaced at 9.3 verification table inline draft
+to ensure honest-scope-acknowledgment without over-defaulting
+to △ PARTIAL on criteria meeting their stated scope.
+
+**Result projection adjustment.** 14/15 ✓ MET + 1/15 ✗ MISSED
+honest-scope (#6 cohort exposure cancelled; Tier 3 application
+per discipline #4 honest-scope-acknowledgment). 0/15 △ PARTIAL.
+
+15-criterion mapping per v0.6-SCOPE.md §SC #1-15:
+- #1 Stream A pipeline-mechanics — ✓ MET (Step 4 commits)
+- #2 Stream B 8-cell matrix subset — ✓ MET (Step 5 commits +
+  Phase-10 ref-doc)
+- #3 Stream B E2 priors discipline + B15 cost recalc — ✓ MET
+  (Step 2.2 + cost-priors-v0.6.json)
+- #4 Stream C cohort feedback template + tool-description
+  observability — ✓ MET (Step 6.1 + Step 6.2)
+- #5 Stream C recruitment infrastructure — ✓ MET (Step 6.4)
+- #6 Cohort exposure executed — ✗ MISSED honest-scope (Tier 3
+  cancellation at Step 7.5; recruitment infrastructure
+  inheritance to v1.0 per discipline #4)
+- #7 B17 self-use logging hybrid capture — ✓ MET (Step 8.1
+  ✓ MET via progress-log-distributed synthesis)
+- #8 B1 rubric anchor refinement evaluated at cycle close —
+  ✓ MET (Step 8.1 NO-TRIGGER per Tier 3)
+- #9 B17 cycle-close synthesis decision — ✓ MET (Step 8.1
+  ✓ MET)
+- #10 Tier-2 bundled methodology re-evaluation — ✓ MET (Step
+  8.1 7-item walkthrough 0 elevations)
+- #11 No production-tool claims beyond v0.6 supports — ✓ MET
+  (discipline criterion checked at 9.2.a-d)
+- #12 Backlog discipline preserved — ✓ MET (v0_7-HANDOFF.md +
+  Phase-10 §9 + research/v0.5-candidates.md unabsorbed items)
+- #13 Self-use during cycle documented — ✓ MET (Step 8.1
+  ✓ MET)
+- #14 Test suites green pre-bump — ✓ MET (verify at 9.1 pre-
+  flight)
+- #15 Standard ship-gate criteria — ✓ MET (verify at 9.6 ship
+  commit + tag)
+
+#### Q9.0.5 lock — Tag message scope (Step 9.4)
+
+**Locked:** (α) SHA-free tag body per v0.4.0 + v0.5.0 precedent.
+
+Body content scope: F1 PRIMARY atlas-substrate-version confound
+finding + F9 methodology-design-gap pattern + 8-cell subset
+DIVERGED 2-of-4 axes (factual_correctness CLEAN→BORDERLINE;
+actionability BORDERLINE→NOT-distinguishable) + honest 2-of-3
+MET + 1 carried forward ship-gate framing + Tier 3 cohort
+cancellation (recruitment infrastructure inheritance to v1.0)
++ methodology amendments deferred to v0.8+ post-launch
+enumeration + 4-amendment v0_7-HANDOFF.md substrate signposting.
+
+Verification via `git tag -v v0.5.0` inspection at 9.4 surface
+inline before tag operation per v0.5 11.4 hygiene precedent.
+Body drafted at 9.4 surface inline before 9.6 tag operation
+per discipline #3 cadence.
+
+#### Q9.0.6 lock — Absorbed-item annotations scope (Step 9.5)
+
+**Locked:** (α-light) URL-form annotations at v0_7-HANDOFF.md
+§4 ambiguity-adjudications rows with **distinguish-absorbed-vs-
+dropped framing**:
+- B14 (Opus 4.7 pricing fix) — absorbed at Step 0 housekeeping
+  (cross-repo SHA forward-pointer)
+- B15 (E2 cost recalc) — absorbed at Step 2.2 (cross-repo SHA
+  forward-pointer)
+- B16 (cycle-based aggregation alternative) — close-as-
+  superseded at scope-doc Phase 1+2 transition
+- C12 (Phase 7 §5.3 hypothesis revisitation) — close-as-
+  substantively-validated at scope-doc Phase 1+2 transition
+- C14 (cobra contamination drift) — **explicitly dropped**
+  (vs absorbed) at scope-doc Phase 1+2 transition; F3 cycle-
+  emergent finding at Phase-10 ref-doc §9 captures broader
+  observation
+
+Reasoning: v0.5 11.5 URL-form annotations marked #7/#8/#9/#12
+absorbed at v0.5 Step 10. v0.6 has lighter absorbed-item set
+(4 items at scope-doc Phase 1+2 transition + B15 at Step 2.2
++ B14 at Step 0). Distinguish-absorbed-vs-dropped framing
+preserves audit-trail accuracy: C14 was explicitly dropped
+(not absorbed); other items absorbed via close-as-superseded
+or close-as-substantively-validated routes.
+
+#### Q9.0.7 lock — Ship commit content scope (Step 9.6)
+
+**Locked:** (α) single ship commit + tag created via HEREDOC
+alongside same operation per v0.5 11.6 + Q5 lock precedent.
+
+Content scope batched at 9.6:
+- All 9.2.a-d doc-refresh content (README + ROADMAP +
+  CLAUDE.md + DESIGN.md per Q9.0.3 lock with Path 1 README
+  coordination refinement)
+- 9.3 verification table embedded in Step 9 progress log
+  entry (15-criterion 6-column per Q9.0.4 lock with criterion
+  #1 vs v1.0 #2 distinction refinement)
+- 9.5 absorbed-item annotations included (URL-form per
+  Q9.0.6 α-light lock with distinguish-absorbed-vs-dropped
+  framing)
+- package.json bump 0.5.0 → 0.6.0
+- STEP-PLAN-V0.6.md Step 9 progress log entry (with 15-
+  criterion verification table + 4 cycle-introduced ship-gate
+  disciplines re-affirmation + cumulative cycle deliverables
+  enumeration + F1-F9 substantive findings highlights +
+  cumulative cycle spend + ship-gate criteria honest 2-of-3
+  MET + 1 carried forward framing per Q9.0.10 + cycle-thesis
+  evaluation per Q9.0.11 launch-bearing reframe substrate-
+  generation thesis preserved framing)
+
+Travis approval gate at 9.6 ship commit before tag operation.
+
+#### Q9.0.8 lock — Cross-repo back-reference scope (Step 9.7)
+
+**Locked:** (α) separate commit at benchmarks-repo per v0.5
+11.7 precedent. Bidirectional cross-repo SHA audit trail
+pattern preserved (v0.5-cycle-introduced ship-gate substrate
+inheritance).
+
+Scope: benchmarks-repo Phase-10 ref-doc §11 revision history
+entry referencing main-repo v0.6 ship SHA + optional §9
+cycle-emergent candidate inventory addition (verify any new
+§9 candidates surfaced at Step 8 cycle close inline at 9.7
+before commit; likely none beyond Step 8.1 generalizable
+pattern already captured in v0_7-HANDOFF.md not benchmarks-
+repo).
+
+#### Q9.0.9 lock — SHA backfill scope (Step 9.8)
+
+**Locked:** (α) apply SHA backfill pattern per v0.5 11.8
+`a3bbb8a` precedent.
+
+Scope: STEP-PLAN-V0.6.md Step 9 progress log entry "[this
+commit]" placeholder filled with 9.6 ship SHA + 9.7 cross-
+repo SHA placeholder filled. Audit-trail completeness preserved.
+
+#### Q9.0.10 lock — V1.0 ship-gate criteria closure annotation
+
+**Locked:** Honest 2-of-3 MET + 1 carried forward framing
+applied at all three doc surfaces (README + ROADMAP +
+CLAUDE.md). Discipline #4 honest-scope-acknowledgment over
+retroactive-checkbox preserved. No over-claiming.
+
+Per launch-bearing reframe (v0_7-HANDOFF.md §v0.7 cycle
+launch-bearing reframe section):
+- v1.0 criterion #1 quality-axis methodology parenthetical
+  CLOSED at v0.5 (preserved)
+- v1.0 criterion #1 statistically-meaningful-wins PARTIAL via
+  v0.6 8-cell subset; closes at v0.8+ matrix-completion
+- v1.0 criterion #2 onboarding pipeline shipped PARTIAL via
+  v0.6 Step 4.5 pipeline-mechanics; closes at v0.7 empirical
+  verification per launch-bearing reframe
+- v1.0 criterion #3 external dogfood trial NOT MET via Tier
+  3 cancellation; closes at v0.8+ post-launch cohort exposure
+  execution against carried-forward recruitment infrastructure
+
+V1.0 ship: honest 2-of-3 MET (parenthetical + criterion #2)
++ criterion #1 statistical-wins PARTIAL + criterion #3 carried
+forward to v0.8+. Substrate-generation thesis preserved via
+post-launch infrastructure inheritance per Q9.0.11.
+
+#### Q9.0.11 lock — Cycle-thesis evaluation framing
+
+**Locked:** (α) substrate-generation thesis preserved via
+post-launch infrastructure inheritance per v0_7-HANDOFF.md
+launch-bearing reframe section.
+
+Reasoning: Tier 3 cancellation reframes cohort substrate
+generation outcome at v0.6 cycle but does NOT falsify thesis.
+v0.6 ships cohort infrastructure substrate (recruitment +
+observability + consent contract + feedback template +
+onboarding documentation) ready for post-launch execution;
+v0.8+ post-launch cycle re-attempts cohort exposure against
+carried-forward substrate. Q7.0.9 3-tier cohort evaluation
+framing pre-registered at Step 7.0 (commit `77e523e`) before
+recruitment outcome known; Tier 3 application at Step 7.5
+(commit `11e0ddc`) is honest-scope discipline application not
+retrofit.
+
+Surface locations: 9.2.c CLAUDE.md outcome paragraph + Step 9
+progress log cycle-thesis evaluation block at ship commit.
+
+#### Q9.0.12 lock — Step 9 commit cadence
+
+**Locked:** (α) 4 distinct commits total — 9.0 design (this
+commit) + 9.6 ship commit + tag HEREDOC alongside (main-repo)
++ 9.7 cross-repo back-reference (benchmarks-repo) + 9.8 SHA
+backfill (main-repo).
+
+Reasoning: matches v0.5 ship-gate cadence (1 ship commit + 1
+cross-repo + 1 SHA backfill = 3 main-repo commits + 1
+benchmarks-repo commit; v0.6 adds explicit 9.0 design substep
+commit per Step N.0 cadence convention = 4 commits total).
+Substep boundary preserved within ship commit via inline-
+surfaced doc-refresh at 9.2.a-d. Travis approval gate at 9.6
+ship commit per Q9.0.7 single-ship-commit lock.
+
+9.1 pre-flight verification-only (no commit). 9.2.a-d + 9.3
++ 9.4 + 9.5 surface inline before 9.6 ship commit per
+discipline #3 cadence; batched into single ship commit per
+v0.5 11.1-11.6 batching precedent.
+
+#### V0.5 Step 11 ship-gate substrate inheritance preserved
+
+Four cycle-introduced ship-gate disciplines (per v0.5 STEP-PLAN
+L815-876) inherit at v0.6 Step 9:
+
+1. **6-column verification-table format** — # / Criterion /
+   Status / Evidence / Locked-at / Notes (Q9.0.4 lock applies
+   at 9.3 verification table inline draft)
+2. **In-place absorbed-item annotation pattern with URL-form
+   sub-pattern** — Q9.0.6 α-light lock applies at 9.5 absorbed-
+   item annotations with distinguish-absorbed-vs-dropped framing
+3. **Surface-inline-before-commit ship-gate cadence** — applied
+   recursively at 9.2.a-d + 9.3 + 9.4 + 9.5 surfaces before
+   9.6 ship commit; discipline #3 carry-forward
+4. **Honest-scope-acknowledgment over retroactive-checkbox** —
+   applied at criterion #6 ✗ MISSED Tier 3 framing per Q9.0.4
+   verification table refinement; #1 ✓ MET vs v1.0 #2 PARTIAL
+   distinction at Q9.0.4 refinement; ship-gate criteria honest
+   2-of-3 MET + 1 carried forward at Q9.0.10
+
+Plus bidirectional cross-repo SHA audit trail pattern (v0.5
+ship-gate substrate inheritance) applied at 9.7 + 9.8.
+
+#### Step 9.0 unblock
+
+Step 9.1 (pre-flight verification) unblocked. Verification-
+only substep — npm test main 1303/1303 PASS + benchmarks-repo
+green + npm run build clean compile + working-content gap
+inventory + cross-document consistency verification + cycle-
+thesis surface enumeration. No commit at 9.1.
+
+After 9.1 verification PASS, proceed to 9.2.a-d doc-refresh
+inline surfaces + 9.3 verification table inline + 9.4 tag
+message inline + 9.5 absorbed-item annotations inline (all
+surface inline before 9.6 ship commit per discipline #3
+cadence). After all 9.2-9.5 surface reviews land, proceed to
+9.6 ship commit + tag HEREDOC alongside.
+
+---
 
 ### Step 8.2 shipped — 2026-05-08 (Step 8 close)
 
