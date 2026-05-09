@@ -168,10 +168,17 @@ lock — Q1.0.2 verification as explicit gate-substep refinement):
   canonical location `.claude/skills/index-atlas/SKILL.md` per
   existing `/claude-api` skill precedent. Shipped 2026-05-09;
   commit `[this commit]`.
-- [ ] **Step 1.2** — ADR-02 amendment (per Q1.0.11 β lock;
+- [x] **Step 1.2** — ADR-02 amendment (per Q1.0.11 β lock;
   AFTER Q1.0.2 verification clears; β substantive scope per
   Q1.0.1 — extraction-sole-API-caller framing →
   extraction-via-multiple-paths; CI grep pattern updated).
+  Substantive graduation reframe applied (research-cycle
+  SOLE-CALLER invariant → v0.7+ production-cycle user-choice
+  configuration); Path (iii) 2-mode collapse + 1 legacy alias
+  locked per v0.6 actual extraction behavior verification at
+  Step 1.2 surface. Lock revisions captured: Q1.0.4 RETURN to
+  β-3; Q1.0.8 REVISED to 3-flag user-choice; Q1.0.10 + Q1.0.5
+  UNCHANGED. Shipped 2026-05-09; commit `[this commit]`.
 - [ ] **Step 1.3** — Strategy pattern wrapper module
   (`src/extraction/extractor.ts` interface + skeleton per Q1.0.10
   γ lock; abstraction boundary for path-routing dispatch).
@@ -370,6 +377,169 @@ timeline; not blocking).
 ## Progress log
 
 *Entries added in reverse-chronological order as steps ship.*
+
+### Step 1.2 shipped — 2026-05-09 (ADR-02 graduation reframe + Path (iii) 2-mode collapse lock)
+
+V0.7 Step 1.2 ships ADR-02 substantive graduation amendment per
+Q1.0.1 β substantive scope lock + Q1.0.11 β timing lock (AFTER
+Q1.0.2 verification cleared at Step 1.1). Research-cycle SOLE-
+CALLER invariant graduates to v0.7+ production-cycle user-choice
+configuration; Path (iii) 2-mode collapse + 1 legacy alias lock
+per v0.6 actual extraction behavior verification surfaced at
+Step 1.2 surface.
+
+| Substep | branch | commit | Notes |
+|---|---|---|---|
+| 1.2 ADR-02 amendment | main | [this commit] | ADR-02 substantive graduation reframe (extraction-sole-API-caller → extraction-sole-research-time-extraction-caller; v0.1-v0.6 research-cycle SOLE-CALLER invariant → v0.7+ production-cycle user-choice configuration); Path (iii) 2-mode collapse + 1 legacy alias deprecation cycle locked; 5-refinement framing applied (Historical context + graduation narrative + user-choice framing + Rationale split + Revision history graduation framing); Q1.0.4 + Q1.0.8 lock revisions captured per substrate-evolution drift Path C framework |
+
+#### ADR-02 amendment — 5 substantive refinements applied per Travis adjudication
+
+1. **Historical context section added** (after §Context; before
+   §Decision). Captures v0.1-v0.6 research-cycle SOLE-CALLER
+   invariant rationale: cost-attribution clarity for research
+   methodology + reproducibility for substrate-generation thesis +
+   cost-projection-vs-platform-billing 3x-reduction invariant +
+   quality-axis methodology cleanly-scoped substrate. Explicit
+   framing: "served research-cycle methodology, NOT production-tool
+   architectural commitment."
+
+2. **Graduation narrative added** (§Decision opening). Cross-
+   references Travis pivot at v0.6 Step 7.5; explicit research-to-
+   production transition: "V0.7+ ContextAtlas graduates from research
+   project to production tool per launch-bearing reframe."
+
+3. **User-choice framing added** (§Decision sub-section "User-
+   choice configuration"). Captures Travis-specific framing: "path
+   selection ultimately remains user configuration; system supports
+   user-choice; does NOT enforce research-methodological invariant
+   on production users."
+
+4. **§Rationale split** distinguishes production-applicable query-
+   time invariant rationale (load-bearing for production tool) from
+   graduates-to-historical research-cycle SOLE-CALLER rationale.
+   Sub-100ms latency + zero query cost + pay-once-at-index-time
+   architectural promise preserved as load-bearing; research-cycle
+   methodological rationale graduates to §Historical context section.
+
+5. **§Revision history 2026-05-09 entry** captures graduation
+   framing explicitly + v0.6 actual extraction behavior verification
+   result + Path (iii) lock rationale + backward-compat preservation
+   framing + full lock chain cross-references.
+
+#### Path (iii) 2-mode collapse lock per v0.6 actual extraction behavior verification
+
+V0.6 actual extraction behavior verification at Step 1.2 surface
+revealed v0.6 ships `architecture` field as config-stub-only;
+pipeline doesn't branch on field value; both
+`"anthropic-api-claude-code"` and `"claude-code-only"` produced
+identical Anthropic API direct extraction at v0.6. The
+`"claude-code"` suffix in v0.6 `"anthropic-api-claude-code"` name
+referred to user invocation environment (user runs contextatlas
+FROM Claude Code session) NOT extraction architecture.
+
+Path (iii) collapse-to-2-substantive-modes locked at v0.7 ship:
+
+- **Mode A** `"claude-code-only"` — Skills mechanism; new at v0.7;
+  canonical location `.claude/skills/index-atlas/SKILL.md`;
+  subscription-bounded cost model; extraction 100% contained to
+  Claude Code session; no Anthropic API key required.
+- **Mode B** `"anthropic-api-direct"` — preserves v0.6 actual
+  extraction behavior; renamed at v0.7 for naming clarity;
+  pay-per-use cost model; standalone CLI; Anthropic API key
+  required.
+- **Legacy alias** `"anthropic-api-claude-code"` — deprecated alias
+  for `"anthropic-api-direct"` (backward-compat for v0.6 users);
+  stderr deprecation warning emitted on config-parse; alias removed
+  at v0.8+ per honest deprecation cycle.
+
+Backward-compat: v0.6 user configs with legacy name continue
+working at v0.7 with warning; behavior unchanged.
+
+#### Lock revisions captured (per substrate-evolution drift Path C framework)
+
+Step 1.0 entries remain historical record of pre-Path-(iii)-
+adjudication state per Path C framework lock at Q-pre-4. Step 1.2
+entry captures lock revisions per current substrate state:
+
+**Q1.0.4 RETURNS to β-3 lock.** claude-code-only default at v0.7+;
+absent-means-default; init writes explicit-default. Aligns with
+Travis pivot framing "claude code only is def a priority feature".
+3-mode reframing turn surfaced confusion; Path (iii) collapse
+returns to original Step 1.0 β-3 lock.
+
+**Q1.0.8 REVISED to 3-flag user-choice.** `--cc-only` forces Mode A
+(claude-code-only); meaningful at v0.7+; NOT deprecated. `--api-
+direct` forces Mode B (anthropic-api-direct); new at v0.7. Flag-
+absence selects default per config (claude-code-only per β-3).
+γ-2 soft-deprecation framing was 2-mode artifact; under 3-flag
+user-choice both flags stay meaningful.
+
+**Q1.0.10 UNCHANGED.** 2 concrete Strategy implementations
+(`ClaudeCodeOnlyExtractor` + `AnthropicAPIDirectExtractor`); legacy
+`"anthropic-api-claude-code"` config value accepted at config-parse
+time; mapped to `AnthropicAPIDirectExtractor` with deprecation
+warning emission. Implementation at Step 1.3 (Strategy pattern
+wrapper module) + Step 1.4 (path-routing dispatch + concrete
+implementations).
+
+**Q1.0.5 UNCHANGED.** cost_model enum: `"api"` |
+`"subscription-bounded"`; no `"hybrid"` value (no hybrid mode).
+
+#### Cycle-execution observation 8 — Travis-product-vision-clarification surface class (NEW v0.7+ inheritance pattern)
+
+V0.7 Step 1.2 surfaced **8th recursive catch-pattern observation
+class**: Travis-product-vision-clarification surface class. Mid-
+design-phase Travis clarifications can surface architectural
+semantics that scope-doc + design-phase adjudications didn't fully
+capture (3-mode reframing turn surfaced confusion; v0.6 substrate
+verification revealed Path (iii) 2-mode collapse cleanest; Q1.0.4
+returns to β-3 lock; Q1.0.8 revises to 3-flag user-choice).
+
+Generalizable v0.7+ inheritance pattern: product-vision adjudications
+during design phase benefit from substrate-verification-before-
+implementation-scope-expansion. Verification cost is small;
+implementation scope expansion cost is large. 7-substep ladder
+Q1.0.9 refinement (gate-substep treatment) generalizes to Travis-
+product-vision adjudication: substrate-verify before scope-expand.
+
+V0.7+ ship-gate working-content-gap-inventory inherits **8-class
+recursive catch-pattern observation enumeration** (composes with
+v0.6 7-class enumeration: 1 retrospective infrastructure-block
+claims drift + 2 retrospective document-relationship-anchor claims
+drift + 3 retrospective outcome-bullet pattern consistency drift +
+4 retrospective version-progression narrative drift + 5 cross-
+surface URL/reference style consistency + 6 substrate-evolution
+drift class + 7 scope-doc-locked-but-not-shipped class + 8 Travis-
+product-vision-clarification surface class).
+
+#### Step 1.2 unblock — Step 1.3 Strategy pattern wrapper module
+
+Step 1.3 unblocked per Q1.0.10 γ Strategy pattern lock + Path (iii)
+2-mode collapse architecture:
+
+- Define `src/extraction/extractor.ts` interface (`Extractor`
+  abstract type + `ExtractorContext` dependency injection type)
+- 2 concrete implementations:
+  - `ClaudeCodeOnlyExtractor` (Skills path; subscription-bounded;
+    no Anthropic API import; canonical location implementation
+    references `.claude/skills/index-atlas/SKILL.md`)
+  - `AnthropicAPIDirectExtractor` (preserves v0.6 actual extraction
+    behavior; `@anthropic-ai/sdk` imports preserved; pay-per-use
+    cost model)
+- Config-parse layer accepts 3 config values per Path (iii) lock:
+  - `"claude-code-only"` → `ClaudeCodeOnlyExtractor`
+  - `"anthropic-api-direct"` → `AnthropicAPIDirectExtractor`
+  - `"anthropic-api-claude-code"` (legacy) →
+    `AnthropicAPIDirectExtractor` + emits stderr deprecation
+    warning per Q1.0.8 lock framing
+- Stub-client mock pattern per Q1.0.6 α + γ lock (path-routing-
+  aware mock)
+- Test coverage per CLAUDE.md src-changes-require-full-test
+  discipline (1303/1303 baseline preserved + test additions for
+  Strategy interface + 2 concrete implementations + config-parse
+  layer with legacy alias + deprecation warning emission)
+
+---
 
 ### Step 1.1 shipped — 2026-05-09 (Q1.0.2 verification cleared)
 
