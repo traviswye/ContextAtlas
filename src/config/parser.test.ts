@@ -505,18 +505,11 @@ describe("loadConfig — source block (ADR-08 runtime)", () => {
 
   // ---------------------------------------------------------------
   // architecture (v0.6 Step 4.2 — B13-flags per Q4.0.5 + Q4.2.1 +
-  // Q4.2.2 locks)
+  // Q4.2.2 locks; expanded at v0.7 Step 1.3 per ADR-02 v0.7
+  // amendment + Path (iii) 2-mode collapse + 1 legacy alias)
   // ---------------------------------------------------------------
 
-  it("architecture = 'anthropic-api-claude-code' → parses correctly", () => {
-    writeCfg(
-      "version: 1\nlanguages: [typescript]\nadrs: { path: docs/adr/ }\n" +
-        "architecture: anthropic-api-claude-code\n",
-    );
-    expect(loadConfig(tmp).architecture).toBe("anthropic-api-claude-code");
-  });
-
-  it("architecture = 'claude-code-only' → parses correctly", () => {
+  it("architecture = 'claude-code-only' → parses correctly (Mode A; default at v0.7+)", () => {
     writeCfg(
       "version: 1\nlanguages: [typescript]\nadrs: { path: docs/adr/ }\n" +
         "architecture: claude-code-only\n",
@@ -524,20 +517,36 @@ describe("loadConfig — source block (ADR-08 runtime)", () => {
     expect(loadConfig(tmp).architecture).toBe("claude-code-only");
   });
 
-  it("architecture absent → cfg.architecture is undefined (default applied at use-site)", () => {
+  it("architecture = 'anthropic-api-direct' → parses correctly (Mode B; new at v0.7)", () => {
+    writeCfg(
+      "version: 1\nlanguages: [typescript]\nadrs: { path: docs/adr/ }\n" +
+        "architecture: anthropic-api-direct\n",
+    );
+    expect(loadConfig(tmp).architecture).toBe("anthropic-api-direct");
+  });
+
+  it("architecture = 'anthropic-api-claude-code' → parses correctly (legacy alias; deprecation warning emits at factory-time per Q1.0.8)", () => {
+    writeCfg(
+      "version: 1\nlanguages: [typescript]\nadrs: { path: docs/adr/ }\n" +
+        "architecture: anthropic-api-claude-code\n",
+    );
+    expect(loadConfig(tmp).architecture).toBe("anthropic-api-claude-code");
+  });
+
+  it("architecture absent → cfg.architecture is undefined (default applied at use-site per Q1.0.4 β-3)", () => {
     writeCfg(
       "version: 1\nlanguages: [typescript]\nadrs: { path: docs/adr/ }\n",
     );
     expect(loadConfig(tmp).architecture).toBeUndefined();
   });
 
-  it("architecture invalid string → rejected with actionable error", () => {
+  it("architecture invalid string → rejected with actionable error listing all 3 valid values", () => {
     writeCfg(
       "version: 1\nlanguages: [typescript]\nadrs: { path: docs/adr/ }\n" +
         "architecture: claude-only-with-typo\n",
     );
     expect(() => loadConfig(tmp)).toThrow(
-      /Invalid 'architecture'.*anthropic-api-claude-code, claude-code-only/,
+      /Invalid 'architecture'.*claude-code-only, anthropic-api-direct, anthropic-api-claude-code/,
     );
   });
 

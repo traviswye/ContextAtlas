@@ -179,9 +179,15 @@ lock — Q1.0.2 verification as explicit gate-substep refinement):
   Step 1.2 surface. Lock revisions captured: Q1.0.4 RETURN to
   β-3; Q1.0.8 REVISED to 3-flag user-choice; Q1.0.10 + Q1.0.5
   UNCHANGED. Shipped 2026-05-09; commit `[this commit]`.
-- [ ] **Step 1.3** — Strategy pattern wrapper module
+- [x] **Step 1.3** — Strategy pattern wrapper module
   (`src/extraction/extractor.ts` interface + skeleton per Q1.0.10
   γ lock; abstraction boundary for path-routing dispatch).
+  Shipped 2026-05-10; commit `[this commit]`. 6 module shapes
+  applied (Extractor interface + 2 skeleton implementations +
+  factory.ts + types.ts edits + 5 NEW test files); 6 design
+  adjudications locked (Q1.3.1-Q1.3.6); 2 verifications resolved
+  inline; 1316/1316 tests PASS (1303 baseline + 13 new); npm run
+  build clean.
 - [ ] **Step 1.4** — Path-routing dispatch logic + claude-code-
   only concrete implementation (per Q1.0.3 α config-flag-based
   dispatch lock + Q1.0.4 β-3 hybrid default lock; runner.ts reads
@@ -377,6 +383,178 @@ timeline; not blocking).
 ## Progress log
 
 *Entries added in reverse-chronological order as steps ship.*
+
+### Step 1.3 shipped — 2026-05-10 (Strategy pattern wrapper module)
+
+V0.7 Step 1.3 ships Strategy pattern wrapper module per Q1.0.10 γ
+lock + Path (iii) 2-mode collapse architecture (ADR-02 v0.7
+amendment 2026-05-09). 6 module shapes applied; 6 design
+adjudications locked (Q1.3.1-Q1.3.6); 2 verification items
+resolved inline; 1316/1316 tests PASS (1303 v0.6 baseline + 13
+new at Step 1.3); npm run build clean compile.
+
+| Substep | branch | commit | Notes |
+|---|---|---|---|
+| 1.3 Strategy pattern wrapper module | main | [this commit] | Extractor interface + 2 skeleton implementations + factory + types.ts edits + parser.ts VALID_ARCHITECTURES expansion + 5 NEW test files; per-cycle Strategy abstraction above existing per-document ExtractionClient; legacy alias deprecation warning emission at factory-time per Q1.0.8 lock |
+
+#### 6 module shapes applied
+
+1. **`src/extraction/extractor.ts`** (NEW) — Strategy interface +
+   ExtractorContext dependency injection bag + ExtractionResult shape
+   + CostModel type alias. Per-cycle abstraction (above existing
+   per-document ExtractionClient); skeleton at Step 1.3, full
+   implementations land at Step 1.4.
+
+2. **`src/extraction/extractors/anthropic-api-direct.ts`** (NEW
+   skeleton) — Mode B per ADR-02 v0.7 amendment + Path (iii) lock.
+   `costModel = "api"`. `extract()` throws Step-1.4-pending error per
+   Q1.3.3 fail-loud lock.
+
+3. **`src/extraction/extractors/claude-code-only.ts`** (NEW skeleton)
+   — Mode A per Q1.0.2 α Skills architecture. `costModel =
+   "subscription-bounded"`. `extract()` throws Step-1.4-pending
+   error.
+
+4. **`src/extraction/factory.ts`** (NEW) — `getExtractor(config,
+   deps?)` factory function: 3-config-value-to-2-implementation
+   routing + legacy alias deprecation warning emission at factory-
+   time per Q1.0.8 + Q1.3.2 locks. `LEGACY_ALIAS_DEPRECATION_WARNING`
+   exported constant for test verification. Stderr write seam
+   (`writeStderr` injection) preserves test-pattern compliance per
+   Q1.0.6 α + γ.
+
+5. **`src/types.ts`** edit — `ContextAtlasConfig.architecture` field
+   type union expanded from 2-value to 3-value per Path (iii) lock:
+   `"claude-code-only" | "anthropic-api-direct" |
+   "anthropic-api-claude-code"`. JSDoc refreshed with Mode A/B/legacy
+   alias framing + Q1.0.4 β-3 default lock + canonical Skills
+   location reference.
+
+6. **`src/config/parser.ts`** edit — `VALID_ARCHITECTURES` constant
+   expanded from 2-value to 3-value per Path (iii) lock; ordering
+   `claude-code-only` first (default at v0.7+; matches Q1.0.4 β-3
+   surface), then `anthropic-api-direct` (Mode B), then
+   `anthropic-api-claude-code` (legacy alias). `validateArchitecture`
+   JSDoc refreshed with v0.7 amendment cross-reference.
+
+#### Q1.3.1-Q1.3.6 design adjudications locked
+
+- **Q1.3.1** — LOCK per-cycle Strategy abstraction level (above
+  ExtractionClient). Per-document mechanics remain implementation
+  detail of AnthropicAPIDirectExtractor at Step 1.4.
+- **Q1.3.2** — LOCK factory.ts deprecation warning emission point
+  (extraction-time emission semantically aligned vs config-parse-
+  time which would emit on every config load including non-extraction
+  operations).
+- **Q1.3.3** — LOCK throw skeleton fail-mode (matches CLAUDE.md
+  "fail loudly" discipline; explicit Step-1.4-pending error
+  message; Step 1.4 lands functional implementation).
+- **Q1.3.4** — LOCK directory structure
+  (`src/extraction/extractors/` for concrete implementations;
+  `src/extraction/extractor.ts` for interface; `src/extraction/
+  factory.ts` for factory).
+- **Q1.3.5** — LOCK cli-runner.ts integration deferred to Step 1.4
+  (substep decomposition discipline; Step 1.3 ships interface +
+  skeletons + factory; Step 1.4 wires factory.ts → cli-runner.ts
+  + lands functional Skills implementation).
+- **Q1.3.6** — LOCK `IndexCliOptions.clientOverride` preservation
+  at Strategy level via `ExtractorContext.clientOverride` field;
+  AnthropicAPIDirectExtractor at Step 1.4 reads from context and
+  passes to underlying ExtractionClient.
+
+#### 2-level Strategy pattern architectural insight (cycle-execution observation)
+
+V0.7 Step 1.3 surfaced architectural insight worth capture: existing
+`ExtractionClient` interface (anthropic-client.ts L87-99) already
+operates at per-document level (`extract(documentBody)`). v0.7
+Strategy pattern operates at per-cycle level (per-repo extraction-
+as-a-whole).
+
+Two-level Strategy pattern emerged:
+- **Higher level** — `Extractor` (per-cycle path selection; Mode A
+  vs Mode B); v0.7 Step 1.3 abstraction
+- **Lower level** — `ExtractionClient` (per-document mechanics; used
+  by Mode B AnthropicAPIDirectExtractor; not used by Mode A
+  ClaudeCodeOnlyExtractor)
+
+Mode A Skills path doesn't use `ExtractionClient` internally
+(executes via Claude Code session tools — Bash/Edit/Read/Write —
+not via @anthropic-ai/sdk client). Mode B API direct path uses
+`ExtractionClient` internally per-document.
+
+Existing `ExtractionClient` becomes implementation detail of
+AnthropicAPIDirectExtractor rather than competing primitive at v0.7
+Strategy pattern level. Clean architectural separation;
+substantively correct Strategy pattern application at v0.7+ scope.
+
+#### Verification Item 1 + 2 resolution (inline at Step 1.3 implementation)
+
+**Verification Item 1 — `getExtractor` once-per-process guard
+needed?** NO guard at v0.7. Both `contextatlas index` (cli-runner.ts)
++ `contextatlas init` (smoke test path; v0.6 Step 4.4 substrate)
+trigger extraction; per-invocation warning emission appropriate.
+If production scenarios surface noise, add guard at v0.8+. Verified
+by checking init/runner.ts L170-178 (init triggers
+runIndexSubcommand which would call getExtractor at Step 1.4 wiring).
+
+**Verification Item 2 — factory absent-means-default robustness.**
+Parser layer validates architecture field non-empty + valid-set
+membership (`validateArchitecture` in src/config/parser.ts L188-
+203 throws on empty/invalid). Factory trusts parser-validated
+values; no defensive empty-string handling needed. Verified by
+reading `validateArchitecture` source. Type-level exhaustiveness
+in factory ensures TS catches union expansion regressions
+(`const _exhaustive: never = architecture` pattern).
+
+#### Test coverage at Step 1.3
+
+13 new tests added per CLAUDE.md src-changes-require-full-test
+discipline (1303 v0.6 baseline + 13 new = 1316/1316 PASS):
+
+- `src/extraction/extractor.test.ts` (3 tests) — Strategy interface
+  contract + ExtractorContext shape + ExtractionResult shape
+- `src/extraction/extractors/anthropic-api-direct.test.ts` (2 tests)
+  — Skeleton compliance + Step-1.4-pending error verification
+- `src/extraction/extractors/claude-code-only.test.ts` (2 tests) —
+  Skeleton compliance + Step-1.4-pending error verification
+- `src/extraction/factory.test.ts` (5 tests) — 3-config-value-to-2-
+  implementation mapping + legacy alias stderr deprecation warning
+  emission verification + LEGACY_ALIAS_DEPRECATION_WARNING text
+  content verification + absent-means-default per Q1.0.4 β-3 lock
+- `src/config/parser.test.ts` extension (1 new test) —
+  `anthropic-api-direct` parses correctly + existing test regex
+  updated to match new VALID_ARCHITECTURES order
+
+#### Step 1.3 unblock — Step 1.4 path-routing dispatch + claude-code-only Skills functional implementation
+
+Step 1.4 unblocked per substep ladder. Functional implementation
+scope:
+
+- `cli-runner.ts` integration: replace direct `runExtractionPipeline`
+  + `createExtractionClient` flow with `getExtractor(config)` +
+  `extractor.extract(context)` Strategy pattern dispatch
+- `AnthropicAPIDirectExtractor` full implementation: wraps existing
+  `runExtractionPipeline` + `createExtractionClient` flow; reads
+  `ExtractorContext.clientOverride` for test-seam injection
+- `ClaudeCodeOnlyExtractor` full implementation:
+  - `.claude/skills/index-atlas/SKILL.md` content drafting (extraction
+    prompt packaging + dynamic context injection patterns + bundled
+    helper scripts for file walking + JSON validation + atlas.json
+    persistence)
+  - Skills mechanism wiring (skill invocation context bridge from
+    `extract()` method)
+  - Subscription-bounded cost accounting ($0 per-call; cost_model =
+    "subscription-bounded")
+- `init/runner.ts` revision: Q1.0.4 β-3 default flip (claude-code-
+  only default; absent-means-default; init writes explicit-default);
+  Q1.0.8 3-flag user-choice (`--cc-only` forces Mode A; `--api-
+  direct` forces Mode B; flag-absence selects default)
+- Test coverage extensions: integration tests against new Strategy
+  pattern dispatch; flag-absence default behavior verification;
+  --api-direct flag verification; --cc-only forces Mode A
+  verification
+
+---
 
 ### Step 1.2 shipped — 2026-05-09 (ADR-02 graduation reframe + Path (iii) 2-mode collapse lock)
 

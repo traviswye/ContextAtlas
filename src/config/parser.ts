@@ -36,8 +36,9 @@ const VALID_ADR_FORMATS = ["markdown-frontmatter"] as const;
 type ValidAdrFormat = (typeof VALID_ADR_FORMATS)[number];
 
 const VALID_ARCHITECTURES = [
-  "anthropic-api-claude-code",
   "claude-code-only",
+  "anthropic-api-direct",
+  "anthropic-api-claude-code",
 ] as const;
 type ValidArchitecture = (typeof VALID_ARCHITECTURES)[number];
 
@@ -180,10 +181,14 @@ function validate(
 }
 
 /**
- * Validate the optional `architecture` field (B13-flags per v0.6
- * Step 4.2 / Q4.0.5 + Q4.2.1 + Q4.2.2 locks). Optional with default
- * "anthropic-api-claude-code"; absent means default applied at use-
- * site (parser leaves field undefined when absent).
+ * Validate the optional `architecture` field per ADR-02 v0.7
+ * amendment + Path (iii) 2-mode collapse + Q1.0.4 β-3 lock. Three
+ * accepted values: "claude-code-only" (Mode A; default at v0.7+) +
+ * "anthropic-api-direct" (Mode B) + "anthropic-api-claude-code"
+ * (deprecated legacy alias; alias removed at v0.8+). Absent means
+ * default applied at use-site per absent-means-default discipline
+ * (parser leaves field undefined when absent; getExtractor factory
+ * defaults to "claude-code-only" per Q1.0.4 β-3).
  */
 function validateArchitecture(
   raw: unknown,

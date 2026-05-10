@@ -252,17 +252,31 @@ export interface TypeInfo {
 export interface ContextAtlasConfig {
   version: 1;
   /**
-   * Architecture choice (B13-flags per v0.6 Step 4.2 / Q4.0.5 +
-   * Q4.2.1 + Q4.2.2 locks). Optional with default
-   * "anthropic-api-claude-code" (current dual-dependency); init
-   * writer always writes explicitly per Q4.0.5. v0.7 architectural
-   * decision uses cohort substrate aggregating which path users
-   * choose.
+   * Extraction path selection per ADR-02 v0.7 amendment + Path (iii)
+   * 2-mode collapse + Q1.0.4 β-3 lock. Three accepted config values;
+   * two substantive runtime modes + 1 legacy deprecated alias:
+   *
+   *   - "claude-code-only" → Mode A (Skills path; default at v0.7+;
+   *     subscription-bounded; canonical .claude/skills/index-atlas/
+   *     SKILL.md location; no Anthropic API key required)
+   *   - "anthropic-api-direct" → Mode B (Anthropic API direct;
+   *     preserves v0.1-v0.6 actual extraction behavior; renamed at
+   *     v0.7 for naming clarity; pay-per-use cost model)
+   *   - "anthropic-api-claude-code" → deprecated legacy alias for
+   *     "anthropic-api-direct"; backward-compat for v0.6 user
+   *     configs; stderr deprecation warning emitted at factory-time
+   *     per Q1.0.8 lock; alias removed at v0.8+
+   *
+   * Default: "claude-code-only" (Mode A) per Q1.0.4 β-3 hybrid lock.
+   * Absent-means-default; init writes explicit-default.
    *
    * YAML key is `architecture` (already lowercase); TS field
    * `architecture` (no case conversion needed).
    */
-  architecture?: "anthropic-api-claude-code" | "claude-code-only";
+  architecture?:
+    | "claude-code-only"
+    | "anthropic-api-direct"
+    | "anthropic-api-claude-code";
   languages: LanguageCode[];
   adrs: {
     path: string;
