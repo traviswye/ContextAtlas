@@ -208,12 +208,20 @@ lock — Q1.0.2 verification as explicit gate-substep refinement):
   field deprecated with 3-variant stderr warning at parser
   layer; field removed at v0.8+. Shipped 2026-05-10; commit
   `[this commit]`.
-- [ ] **Step 1.5** — Cost model accounting integration + tests +
-  `--api-direct` flag negation + `--cc-only` soft deprecation
-  (per Q1.0.5 δ separate cost_model field lock + Q1.0.6 α+γ
-  combined test pattern lock + Q1.0.8 γ-2 soft deprecation
-  refinement; emits stderr warning on `--cc-only` use; v0.8+
-  removes flag entirely).
+- [x] **Step 1.5** — Verification + closure work per locked
+  Path-3 reframe (substantively lighter than original 7-substep
+  ladder Step 1.5 framing per Q1.0.9; cost model accounting +
+  flag negation + soft deprecation all shipped at Step 1.4b
+  ahead-of-schedule under Path-3 reframe). Verification scan
+  complete (no orphaned --api-direct/apiDirect source refs; no
+  orphaned architecture-as-runtime-selector source refs; legacy
+  compat handling expected per Path-3 deprecation cycle).
+  cost_model atlas.json metadata persistence GAP identified —
+  Q1.0.5 δ preserved at runtime field; atlas.json metadata
+  persistence DEFERRED to v0.8+ per honest-scope
+  acknowledgment (atlas schema bump 1.3 → 1.4 + pipeline.ts
+  plumbing + exporter integration substantive scope; not v0.7
+  scope). Shipped 2026-05-10; commit `[this commit]`.
 - [ ] **Step 1.6** — Step 1 close (progress log batching for
   Steps 1.1-1.5 ships; cycle-execution observations captured
   per discipline #3 cadence).
@@ -398,6 +406,154 @@ timeline; not blocking).
 ## Progress log
 
 *Entries added in reverse-chronological order as steps ship.*
+
+### Step 1.5 shipped — 2026-05-10 (Verification + closure work + cost_model atlas.json metadata persistence gap → v0.8+)
+
+V0.7 Step 1.5 ships verification scan + closure work per locked
+Path-3 reframe. Substantively lighter than original 7-substep
+ladder Step 1.5 framing (cost model accounting + flag negation +
+soft deprecation all shipped at Step 1.4b ahead-of-schedule under
+Path-3 reframe). 1323/1323 tests PASS (baseline preserved from
+Step 1.4b); npm run build clean compile.
+
+| Substep | branch | commit | Notes |
+|---|---|---|---|
+| 1.5 verification + closure | main | [this commit] | Verification scan complete; cost_model atlas.json metadata persistence GAP identified (Q1.0.5 δ preserved at runtime; v0.8+ defer); no orphaned source references; test baseline preserved |
+
+#### Verification scan results (orphaned references)
+
+Grep scan for surfaces affected by Path-3 reframe at Step 1.4b:
+
+- **`--api-direct` / `apiDirect` references**: 3 files
+  - `STEP-PLAN-V0.7.md` (historical record entries; expected)
+  - `docs/adr/ADR-02-extraction-sole-api-caller.md` (historical
+    record in revision history; expected)
+  - `src/extraction/factory.ts` (routing comment reference to
+    legacy field-value handling; expected)
+  - **No orphaned source code references.**
+
+- **`VALID_ARCHITECTURES` + architecture-as-runtime-selector**: 3
+  files
+  - `src/extraction/factory.test.ts` (routing tests for legacy
+    field-value handling; expected)
+  - `src/extraction/extractors/claude-code-only.ts` (informational-
+    stub comment reference; expected)
+  - `src/config/parser.ts` (validateArchitecture function for
+    deprecation warning emission; expected)
+  - **No orphaned references; all legacy compat handling per
+    Path-3 deprecation cycle.**
+
+- **`cost_model` / `costModel` references**: 7 files (extractor
+  interface + 2 concrete extractors + their tests + factory.ts
+  + extractor.test.ts). All expected; runtime field flow.
+
+#### cost_model atlas.json metadata persistence GAP
+
+Per Q1.0.5 δ preserved lock (at Step 1.4b): cost_model metadata
+field useful for atlas.json provenance recording which entry
+point generated which extraction artifacts.
+
+**Step 1.5 verification surface:** atlas.json schema does NOT
+currently include cost_model field; CLI summary output does NOT
+surface cost_model; cost_model is currently runtime-only
+(carried by Extractor implementations in TypeScript; returned
+in ExtractionResult.costModel; not consumed by pipeline.ts
+atlas.json export or cli-runner.ts summary printer).
+
+**Path forward — v0.8+ DEFERRED per honest-scope acknowledgment.**
+Atlas.json metadata persistence integration requires:
+- Atlas schema bump (v1.3 → v1.4) to add cost_model field
+- pipeline.ts plumbing (cost_model from extractor result →
+  atlas-exporter writeAtlasJson call)
+- storage/atlas-exporter.ts integration (writes cost_model to
+  atlas.json metadata block)
+- storage/atlas-importer.ts integration (reads cost_model on
+  import)
+- storage/types.ts type expansion
+- Tests for round-trip + schema bump migration
+
+Substantive scope; not v0.7 launch-bearing. v0.8+ post-launch
+cycle absorbs alongside other methodology amendments.
+
+Q1.0.5 δ field PRESERVED at runtime: Extractor.costModel +
+ExtractionResult.costModel + Path-3 entry-point-determined
+cost-model semantics. Atlas.json metadata persistence DEFERRED
+to v0.8+. No silent gap; explicit honest-scope acknowledgment
+per discipline #4 inheritance.
+
+**v0.8+ candidate annotation added:** atlas.json cost_model
+metadata persistence (Q1.0.5 δ atlas.json wiring; deferred per
+Step 1.5 honest-scope verification).
+
+#### Test coverage baseline preserved
+
+1323/1323 tests PASS at Step 1.5 entry (baseline from Step
+1.4b). No additional tests added at Step 1.5 — verification
+scan revealed no gaps requiring new test coverage. Step 1.4b
+test additions covered Path-3 reframe + Skills mechanism +
+flag handling comprehensively.
+
+#### Cycle-execution observations final enumeration before Step 4 cycle close
+
+**11-class recursive catch-pattern observation enumeration** for
+v0.7+ ship-gate working-content-gap-inventory inheritance
+(composes v0.6 7-class + v0.7 4 additional classes):
+
+- **v0.6 1**: retrospective infrastructure-block claims drift
+- **v0.6 2**: retrospective document-relationship-anchor claims
+  drift
+- **v0.6 3**: retrospective outcome-bullet pattern consistency
+  drift
+- **v0.6 4**: retrospective version-progression narrative drift
+- **v0.6 5**: cross-surface URL/reference style consistency
+- **v0.6 6**: substrate-evolution drift class
+- **v0.6 7**: scope-doc-locked-but-not-shipped class
+- **v0.7 8**: Travis-product-vision-clarification surface class
+  (Step 1.2 3-mode reframing + Path (iii) collapse)
+- **v0.7 9**: Path-γ CLI subcommand decision substrate for
+  package-internals-via-CLI architectural pattern
+- **v0.7 10**: substrate-verification-at-each-substep-boundary
+  (architectural framing benefits at EACH substep boundary, not
+  just design-phase; Step 1.4b CLI-can't-bridge-to-Skills
+  surface)
+- **v0.7 11**: Step-N→Step-N+1 partial revert/refactor pattern
+  (substrate-evolution drift surfacing at substep boundary
+  expects partial revert/refactor cost at next substep;
+  healthy pattern not failure)
+
+V0.7 cycle surfaced 4 new pattern classes (8-11) — substantive
+architectural-graduation work per v0.6→v0.7 production
+transition framing. Pattern enumeration substrate for v0.8+
+inheritance.
+
+#### Step 1.5 unblock — Step 1.6 close
+
+Step 1.6 unblocked. Step 1 close commit batches progress log
+batching for Steps 1.0-1.5 + Step 1 cumulative outcome
+subsection + Step 2 unblock framing.
+
+Step 1 cumulative scope shipped:
+- Step 1.0: design adjudications (Q1.0.1-Q1.0.12 + 2
+  refinements)
+- Step 1.1: Q1.0.2 verification cleared (α Skills architecture)
+- Step 1.2: ADR-02 substantive graduation reframe (preserved
+  as historical record per Path-3 supersession at Step 1.4b)
+- Step 1.3: Strategy pattern wrapper module (skeleton stage)
+- Step 1.4a: Mode B full + cli-runner Strategy dispatch +
+  init/runner Q1.0.4 β-3 + Q1.0.8 3-flag wiring (preserved as
+  historical record per Path-3 supersession at Step 1.4b)
+- Step 1.4b: Path-3 entry-point-determined reframe + Skills
+  mechanism functional + ADR-02 re-amendment + 4 Q-lock
+  revisions
+- Step 1.5: verification + closure + cost_model atlas.json
+  metadata persistence gap → v0.8+ defer
+
+V0.7 PRIMARY scope (claude-code-only extraction path via
+entry-point-determined model) substantively complete pending
+Step 1.6 close commit. Step 2 SECONDARY 3-repo install/setup
+empirical verification unblocked.
+
+---
 
 ### Step 1.4b shipped — 2026-05-10 (Path-3 entry-point-determined reframe + Skills mechanism functional + ADR-02 re-amendment + 4 Q-lock revisions)
 
