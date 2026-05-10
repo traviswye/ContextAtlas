@@ -244,26 +244,60 @@ path-routing branch tests; cost model accounting verification).
 
 ---
 
-### Step 2 — SECONDARY 3-repo install/setup empirical verification
+### Step 2 — SECONDARY 2-repo install/setup empirical verification + Path 1 scope expansion (generate-adrs to v0.7 PRIMARY)
 
 **Scope.** v0.6 shipped pipeline-mechanics + smoke test (A4 +
 A6 + A7 + H5 + B13-flags integration; Step 4.5 close commit
 `64819a7`). v0.7 SECONDARY validates pipeline-mechanics against
 real-repo empirical surface beyond Step 4.4 smoke test scope per
-Q-pre-2 lock (3-repo target set; 2-repo fallback if variance
-exceeds timeline at Step 2.0 design phase).
+Q-pre-2 lock. **Path 1 scope expansion locked at Step 2.0:**
+generate-adrs feature added to v0.7 PRIMARY scope at both CLI
++ Skills surfaces per Path-3 entry-point-determined architecture
+inheritance. v0.7-SCOPE.md amendment per Q-pre-4 Path A pre-state
+amendment framework (Step 2.0.1 separate commit per Option B
+lock).
 
-**Substeps** (firmed at Step 2.0 per Step N.0 cadence convention):
+**Target repos locked at Step 2.0** (Q2.0.1):
+- **Slot 1:** ContextAtlas-on-itself dogfood (operational
+  baseline; 33 ADRs; verifies extraction-given-substrate path)
+- **Slot 2:** Rich (Textualize/rich); Medium Python codebase
+  + no formal ADRs + rich docstrings + clean architecture;
+  verifies cold-start path (generate-adrs → extraction
+  end-to-end). Alternative candidates if Rich doesn't fit at
+  Step 2.2 entry: Typer OR Pydantic
+- **Slot 3:** DROPPED per honest-scope-acknowledgment;
+  deferred to v0.8+ post-launch cycle
 
-- [ ] **Step 2.0** — Design adjudications (Q2.0.1-Q2.0.3+ locks;
-  3-repo target firm per Q-pre-2; verification protocol;
-  acceptance criteria; friction-observation handling protocol).
-- [ ] **Step 2.1+** — Verification substeps (firm at 2.0 design
-  phase; per-repo verification execution; friction observation
-  capture).
-- [ ] **Step 2.N** — Step 2 close (verification outcome
-  documentation; v1.0 ship-gate criterion #2 closure assessment;
-  launch-blocking issues triaged per Q2.0.3 protocol).
+**Substeps** (firmed at Step 2.0 per Q2.0.4 6-substep ladder lock
++ Path 1 scope expansion):
+
+- [x] **Step 2.0** — Design adjudications (Q2.0.1-Q2.0.4 + Q2.0.X
+  locks; 2-repo target firm + 3rd slot dropped per honest-scope;
+  4-phase verification protocol; 3-bucket friction-observation
+  triage; 6-substep ladder; CLI-vs-Skill equivalence protocol;
+  Path 1 scope expansion to v0.7 PRIMARY).
+- [ ] **Step 2.1** — ContextAtlas-on-itself verification
+  (operational baseline; 4-phase protocol; gate before Step 2.2
+  cold-start verification).
+- [ ] **Step 2.2** — Rich cold-start verification cluster:
+  - **Step 2.2.a** — generate-adrs feature implementation (CLI
+    subcommand + Skills file + tests; Q2.2.a.1-Q2.2.a.4
+    adjudications surface inline at substep entry)
+  - **Step 2.2.b** — Rich cold-start verification using
+    just-implemented generate-adrs (4-phase protocol +
+    generate-adrs cold-start + extraction-after-generation
+    end-to-end)
+- [ ] **Step 2.3** — CLI-vs-Skill extraction equivalence
+  verification per Q2.0.X protocol (applied to extraction
+  across target repos with ADRs OR post-generate-adrs at Rich;
+  structural-match-first + claim-text-fuzzy + claim-count
+  sanity-check).
+- [ ] **Step 2.4** — CLI-vs-Skill generate-adrs equivalence
+  verification (NEW substep per Path 1 scope expansion;
+  parallels Q2.0.X protocol applied to generation feature).
+- [ ] **Step 2.5** — Step 2 close (cumulative outcome; v1.0
+  ship-gate criterion #2 closure; launch-blocking issues
+  triaged per Q2.0.3 protocol).
 
 **Unblocks.** Step 4 cycle-close evaluations (Step 2 outcome
 surfaces v1.0 ship-gate criterion #2 closure status; Tier 3
@@ -411,6 +445,137 @@ timeline; not blocking).
 ## Progress log
 
 *Entries added in reverse-chronological order as steps ship.*
+
+### Step 2.0 shipped — 2026-05-10 (Step 2 SECONDARY design adjudications + Path 1 generate-adrs scope expansion to v0.7 PRIMARY)
+
+V0.7 Step 2.0 ships Step 2 SECONDARY design adjudications per
+Step N.0 cadence convention inheritance from v0.6 + Step 1.
+**Substantive Path 1 scope expansion locked** at Step 2.0
+design surface per Travis adjudication: generate-adrs feature
+added to v0.7 PRIMARY scope at both CLI + Skills surfaces (Path-3
+entry-point-determined architecture inheritance). v0.7-SCOPE.md
+amendment captured via Q-pre-4 Path A pre-state amendment
+framework at separate Step 2.0.1 commit (Option B lock; cleanest
+audit trail).
+
+| Substep | branch | commit | Notes |
+|---|---|---|---|
+| 2.0 design adjudications | main | [this commit] | Q2.0.1-Q2.0.4 + Q2.0.X locks captured; 2-repo target firm (ContextAtlas-on-itself + Rich; 3rd slot dropped per honest-scope); Path 1 generate-adrs scope expansion to v0.7 PRIMARY; 6-substep ladder revised; Q2.2.a.1-Q2.2.a.4 pre-registered for Step 2.2.a; v0.7-SCOPE.md amendment deferred to Step 2.0.1 separate commit per Option B |
+
+#### Q2.0.1 lock — 2-repo target firm + 3rd slot dropped
+
+**Slot 1 — ContextAtlas-on-itself dogfood.** `C:/CodeWork/contextatlas`. Operational baseline; 33 ADRs; verifies extraction-given-substrate path. No additional selection needed.
+
+**Slot 2 — Rich (Textualize/rich).** Medium Python codebase + no formal ADRs + rich docstrings + clean architecture; not used at v0.6 Stream B; verifies cold-start path (generate-adrs → extraction end-to-end). Alternative candidates if Rich doesn't fit at Step 2.2 entry: Typer OR Pydantic. Travis browse + final confirmation at Step 2.2 entry.
+
+**Slot 3 — DROPPED.** Travis personal project + larger third repo deferred to v0.8+ post-launch cycle per honest-scope-acknowledgment. v0.7 SECONDARY ships 2-repo verification scope.
+
+#### Q2.0.2 lock — 4-phase verification protocol per dev draft
+
+LOCK per dev recommendation:
+- **Phase 1 Install & init**: fresh checkout + install + `contextatlas init` + UX gap capture
+- **Phase 2 Doctor**: `contextatlas doctor` deep LSP health check + config validation pass criteria
+- **Phase 3 Index (CLI Mode B)**: `contextatlas index` Anthropic API direct + extraction error capture + cost vs cost-priors comparison
+- **Phase 4 Smoke test query**: MCP tool invocation against atlas + query latency + result quality
+
+SECONDARY closure criteria: all repos complete Phases 1-4 without launch-blocking errors; ContextAtlas-on-itself MUST complete cleanly (operational baseline; regression-test gate); ≥1 of 2 repos clean acceptable (other repo friction tolerable IF documented as v0.8+ candidate per Q2.0.3).
+
+#### Q2.0.3 lock — 3-bucket friction-observation triage protocol per dev draft
+
+LOCK 3-bucket triage:
+- **Launch-blocking-fix-now**: user-trust impact at v1.0 launch + small fix scope (~50-100 LOC + tests) + actionable → fix inline at Step 2.X verification substep + regression test
+- **v0.8+ candidate**: non-launch-blocking + valid feedback + larger scope OR design-question → document at v0_8-HANDOFF.md (drafted at Step 4 cycle-close per v0.6→v0.7 inheritance pattern)
+- **Honest-scope-acknowledgment**: limitation discovered + not fixable in v0.7 scope + worth user-facing documentation → update relevant doc (README "Known Limitations" OR DESIGN.md OR ADR amendment); ship with explicit acknowledgment per discipline #4
+
+Triage discipline at Step 2 substep boundary: each substep close enumerates surfaced issues + bucket assignments + dispositions.
+
+#### Q2.0.4 lock — 6-substep ladder per Path 1 scope expansion
+
+LOCK 6-substep ladder revised per Path 1 scope expansion:
+- 2.0 design (this substep)
+- 2.1 ContextAtlas-on-itself verification (operational baseline)
+- 2.2 Rich cold-start verification cluster (2.2.a generate-adrs feature implementation + 2.2.b cold-start verification using just-implemented feature)
+- 2.3 CLI-vs-Skill extraction equivalence verification per Q2.0.X
+- 2.4 CLI-vs-Skill generate-adrs equivalence verification (NEW per Path 1)
+- 2.5 Step 2 close
+
+Substep cluster framing for 2.2 (2.2.a + 2.2.b) preserves numbering without re-numbering ladder. Q-pre-4 Path A pre-state amendment framework applies — substep ladder shape shift BEFORE substantive Step 2.1+ work shipped against old scope.
+
+#### Q2.0.X lock — CLI-vs-Skill extraction equivalence verification protocol per dev draft
+
+LOCK per dev (a)-(d) recommendation:
+- **(a) Equivalence-enough criteria**: structural-match-first (≥99% per-claim schema compliance) + claim-text-fuzzy (Levenshtein ≤30% word-diff OR cosine similarity ≥0.7) + claim-count sanity-check (±25% per source doc)
+- **(b) Stochastic variance**: n=2 trials per surface per target repo; paired comparison
+- **(c) Discrepancy triage**: substantive disagreement → investigate root cause; minor wording → accept-as-noise; path-specific failure modes → honest-scope-acknowledgment documentation
+- **(d) Launch-doc framing**: "Both surfaces produce equivalent atlas.json at [X]% structural-match rate" grounded in empirical verification; capability-gaps per surface documented honestly
+
+Methodology inheritance from v0.6 F1 atlas-substrate-version control discipline: comparison MUST hold atlas substrate version constant (paired same-source-doc extractions); not pre-existing atlas-version comparisons.
+
+#### SUBSTANTIVE Path 1 scope expansion — generate-adrs to v0.7 PRIMARY
+
+Per Travis adjudication at Step 2.0 design surface: generate-adrs feature added to v0.7 PRIMARY scope at BOTH surfaces (Path 1 Option C):
+- **CLI surface**: `contextatlas generate-adrs` subcommand (Anthropic API direct generation; pay-per-use cost model)
+- **Claude Code Skills surface**: `/generate-adrs` slash command (`.claude/skills/generate-adrs/SKILL.md`; subscription-bounded generation; subscription-bounded cost model)
+
+Architectural framing: generate-adrs follows Path-3 entry-point-determined architecture established at Step 1.4b. Two entry points; each uses appropriate cost model for invocation context. Parallel feature to extraction; same architectural primitives (Strategy pattern + Path-γ CLI prompt subcommand + Skills mechanism) apply.
+
+**Substantive rationale for scope expansion**: Real users at v1.0 launch will mostly NOT have ADRs in their codebases. ContextAtlas without ADR-generation tooling is incomplete for the launch user journey. Step 2 SECONDARY empirical verification surfaced the gap at design surface (cold-start path consideration); scope expansion BEFORE substantive Step 2 work shipped honors Q-pre-4 Path A pre-state amendment framework.
+
+Prompt-engineering substantive work at Step 2.2.a generate-adrs implementation: GENERATE_ADRS_PROMPT canonical prompt development is substantive interpretive work (matches /index-atlas SKILL.md content surface pattern at Step 1.4b). Prompt drafted inline at Step 2.2.a surface for Travis review per discipline #3 cadence.
+
+#### Q2.2.a.1-Q2.2.a.4 pre-registered for Step 2.2.a implementation surface
+
+**Q2.2.a.1 — Module organization for generate-adrs feature:**
+- (α) NEW `src/generation/` directory parallel to `src/extraction/` — clean architectural separation; future generation-related features have natural home
+- (β) Extend `src/extraction/` to include generation-mode — single Strategy interface; mode field distinguishes
+- (γ) Skills-only at v0.7; CLI surface deferred OR minimal
+- **Dev lean (α)** per Strategy pattern factory clean separation precedent
+
+**Q2.2.a.2 — Path-γ CLI subcommand for generate-adrs prompt loading:**
+- Mirror `cli-show-prompt` subcommand pattern: `contextatlas show-generate-prompt` outputs GENERATE_ADRS_PROMPT canonical constant
+- SKILL.md at `.claude/skills/generate-adrs/SKILL.md` invokes `` !`contextatlas show-generate-prompt` `` for prompt loading
+- **Dev lean (locked)** per Path-γ architectural pattern from Step 1.4b
+
+**Q2.2.a.3 — Strategy pattern reuse vs parallel:**
+- (α) Reuse existing Extractor interface; concrete extractors handle both extraction + generation via mode field
+- (β) Parallel Generator interface + AnthropicAPIDirectGenerator + ClaudeCodeOnlyGenerator concrete implementations
+- (γ) Generator extends Extractor interface (inheritance)
+- **Dev lean (β) parallel interface.** Cleaner separation; extraction != generation semantically; reuse via factory pattern (shared CLI subcommand dispatch infrastructure) without forcing single interface to cover both feature scopes
+
+**Q2.2.a.4 — Existing v0.6 substrate verified at Step 2.0**: No `research/prompts/` directory exists. EXTRACTION_PROMPT lives at `src/extraction/prompt.ts`. Generate-adrs follows same pattern: GENERATE_ADRS_PROMPT at `src/generation/prompt.ts` per Q2.2.a.1 lean α. No existing prompt-related infrastructure to reuse; clean greenfield at Step 2.2.a implementation.
+
+#### v0.7-SCOPE.md amendment cadence — Option B lock
+
+LOCK Option B: separate v0.7-SCOPE.md amendment commit at Step 2.0.1 (after Step 2.0 design adjudications + BEFORE Step 2.1 work begins). Cleanest audit trail; substantively significant PRIMARY scope expansion warrants dedicated commit per discipline #3 cadence applied to scope-doc amendments. Matches v0.6 Step 8.2 v0_7-HANDOFF.md amendment pattern (Path α handoff inheritance).
+
+v0.7-SCOPE.md amendment scope at Step 2.0.1:
+- §2 PRIMARY scope: add generate-adrs feature alongside extraction-via-Skills (both share Path-3 entry-point-determined architecture)
+- §4 Item-level descriptions: add generate-adrs CLI + Skills implementation detail
+- §5 Substep ladder: Step 2 SECONDARY ladder revised per Q2.0.4 6-substep lock
+- §6 Risks: add risk for generate-adrs cold-start scope creep + prompt-engineering complexity
+- §7 Ambiguity adjudications: capture Path 1 lock + generate-adrs architectural pattern follow-on
+- §8 Success criteria: add generate-adrs functional criterion + 2-surface equivalence criterion
+- §9 Cost framing: revise envelope estimate for generate-adrs additional work (~$10-20 additional cost at SECONDARY verification phase)
+- §10 Rescope conditions: add generate-adrs scope creep trigger
+- §Revision history: 2026-05-10 entry capturing Path 1 scope expansion rationale + empirical-signal-deferral-rejected framing + Travis adjudication record
+
+ADR-02 minor refinement OR separate amendment captures generate-adrs as research-time / index-time pipeline parallel to extraction; both honor query-time-no-API-calls invariant; Permitted-modules invariant covers both `src/extraction/` + `src/generation/` (or whichever module organization emerges at Step 2.2.a implementation phase per Q2.2.a.1 lock).
+
+#### Cycle-execution observation 12 — empirical-signal-deferral pattern requires verification protocol that actually exercises the scope-in-question
+
+NEW 12th recursive catch-pattern observation class. Step 2.0 surfaced Path 4 (defer generate-adrs scope decision to Step 2 empirical signal) as adjudication option. Analysis revealed Path 4 doesn't generate informative signal without changing Step 2.2 target repo to cold-start path (a repo with ADRs verifies extraction-given-substrate, not generate-adrs need; deferring to such verification generates uninformative signal about the deferred decision).
+
+**Generalizable v0.7+ inheritance pattern:** when considering "defer scope decision to empirical signal" path, verify the verification protocol actually generates the signal needed to make the decision. If verification target doesn't exercise the scope-in-question, empirical signal is uninformative; commit-now or revise verification protocol to generate signal.
+
+Composes with 11-class observation enumeration from Step 1.6 close = **12-class enumeration at Step 2.0 entry** for v0.7+ ship gate working-content-gap-inventory + v0.8+ inheritance.
+
+#### Step 2.0 unblock — Step 2.0.1 v0.7-SCOPE.md amendment commit
+
+Step 2.0.1 (v0.7-SCOPE.md amendment per Option B lock) unblocked. Substantive scope-doc amendment captures Path 1 scope expansion + Step 2 substep ladder revision + envelope expansion + Q2.2.a.1-Q2.2.a.4 pre-registration substrate.
+
+After Step 2.0.1 commit + push, Step 2.1 ContextAtlas-on-itself verification work begins (operational baseline; 4-phase protocol; gate before Step 2.2 cold-start verification).
+
+---
 
 ### Step 1.6 shipped — 2026-05-10 (Step 1 PRIMARY scope close + Step 2 SECONDARY unblock)
 
