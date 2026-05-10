@@ -59,23 +59,14 @@ export interface InitRunOptions {
   /** Optional explicit config file path (per ADR-08 inheritance). */
   readonly configFile?: string | null;
   /**
-   * `--cc-only` boolean opt-in (B13-flags per v0.6 Q5 lock + Q4.0.5
-   * + Q4.0.11 locks; revised at v0.7 Step 1.4a per Q1.0.8 3-flag
-   * user-choice lock). True → architecture = "claude-code-only"
-   * (Mode A; also default at v0.7+ per Q1.0.4 β-3 lock). NOT
-   * deprecated at v0.7+; remains meaningful as explicit Mode A
-   * selector.
+   * `--cc-only` boolean opt-in (B13-flags at v0.6; deprecated at
+   * v0.7+ per Path-3 entry-point-determined architecture per ADR-02
+   * v0.7 Step 1.4b amendment). CLI cannot bridge to Skills
+   * mechanism; flag has no functional effect at v0.7+; init emits
+   * stderr redirect warning to `/index-atlas` Claude Code skill.
+   * Flag removed at v0.8+ per honest deprecation cycle.
    */
   readonly ccOnly?: boolean;
-  /**
-   * `--api-direct` boolean opt-in (v0.7 Step 1.4a per Q1.0.8 3-flag
-   * user-choice lock + Q1.0.4 β-3 default flip). True → architecture
-   * = "anthropic-api-direct" (Mode B; explicit opt-out from default
-   * claude-code-only path). Mutually exclusive with --cc-only at
-   * config-write time (last-flag-wins semantics; explicit user
-   * intent honored).
-   */
-  readonly apiDirect?: boolean;
   /**
    * `--observe` boolean opt-in (v0.6 Step 6.2 / Q6.0.4 hybrid wiring +
    * ADR-20 cohort observability contract). True → scaffold writes
@@ -183,20 +174,25 @@ export async function runInitSubcommand(
   const runIndex =
     options.runIndexSubcommandOverride ?? runIndexSubcommand;
 
-  // Architecture choice from 3-flag user-choice wiring per v0.7
-  // Step 1.4a Q1.0.8 lock + Q1.0.4 β-3 default flip:
-  // - --api-direct forces Mode B (writes "anthropic-api-direct")
-  // - --cc-only forces Mode A (writes "claude-code-only"; also
-  //   default at v0.7+ per β-3 lock)
-  // - flag-absence selects default Mode A (writes "claude-code-only"
-  //   per β-3 absent-means-default + init-writes-explicit-default
-  //   discipline)
-  const architecture:
-    | "claude-code-only"
-    | "anthropic-api-direct" =
-    options.apiDirect === true
-      ? "anthropic-api-direct"
-      : "claude-code-only";
+  // Architecture field deprecated at v0.7+ per Path-3 entry-point-
+  // determined architecture (ADR-02 v0.7 Step 1.4b amendment).
+  // Init no longer writes architecture field to scaffolded config;
+  // extraction path determined by invocation context (CLI = API
+  // direct; /index-atlas Skills = subscription-bounded).
+  //
+  // --cc-only flag handling: emit stderr redirect warning + no-op
+  // (no architecture field written regardless of flag value).
+  if (options.ccOnly === true) {
+    process.stderr.write(
+      "Warning: --cc-only is deprecated at v0.7+ and has no effect. " +
+        "Subscription-bounded extraction runs via the /index-atlas " +
+        "Claude Code skill, not via the CLI; the CLI invocation always " +
+        "uses Anthropic API direct extraction. To extract via " +
+        "subscription-bounded Claude Code session tokens, invoke " +
+        "/index-atlas from your Claude Code session. Flag removed at " +
+        "v0.8+. See ADR-02 v0.7 amendment.\n",
+    );
+  }
 
   // Step 4.3 detect-then-scaffold reorder per Q4.3.4 lock.
   const detectedLanguages = detectLangs(options.configRoot);
@@ -205,7 +201,6 @@ export async function runInitSubcommand(
 
   const scaffoldResult = writeConfigScaffold({
     configRoot: options.configRoot,
-    architecture,
     languages,
     observe: options.observe === true,
   });
@@ -214,7 +209,6 @@ export async function runInitSubcommand(
       ? `init: config scaffold created at ${scaffoldResult.path}`
       : `init: existing config preserved at ${scaffoldResult.path}`,
     {
-      architecture,
       languages: [...languages],
       observability: options.observe === true,
     },

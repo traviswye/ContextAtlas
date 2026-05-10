@@ -1,28 +1,37 @@
 /**
  * Factory: resolve extraction Extractor instance from config per
- * Path (iii) 2-mode collapse + 1 legacy alias deprecation cycle
- * (ADR-02 v0.7 amendment 2026-05-09).
+ * ADR-02 v0.7 Step 1.4b Path-3 entry-point-determined model.
  *
- * Three config values accepted:
- *   - "claude-code-only" → ClaudeCodeOnlyExtractor (Mode A)
- *   - "anthropic-api-direct" → AnthropicAPIDirectExtractor (Mode B)
- *   - "anthropic-api-claude-code" (legacy) →
- *     AnthropicAPIDirectExtractor + stderr deprecation warning
- *     emission per Q1.0.8 lock; alias removed at v0.8+
+ * Under Path-3 entry-point-determined architecture:
+ *   - CLI invocation (`contextatlas index`) → always
+ *     AnthropicAPIDirectExtractor (canonical CLI behavior;
+ *     pay-per-use cost model)
+ *   - Claude Code Skills invocation (`/index-atlas` slash command)
+ *     → Skills mechanism handles extraction (no TypeScript class
+ *     dispatch; not factory's concern)
  *
- * Default: "claude-code-only" per Q1.0.4 β-3 lock (absent-means-
- * default; init writes explicit-default).
+ * This factory ONLY routes CLI-invoked extraction. Three config
+ * field value scenarios:
+ *   - Absent: → AnthropicAPIDirectExtractor (CLI default)
+ *   - "anthropic-api-direct": → AnthropicAPIDirectExtractor
+ *     (redundant; matches CLI default; parser emits deprecation
+ *     warning)
+ *   - "anthropic-api-claude-code" (legacy alias): →
+ *     AnthropicAPIDirectExtractor (legacy semantically maps to
+ *     CLI default; parser emits deprecation warning)
+ *   - "claude-code-only": → ClaudeCodeOnlyExtractor informational-
+ *     stub (emits redirect to /index-atlas Skills; parser emits
+ *     deprecation warning)
  *
- * Verification Item 2 resolution at Step 1.3: parser layer validates
- * architecture field non-empty + valid-set membership
- * (validateArchitecture in src/config/parser.ts); factory trusts
- * parser-validated values (no defensive empty-string handling).
+ * Architecture field deprecation warning emitted at parser layer
+ * (validateArchitecture in src/config/parser.ts) for all three
+ * field values; factory does not emit warnings itself.
  *
- * Verification Item 1 resolution at Step 1.3: no once-per-process
- * guard at v0.7 — both `contextatlas index` + `contextatlas init`
- * (smoke test path) trigger extraction; per-invocation warning
- * emission appropriate; if production scenarios surface noise, add
- * guard at v0.8+.
+ * Lock chain: Q1.0.4 dropped (no default-on-config-field needed;
+ * CLI is always API direct); Q1.0.8 simplified (--cc-only no-op +
+ * warning; --api-direct dropped); Q1.0.10 simplified (single CLI-
+ * invoked extractor + ClaudeCodeOnlyExtractor stub for legacy
+ * paths); Q1.0.5 preserved (cost_model metadata in atlas.json).
  */
 
 import type { ContextAtlasConfig } from "../types.js";
@@ -31,46 +40,20 @@ import { AnthropicAPIDirectExtractor } from "./extractors/anthropic-api-direct.j
 import { ClaudeCodeOnlyExtractor } from "./extractors/claude-code-only.js";
 import type { Extractor } from "./extractor.js";
 
-/**
- * Stderr write seam for tests. Tests inject a capture function;
- * production uses process.stderr.write.
- */
-export interface FactoryDeps {
-  writeStderr?: (chunk: string) => void;
-}
+export function getExtractor(config: ContextAtlasConfig): Extractor {
+  const architecture = config.architecture;
 
-const DEFAULT_DEPS: Required<FactoryDeps> = {
-  writeStderr: (chunk: string): void => {
-    process.stderr.write(chunk);
-  },
-};
-
-export const LEGACY_ALIAS_DEPRECATION_WARNING =
-  "Warning: architecture: \"anthropic-api-claude-code\" is deprecated " +
-  "alias for \"anthropic-api-direct\"; will be removed at v0.8+; " +
-  "please update .contextatlas.yml\n";
-
-export function getExtractor(
-  config: ContextAtlasConfig,
-  deps: FactoryDeps = {},
-): Extractor {
-  const writeStderr = deps.writeStderr ?? DEFAULT_DEPS.writeStderr;
-  const architecture = config.architecture ?? "claude-code-only";
-
-  if (architecture === "anthropic-api-claude-code") {
-    writeStderr(LEGACY_ALIAS_DEPRECATION_WARNING);
+  // Absent OR redundant API-direct setting OR legacy alias all map
+  // to the canonical CLI extractor.
+  if (
+    architecture === undefined ||
+    architecture === "anthropic-api-direct" ||
+    architecture === "anthropic-api-claude-code"
+  ) {
     return new AnthropicAPIDirectExtractor();
   }
 
-  if (architecture === "anthropic-api-direct") {
-    return new AnthropicAPIDirectExtractor();
-  }
-
-  if (architecture === "claude-code-only") {
-    return new ClaudeCodeOnlyExtractor();
-  }
-
-  // Type-level exhaustiveness — if union expands, TS catches.
-  const _exhaustive: never = architecture;
-  throw new Error(`Unknown architecture value: ${String(_exhaustive)}`);
+  // architecture === "claude-code-only" → informational-stub
+  // (redirect message + zero-counts result per Q1.0.10 (b))
+  return new ClaudeCodeOnlyExtractor();
 }

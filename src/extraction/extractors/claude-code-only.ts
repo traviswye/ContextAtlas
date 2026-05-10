@@ -1,18 +1,20 @@
 /**
- * ClaudeCodeOnlyExtractor — Mode A per ADR-02 v0.7 amendment +
- * Path (iii) 2-mode collapse lock + Q1.0.2 α Skills architecture
- * verification (Step 1.1 commit dc81f49).
+ * ClaudeCodeOnlyExtractor — informational-stub per Q1.0.10 (b)
+ * sub-lock at v0.7 Step 1.4b Path-3 reframe.
  *
- * Skeleton at Step 1.4a (interface compliance only); full Skills
- * functional implementation lands at Step 1.4b at canonical location
- * `.claude/skills/index-atlas/SKILL.md` per Q1.0.2 sub-shape lock +
- * Path-γ CLI subcommand for extraction prompt loading
- * (`contextatlas show-prompt`).
+ * Under Path-3 entry-point-determined architecture (ADR-02 v0.7
+ * Step 1.4b amendment), Skills mechanism IS the Mode A entry
+ * point; no separate TypeScript class needed to wrap it. CLI
+ * cannot bridge to Skills running in Claude Code session.
  *
- * Cost model: "subscription-bounded" (Claude Code session tokens;
- * $0 per-call). Extraction 100% contained to Claude Code session;
- * does NOT import @anthropic-ai/sdk; permitted-modules invariant
- * preserved per ADR-02 §Decision.
+ * This stub covers the legacy alias deprecation path: if user
+ * sets `architecture: "anthropic-api-claude-code"` (legacy alias)
+ * OR `architecture: "claude-code-only"` in config, OR invokes
+ * `--cc-only` flag at CLI, factory routes here and we emit a
+ * redirect message + zero-counts result.
+ *
+ * Cost model: "subscription-bounded" preserved per Q1.0.5 δ lock
+ * (cost_model metadata field useful for atlas.json provenance).
  */
 
 import type {
@@ -25,15 +27,36 @@ export class ClaudeCodeOnlyExtractor implements Extractor {
   readonly costModel = "subscription-bounded" as const;
 
   async extract(_context: ExtractorContext): Promise<ExtractionResult> {
-    throw new Error(
-      "ClaudeCodeOnlyExtractor implementation lands at Step 1.4b " +
-        "(Skills mechanism wiring; .claude/skills/index-atlas/SKILL.md " +
-        "content + bundled helper scripts + Path-γ CLI subcommand " +
-        "`contextatlas show-prompt` for canonical extraction prompt " +
-        "loading). Step 1.4a ships interface skeleton + Mode B full " +
-        "implementation only. To use claude-code-only path at v0.7+ " +
-        "ship, wait for Step 1.4b commit; in the interim, set " +
-        "architecture: anthropic-api-direct in .contextatlas.yml.",
+    process.stderr.write(
+      "ClaudeCodeOnlyExtractor (Mode A) extraction runs via " +
+        "/index-atlas Claude Code skill, not via CLI.\n" +
+        "Invoke /index-atlas from your Claude Code session to extract " +
+        "atlas.json (subscription-bounded; consumes session tokens; no " +
+        "Anthropic API key required).\n" +
+        "See ADR-02 v0.7 amendment §Decision for entry-point-determined " +
+        "extraction architecture.\n",
     );
+    return {
+      pipelineResult: {
+        filesExtracted: 0,
+        filesUnchanged: 0,
+        filesDeleted: 0,
+        claimsWritten: 0,
+        symbolsIndexed: 0,
+        unresolvedCandidates: 0,
+        unresolvedFrontmatterHints: 0,
+        extractionErrors: [],
+        atlasExported: false,
+        wallClockMs: 0,
+        apiCalls: 0,
+        inputTokens: 0,
+        outputTokens: 0,
+        costUsd: 0,
+        gitCommitsIndexed: 0,
+        extractedAtSha: null,
+        unresolvedDetails: [],
+      },
+      costModel: this.costModel,
+    };
   }
 }

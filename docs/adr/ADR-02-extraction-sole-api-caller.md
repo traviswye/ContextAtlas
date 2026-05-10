@@ -61,82 +61,75 @@ below.
 
 ## Decision
 
-### Research-time / index-time extraction (two substantive paths; user-choice configuration)
+### Research-time / index-time extraction (two entry points; entry-point-determined cost model)
 
 V0.7+ ContextAtlas graduates from research project to production tool
 per launch-bearing reframe (Travis pivot at v0.6 Step 7.5). The
 research-cycle SOLE-CALLER invariant (above) graduates to v0.7+
-production-cycle user-choice configuration.
+production-cycle entry-point-determined architecture.
 
-Two substantive extraction paths now coexist:
+Two extraction entry points coexist:
 
-1. **Anthropic API direct path** (existing v0.6 behavior; renamed at
-   v0.7 for naming clarity). The extraction pipeline (`src/extraction/`)
-   and the v0.5 grading harness (`src/grading/`) are the only modules
-   in the codebase permitted to import from `@anthropic-ai/sdk` or
-   otherwise call the Anthropic API directly. Both are research-time /
-   index-time only. Cost model: pay-per-use (Anthropic API direct
-   billing). Standalone CLI; Anthropic API key required.
+1. **Anthropic API direct path via CLI** (existing v0.6 behavior;
+   preserved at v0.7 as canonical CLI behavior). The extraction
+   pipeline (`src/extraction/`) and the v0.5 grading harness
+   (`src/grading/`) are the only modules in the codebase permitted
+   to import from `@anthropic-ai/sdk` or otherwise call the
+   Anthropic API directly. Both are research-time / index-time
+   only. Cost model: pay-per-use (Anthropic API direct billing).
+   Invocation: `contextatlas index` CLI subcommand. Suitable for
+   standalone CLI usage, CI/CD integration, scripting,
+   non-Claude-Code workflows.
 
-2. **Claude Code Skills path** (new at v0.7). `.claude/skills/index-
-   atlas/SKILL.md` runs extraction inside a user's Claude Code session,
-   consuming subscription-bounded session tokens rather than direct
-   Anthropic API tokens. The Skills extraction path does NOT import
-   from `@anthropic-ai/sdk` (executes within Claude Code session
-   context via Bash + Edit + Read + Write tools); the existing
-   permitted-modules invariant for `@anthropic-ai/sdk` imports is
-   preserved. Cost model: subscription-bounded ($0 per-call;
-   consumes Claude Code session tokens). Extraction 100% contained
-   to Claude Code session; no Anthropic API key required.
+2. **Claude Code Skills path via slash command** (new at v0.7).
+   `.claude/skills/index-atlas/SKILL.md` runs extraction inside a
+   user's Claude Code session, consuming subscription-bounded
+   session tokens rather than direct Anthropic API tokens. The
+   Skills extraction path does NOT import from `@anthropic-ai/sdk`
+   (executes within Claude Code session context via Bash + Edit +
+   Read + Write tools); the existing permitted-modules invariant
+   for `@anthropic-ai/sdk` imports is preserved. Cost model:
+   subscription-bounded ($0 per-call; consumes Claude Code session
+   tokens). Invocation: `/index-atlas` Claude Code slash command.
+   Suitable for users actively working in Claude Code.
 
 Both extraction paths are research-time / index-time mechanisms; both
 honor the query-time invariant below.
 
-### User-choice configuration
+### Entry-point-determined cost model (no config-field user-choice)
 
-Three config values accepted at v0.7+; two substantive runtime modes
-+ one legacy deprecated alias:
+Extraction has two entry points; each entry point uses the
+appropriate cost model for its invocation context:
 
-- **`architecture: "claude-code-only"`** → Claude Code Skills path
-  (Mode A; subscription-bounded; new at v0.7; extraction 100%
-  contained to Claude Code session; no Anthropic API key required).
-- **`architecture: "anthropic-api-direct"`** → Anthropic API direct
-  path (Mode B substantive name; preserves v0.1-v0.6 extraction
-  behavior; renamed at v0.7 for naming clarity; pay-per-use cost
-  model; standalone CLI; Anthropic API key required).
-- **`architecture: "anthropic-api-claude-code"`** → deprecated legacy
-  alias for `"anthropic-api-direct"` (backward-compat for v0.6 users
-  with config files using legacy name; stderr deprecation warning
-  emitted on config-parse: `"anthropic-api-claude-code is deprecated
-  alias for anthropic-api-direct; will be removed at v0.8+; please
-  update .contextatlas.yml"`; alias removed at v0.8+ per honest
-  deprecation cycle).
+1. **CLI invocation (`contextatlas index`)**: Anthropic API direct
+   extraction. Pay-per-use cost model. Suitable for standalone CLI
+   usage, CI/CD integration, scripting, non-Claude-Code workflows.
+   Users with Anthropic API access OR teams preferring per-call
+   billing semantics.
 
-Default at v0.7+: `claude-code-only` (Mode A; per v0.7 cycle Q1.0.4
-β-3 hybrid lock; absent-means-default; init writes explicit-default).
+2. **Claude Code session invocation (`/index-atlas` slash command)**:
+   subscription-bounded extraction inside Claude Code session
+   context. Suitable for users actively working in Claude Code.
+   Users with Claude Code subscriptions; no Anthropic API key
+   required.
 
-CLI flag overrides preserve user-choice at runtime:
-- `--cc-only` forces Mode A (claude-code-only)
-- `--api-direct` forces Mode B (anthropic-api-direct)
-- flag-absence selects default per config OR claude-code-only if no
-  config (β-3 absent-means-default)
+User chooses surface; surface determines cost model; no config-
+field user-choice on a binary. The `architecture` config field at
+`.contextatlas.yml` deprecated at v0.7+; field removed at v0.8+.
+Legacy v0.6 configs with `architecture` field set continue parsing
+cleanly with stderr deprecation warning emission per Q1.0.8 lock.
 
-Users may choose based on:
-
-- **Cost framing preference.** Subscription-bounded (Mode A; flat-
-  rate) vs explicit per-call (Mode B; pay-per-use semantics).
-- **Workflow integration.** Claude Code session integration (Mode A)
-  vs standalone CLI (Mode B).
-- **Rate limit envelope preferences.** Different rate-limit headroom
-  considerations under each cost model.
-- **Anthropic API availability / account configuration.** Users
-  without direct Anthropic API access can use Mode A; users with API
-  access can choose either mode.
-
-ContextAtlas suggests defaults (Mode A claude-code-only at v0.7+),
-but path selection ultimately remains user configuration. The system
-supports user-choice; it does NOT enforce research-methodological
-invariant on production users.
+**Architectural rationale (CLI cannot bridge to Skills):** Skills
+execute inside Claude Code session tools (Bash + Edit + Read +
+Write); the `contextatlas` CLI binary is a separate sub-process
+spawned by user OR by Claude Code as tool invocation. CLI cannot
+directly invoke Skills running in Claude Code session. v0.6 + early
+v0.7 design phases captured "user-choice between modes on config
+field" framing; v0.7 Step 1.4b implementation surfaced the
+architectural reality that the choice CLI claimed to offer wasn't
+mechanically supported. Path-3 entry-point-determined model honors
+this architectural reality (per substrate-evolution drift
+discipline at Q-pre-4 framework).
 
 ### Query-time invariant (load-bearing; preserved verbatim AND extended)
 
@@ -184,10 +177,10 @@ shipped against.
 The graduation rationale: research-cycle methodological invariant
 informed v0.1-v0.6 ship gates; v0.7+ production-cycle ship gates
 inherit the load-bearing query-time invariant + production-tool
-user-choice configuration. Research-cycle invariant artifacts (cost-
-priors snapshots; matrix-replication substrate; quality-axis methodology
-documentation) preserved as historical record per v0.5 + v0.6 + v0.7
-inheritance discipline.
+entry-point-determined extraction architecture. Research-cycle
+invariant artifacts (cost-priors snapshots; matrix-replication
+substrate; quality-axis methodology documentation) preserved as
+historical record per v0.5 + v0.6 + v0.7 inheritance discipline.
 
 ## Consequences
 
@@ -206,32 +199,33 @@ inheritance discipline.
     path query-time-prohibition is documented at v0.7 ship; CI
     mechanical enforcement of the Skills-path-prohibition deferred
     to v0.8+ if needed.
-- Two substantive research-time / index-time extraction paths coexist:
-  - **Mode A — Claude Code Skills path** —
-    `.claude/skills/index-atlas/SKILL.md` runs extraction inside
-    Claude Code session context; subscription-bounded cost model
-    ($0 per-call; consumes session tokens); suitable for users with
-    Claude Code subscriptions who prefer flat-rate cost framing.
-  - **Mode B — Anthropic API direct path** — `src/extraction/` calls
-    `@anthropic-ai/sdk` for Opus 4.7 model invocation; pay-per-use
-    cost model; suitable for users with Anthropic API access OR
-    teams who prefer per-call billing semantics.
-- **Cost-accounting reflects path-selection.** `cost_usd` field
-  reports numeric Anthropic API cost ($0 for Mode A); `cost_model`
-  field captures path semantics (`"api"` | `"subscription-bounded"`)
-  per separate-field discipline (Q1.0.5 δ lock).
-- **User-choice supported architecturally.** Users select extraction
-  path via `.contextatlas.yml` `architecture` field (3 accepted
-  values: `"claude-code-only"`, `"anthropic-api-direct"`, or legacy
-  `"anthropic-api-claude-code"` deprecated alias) OR CLI flags
-  (`--cc-only` forces Mode A; `--api-direct` forces Mode B). Two
-  substantive runtime modes (Mode A Skills path + Mode B API direct
-  path); legacy `"anthropic-api-claude-code"` config value preserved
-  as deprecated alias for `"anthropic-api-direct"` to honor v0.6
-  user backward-compat; alias removed at v0.8+ per Q1.0.8 honest
-  deprecation cycle. Defaults at v0.7+ favor Mode A claude-code-only
-  per Q1.0.4 β-3 hybrid lock (claude-code-only default; absent-means-
-  default; init writes explicit-default).
+- Two extraction entry points coexist:
+  - **CLI entry point** — `contextatlas index` invokes
+    `src/extraction/` Anthropic API direct path; pay-per-use cost
+    model; canonical CLI behavior; suitable for users with
+    Anthropic API access OR teams preferring per-call billing
+    semantics.
+  - **Claude Code Skills entry point** — `/index-atlas` slash command
+    invokes `.claude/skills/index-atlas/SKILL.md`; subscription-
+    bounded cost model ($0 per-call; consumes session tokens);
+    canonical Claude Code session behavior; suitable for users with
+    Claude Code subscriptions.
+- **Cost-accounting reflects entry point.** `cost_usd` field
+  reports numeric Anthropic API cost ($0 for Skills entry point);
+  `cost_model` field captures path semantics (`"api"` |
+  `"subscription-bounded"`) as atlas.json metadata recording which
+  entry point generated which extraction artifacts (per Q1.0.5 δ
+  lock preservation).
+- **User selects extraction surface by invocation context.**
+  Anthropic API direct invocation via CLI (`contextatlas index`);
+  Claude Code Skills invocation via `/index-atlas` slash command.
+  Each surface uses the appropriate cost model for its context;
+  no runtime path-selection on user config field. Legacy
+  `architecture` config field accepted at v0.7+ with stderr
+  deprecation warning emission per Q1.0.8 lock; field removed at
+  v0.8+. Legacy `--cc-only` CLI flag accepted at v0.7+ as
+  informational no-op with redirect message to `/index-atlas`
+  skill; flag removed at v0.8+ per honest deprecation cycle.
 
 ## Revision history
 
@@ -248,57 +242,92 @@ inheritance discipline.
 - **2026-05-09** — v0.7 Step 1.2 amendment: substantive graduation
   reframe per v0.7 launch-bearing cycle (Travis pivot at v0.6 Step
   7.5) + Path (iii) 2-mode collapse lock per v0.6 actual extraction
-  behavior verification at Step 1.2 surface. v0.1-v0.6 research-
-  cycle SOLE-CALLER invariant graduates to v0.7+ production-cycle
-  user-choice configuration. Title reframed from "Extraction
-  pipeline is the only Anthropic API caller in the codebase" to
-  "Extraction is the sole research-time-extraction-caller in the
-  codebase".
+  behavior verification at Step 1.2 surface. **PRESERVED AS
+  HISTORICAL RECORD** per Q-pre-4 substrate-evolution drift
+  framework Path C application; Step 1.4b Path-3 reframe below
+  supersedes config-field user-choice framing captured here.
+  Original Step 1.2 amendment captured: title reframe from
+  "Extraction pipeline is the only Anthropic API caller in the
+  codebase" to "Extraction is the sole research-time-extraction-
+  caller in the codebase"; two research-time/index-time extraction
+  paths permitted (Anthropic API direct + Claude Code Skills);
+  query-time invariant preserved verbatim AND extended; research-
+  cycle methodological rationale graduated to §Historical context
+  section. Step 1.2 commit `bc30783`.
 
-  V0.6 actual extraction behavior verification at Step 1.2 surface
-  revealed v0.6 ships `architecture` field as config-stub-only;
-  pipeline doesn't branch on field value; both
-  `"anthropic-api-claude-code"` and `"claude-code-only"` produced
-  identical Anthropic API direct extraction at v0.6. The
-  `"claude-code"` suffix in v0.6 `"anthropic-api-claude-code"`
-  name referred to user invocation environment (user runs
-  contextatlas FROM Claude Code session) NOT extraction
-  architecture.
+- **2026-05-10** — v0.7 Step 1.4b substantive architectural reframe
+  per CLI-cannot-bridge-to-Skills architectural reality surfaced at
+  Step 1.4b Cluster C Skills-invocation-mechanism design decision.
+  Path-3 entry-point-determined model supersedes Step 1.2 config-
+  field user-choice framing.
 
-  Path (iii) collapse-to-2-substantive-modes locked at v0.7 ship:
-  Mode A `"claude-code-only"` (Skills mechanism; new at v0.7;
-  canonical location `.claude/skills/index-atlas/SKILL.md`) +
-  Mode B `"anthropic-api-direct"` (preserves v0.6 actual extraction
-  behavior; renamed at v0.7 for naming clarity); legacy
-  `"anthropic-api-claude-code"` preserved as deprecated alias for
-  `"anthropic-api-direct"` with stderr warning emission; alias
-  removed at v0.8+ per honest deprecation cycle. Backward-compat:
-  v0.6 user configs with legacy name continue working at v0.7
-  with warning; behavior unchanged.
+  Architectural reality: Skills execute inside Claude Code session
+  tools (Bash/Edit/Read/Write); contextatlas CLI binary is separate
+  sub-process; CLI cannot directly invoke Skills running in Claude
+  Code session. Step 1.2 ADR-02 amendment captured 2-mode user-
+  choice on config field; Step 1.4b surfaced that the choice CLI
+  claims to offer isn't actually mechanically supported (CLI Mode
+  A would have been redirect message either way).
 
-  Path selection at user discretion per Q1.0.4 β-3 default
-  (claude-code-only at v0.7+; absent-means-default; init writes
-  explicit-default) + Q1.0.8 3-flag user-choice (`--cc-only`
-  forces Mode A; `--api-direct` forces Mode B; flag-absence
-  selects default). Query-time invariant preserved verbatim AND
-  extended (query-time MUST NOT invoke Skills mechanism either).
-  Cost model accounting per Q1.0.5 δ separate cost_model field
-  (`"api"` | `"subscription-bounded"`). CI enforcement grep
-  pattern unchanged (Skills path doesn't add `@anthropic-ai/sdk`
-  imports; permitted-modules invariant preserved).
+  Path-3 reframe: extraction entry point determines cost model.
+  CLI invocation = Anthropic API direct. Claude Code session
+  invocation via /index-atlas skill = subscription-bounded. User
+  chooses surface based on workflow; surface determines cost
+  model.
 
-  Research-cycle methodological rationale (cost-attribution
-  clarity + reproducibility for substrate generation +
-  3x-reduction invariant + quality-axis methodology cleanly-
-  scoped substrate) graduates to §Historical context section;
-  production-cycle invariants (query-time-no-API-calls; sub-
-  100ms; zero query cost; user-choice path selection) remain
-  load-bearing.
+  Substrate-evolution drift per Q-pre-4 framework Path C
+  application: Step 1.2 ADR-02 amendment preserved as historical
+  record of pre-Step-1.4b-discovery state; Step 1.4b amendment
+  captures post-architectural-reality state. Honest scope-
+  acknowledgment per discipline #4 — research-project-informed
+  architectural assumptions surfaced inadequately during design
+  phase; substrate verification at implementation phase corrected
+  framing without catastrophic rework via early gate-substep
+  discipline (Step 1.1 verification + Step 1.4b inline surface).
 
-  v0.7 cycle pre-planning cross-references: v0.7-SCOPE.md commit
-  `a6d2594` (PRIMARY scope framing); STEP-PLAN-V0.7.md Step 1.0
-  commit `5ad0f2e` (Q1.0.1-Q1.0.12 design adjudications); STEP-
-  PLAN-V0.7.md Step 1.1 commit `dc81f49` (Q1.0.2 α Skills
-  architecture verification cleared); v0.6 cycle Step 4.2 commit
-  `f14cb04` (B13-flag stub substrate); v0.5 Step 2.0 amendment
-  commit `aeaa5e0` (preceding revision history precedent).
+  Lock revisions at Step 1.4b:
+  - **Q1.0.4 lock dropped** (no default needed; architecture field
+    deprecated at v0.7+; field removed at v0.8+)
+  - **Q1.0.8 lock revised** (`--cc-only` flag deprecated; no-op
+    at v0.7+ with redirect warning; `--api-direct` flag dropped
+    entirely at v0.7+; both flags removable at v0.8+)
+  - **Q1.0.10 lock simplified** (single CLI-invoked extractor
+    `AnthropicAPIDirectExtractor`; `ClaudeCodeOnlyExtractor`
+    preserved as informational-stub for legacy config-field-value
+    path + architecture field set scenarios; emits redirect message
+    + zero-counts result per Q1.0.10 (b) sub-lock)
+  - **Q1.0.5 lock preserved** (cost_model metadata field useful
+    for atlas.json provenance; not runtime path-selection
+    concern)
+
+  Architecture config field deprecation cycle: field accepted at
+  parser layer (preserves v0.6 user-config backward-compat);
+  stderr deprecation warning emission on config-parse (3 warning
+  variants per field value: anthropic-api-direct value, claude-
+  code-only value, anthropic-api-claude-code legacy alias);
+  field removed at v0.8+.
+
+  v0.7 cycle pre-planning cross-references: STEP-PLAN-V0.7.md
+  Step 1.4b commit `[this commit]` (Path-3 reframe +
+  ClaudeCodeOnlyExtractor stub + cli-show-prompt subcommand +
+  SKILL.md content + entry-point-determined architecture lock +
+  4 Q-lock revisions); Step 1.2 commit `bc30783` (preserved as
+  historical record of pre-Path-3 state); Step 1.4a commit
+  `4df3740` (preserved as historical record of pre-Path-3
+  mechanical wiring state; Q1.0.4 β-3 + Q1.0.8 3-flag wiring
+  shipped at Step 1.4a now reverted/refactored at Step 1.4b).
+
+  Cycle-execution observation 10 (NEW 10th recursive catch-
+  pattern observation class): architectural framing benefits from
+  substrate-verification-before-implementation-substep at EACH
+  substep boundary, not just design-phase. Mid-substep
+  architectural surprises (like CLI-can't-bridge-to-Skills)
+  compound if not caught early via gate-substep discipline. v0.7
+  cycle surfaced this pattern at 3 substep boundaries (Step 1.1
+  gate-substep + Step 1.2 review + Step 1.4b implementation
+  reality); each pivot caught pre-substantive-sunk-cost via
+  Q-pre-4 substrate-evolution drift framework. Composes with v0.6
+  7-class + v0.7 8-class (Travis-product-vision-clarification) +
+  v0.7 9-class (Path-γ CLI subcommand) = 10-class recursive catch-
+  pattern observation enumeration for v0.7+ ship-gate working-
+  content-gap-inventory inheritance.

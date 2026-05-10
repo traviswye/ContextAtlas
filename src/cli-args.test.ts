@@ -19,7 +19,6 @@ const EMPTY: ParsedArgs = {
   verbose: false,
   narrowAttribution: null,
   ccOnly: false,
-  apiDirect: false,
   observe: false,
 };
 

@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   copyFile,
   mkdtemp,
@@ -192,7 +192,14 @@ describe("runInitSubcommand — doctor + routing + atlas + smoke + MCP orchestra
     expect(result.exitCode).toBe(1);
   });
 
-  it("--cc-only true → architecture: claude-code-only in scaffold", async () => {
+  it("--cc-only true → no architecture field written + stderr redirect warning emitted (Path-3 deprecation at v0.7+)", async () => {
+    const stderrChunks: string[] = [];
+    const writeSpy = vi
+      .spyOn(process.stderr, "write")
+      .mockImplementation((chunk: unknown) => {
+        stderrChunks.push(typeof chunk === "string" ? chunk : String(chunk));
+        return true;
+      });
     await setupAutomatedRouteFixture(tmpRoot);
     await runInitSubcommand({
       configRoot: tmpRoot,
@@ -203,14 +210,18 @@ describe("runInitSubcommand — doctor + routing + atlas + smoke + MCP orchestra
       runIndexSubcommandOverride: SUCCESS_INDEX_OVERRIDE,
       resolveBinaryPathOverride: "/synthetic/dist/index.js",
     });
+    writeSpy.mockRestore();
     const cfg = await readFile(
       path.join(tmpRoot, ".contextatlas.yml"),
       "utf8",
     );
-    expect(cfg).toContain("architecture: claude-code-only");
+    expect(cfg).not.toContain("architecture:");
+    const fullStderr = stderrChunks.join("");
+    expect(fullStderr).toContain("--cc-only is deprecated");
+    expect(fullStderr).toContain("/index-atlas");
   });
 
-  it("--cc-only absent + --api-direct absent → architecture: claude-code-only (Q1.0.4 β-3 default flip at v0.7+)", async () => {
+  it("--cc-only absent → no architecture field written + no warning (Path-3 entry-point-determined at v0.7+)", async () => {
     await setupAutomatedRouteFixture(tmpRoot);
     await runInitSubcommand({
       configRoot: tmpRoot,
@@ -225,25 +236,7 @@ describe("runInitSubcommand — doctor + routing + atlas + smoke + MCP orchestra
       path.join(tmpRoot, ".contextatlas.yml"),
       "utf8",
     );
-    expect(cfg).toContain("architecture: claude-code-only");
-  });
-
-  it("--api-direct → architecture: anthropic-api-direct (Mode B; Q1.0.8 3-flag user-choice at v0.7+)", async () => {
-    await setupAutomatedRouteFixture(tmpRoot);
-    await runInitSubcommand({
-      configRoot: tmpRoot,
-      apiDirect: true,
-      writeStdout: captureStdout,
-      detectLanguagesOverride: () => ["typescript"],
-      collectChecksOverride: async () => makeDoctorResult(PASSING_AUTOMATED_CHECKS),
-      runIndexSubcommandOverride: SUCCESS_INDEX_OVERRIDE,
-      resolveBinaryPathOverride: "/synthetic/dist/index.js",
-    });
-    const cfg = await readFile(
-      path.join(tmpRoot, ".contextatlas.yml"),
-      "utf8",
-    );
-    expect(cfg).toContain("architecture: anthropic-api-direct");
+    expect(cfg).not.toContain("architecture:");
   });
 
   it("--observe true → scaffold writes observability.enabled: true (v0.6 Step 6.2)", async () => {

@@ -38,6 +38,7 @@ import { parseArgs } from "./cli-args.js";
 import { loadConfig } from "./config/parser.js";
 import { runDoctorSubcommand } from "./doctor/runner.js";
 import { runIndexSubcommand } from "./extraction/cli-runner.js";
+import { runShowPromptSubcommand } from "./extraction/cli-show-prompt.js";
 import { runInitSubcommand } from "./init/runner.js";
 import { log } from "./mcp/logger.js";
 import { createServer } from "./mcp/server.js";
@@ -78,6 +79,16 @@ export async function main(): Promise<void> {
   // exit-code contract. Dispatch runs before config load so
   // subcommand-specific config-error semantics stay owned by
   // subcommand code.
+  // v0.7 Step 1.4b — show-prompt subcommand outputs canonical
+  // EXTRACTION_PROMPT (Path-γ Skills mechanism prompt loading per
+  // ADR-02 v0.7 amendment + Q1.0.2 sub-shape lock). Dispatch
+  // before config load: subcommand is read-only + idempotent;
+  // no config + no adapter setup needed.
+  if (subcommand === "show-prompt") {
+    const result = runShowPromptSubcommand();
+    process.exit(result.exitCode);
+  }
+
   if (subcommand === "index") {
     const result = await runIndexSubcommand({
       configRoot,
@@ -111,7 +122,6 @@ export async function main(): Promise<void> {
       configRoot,
       configFile: configFileArg,
       ccOnly: parsed.ccOnly,
-      apiDirect: parsed.apiDirect,
       observe: parsed.observe,
       json: parsed.json,
     });

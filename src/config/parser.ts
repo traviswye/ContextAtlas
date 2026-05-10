@@ -75,10 +75,24 @@ const TOP_LEVEL_KEY_SET = new Set<string>(TOP_LEVEL_KEYS);
  * @param configPath Optional explicit path (defaults to
  *   `.contextatlas.yml` inside `repoRoot`).
  */
+export interface LoadConfigOptions {
+  /**
+   * Test seam: where deprecation warnings + other stderr output
+   * go. Defaults to `process.stderr.write`. Lets tests inspect
+   * deprecation warning emission without polluting test runner
+   * stderr. Added at v0.7 Step 1.4b per Path-3 architecture-field
+   * deprecation cycle.
+   */
+  readonly writeStderr?: (chunk: string) => void;
+}
+
 export function loadConfig(
   repoRoot: string,
   configPath?: string,
+  options: LoadConfigOptions = {},
 ): ContextAtlasConfig {
+  const writeStderr =
+    options.writeStderr ?? ((chunk) => process.stderr.write(chunk));
   const absConfigPath = pathResolve(
     repoRoot,
     configPath ?? DEFAULT_CONFIG_FILENAME,
@@ -110,7 +124,7 @@ export function loadConfig(
     );
   }
 
-  return validate(parsed, absConfigPath);
+  return validate(parsed, absConfigPath, writeStderr);
 }
 
 // ---------------------------------------------------------------------------
@@ -120,6 +134,7 @@ export function loadConfig(
 function validate(
   parsed: unknown,
   configPath: string,
+  writeStderr: (chunk: string) => void,
 ): ContextAtlasConfig {
   if (!isObject(parsed)) {
     throw cfgError(
@@ -151,7 +166,7 @@ function validate(
     );
   }
 
-  const architecture = validateArchitecture(parsed.architecture, configPath);
+  const architecture = validateArchitecture(parsed.architecture, configPath, writeStderr);
   const languages = validateLanguages(parsed.languages, configPath);
   const adrs = validateAdrs(parsed.adrs, configPath);
   const docs = validateDocs(parsed.docs, configPath);
@@ -181,18 +196,26 @@ function validate(
 }
 
 /**
- * Validate the optional `architecture` field per ADR-02 v0.7
- * amendment + Path (iii) 2-mode collapse + Q1.0.4 β-3 lock. Three
- * accepted values: "claude-code-only" (Mode A; default at v0.7+) +
- * "anthropic-api-direct" (Mode B) + "anthropic-api-claude-code"
- * (deprecated legacy alias; alias removed at v0.8+). Absent means
- * default applied at use-site per absent-means-default discipline
- * (parser leaves field undefined when absent; getExtractor factory
- * defaults to "claude-code-only" per Q1.0.4 β-3).
+ * Validate the optional `architecture` field per ADR-02 v0.7 Step
+ * 1.4b amendment Path-3 entry-point-determined model. Field
+ * DEPRECATED at v0.7+; accepted at parser layer for v0.6 user-
+ * config backward-compat; field removed at v0.8+.
+ *
+ * Three values still accepted: "claude-code-only" (Mode A;
+ * deprecated; Skills entry point handles this; CLI emits redirect)
+ * + "anthropic-api-direct" (Mode B; deprecated; redundant since
+ * CLI default is API direct) + "anthropic-api-claude-code"
+ * (deprecated legacy alias). Each value triggers a stderr
+ * deprecation warning emission per ADR-02 v0.7 §Decision Entry-
+ * point-determined cost model framing.
+ *
+ * Absent means no warning + no field value (factory defaults to
+ * CLI AnthropicAPIDirectExtractor when architecture absent).
  */
 function validateArchitecture(
   raw: unknown,
   configPath: string,
+  writeStderr: (chunk: string) => void = (s) => process.stderr.write(s),
 ): ValidArchitecture | undefined {
   if (raw === undefined) return undefined;
   if (
@@ -204,7 +227,51 @@ function validateArchitecture(
       `Invalid 'architecture': expected one of ${VALID_ARCHITECTURES.join(", ")}, got ${describeType(raw)}${typeof raw === "string" ? ` ('${raw}')` : ""}.`,
     );
   }
-  return raw as ValidArchitecture;
+  const value = raw as ValidArchitecture;
+  writeStderr(architectureDeprecationWarning(value));
+  return value;
+}
+
+/**
+ * Generate the architecture-field-deprecation warning text per
+ * field value (3 variants). All three variants share the core
+ * message "field deprecated at v0.7+; removed at v0.8+; please
+ * remove from .contextatlas.yml"; value-specific framing surfaces
+ * the entry-point-determined model for users to migrate.
+ *
+ * Exported for direct test-verification of warning text content
+ * stability.
+ */
+export function architectureDeprecationWarning(
+  value: "claude-code-only" | "anthropic-api-direct" | "anthropic-api-claude-code",
+): string {
+  const base =
+    "The architecture config field is no longer used at v0.7+; " +
+    "extraction path determined by invocation context (CLI = " +
+    "Anthropic API direct; /index-atlas Claude Code skill = " +
+    "subscription-bounded). Field removed at v0.8+.";
+  if (value === "anthropic-api-direct") {
+    return (
+      "Warning: " + base + " Setting it to 'anthropic-api-direct' is " +
+      "a no-op since CLI extraction is always Anthropic API direct. " +
+      "Please remove the architecture field from .contextatlas.yml. " +
+      "See ADR-02 v0.7 amendment.\n"
+    );
+  }
+  if (value === "claude-code-only") {
+    return (
+      "Warning: " + base + " If you want subscription-bounded " +
+      "extraction, invoke /index-atlas from your Claude Code session. " +
+      "Please remove the architecture field from .contextatlas.yml. " +
+      "See ADR-02 v0.7 amendment.\n"
+    );
+  }
+  // value === "anthropic-api-claude-code" (legacy alias)
+  return (
+    "Warning: " + base + " ('anthropic-api-claude-code' is also a " +
+    "deprecated alias.) Please remove the architecture field from " +
+    ".contextatlas.yml. See ADR-02 v0.7 amendment.\n"
+  );
 }
 
 function validateLanguages(

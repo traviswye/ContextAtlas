@@ -195,12 +195,19 @@ lock — Q1.0.2 verification as explicit gate-substep refinement):
   → 1.4a/1.4b). Mode B end-to-end functional; Mode A still
   throws Step-1.4b-pending error. Shipped 2026-05-10; commit
   `[this commit]`.
-- [ ] **Step 1.4b** — Mode A Skills functional implementation
-  (cluster 2 SKILL.md content + bundled helper scripts + Path-γ
-  `contextatlas show-prompt` CLI subcommand for canonical
-  extraction prompt loading + ClaudeCodeOnlyExtractor full
-  implementation + cluster 5 continuation tests). Mode A
-  end-to-end functional after 1.4b ships.
+- [x] **Step 1.4b** — Path-3 entry-point-determined architectural
+  reframe (CLI cannot bridge to Claude Code Skills; reframed from
+  config-field-user-choice to entry-point-determined model per
+  CLI-can't-bridge-to-Skills architectural reality surfaced at
+  Step 1.4b inline design surface). ADR-02 re-amendment + Skills
+  mechanism shipped (`.claude/skills/index-atlas/SKILL.md` +
+  Path-γ `contextatlas show-prompt` CLI subcommand +
+  `ClaudeCodeOnlyExtractor` informational-stub per Q1.0.10 (b)
+  sub-lock). 4 Q-lock revisions (Q1.0.4 dropped; Q1.0.8
+  simplified; Q1.0.10 (b) stub; Q1.0.5 preserved). Architecture
+  field deprecated with 3-variant stderr warning at parser
+  layer; field removed at v0.8+. Shipped 2026-05-10; commit
+  `[this commit]`.
 - [ ] **Step 1.5** — Cost model accounting integration + tests +
   `--api-direct` flag negation + `--cc-only` soft deprecation
   (per Q1.0.5 δ separate cost_model field lock + Q1.0.6 α+γ
@@ -391,6 +398,201 @@ timeline; not blocking).
 ## Progress log
 
 *Entries added in reverse-chronological order as steps ship.*
+
+### Step 1.4b shipped — 2026-05-10 (Path-3 entry-point-determined reframe + Skills mechanism functional + ADR-02 re-amendment + 4 Q-lock revisions)
+
+V0.7 Step 1.4b ships **substantive architectural reframe** per
+CLI-cannot-bridge-to-Skills architectural reality surfaced at
+Step 1.4b inline design surface. Path-3 entry-point-determined
+model supersedes Step 1.2 config-field-user-choice framing
+(Step 1.2 + Step 1.4a entries preserved as historical record
+per Q-pre-4 substrate-evolution drift framework Path C).
+1323/1323 tests PASS (1321 prior + 2 net new at Step 1.4b after
+test scope adjustments); npm run build clean.
+
+**Architectural reality:** Skills execute inside Claude Code
+session tools (Bash/Edit/Read/Write); contextatlas CLI binary
+is separate sub-process; CLI cannot directly invoke Skills
+running in Claude Code session. Step 1.2 + Step 1.4a captured
+2-mode user-choice on config field; Step 1.4b implementation
+surface revealed the choice CLI claimed to offer isn't
+mechanically supported (CLI Mode A would have been redirect
+either way).
+
+**Path-3 reframe:** extraction entry point determines cost
+model. CLI invocation = Anthropic API direct (always; CLI is
+what it is). Claude Code session invocation via /index-atlas
+skill = subscription-bounded (always; Skills mechanism is what
+it is). User chooses surface based on workflow; surface
+determines cost model; no config-field user-choice.
+
+| Substep | branch | commit | Notes |
+|---|---|---|---|
+| 1.4b Path-3 reframe + Skills mechanism | main | [this commit] | ADR-02 re-amendment + cli-show-prompt subcommand + SKILL.md + ClaudeCodeOnlyExtractor stub + 4 Q-lock revisions + architecture field deprecation (3-variant warning at parser layer) + Step 1.4a Q1.0.4 β-3 + Q1.0.8 3-flag wiring reverted/refactored |
+
+#### ADR-02 re-amendment (Option X per Travis adjudication)
+
+ADR-02 §Decision "User-choice configuration" sub-section
+replaced with "Entry-point-determined cost model" framing per
+ADR-02 v0.7 Step 1.4b amendment. Two extraction entry points
+(CLI = API direct; /index-atlas skill = subscription-bounded);
+user chooses surface; surface determines cost model. §Consequences
+"User-choice supported architecturally" bullet reframed to
+"User selects extraction surface by invocation context."
+§Revision history 2026-05-10 entry captures Path-3 reframe + 4
+Q-lock revisions + 10th observation class + cross-references;
+Step 1.2 amendment preserved as historical record via inline
+annotation marker.
+
+#### 4 Q-lock revisions captured (substrate-evolution drift Path C)
+
+- **Q1.0.4 lock dropped** (no default-on-config-field needed; CLI
+  is always API direct regardless of config; architecture field
+  deprecated at v0.7+; field removed at v0.8+)
+- **Q1.0.8 lock revised** (`--cc-only` flag deprecated; no-op at
+  v0.7+ + stderr redirect warning to `/index-atlas` skill;
+  `--api-direct` flag dropped entirely at v0.7+; flag removed at
+  v0.8+)
+- **Q1.0.10 lock simplified** (single CLI-invoked extractor
+  `AnthropicAPIDirectExtractor`; `ClaudeCodeOnlyExtractor`
+  preserved as informational-stub for legacy config-field-value
+  path; emits redirect message + zero-counts result per Q1.0.10
+  (b) sub-lock)
+- **Q1.0.5 lock preserved** (`cost_model` metadata field useful
+  for atlas.json provenance; not runtime path-selection concern)
+
+#### Files changed at Step 1.4b
+
+**NEW files:**
+- `src/extraction/cli-show-prompt.ts` (Path-γ CLI subcommand)
+- `src/extraction/cli-show-prompt.test.ts` (~4 tests)
+- `.claude/skills/index-atlas/SKILL.md` (Path-3-reframed +
+  Path-γ extraction prompt loading)
+
+**Modified source files:**
+- `docs/adr/ADR-02-extraction-sole-api-caller.md` (re-amendment
+  per Option X; Step 1.2 preserved as historical record)
+- `src/extraction/extractors/claude-code-only.ts` (skeleton →
+  informational-stub per Q1.0.10 (b))
+- `src/extraction/factory.ts` (simplified routing; 3-config-
+  value-to-2-implementation mapping for legacy path)
+- `src/config/parser.ts` (architecture field deprecation
+  warning emission at parser layer; 3 variants per field value;
+  `LoadConfigOptions.writeStderr` test seam added)
+- `src/cli-args.ts` (drop `--api-direct` flag entirely; drop
+  `apiDirect` from ParsedArgs; preserve `--cc-only` as
+  deprecated no-op; add `show-prompt` to Subcommand union +
+  KNOWN_SUBCOMMANDS)
+- `src/init/runner.ts` (drop architecture field write; --cc-only
+  → stderr redirect warning + no field write)
+- `src/init/config-scaffold.ts` (remove architecture field from
+  scaffolded YAML)
+- `src/index.ts` (drop `apiDirect` pass-through; wire
+  `show-prompt` subcommand dispatch)
+
+**Modified test files:**
+- `src/extraction/extractors/claude-code-only.test.ts` (stub
+  behavior tests; redirect message + zero-counts result)
+- `src/extraction/factory.test.ts` (simplified routing tests;
+  removed `LEGACY_ALIAS_DEPRECATION_WARNING` references)
+- `src/cli-args.test.ts` (drop `apiDirect` from EMPTY)
+- `src/init/runner.test.ts` (no-architecture-field expectations;
+  --cc-only redirect warning verification)
+- `src/init/config-scaffold.test.ts` (no-architecture-field
+  expectations; removed `architecture:` option from build/write
+  signatures)
+- `src/config/parser.test.ts` (deprecation warning emission
+  tests for 3 field value variants + absent-field-no-warning)
+- `src/extraction/cli-runner.test.ts` (remove `architecture:
+  anthropic-api-direct` from beforeEach + 5 inline configs;
+  CLI default behavior verified)
+
+#### Cycle-execution observation 10 — substrate-verification-at-each-substep-boundary
+
+V0.7 Step 1.4b surfaced **10th recursive catch-pattern
+observation class**: architectural framing benefits from
+substrate-verification-before-implementation-substep at EACH
+substep boundary, not just design-phase. Mid-substep
+architectural surprises (like CLI-can't-bridge-to-Skills)
+compound if not caught early via gate-substep discipline.
+
+V0.7 cycle surfaced this pattern at 3 substep boundaries:
+- **Step 1.1** gate-substep verification cleared Q1.0.2 α
+  Skills architecture
+- **Step 1.2** Travis 3-mode reframing turn → Path (iii)
+  2-mode collapse + v0.6 substrate verification
+- **Step 1.4b** implementation reality → Path-3 entry-point-
+  determined reframe + Q1.0.4/Q1.0.8/Q1.0.10 lock revisions
+
+Each pivot caught pre-substantive-sunk-cost via Q-pre-4
+substrate-evolution drift framework. Composes with v0.6 7-class
++ v0.7 8-class (Travis-product-vision-clarification) + v0.7
+9-class (Path-γ CLI subcommand) = **10-class recursive catch-
+pattern observation enumeration** for v0.7+ ship-gate working-
+content-gap-inventory inheritance.
+
+#### Cycle-execution observation 11 — Step 1.4a → Step 1.4b partial revert/refactor pattern
+
+Step 1.4a (commit `4df3740`) shipped Q1.0.4 β-3 + Q1.0.8 3-flag
+mechanical wiring; Step 1.4b Path-3 reframe partially
+reverts/refactors that work (drop architecture field write +
+drop --api-direct flag + revise --cc-only handling + simplify
+factory + revise ClaudeCodeOnlyExtractor).
+
+Pattern observation: even with substrate-verification discipline
+at Step 1.1 + 1.2 + 1.4b, Step 1.4a shipped mechanical wiring
+against pre-Path-3 framing. That work isn't wasted — it
+surfaced Path-3 reality at implementation phase. But Step 1.4b
+carries revert/refactor scope alongside new Cluster A + B + C
++ D + E work.
+
+V0.8+ inheritance pattern: when substrate-evolution drift
+surfaces at substep boundary, expect partial revert/refactor
+cost at the next substep. Plan for it; don't treat it as
+cycle-execution failure. V0.7 caught 3 drift moments without
+catastrophic rework precisely because each drift surfaced
+before substantive sunk-cost beyond one mechanical-wiring
+substep. **Healthy pattern; not failure.**
+
+#### Travis mid-cycle direction REFRAMED with entry-point-determined terminology
+
+Mode-A-vs-Mode-B extraction equivalence verification protocol
+reframed per Path-3 lock: equivalence verification compares
+**CLI extraction output vs Skill extraction output** (not "Mode
+A vs Mode B" — both produce atlas.json; comparison remains
+substantively equivalent question but reframed away from
+config-field user-choice terminology).
+
+Step 2.0 design phase Q-list pre-registration:
+
+**Q2.0.X — CLI-vs-Skill extraction equivalence verification
+protocol.** Per Travis mid-cycle direction captured at Step
+1.4a progress log; REFRAMED at Step 1.4b per Path-3 entry-
+point-determined model. Substantively: (a) what counts as
+'equivalent enough' across the two extraction surfaces (claim
+count match? fuzzy claim-text similarity threshold? structural
+schema match?); (b) how does comparison handle stochastic LLM
+output variance (run N trials per surface? compare
+distributions?); (c) what discrepancies trigger investigation
+vs accept-as-noise; (d) how do equivalence findings inform v1.0
+launch document framing. Verification protocol integrates into
+Step 2 SECONDARY 3-repo install/setup verification (each target
+repo gets dual-surface comparison: CLI extraction + Skills
+extraction outputs compared).
+
+#### Step 1.4b unblock — Step 1.5 cost model + tests + flag negation cleanup
+
+Step 1.5 unblocked per substep ladder. Scope per locked Path-3
+reframe:
+- Final flag-negation cleanup (verify --cc-only deprecation
+  warning consistency; verify architecture field deprecation
+  warning consistency)
+- Test coverage gap analysis (any remaining Step 1.4a
+  mechanical-wiring tests not yet revised for Path-3)
+- v0.7 cycle-execution observation final capture before Step
+  4 cycle close
+
+---
 
 ### Step 1.4a shipped — 2026-05-10 (Mode B full + cli-runner Strategy dispatch + init Q1.0.4 β-3 + Q1.0.8 3-flag wiring; 1.4 → 1.4a/1.4b split per Path A pre-state amendment)
 

@@ -9,27 +9,16 @@ import {
   writeConfigScaffold,
 } from "./config-scaffold.js";
 
-describe("buildConfigScaffold (pure function)", () => {
-  it("includes architecture: anthropic-api-claude-code in YAML output", () => {
+describe("buildConfigScaffold (pure function; v0.7 Step 1.4b Path-3 reframe)", () => {
+  it("does NOT include architecture field in YAML output (deprecated at v0.7+)", () => {
     const yamlOut = buildConfigScaffold({
-      architecture: "anthropic-api-claude-code",
       languages: ["typescript"],
     });
-    expect(yamlOut).toContain("architecture: anthropic-api-claude-code");
-    expect(yamlOut).toContain("- typescript");
-  });
-
-  it("includes architecture: claude-code-only when ccOnly path", () => {
-    const yamlOut = buildConfigScaffold({
-      architecture: "claude-code-only",
-      languages: ["typescript"],
-    });
-    expect(yamlOut).toContain("architecture: claude-code-only");
+    expect(yamlOut).not.toContain("architecture:");
   });
 
   it("includes provenance + DESIGN.md cross-reference header (Point 4 lock)", () => {
     const yamlOut = buildConfigScaffold({
-      architecture: "anthropic-api-claude-code",
       languages: ["typescript"],
     });
     expect(yamlOut).toContain(
@@ -38,20 +27,26 @@ describe("buildConfigScaffold (pure function)", () => {
     expect(yamlOut).toContain("# See DESIGN.md for full schema");
   });
 
+  it("includes languages list", () => {
+    const yamlOut = buildConfigScaffold({
+      languages: ["typescript"],
+    });
+    expect(yamlOut).toContain("- typescript");
+  });
+
   it("output round-trips through loadConfig (parser accepts scaffold)", async () => {
     const tmpRoot = await mkdtemp(
       path.join(tmpdir(), "scaffold-roundtrip-"),
     );
     try {
       const yamlOut = buildConfigScaffold({
-        architecture: "claude-code-only",
         languages: ["typescript"],
       });
       const cfgPath = path.join(tmpRoot, ".contextatlas.yml");
       await writeFile(cfgPath, yamlOut, "utf8");
 
       const cfg = loadConfig(tmpRoot);
-      expect(cfg.architecture).toBe("claude-code-only");
+      expect(cfg.architecture).toBeUndefined();
       expect(cfg.languages).toEqual(["typescript"]);
       expect(cfg.adrs.path).toBe("docs/adr");
       expect(cfg.atlas.committed).toBe(true);
@@ -75,14 +70,14 @@ describe("writeConfigScaffold (idempotent writer)", () => {
   it("creates .contextatlas.yml at repo root when absent (status: 'created')", async () => {
     const result = writeConfigScaffold({
       configRoot: tmpRoot,
-      architecture: "anthropic-api-claude-code",
       languages: ["typescript"],
     });
     expect(result.status).toBe("created");
     expect(result.path).toBe(path.resolve(tmpRoot, ".contextatlas.yml"));
 
     const written = await readFile(result.path, "utf8");
-    expect(written).toContain("architecture: anthropic-api-claude-code");
+    expect(written).not.toContain("architecture:");
+    expect(written).toContain("- typescript");
   });
 
   it("preserves existing .contextatlas.yml when present (status: 'preserved')", async () => {
@@ -92,7 +87,6 @@ describe("writeConfigScaffold (idempotent writer)", () => {
 
     const result = writeConfigScaffold({
       configRoot: tmpRoot,
-      architecture: "anthropic-api-claude-code",
       languages: ["typescript"],
     });
     expect(result.status).toBe("preserved");
@@ -106,7 +100,6 @@ describe("writeConfigScaffold (idempotent writer)", () => {
 describe("buildConfigScaffold — observability section (v0.6 Step 6.2)", () => {
   it("omits observability section when observe is absent (default off)", () => {
     const yamlOut = buildConfigScaffold({
-      architecture: "anthropic-api-claude-code",
       languages: ["typescript"],
     });
     expect(yamlOut).not.toContain("observability");
@@ -114,7 +107,6 @@ describe("buildConfigScaffold — observability section (v0.6 Step 6.2)", () => 
 
   it("omits observability section when observe is false", () => {
     const yamlOut = buildConfigScaffold({
-      architecture: "anthropic-api-claude-code",
       languages: ["typescript"],
       observe: false,
     });
@@ -123,7 +115,6 @@ describe("buildConfigScaffold — observability section (v0.6 Step 6.2)", () => 
 
   it("emits observability.enabled: true when observe is true", () => {
     const yamlOut = buildConfigScaffold({
-      architecture: "anthropic-api-claude-code",
       languages: ["typescript"],
       observe: true,
     });
@@ -137,7 +128,6 @@ describe("buildConfigScaffold — observability section (v0.6 Step 6.2)", () => 
     );
     try {
       const yamlOut = buildConfigScaffold({
-        architecture: "anthropic-api-claude-code",
         languages: ["typescript"],
         observe: true,
       });
