@@ -1,10 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import type {
-  CostModel,
-  Extractor,
-  ExtractorContext,
-  ExtractionResult,
+import {
+  ExtractionSetupError,
+  type CostModel,
+  type Extractor,
+  type ExtractorContext,
+  type ExtractionResult,
 } from "./extractor.js";
 
 describe("Extractor interface (Strategy pattern wrapper)", () => {
@@ -15,36 +16,74 @@ describe("Extractor interface (Strategy pattern wrapper)", () => {
     expect(sub).toBe("subscription-bounded");
   });
 
-  it("ExtractionResult shape includes claims + file counts + token counts + cost accounting", () => {
+  it("ExtractionResult shape wraps pipelineResult + costModel", () => {
     const result: ExtractionResult = {
-      claims: [],
-      files_extracted: 0,
-      files_unchanged: 0,
-      files_deleted: 0,
-      input_tokens: 0,
-      output_tokens: 0,
-      cost_usd: 0,
-      cost_model: "api",
+      pipelineResult: {
+        filesExtracted: 0,
+        filesUnchanged: 0,
+        filesDeleted: 0,
+        claimsWritten: 0,
+        symbolsIndexed: 0,
+        unresolvedCandidates: 0,
+        unresolvedFrontmatterHints: 0,
+        extractionErrors: [],
+        atlasExported: false,
+        wallClockMs: 0,
+        apiCalls: 0,
+        inputTokens: 0,
+        outputTokens: 0,
+        costUsd: 0,
+        unresolvedDetails: [],
+      },
+      costModel: "api",
     };
-    expect(result.claims).toEqual([]);
-    expect(result.cost_model).toBe("api");
+    expect(result.costModel).toBe("api");
+    expect(result.pipelineResult.filesExtracted).toBe(0);
   });
 
   it("Extractor interface exposes costModel readonly property + extract() method", () => {
     const stubExtractor: Extractor = {
       costModel: "api",
       extract: async (_context: ExtractorContext): Promise<ExtractionResult> => ({
-        claims: [],
-        files_extracted: 0,
-        files_unchanged: 0,
-        files_deleted: 0,
-        input_tokens: 0,
-        output_tokens: 0,
-        cost_usd: 0,
-        cost_model: "api",
+        pipelineResult: {
+          filesExtracted: 0,
+          filesUnchanged: 0,
+          filesDeleted: 0,
+          claimsWritten: 0,
+          symbolsIndexed: 0,
+          unresolvedCandidates: 0,
+          unresolvedFrontmatterHints: 0,
+          extractionErrors: [],
+          atlasExported: false,
+          wallClockMs: 0,
+          apiCalls: 0,
+          inputTokens: 0,
+          outputTokens: 0,
+          costUsd: 0,
+          unresolvedDetails: [],
+        },
+        costModel: "api",
       }),
     };
     expect(stubExtractor.costModel).toBe("api");
     expect(typeof stubExtractor.extract).toBe("function");
+  });
+});
+
+describe("ExtractionSetupError (ADR-12 exit-code mapping discipline)", () => {
+  it("ExtractionSetupError extends Error with kind: 'setup' marker", () => {
+    const err = new ExtractionSetupError("test setup error");
+    expect(err).toBeInstanceOf(Error);
+    expect(err).toBeInstanceOf(ExtractionSetupError);
+    expect(err.kind).toBe("setup");
+    expect(err.name).toBe("ExtractionSetupError");
+    expect(err.message).toBe("test setup error");
+  });
+
+  it("ExtractionSetupError instanceof check distinguishes from generic Error", () => {
+    const setupErr = new ExtractionSetupError("setup");
+    const genericErr = new Error("generic");
+    expect(setupErr instanceof ExtractionSetupError).toBe(true);
+    expect(genericErr instanceof ExtractionSetupError).toBe(false);
   });
 });

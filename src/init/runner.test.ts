@@ -210,7 +210,7 @@ describe("runInitSubcommand — doctor + routing + atlas + smoke + MCP orchestra
     expect(cfg).toContain("architecture: claude-code-only");
   });
 
-  it("--cc-only absent → architecture: anthropic-api-claude-code (default)", async () => {
+  it("--cc-only absent + --api-direct absent → architecture: claude-code-only (Q1.0.4 β-3 default flip at v0.7+)", async () => {
     await setupAutomatedRouteFixture(tmpRoot);
     await runInitSubcommand({
       configRoot: tmpRoot,
@@ -225,7 +225,25 @@ describe("runInitSubcommand — doctor + routing + atlas + smoke + MCP orchestra
       path.join(tmpRoot, ".contextatlas.yml"),
       "utf8",
     );
-    expect(cfg).toContain("architecture: anthropic-api-claude-code");
+    expect(cfg).toContain("architecture: claude-code-only");
+  });
+
+  it("--api-direct → architecture: anthropic-api-direct (Mode B; Q1.0.8 3-flag user-choice at v0.7+)", async () => {
+    await setupAutomatedRouteFixture(tmpRoot);
+    await runInitSubcommand({
+      configRoot: tmpRoot,
+      apiDirect: true,
+      writeStdout: captureStdout,
+      detectLanguagesOverride: () => ["typescript"],
+      collectChecksOverride: async () => makeDoctorResult(PASSING_AUTOMATED_CHECKS),
+      runIndexSubcommandOverride: SUCCESS_INDEX_OVERRIDE,
+      resolveBinaryPathOverride: "/synthetic/dist/index.js",
+    });
+    const cfg = await readFile(
+      path.join(tmpRoot, ".contextatlas.yml"),
+      "utf8",
+    );
+    expect(cfg).toContain("architecture: anthropic-api-direct");
   });
 
   it("--observe true → scaffold writes observability.enabled: true (v0.6 Step 6.2)", async () => {

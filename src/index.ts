@@ -111,6 +111,7 @@ export async function main(): Promise<void> {
       configRoot,
       configFile: configFileArg,
       ccOnly: parsed.ccOnly,
+      apiDirect: parsed.apiDirect,
       observe: parsed.observe,
       json: parsed.json,
     });

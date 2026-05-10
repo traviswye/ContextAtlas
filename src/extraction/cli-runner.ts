@@ -19,20 +19,21 @@ import { existsSync, mkdirSync } from "node:fs";
 import { dirname, resolve as pathResolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import Anthropic from "@anthropic-ai/sdk";
-
 import { createAdapter } from "../adapters/registry.js";
 import { loadConfig } from "../config/parser.js";
 import { log } from "../mcp/logger.js";
 import { openDatabase } from "../storage/db.js";
 import type { LanguageAdapter, LanguageCode } from "../types.js";
 
-import { createExtractionClient } from "./anthropic-client.js";
+import type { ExtractionClient } from "./anthropic-client.js";
 import {
-  runExtractionPipeline,
-  type ExtractionClient,
-  type ExtractionPipelineResult,
-  type FileUnresolvedDetail,
+  ExtractionSetupError,
+  type ExtractorContext,
+} from "./extractor.js";
+import { getExtractor } from "./factory.js";
+import type {
+  ExtractionPipelineResult,
+  FileUnresolvedDetail,
 } from "./pipeline.js";
 
 export interface IndexCliOptions {
@@ -123,25 +124,11 @@ export async function runIndexSubcommand(
     options.writeStderr ?? ((chunk) => process.stderr.write(chunk));
 
   // ---------------------------------------------------------------
-  // Setup phase — all errors here map to exit code 2.
+  // Setup phase — config + adapters + db. ExtractionClient
+  // construction moved into AnthropicAPIDirectExtractor at v0.7
+  // Step 1.4a Strategy pattern dispatch refactor (per Q1.3.5 lock).
+  // All errors here map to exit code 2.
   // ---------------------------------------------------------------
-  let client: ExtractionClient;
-  if (options.clientOverride) {
-    client = options.clientOverride;
-  } else {
-    const apiKey = readEnv("ANTHROPIC_API_KEY");
-    if (!apiKey || apiKey.length === 0) {
-      log.error(
-        "index: ANTHROPIC_API_KEY is not set. Export it in your " +
-          "environment before running `contextatlas index`. " +
-          "(See ADR-12 — v0.1 does not load .env files.)",
-      );
-      return { exitCode: 2 };
-    }
-    const anthropic = new Anthropic({ apiKey });
-    client = createExtractionClient({ anthropic });
-  }
-
   let config;
   try {
     config = options.configFile
@@ -211,25 +198,37 @@ export async function runIndexSubcommand(
         ? options.contextatlasCommitSha
         : resolveContextatlasCommitSha();
 
+    // Strategy pattern dispatch per ADR-02 v0.7 amendment + Q1.0.10
+    // γ lock + Path (iii) 2-mode collapse. getExtractor selects
+    // implementation per config.architecture; legacy alias emits
+    // deprecation warning at factory-time per Q1.0.8.
+    const extractor = getExtractor(config);
+    const extractorContext: ExtractorContext = {
+      config,
+      configRoot: options.configRoot,
+      sourceRoot,
+      db,
+      adapters,
+      full: options.full,
+      contextatlasVersion: options.contextatlasVersion,
+      contextatlasCommitSha,
+      readEnv,
+      ...(budgetWarnUsd !== undefined ? { budgetWarnUsd } : {}),
+      ...(narrowAttribution !== undefined ? { narrowAttribution } : {}),
+      ...(options.clientOverride !== undefined
+        ? { clientOverride: options.clientOverride }
+        : {}),
+    };
+
     let pipelineResult: ExtractionPipelineResult;
     try {
-      pipelineResult = await runExtractionPipeline({
-        repoRoot: sourceRoot,
-        configRoot: options.configRoot,
-        config,
-        db,
-        anthropicClient: client,
-        adapters,
-        contextatlasVersion: options.contextatlasVersion,
-        contextatlasCommitSha,
-        // `--full` forces every prose file through extraction
-        // by ignoring the SHA baseline. The pipeline respects the
-        // `full` flag via the `skipShaDiff` option added below.
-        ...(options.full ? { skipShaDiff: true } : {}),
-        ...(budgetWarnUsd !== undefined ? { budgetWarnUsd } : {}),
-        ...(narrowAttribution !== undefined ? { narrowAttribution } : {}),
-      });
+      const result = await extractor.extract(extractorContext);
+      pipelineResult = result.pipelineResult;
     } catch (err) {
+      if (err instanceof ExtractionSetupError) {
+        log.error("index: extraction setup failed", { err: String(err) });
+        return { exitCode: 2 };
+      }
       log.error("index: extraction pipeline threw", { err: String(err) });
       return { exitCode: 1 };
     }

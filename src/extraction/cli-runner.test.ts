@@ -77,6 +77,12 @@ describe("runIndexSubcommand (ADR-12)", () => {
       pathJoin(tmp, ".contextatlas.yml"),
       [
         "version: 1",
+        // Explicit Mode B selection per v0.7 Q1.0.4 β-3 default flip:
+        // existing tests verify Anthropic API direct path behavior;
+        // claude-code-only is now default at v0.7+; tests explicitly
+        // opt into Mode B to preserve test scope (Mode A Skills path
+        // tested at Step 1.4b after functional implementation lands).
+        "architecture: anthropic-api-direct",
         "languages:",
         "  - typescript",
         "adrs:",
@@ -359,6 +365,7 @@ describe("runIndexSubcommand (ADR-12)", () => {
       pathJoin(tmp, ".contextatlas.yml"),
       [
         "version: 1",
+        "architecture: anthropic-api-direct",
         "languages: [typescript]",
         "adrs: { path: docs/adr/, format: markdown-frontmatter }",
         "docs: { include: [] }",
@@ -416,6 +423,7 @@ describe("runIndexSubcommand (ADR-12)", () => {
       pathJoin(tmp, ".contextatlas.yml"),
       [
         "version: 1",
+        "architecture: anthropic-api-direct",
         "languages: [typescript]",
         "adrs: { path: docs/adr/, format: markdown-frontmatter }",
         "docs: { include: [] }",
@@ -453,6 +461,7 @@ describe("runIndexSubcommand (ADR-12)", () => {
       pathJoin(tmp, ".contextatlas.yml"),
       [
         "version: 1",
+        "architecture: anthropic-api-direct",
         "languages: [typescript]",
         "adrs: { path: docs/adr/, format: markdown-frontmatter }",
         "docs: { include: [] }",
@@ -875,6 +884,7 @@ describe("runIndexSubcommand (ADR-12)", () => {
       pathJoin(tmp, ".contextatlas.yml"),
       [
         "version: 1",
+        "architecture: anthropic-api-direct",
         "languages: [typescript]",
         "adrs: { path: docs/adr/, format: markdown-frontmatter }",
         "docs: { include: [] }",
@@ -923,6 +933,7 @@ describe("runIndexSubcommand (ADR-12)", () => {
       pathJoin(tmp, ".contextatlas.yml"),
       [
         "version: 1",
+        "architecture: anthropic-api-direct",
         "languages: [typescript]",
         "adrs: { path: docs/adr/, format: markdown-frontmatter }",
         "docs: { include: [] }",

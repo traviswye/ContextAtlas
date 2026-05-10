@@ -159,13 +159,25 @@ export interface ParsedArgs {
   narrowAttribution: "drop" | "drop-with-fallback" | null;
   /**
    * True when `--cc-only` was passed alongside `init`. Boolean opt-in
-   * for B13-flags single-dependency architecture (claude-code-only)
-   * per Q5 lock + v0.6 Step 4.0 Q4.0.5 + Q4.0.11 locks. Default false
-   * ("anthropic-api-claude-code" current dual-dependency). Rejected on
-   * any non-`init` invocation. v0.6 Stream A pipeline assembly Step
-   * 4.1.
+   * for B13-flags single-dependency architecture (claude-code-only;
+   * Mode A) per v0.6 Q5 lock + v0.7 Q1.0.8 3-flag user-choice lock.
+   * Default false at flag level (init resolves to claude-code-only
+   * default per Q1.0.4 β-3 absent-means-default at v0.7+ regardless
+   * of flag absence). Rejected on any non-`init` invocation. NOT
+   * deprecated at v0.7+; remains meaningful as explicit Mode A
+   * selector.
    */
   ccOnly: boolean;
+  /**
+   * True when `--api-direct` was passed alongside `init`. Boolean
+   * opt-in for Anthropic API direct architecture (Mode B per v0.7
+   * Q1.0.8 3-flag user-choice lock). Forces explicit opt-out from
+   * default claude-code-only Mode A. Rejected on any non-`init`
+   * invocation. New at v0.7 Step 1.4a; mutually exclusive with
+   * --cc-only at config-write time (parser rejects both-flags-set
+   * with actionable error).
+   */
+  apiDirect: boolean;
   /**
    * True when `--observe` was passed. Accepted with `init` (writes
    * `observability.enabled: true` into the config file) and with
@@ -209,6 +221,7 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
   let verbose = false;
   let narrowAttribution: "drop" | "drop-with-fallback" | null = null;
   let ccOnly = false;
+  let apiDirect = false;
   let observe = false;
   let subcommand: Subcommand = "mcp";
   let subcommandSeen = false;
@@ -430,6 +443,16 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
       i += 1;
       continue;
     }
+    if (arg === "--api-direct") {
+      if (apiDirect) {
+        throw new Error(
+          `Flag --api-direct specified more than once. ${USAGE}`,
+        );
+      }
+      apiDirect = true;
+      i += 1;
+      continue;
+    }
     if (arg === "--observe") {
       if (observe) {
         throw new Error(`Flag --observe specified more than once. ${USAGE}`);
@@ -484,6 +507,18 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
       `Flag --cc-only is only accepted with the 'init' subcommand. ${USAGE}`,
     );
   }
+  if (apiDirect && subcommand !== "init") {
+    throw new Error(
+      `Flag --api-direct is only accepted with the 'init' subcommand. ${USAGE}`,
+    );
+  }
+  if (ccOnly && apiDirect) {
+    throw new Error(
+      `Flags --cc-only and --api-direct are mutually exclusive ` +
+        `(--cc-only selects Mode A claude-code-only; --api-direct selects ` +
+        `Mode B anthropic-api-direct per v0.7 Q1.0.8 3-flag user-choice). ${USAGE}`,
+    );
+  }
   if (observe && subcommand !== "init" && subcommand !== "mcp") {
     throw new Error(
       `Flag --observe is only accepted with the 'init' or 'mcp' subcommand ` +
@@ -502,6 +537,7 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
     verbose,
     narrowAttribution,
     ccOnly,
+    apiDirect,
     observe,
   };
 }

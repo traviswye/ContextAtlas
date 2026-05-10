@@ -26,7 +26,7 @@ export type ConfigScaffoldResult =
 
 export interface ConfigScaffoldOptions {
   readonly configRoot: string;
-  readonly architecture: "anthropic-api-claude-code" | "claude-code-only";
+  readonly architecture: "claude-code-only" | "anthropic-api-direct";
   readonly languages: readonly LanguageCode[];
   /**
    * When true, write `observability: { enabled: true }` into the
@@ -47,7 +47,7 @@ export interface ConfigScaffoldOptions {
  * pointer).
  */
 export function buildConfigScaffold(opts: {
-  readonly architecture: "anthropic-api-claude-code" | "claude-code-only";
+  readonly architecture: "claude-code-only" | "anthropic-api-direct";
   readonly languages: readonly LanguageCode[];
   readonly observe?: boolean;
 }): string {

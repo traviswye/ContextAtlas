@@ -59,11 +59,23 @@ export interface InitRunOptions {
   /** Optional explicit config file path (per ADR-08 inheritance). */
   readonly configFile?: string | null;
   /**
-   * `--cc-only` boolean opt-in (B13-flags per Q5 lock + Q4.0.5 +
-   * Q4.0.11 locks). True → architecture = "claude-code-only";
-   * false → "anthropic-api-claude-code" (default dual-dependency).
+   * `--cc-only` boolean opt-in (B13-flags per v0.6 Q5 lock + Q4.0.5
+   * + Q4.0.11 locks; revised at v0.7 Step 1.4a per Q1.0.8 3-flag
+   * user-choice lock). True → architecture = "claude-code-only"
+   * (Mode A; also default at v0.7+ per Q1.0.4 β-3 lock). NOT
+   * deprecated at v0.7+; remains meaningful as explicit Mode A
+   * selector.
    */
   readonly ccOnly?: boolean;
+  /**
+   * `--api-direct` boolean opt-in (v0.7 Step 1.4a per Q1.0.8 3-flag
+   * user-choice lock + Q1.0.4 β-3 default flip). True → architecture
+   * = "anthropic-api-direct" (Mode B; explicit opt-out from default
+   * claude-code-only path). Mutually exclusive with --cc-only at
+   * config-write time (last-flag-wins semantics; explicit user
+   * intent honored).
+   */
+  readonly apiDirect?: boolean;
   /**
    * `--observe` boolean opt-in (v0.6 Step 6.2 / Q6.0.4 hybrid wiring +
    * ADR-20 cohort observability contract). True → scaffold writes
@@ -171,12 +183,20 @@ export async function runInitSubcommand(
   const runIndex =
     options.runIndexSubcommandOverride ?? runIndexSubcommand;
 
-  // Architecture choice from --cc-only flag plumbing per Q4.0.5 +
-  // Q4.0.11 + Q5 locks.
-  const architecture: "anthropic-api-claude-code" | "claude-code-only" =
-    options.ccOnly === true
-      ? "claude-code-only"
-      : "anthropic-api-claude-code";
+  // Architecture choice from 3-flag user-choice wiring per v0.7
+  // Step 1.4a Q1.0.8 lock + Q1.0.4 β-3 default flip:
+  // - --api-direct forces Mode B (writes "anthropic-api-direct")
+  // - --cc-only forces Mode A (writes "claude-code-only"; also
+  //   default at v0.7+ per β-3 lock)
+  // - flag-absence selects default Mode A (writes "claude-code-only"
+  //   per β-3 absent-means-default + init-writes-explicit-default
+  //   discipline)
+  const architecture:
+    | "claude-code-only"
+    | "anthropic-api-direct" =
+    options.apiDirect === true
+      ? "anthropic-api-direct"
+      : "claude-code-only";
 
   // Step 4.3 detect-then-scaffold reorder per Q4.3.4 lock.
   const detectedLanguages = detectLangs(options.configRoot);

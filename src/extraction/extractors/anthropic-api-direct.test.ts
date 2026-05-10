@@ -1,26 +1,57 @@
 import { describe, expect, it } from "vitest";
 
-import type { ExtractorContext } from "../extractor.js";
+import {
+  ExtractionSetupError,
+  type ExtractorContext,
+} from "../extractor.js";
 
 import { AnthropicAPIDirectExtractor } from "./anthropic-api-direct.js";
 
-describe("AnthropicAPIDirectExtractor (Mode B skeleton at Step 1.3)", () => {
+function buildStubContext(overrides: Partial<ExtractorContext> = {}): ExtractorContext {
+  return {
+    config: {
+      version: 1,
+      languages: [],
+      adrs: { path: "docs/adr/", format: "markdown-frontmatter" },
+    } as never,
+    configRoot: "/tmp/repo",
+    sourceRoot: "/tmp/repo",
+    db: {} as never,
+    adapters: new Map() as never,
+    full: false,
+    contextatlasVersion: "0.0.1-test",
+    contextatlasCommitSha: null,
+    readEnv: () => undefined,
+    ...overrides,
+  };
+}
+
+describe("AnthropicAPIDirectExtractor (Mode B per ADR-02 v0.7 amendment)", () => {
   it("costModel is 'api'", () => {
     const extractor = new AnthropicAPIDirectExtractor();
     expect(extractor.costModel).toBe("api");
   });
 
-  it("extract() throws Step-1.4-pending error per Q1.3.3 fail-loud lock", async () => {
+  it("extract() throws ExtractionSetupError when ANTHROPIC_API_KEY missing (no clientOverride)", async () => {
     const extractor = new AnthropicAPIDirectExtractor();
-    const context: ExtractorContext = {
-      config: { version: 1, languages: [], adrs: { path: "", format: "markdown-frontmatter" } } as never,
-      configRoot: "/tmp",
-      databasePath: "/tmp/.contextatlas/index.db",
-      atlasJsonPath: "/tmp/atlas.json",
-      full: false,
-    };
+    const context = buildStubContext({
+      readEnv: () => undefined,
+    });
+    await expect(extractor.extract(context)).rejects.toBeInstanceOf(
+      ExtractionSetupError,
+    );
+  });
+
+  it("extract() ExtractionSetupError message references API key + suggests claude-code-only alternative", async () => {
+    const extractor = new AnthropicAPIDirectExtractor();
+    const context = buildStubContext({
+      readEnv: () => undefined,
+    });
     await expect(extractor.extract(context)).rejects.toThrow(
-      /AnthropicAPIDirectExtractor implementation lands at Step 1\.4/,
+      /ANTHROPIC_API_KEY is not set/,
+    );
+    await expect(extractor.extract(context)).rejects.toThrow(
+      /architecture: claude-code-only/,
     );
   });
 });

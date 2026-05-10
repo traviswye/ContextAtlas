@@ -188,11 +188,19 @@ lock — Q1.0.2 verification as explicit gate-substep refinement):
   adjudications locked (Q1.3.1-Q1.3.6); 2 verifications resolved
   inline; 1316/1316 tests PASS (1303 baseline + 13 new); npm run
   build clean.
-- [ ] **Step 1.4** — Path-routing dispatch logic + claude-code-
-  only concrete implementation (per Q1.0.3 α config-flag-based
-  dispatch lock + Q1.0.4 β-3 hybrid default lock; runner.ts reads
-  `architecture` field; absent-means-default claude-code-only;
-  init writes explicit-default per Q4.2.2 inheritance).
+- [x] **Step 1.4a** — Mode B full implementation + cli-runner
+  Strategy dispatch integration + init/runner Q1.0.4 β-3 +
+  Q1.0.8 3-flag wiring (mechanical clusters 1 + 3 + 4 + partial
+  5 per Q-pre-4 Path A pre-state amendment splitting Step 1.4
+  → 1.4a/1.4b). Mode B end-to-end functional; Mode A still
+  throws Step-1.4b-pending error. Shipped 2026-05-10; commit
+  `[this commit]`.
+- [ ] **Step 1.4b** — Mode A Skills functional implementation
+  (cluster 2 SKILL.md content + bundled helper scripts + Path-γ
+  `contextatlas show-prompt` CLI subcommand for canonical
+  extraction prompt loading + ClaudeCodeOnlyExtractor full
+  implementation + cluster 5 continuation tests). Mode A
+  end-to-end functional after 1.4b ships.
 - [ ] **Step 1.5** — Cost model accounting integration + tests +
   `--api-direct` flag negation + `--cc-only` soft deprecation
   (per Q1.0.5 δ separate cost_model field lock + Q1.0.6 α+γ
@@ -383,6 +391,236 @@ timeline; not blocking).
 ## Progress log
 
 *Entries added in reverse-chronological order as steps ship.*
+
+### Step 1.4a shipped — 2026-05-10 (Mode B full + cli-runner Strategy dispatch + init Q1.0.4 β-3 + Q1.0.8 3-flag wiring; 1.4 → 1.4a/1.4b split per Path A pre-state amendment)
+
+V0.7 Step 1.4a ships Mode B full implementation + cli-runner.ts
+Strategy dispatch integration + init/runner.ts Q1.0.4 β-3 default
+flip + Q1.0.8 3-flag user-choice wiring. Mode B (anthropic-api-
+direct) end-to-end functional; Mode A (claude-code-only) still
+throws Step-1.4b-pending error per skeleton scope. 1321/1321
+tests PASS (1316 prior + 5 net new at Step 1.4a after Step 1.3
+test shape adjustments); npm run build clean compile.
+
+**Path A pre-state amendment applied** (per Q-pre-4 substrate-
+evolution drift framework): Step 1.4 → Step 1.4a + Step 1.4b
+ladder split BEFORE substantive Step 1.4 work shipped against
+superseded scope. 7-substep ladder → 8-substep ladder: 1.0
+design + 1.1 Q1.0.2 verification + 1.2 ADR-02 amendment + 1.3
+Strategy pattern wrapper + **1.4a Mode B + mechanical wiring**
++ **1.4b Mode A Skills functional impl** + 1.5 cost model +
+tests + flag negation + 1.6 close. Rationale: substantive
+interpretive SKILL.md content drafting warrants dedicated
+substep treatment per Q1.0.9 gate-substep precedent; Mode B
+mechanical wiring at 1.4a verifies Strategy dispatch end-to-
+end before Skills functional impl lands at 1.4b.
+
+| Substep | branch | commit | Notes |
+|---|---|---|---|
+| 1.4a Mode B + mechanical wiring | main | [this commit] | Cluster 1 AnthropicAPIDirectExtractor full + Cluster 3 cli-runner.ts Strategy dispatch + Cluster 4 init/runner.ts Q1.0.4 β-3 + Q1.0.8 3-flag + Cluster 5 partial tests; Step 1.3 ExtractorContext + ExtractionResult shapes Path A pre-state amended to runtime-resource shape; Step 1.4b unblocked |
+
+#### Cluster 1 — AnthropicAPIDirectExtractor full implementation
+
+`src/extraction/extractors/anthropic-api-direct.ts` (~60 LOC).
+Constructs ExtractionClient (reads ExtractorContext.clientOverride
+for test-seam injection per Q1.0.6 α + γ + Q1.3.6 lock; falls
+through to readEnv-based Anthropic SDK client construction).
+Throws **ExtractionSetupError** (new error class) on missing
+ANTHROPIC_API_KEY for ADR-12 exit code 2 mapping discipline;
+generic Error throws map to exit code 1 (pipeline failure). Calls
+runExtractionPipeline with full kwargs; returns ExtractionResult
+wrapping pipelineResult + costModel "api".
+
+#### Cluster 3 — cli-runner.ts Strategy dispatch integration
+
+`src/extraction/cli-runner.ts` refactored: removes direct
+Anthropic SDK import + ExtractionClient construction (moved into
+AnthropicAPIDirectExtractor); replaces direct runExtractionPipeline
+call with `getExtractor(config).extract(extractorContext)` Strategy
+pattern dispatch. Existing IndexCliOptions.clientOverride test-
+seam preserved through ExtractorContext.clientOverride per Q1.3.6.
+ExtractionSetupError instanceof check maps to exit code 2; generic
+Error catches map to exit code 1. ExtractorContext bundles
+runtime resources (db, adapters, readEnv, contextatlasVersion,
+contextatlasCommitSha, budgetWarnUsd, narrowAttribution,
+clientOverride) per Step 1.3 ExtractorContext interface (Path A
+pre-state amended to match runtime needs).
+
+#### Cluster 4 — init/runner.ts Q1.0.4 β-3 default flip + Q1.0.8 3-flag wiring
+
+`src/init/runner.ts`:
+- New `apiDirect?: boolean` field in InitRunOptions
+- Architecture choice: `apiDirect === true → "anthropic-api-direct"
+  (Mode B)` else `"claude-code-only" (Mode A default per β-3)`
+- Removes legacy "anthropic-api-claude-code" default (flipped to
+  claude-code-only per Q1.0.4 β-3 lock at v0.7+)
+- `--cc-only` flag preserved as Mode A explicit selector (NOT
+  deprecated; meaningful at v0.7+ per Q1.0.8 lock)
+
+`src/cli-args.ts`:
+- New `apiDirect: boolean` field in ParsedArgs interface
+- New `--api-direct` flag parser (boolean opt-in; init-subcommand-
+  only)
+- Mutual-exclusion check: `--cc-only` + `--api-direct` together →
+  actionable error
+
+`src/index.ts`:
+- Passes `apiDirect: parsed.apiDirect` to runInitSubcommand
+
+`src/init/config-scaffold.ts`:
+- ConfigScaffoldOptions.architecture type union updated to match
+  v0.7 ContextAtlasConfig.architecture shape (Mode A + Mode B; no
+  legacy alias at init-write time — legacy alias accepted at
+  config-parse time but new configs always write canonical names)
+
+#### Cluster 5 (partial) — Test coverage at Step 1.4a
+
+5 net new tests after Step 1.3 test shape adjustments + Step 1.4a
+test additions:
+- `extractor.test.ts` updated: new ExtractionResult shape
+  (pipelineResult + costModel); ExtractionSetupError class tests
+- `extractors/anthropic-api-direct.test.ts` updated: ExtractionSetupError
+  thrown on missing API key + message content verification
+- `extractors/claude-code-only.test.ts` updated: Step-1.4b-pending
+  error message verification
+- `init/runner.test.ts` updated: --cc-only absent → claude-code-
+  only default (Q1.0.4 β-3 verification); NEW test for
+  --api-direct → anthropic-api-direct
+- `cli-runner.test.ts` updated: beforeEach config adds
+  `architecture: anthropic-api-direct` (existing tests verify
+  Mode B path explicitly at v0.7+; Step 1.0 default flip honesty
+  surfaced via explicit-architecture config)
+- `cli-args.test.ts` updated: EMPTY ParsedArgs includes
+  `apiDirect: false`
+
+#### Path A pre-state amendment to Step 1.3 interface shapes
+
+ExtractorContext interface expanded from 6-field Step 1.3
+skeleton to 11-field runtime shape needed for Mode B
+implementation:
+- Added: sourceRoot, db, adapters, contextatlasVersion,
+  contextatlasCommitSha, budgetWarnUsd (optional),
+  narrowAttribution (optional), readEnv (required)
+- Removed: databasePath (db replaces; lifecycle in cli-runner),
+  atlasJsonPath (handled internally by runExtractionPipeline)
+
+ExtractionResult shape changed from 8-field flat (claims + file
+counts + token counts + cost_usd + cost_model) to 2-field nested
+(pipelineResult: ExtractionPipelineResult + costModel: CostModel).
+Rationale: cli-runner.ts summary printing consumes
+pipelineResult fields unchanged; new costModel field surfaces
+in summary output; avoids duplication of ExtractionPipelineResult
+fields across two interfaces.
+
+ExtractionSetupError class added to extractor.ts for ADR-12 exit
+code mapping discipline (setup errors → exit code 2; pipeline
+errors → exit code 1).
+
+Path A pre-state amendment per Q-pre-4 substrate-evolution drift
+framework: adjustments BEFORE substantive Step 1.4a work shipped
+against superseded Step 1.3 interface scope. Step 1.3 entries
+remain historical record of skeleton-shape state; Step 1.4a entry
+captures runtime-shape state.
+
+#### Path-γ CLI subcommand lock for Step 1.4b extraction prompt loading
+
+Travis adjudication at Step 1.4 design surface: Path-γ CLI
+subcommand `contextatlas show-prompt` is architectural fit for
+Mode A Skills mechanism prompt loading. ContextAtlas owns
+canonical prompt per ADR-02 §Decision permitted-modules
+invariant; Skills consumes via CLI invocation surface (cwd-
+independent; path-resolution-complexity centralized in CLI);
+future-extensibility for additional CLI subcommands. Step 1.4b
+implementation scope:
+- NEW `src/extraction/cli-show-prompt.ts` (matches cli-runner.ts
+  pattern; runShowPromptSubcommand function with writeStdout
+  injection seam)
+- Dispatch wiring in src/index.ts for `contextatlas show-prompt`
+  subcommand
+- ~5-10 new tests at 1.4b
+- Skill invocation: `!`contextatlas show-prompt`` (canonical CLI
+  surface cwd-independent)
+
+#### Cycle-execution observation — Travis mid-cycle direction: Mode-A-vs-Mode-B extraction equivalence verification
+
+Travis mid-cycle direction at Step 1.4 design surface: empirical
+equivalence verification between Mode A (Skills) and Mode B (API
+direct) extractions for Step 2 SECONDARY scope inheritance.
+
+Substantive framing:
+- Compare atlas.json outputs across paths against same source
+  repos
+- Verify near-identical extraction behavior between modes
+- Substrate for v1.0 launch document equivalence claims
+  (empirical not theoretical)
+- Methodology substrate for future Mode comparisons (v0.8+
+  extraction paths if added)
+
+Pre-registration for Step 2.0 design phase Q-list:
+
+**Q2.0.X — Mode-A-vs-Mode-B extraction equivalence verification
+protocol.** Per Travis mid-cycle direction captured at Step 1.4a
+progress log. Substantively: (a) what counts as 'equivalent
+enough' (claim count match? fuzzy claim-text similarity
+threshold? structural schema match?); (b) how does comparison
+handle stochastic LLM output variance (run N trials per mode?
+compare distributions?); (c) what discrepancies trigger
+investigation vs accept-as-noise; (d) how do equivalence
+findings inform v1.0 launch document framing. Verification
+protocol integrates into Step 2 SECONDARY 3-repo install/setup
+verification (each target repo gets dual-extraction comparison).
+Methodology inheritance from v0.6 F1 atlas-substrate-version
+control discipline (Mode A vs Mode B comparison must hold atlas
+substrate constant — compare extractions producing different
+atlas versions; not running queries against pre-existing
+different atlas versions).
+
+v0.7-SCOPE.md amendment (if needed for more substantive scope-doc
+capture) deferred to Step 2.0 design phase per Q-pre-4
+substrate-evolution drift framework Path A pre-state amendment.
+
+#### Cycle-execution observation 9 — Path-γ CLI subcommand decision substrate for v0.8+ inheritance (NEW)
+
+V0.7 Step 1.4 design surface surfaced **9th recursive catch-
+pattern observation class**: when Skills mechanism needs to
+consume canonical package internals (prompts; schemas; configs;
+etc.), CLI subcommand surface is the architectural fit vs
+path-resolution-in-skill OR inline-bundling.
+
+Reasoning preserved for v0.8+ inheritance:
+- Architectural cleanliness (ADR-02 permitted-modules invariant
+  alignment)
+- Path-resolution-complexity centralized in CLI (cwd-independent
+  via import.meta.url semantics)
+- Future-extensibility (CLI subcommand can add flags; Skills
+  stays simple)
+- Test-pattern matches existing cli-runner.ts precedent
+
+v0.8+ Skills additions (if any) inherit this pattern: package
+internals exposed via CLI subcommands; Skills consume via CLI
+invocation surface. Composes with v0.6 7-class + v0.7 8-class
+(Travis-product-vision-clarification surface class) enumeration
+= **9-class recursive catch-pattern observation enumeration**
+for v0.7+ ship-gate working-content-gap-inventory.
+
+#### Step 1.4a unblock — Step 1.4b Skills functional implementation
+
+Step 1.4b unblocked. Work scope:
+- Cluster 2 — `.claude/skills/index-atlas/SKILL.md` content
+  drafting (extraction prompt packaging via Path-γ; bundled
+  helper scripts for walk-sources + validate-claims + persist-
+  atlas; dynamic context injection patterns)
+- NEW `src/extraction/cli-show-prompt.ts` (Path-γ CLI subcommand)
+- Subcommand dispatcher wiring updates in src/index.ts
+- ClaudeCodeOnlyExtractor full implementation (Skills invocation
+  context bridge)
+- Cluster 5 continuation tests (~15-25 additional tests)
+
+Substantive interpretive work surface — SKILL.md content surfaced
+inline before commit per discipline #3 cadence applied at
+substantive interpretive work moment.
+
+---
 
 ### Step 1.3 shipped — 2026-05-10 (Strategy pattern wrapper module)
 
