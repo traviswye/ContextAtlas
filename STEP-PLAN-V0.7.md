@@ -222,9 +222,14 @@ lock — Q1.0.2 verification as explicit gate-substep refinement):
   acknowledgment (atlas schema bump 1.3 → 1.4 + pipeline.ts
   plumbing + exporter integration substantive scope; not v0.7
   scope). Shipped 2026-05-10; commit `[this commit]`.
-- [ ] **Step 1.6** — Step 1 close (progress log batching for
-  Steps 1.1-1.5 ships; cycle-execution observations captured
-  per discipline #3 cadence).
+- [x] **Step 1.6** — Step 1 close. Progress log batching for
+  Steps 1.0-1.5 substantively shipped via per-substep entries
+  (no batching needed at close); cumulative Step 1 PRIMARY scope
+  outcome captured; cost_model persistence gap pre-registered
+  for v0.7 ship gate Step 5.5 absorbed-item annotation + v0_8-
+  HANDOFF.md substrate at Step 4 cycle-close; Step 2 SECONDARY
+  3-repo install/setup empirical verification unblocked.
+  Shipped 2026-05-10; commit `[this commit]`.
 
 **Unblocks.** Step 2 SECONDARY (3-repo install/setup verification)
 + Step 3 TERTIARY (A1+A2+A3 substrate gap fixes) per v0.7-
@@ -406,6 +411,208 @@ timeline; not blocking).
 ## Progress log
 
 *Entries added in reverse-chronological order as steps ship.*
+
+### Step 1.6 shipped — 2026-05-10 (Step 1 PRIMARY scope close + Step 2 SECONDARY unblock)
+
+V0.7 Step 1 PRIMARY scope substantively complete. 8-substep
+ladder shipped (1.0/1.1/1.2/1.3/1.4a/1.4b/1.5/1.6) per Path A
+pre-state amendments captured along the way (1.4 → 1.4a + 1.4b
+split at Step 1.4a; Path-3 entry-point-determined reframe at
+Step 1.4b superseded Step 1.2 + 1.4a config-field user-choice
+framing as historical record per Q-pre-4 substrate-evolution
+drift framework Path C). 1323/1323 tests PASS; npm run build
+clean; v0.7 PRIMARY scope substantively delivered.
+
+| Substep | branch | commit | Notes |
+|---|---|---|---|
+| 1.6 Step 1 close | main | [this commit] | Cumulative Step 1 PRIMARY scope outcome captured; cost_model persistence gap pre-registered for v0.7 ship gate Step 5.5 + v0_8-HANDOFF.md substrate; Step 2 SECONDARY 3-repo install/setup verification unblocked |
+
+#### Step 1 PRIMARY scope cumulative outcome
+
+Substantive deliverables shipped across 8 substeps:
+
+1. **Design adjudications + interface foundation** (Step 1.0 +
+   Step 1.3):
+   - Step 1.0 design adjudications: Q1.0.1-Q1.0.12 locks + 2
+     refinements (Q1.0.8 γ-2 soft deprecation + Q1.0.9 7-substep
+     ladder gate-substep refinement). 7-substep ladder later
+     amended to 8-substep via Path A pre-state amendment at Step
+     1.4a (Q-pre-4 substrate-evolution drift framework).
+   - Step 1.3 Strategy pattern wrapper module skeleton (Extractor
+     interface + 2 concrete implementations + factory + 5 NEW
+     test files; ~600 LOC + 13 new tests). Architectural insight
+     surfaced: 2-level Strategy pattern (per-cycle Extractor
+     above per-document ExtractionClient).
+
+2. **Q1.0.2 verification gate-substep** (Step 1.1):
+   - Claude Code session context API surface verification cleared
+     cleanly (Outcome A); α Skills + β Slash Commands architecture
+     shape locked; canonical `.claude/skills/index-atlas/SKILL.md`
+     location locked; γ + δ shapes architecturally incompatible
+     ruled out at verification time.
+
+3. **ADR-02 graduation reframe — twice** (Step 1.2 + Step 1.4b):
+   - Step 1.2 first amendment: substantive graduation reframe
+     (research-cycle SOLE-CALLER invariant → v0.7+ production-
+     cycle user-choice configuration; Path (iii) 2-mode collapse
+     + 1 legacy alias). PRESERVED AS HISTORICAL RECORD per Path C
+     framework.
+   - Step 1.4b re-amendment: Path-3 entry-point-determined model
+     supersedes Step 1.2 framing. CLI-cannot-bridge-to-Skills
+     architectural reality surfaced at Step 1.4b implementation;
+     reframe captures honest production-tool architecture (CLI =
+     API direct; /index-atlas skill = subscription-bounded; user
+     chooses surface, surface determines cost model).
+
+4. **AnthropicAPIDirectExtractor full implementation** (Step
+   1.4a):
+   - Wraps existing runExtractionPipeline + createExtractionClient
+     flow; reads ExtractorContext.clientOverride for test-seam
+     per Q1.0.6 lock; ExtractionSetupError class for ADR-12 exit
+     code 2 mapping discipline; cli-runner.ts integrated via
+     Strategy dispatch.
+
+5. **Path-3 entry-point-determined architecture** (Step 1.4b):
+   - 4 Q-lock revisions: Q1.0.4 dropped + Q1.0.8 simplified
+     (--cc-only deprecated no-op + redirect warning; --api-direct
+     dropped) + Q1.0.10 (b) sub-lock (ClaudeCodeOnlyExtractor
+     informational-stub) + Q1.0.5 preserved (cost_model field at
+     runtime; atlas.json persistence deferred per Step 1.5
+     verification).
+   - Architecture config field deprecated at v0.7+; 3-variant
+     stderr warning emission at parser layer; field removed at
+     v0.8+.
+
+6. **Skills mechanism functional** (Step 1.4b):
+   - `.claude/skills/index-atlas/SKILL.md` (canonical Mode A entry
+     point; subscription-bounded extraction in Claude Code session
+     tools)
+   - `src/extraction/cli-show-prompt.ts` Path-γ CLI subcommand
+     (canonical EXTRACTION_PROMPT loading mechanism for Skills
+     consumption)
+   - ClaudeCodeOnlyExtractor informational-stub (legacy field-
+     value redirect; emits stderr message + zero-counts result)
+
+7. **Legacy deprecation cycle** (Step 1.4b):
+   - architecture config field deprecated at v0.7+ (3-variant
+     warning); removed at v0.8+
+   - `--cc-only` flag deprecated no-op + redirect warning;
+     removed at v0.8+
+   - `--api-direct` flag dropped entirely at v0.7+
+   - legacy alias `"anthropic-api-claude-code"` accepted at
+     parser; emits deprecation warning; removed alongside field
+     at v0.8+
+
+8. **Verification + closure** (Step 1.5):
+   - No orphaned source references post-Path-3 reframe
+   - cost_model atlas.json metadata persistence GAP identified
+     + v0.8+ DEFERRED per honest-scope acknowledgment (Q1.0.5 δ
+     preserved at runtime; atlas schema bump + pipeline plumbing
+     + exporter integration deferred)
+
+#### cost_model persistence gap — pre-registered carry-forward
+
+Per Step 1.5 honest-scope verification: cost_model field
+preserved at ExtractionResult.costModel runtime; atlas.json
+metadata persistence DEFERRED to v0.8+ (atlas schema bump v1.3
+→ v1.4 + pipeline.ts plumbing + storage/atlas-exporter.ts
+integration + tests). Substantive scope; not v0.7 launch-
+bearing.
+
+**Pre-registration for v0.7 ship gate Step 5.5 absorbed-item
+annotations:** cost_model atlas.json persistence is scope-doc-
+locked-but-not-shipped class (composes with v0.6 B14 7th
+observation class pattern; deferred-with-honest-scope-
+acknowledgment rather than silent-deferral). Step 5.5 captures
+v0.7-deferred-to-v0.8+ status with explicit annotation per
+Q9.0.6 α-light URL-form annotation pattern inheritance.
+
+**Pre-registration for v0_8-HANDOFF.md substrate at Step 4
+cycle-close:** atlas.json cost_model metadata persistence is
+v0.8+ scope item (along with F1-F9 methodology amendments +
+cohort exposure execution + Stream B matrix-completion). Step
+4 close drafts v0_8-HANDOFF.md per v0.6 → v0.7 v0_7-HANDOFF.md
+substrate pattern inheritance.
+
+#### 11-class recursive catch-pattern observation enumeration final snapshot
+
+For v0.7+ ship gate working-content-gap-inventory + v0.8+
+inheritance:
+
+- **v0.6 1-7**: retrospective infrastructure-block claims drift
+  + retrospective document-relationship-anchor claims drift +
+  retrospective outcome-bullet pattern consistency drift +
+  retrospective version-progression narrative drift + cross-
+  surface URL/reference style consistency + substrate-evolution
+  drift class + scope-doc-locked-but-not-shipped class
+- **v0.7 8**: Travis-product-vision-clarification surface class
+  (Step 1.2 3-mode reframing + Path (iii) collapse + Step 1.4b
+  Path-3 reframe + Travis adjudication discipline)
+- **v0.7 9**: Path-γ CLI subcommand decision substrate for
+  package-internals-via-CLI architectural pattern
+- **v0.7 10**: substrate-verification-at-each-substep-boundary
+  (architectural framing benefits at EACH substep boundary, not
+  just design-phase; Step 1.4b CLI-can't-bridge-to-Skills
+  surface)
+- **v0.7 11**: Step-N→Step-N+1 partial revert/refactor pattern
+  (substrate-evolution drift surfacing at substep boundary
+  expects partial revert/refactor cost at next substep; healthy
+  pattern not cycle-execution failure)
+
+V0.7 cycle surfaced 4 new pattern classes (8-11) substantively
+per v0.6 → v0.7 production graduation work. Enumeration
+substrate for v0.8+ inheritance.
+
+#### Step 2 SECONDARY unblock framing
+
+Step 2 SECONDARY 3-repo install/setup empirical verification
+unblocked per Step 1.6 close. Scope per v0.7-SCOPE.md + Q-pre-2
++ Step 1.4b reframe:
+
+- **3-repo target set**: Travis personal projects + ContextAtlas-
+  on-itself dogfood + 1 external repo from cohort screening list
+  (specifics firm at Step 2.0 design phase). Fallback: 2-repo
+  if 3-repo variance exceeds launch-bearing timeline.
+- **Verification protocol**: init + doctor + extraction + smoke
+  test pipeline against target repos; friction observation
+  capture; fix surfaced launch-blocking issues OR document as
+  v0.8+ candidates.
+- **CLI-vs-Skill extraction equivalence verification protocol**
+  (Q2.0.X pre-registered at Step 1.4a + reframed at Step 1.4b
+  per Path-3 terminology): compares CLI extraction output vs
+  Skill extraction output (both produce atlas.json; equivalence
+  remains substantively meaningful question reframed away from
+  config-field-user-choice terminology). Integrates into 3-repo
+  verification at each target repo (dual-surface comparison).
+- **V1.0 ship-gate criterion #2 closure**: SECONDARY empirical
+  verification completes criterion #2 closure path established
+  at v0.6 Step 4.5 pipeline-mechanics ship.
+
+Step 2.0 design phase entry next per Step N.0 cadence convention
+inheritance from v0.6.
+
+#### Step 1.6 unblock — Step 2.0 design adjudications
+
+Step 2.0 design adjudications unblocked. Per Step N.0 cadence
+convention: Q2.0.1-Q2.0.X design adjudications surfaced inline
+per discipline #3 cadence; Step 2 substep ladder firmed at
+Step 2.0 close.
+
+Inherited Q-list items from Step 1.4a + 1.4b:
+- **Q2.0.X — CLI-vs-Skill extraction equivalence verification
+  protocol** (pre-registered at Step 1.4a; reframed at Step
+  1.4b per Path-3 terminology)
+
+Step 2.0 design adjudications expected to cover:
+- 3-repo target firm (Travis personal project specifics;
+  external repo from cohort screening list)
+- Verification protocol acceptance criteria
+- Friction-observation handling protocol (launch-blocking-fix-
+  now vs v0.8+-candidate vs honest-scope-acknowledgment)
+- CLI-vs-Skill equivalence protocol substantive design
+- Step 2 substep ladder firm
+
+---
 
 ### Step 1.5 shipped — 2026-05-10 (Verification + closure work + cost_model atlas.json metadata persistence gap → v0.8+)
 
