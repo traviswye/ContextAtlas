@@ -328,12 +328,17 @@ lock).
       wiring (per Travis Observation 2 interface-level lock);
       30 new tests; 1383/1383 PASS clean. Shipped 2026-05-11;
       commit `[this commit]`.
-    - [ ] **Step 2.2.a.2** — Substantive interpretive content:
-      `GENERATE_ADRS_PROMPT` drafting inline + Skills SKILL.md
-      content inline + reference-context feature substantive
-      scope (token budget management adjudication α/β/γ/δ) +
-      `AnthropicAPIDirectGenerator` full implementation +
-      ~15-20 additional tests
+    - [x] **Step 2.2.a.2** — Substantive interpretive content:
+      canonical `GENERATE_ADRS_PROMPT` + `.claude/skills/
+      generate-adrs/SKILL.md` + reference-context feature scope
+      (Lock 1 γ + soft-warning at 500k + attempt-anyway) +
+      `AnthropicAPIDirectGenerator` full implementation (codebase
+      walker + reference-context walker + token + cost estimator
+      + confirmation prompt seam + Anthropic API call + JSON
+      parse + ADR file writing + post-flight cost summary) +
+      `--yes` / `--no-confirm` CLI flag + 39 new tests (1422/1422
+      PASS); 15th cycle-execution observation class captured.
+      Shipped 2026-05-11; commit `[this commit]`.
   - **Step 2.2.b** — Rich cold-start verification using
     just-implemented generate-adrs (4-phase protocol +
     generate-adrs cold-start + extraction-after-generation
@@ -496,6 +501,58 @@ timeline; not blocking).
 ## Progress log
 
 *Entries added in reverse-chronological order as steps ship.*
+
+### Step 2.2.a.2 shipped — 2026-05-11 (substantive interpretive content: GENERATE_ADRS_PROMPT canonical + AnthropicAPIDirectGenerator full implementation + reference-context feature + SKILL.md + 15th cycle-execution observation class)
+
+V0.7 Step 2.2.a.2 ships substantive interpretive content cluster per Travis Locks 1-4 + Refinements 1-3 + Refinement 7. Replaces Step 2.2.a.1 placeholder + skeleton with canonical generate-adrs capability — codebase walker + reference-context walker (Scope γ' multi-format inheritance from Step 2.1.a) + two-phase cost reporting (pre-flight estimate + post-flight actual) + Anthropic API orchestration + ADR file writing. 1422/1422 tests PASS clean.
+
+| Substep | branch | commit | Notes |
+|---|---|---|---|
+| 2.2.a.2 substantive content | main | [this commit] | Canonical GENERATE_ADRS_PROMPT replaces placeholder (Refinements 1-3: reference-context current-vs-superseded + scale-variance calibration + conflict-detection as architectural-evolution observation); AnthropicAPIDirectGenerator full implementation (codebase walker via src/generation/codebase-walker.ts + reference-context walker via src/generation/reference-context-walker.ts using Scope γ' from Step 2.1.a + token-counting + cost-estimator + confirmation prompt seam + Anthropic API call via @anthropic-ai/sdk + JSON parse + ADR file writing); .claude/skills/generate-adrs/SKILL.md per Refinement 7 (when-to-skip-reference-context section); --yes / --no-confirm CLI flag for Lock 3 CI/CD bypass; Lock 4 BadRequestError → context-window-exceeded remediation guidance; 39 new tests (+9 over ~30 estimate; 14th-class bounded over-estimate framing applied) |
+
+#### Lock chain applied at Step 2.2.a.2 implementation
+
+- **Lock 1 (token budget γ + soft-warning + attempt-anyway):** `REFERENCE_CONTEXT_TOKEN_WARNING_THRESHOLD = 500_000` exported from prompt.ts; AnthropicAPIDirectGenerator emits informational stderr warning when reference context exceeds threshold; generation proceeds regardless. Tuned for Opus 4.7's 1M context window (~800k available for reference context after reserves).
+- **Lock 2 (atomic generation + idempotent re-run):** single Anthropic API call; failure surfaces clear error message to user; user re-runs from scratch with same flags. No checkpointed-resume state.
+- **Lock 3 (two-phase cost reporting):** pre-flight estimate printed to stderr (codebase + reference + prompt tokens; estimated input + output range; Opus 4.7 pricing); confirmation prompt via `confirmProceed` seam (default reads y/N from stdin via readline; --yes flag bypasses); post-flight actual cost printed from API response usage data.
+- **Lock 4 (context-window-exceeded behavior):** Anthropic SDK's `BadRequestError` → user-facing message with remediation guidance ("Try narrowing --reference-context scope OR running against a smaller codebase"). Empirically verifiable; non-blocking at v0.7 soft-warning threshold + reasonable codebase scale.
+
+#### Refinements 1-3 applied in GENERATE_ADRS_PROMPT
+
+- **Refinement 1 (reference-context current-vs-superseded):** explicit distinction between reference context describing CURRENT decisions (capture as ADR with inherited context preserving rationale + alternatives) vs SUPERSEDED decisions (capture as historical context within current-state ADR, not separate authoritative ADRs).
+- **Refinement 2 (scale-variance calibration):** 4-tier calibration table (Small <1k LOC: 3-5 ADRs; Substantial 1k-50k LOC: 5-15 ADRs; Very large >50k LOC: 15-30 ADRs; one ADR per major decision). Captures variance for v1.0 cohort users with substantial codebases.
+- **Refinement 3 (conflict-detection as architectural-evolution observation):** when reference context conflicts with current code state, capture as "Earlier documentation described X approach; current implementation uses Y" within ADR Context section. Surfaces architectural evolution as substantive ADR content rather than silent code-wins resolution.
+
+#### Refinement 7 applied in SKILL.md
+
+"When to skip reference context" section added: skip if codebase already in ContextAtlas ADR format / codebase has no existing documentation (cold-start path) / reference source unreliable or known-stale. Substantive UX guidance for Skills users to make informed decisions about reference context inclusion.
+
+#### 15th cycle-execution observation class captured per Travis Step 2.2.a.2 surface
+
+**15th class — Engineering-default-vs-product-context pattern.** Implementation-default-choices need substantive product-context grounding, not just engineering-best-practice defaults. Engineering best practice says "validate input scale; fail fast on overflow." Product context for generate-adrs says "this is once per repo; let user get comprehensive results; surface scale transparency not artificial bounding." Different reasoning trajectories produce different substantive answers.
+
+**Empirical anchor at v0.7 cycle:** Step 2.2.a.2 token budget management adjudication. Original dev recommendation (γ + fail-loud at 60k) applied engineering-pattern defaults (validate scale; fail fast). Travis substantive pushback surfaced product-context reframing (one-time-per-repo + ADR quality matters + no artificial bounding). Resulting lock (γ + soft-warning + attempt-anyway at 500k) substantively serves product context.
+
+**Pattern for v0.7+ inheritance:** when adjudicating implementation default at substantive interpretive work, verify the default aligns with substantive product context not engineering-pattern defaults. Composes with 14-class enumeration captured through Step 2.1 = **15-class enumeration at Step 2.2.a.2 close** for v0.7 ship-gate working-content-gap-inventory + v0.8+ inheritance.
+
+#### 14th-class observation: bounded over-estimate at Step 2.2.a.2
+
+Step 2.2.a.2 estimated ~15-25 substantive-content tests; actual 39 tests (+56-160% over estimate). Per 14th-class framing this is bounded over-estimate (substantive but not catastrophic). Substrate-consistency regression tests (prompt content assertions; SKILL.md schema; cli-runner skip-confirmation path) added during implementation surface beyond original estimate. Healthy implementation discipline; not scope misjudgment.
+
+#### CLI verification at production surface (post-build)
+
+- `node dist/index.js show-generate-prompt` → outputs canonical 87-line GENERATE_ADRS_PROMPT + trailing newline + exit 0 (Path-γ wiring works against real content; subcommand code unchanged from Step 2.2.a.1 per Travis Observation 3 forward-pointer)
+- `node dist/index.js generate-adrs` → dispatches to factory → AnthropicAPIDirectGenerator → API-key setup check fails (no env var in test environment) → GenerationSetupError mapped to exit code 2 per ADR-12
+
+#### Step 2.2.a.2 unblock — Step 2.2.b cluster
+
+Step 2.2.b Rich cold-start verification cluster unblocked:
+- **Step 2.2.b.i** Pure cold-start: Rich (Textualize/rich) without reference context. Verifies generate-adrs works against codebase alone.
+- **Step 2.2.b.ii** Reference-context-aided: Rich with `django/deps` reference context. Verifies reference-context feature + Scope γ' multi-format substrate (.rst) in one verification.
+
+After Step 2.2.b cluster ships, Step 2.3 + Step 2.4 CLI-vs-Skill equivalence verification surfaces.
+
+---
 
 ### Step 2.2.a.1 shipped — 2026-05-11 (Generator infrastructure mechanical: parallel src/generation/ + Generator interface + factory + 2 skeleton concrete generators + Path-γ show-generate-prompt + generate-adrs CLI dispatcher + 30 new tests)
 

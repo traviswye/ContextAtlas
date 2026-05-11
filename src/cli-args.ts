@@ -193,6 +193,14 @@ export interface ParsedArgs {
    * `GeneratorContext.referenceContextPath`.
    */
   referenceContext: string | null;
+  /**
+   * True when `--yes` (or alias `--no-confirm`) was passed alongside
+   * `generate-adrs`. Bypasses the pre-flight cost-estimate
+   * confirmation prompt — required for CI/CD / non-interactive
+   * usage per v0.7 Step 2.2.a.2 Lock 3 two-phase cost reporting.
+   * Default false (interactive y/N prompt before API call).
+   */
+  yes: boolean;
 }
 
 export const KNOWN_SUBCOMMANDS: readonly Subcommand[] = [
@@ -241,6 +249,7 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
   let ccOnly = false;
   let observe = false;
   let referenceContext: string | null = null;
+  let yes = false;
   let subcommand: Subcommand = "mcp";
   let subcommandSeen = false;
 
@@ -497,6 +506,16 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
       referenceContext = value;
       continue;
     }
+    if (arg === "--yes" || arg === "--no-confirm") {
+      if (yes) {
+        throw new Error(
+          `Flag --yes / --no-confirm specified more than once. ${USAGE}`,
+        );
+      }
+      yes = true;
+      i += 1;
+      continue;
+    }
     throw new Error(`Unknown argument '${arg}'. ${USAGE}`);
   }
 
@@ -558,6 +577,11 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
       `Flag --reference-context is only accepted with the 'generate-adrs' subcommand. ${USAGE}`,
     );
   }
+  if (yes && subcommand !== "generate-adrs") {
+    throw new Error(
+      `Flag --yes / --no-confirm is only accepted with the 'generate-adrs' subcommand. ${USAGE}`,
+    );
+  }
 
   return {
     subcommand,
@@ -572,6 +596,7 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
     ccOnly,
     observe,
     referenceContext,
+    yes,
   };
 }
 

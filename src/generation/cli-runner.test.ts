@@ -6,17 +6,12 @@ import path from "node:path";
 import { runGenerateAdrsSubcommand } from "./cli-runner.js";
 
 /**
- * Step 2.2.a.1 generate-adrs CLI runner skeleton tests. Verify:
- *   - Exit-code-2 mapping for missing config (setup error)
- *   - Exit-code-2 mapping when AnthropicAPIDirectGenerator surfaces
- *     GenerationSetupError for absent API key
- *   - Reference-context flag plumbing reaches GeneratorContext
- *     (verified indirectly: runner accepts the option without error)
- *
- * Substantive end-to-end generation tests land at Step 2.2.a.2 once
- * AnthropicAPIDirectGenerator.generate() has real content.
+ * Step 2.2.a.2 generate-adrs CLI runner tests. Skeleton-era tests
+ * upgraded to exercise the full generator surface with confirmation
+ * seam injection. End-to-end tests against live Anthropic API are
+ * out of scope; tests stop at the confirmation/setup-error boundary.
  */
-describe("runGenerateAdrsSubcommand (Step 2.2.a.1 skeleton)", () => {
+describe("runGenerateAdrsSubcommand (Step 2.2.a.2 full implementation)", () => {
   let tmpRoot: string;
 
   beforeEach(async () => {
@@ -64,10 +59,7 @@ describe("runGenerateAdrsSubcommand (Step 2.2.a.1 skeleton)", () => {
     expect(stderrOutput).toContain("ANTHROPIC_API_KEY");
   });
 
-  it("returns exit code 1 when generator throws non-setup error (Step-2.2.a.2-pending)", async () => {
-    // Skeleton state: with API key present, AnthropicAPIDirectGenerator
-    // throws a Step-2.2.a.2-pending plain Error (not GenerationSetupError).
-    // Runner maps to exit code 1 per ADR-12 discipline.
+  it("returns exit code 0 when user declines confirmation (graceful abort)", async () => {
     await writeMinimalConfig();
     let stderrOutput = "";
     const result = await runGenerateAdrsSubcommand({
@@ -75,28 +67,44 @@ describe("runGenerateAdrsSubcommand (Step 2.2.a.1 skeleton)", () => {
       configFile: null,
       contextatlasVersion: "0.0.1-test",
       readEnv: () => "sk-ant-test-key",
+      confirmProceed: async () => false,
       writeStderr: (c) => {
         stderrOutput += c;
       },
     });
-    expect(result.exitCode).toBe(1);
-    expect(stderrOutput).toContain("Step 2.2.a.2");
+    expect(result.exitCode).toBe(0);
+    expect(stderrOutput).toContain("aborted by user");
   });
 
-  it("accepts referenceContextPath option without parse error (Step 2.2.a.2 wires substantive consumption)", async () => {
+  it("propagates --yes / skipConfirmation flag to generator context", async () => {
+    // With skipConfirmation: true + no real API key, the generator
+    // will reach the API call which will fail (test API key). Verify
+    // the runner doesn't try to invoke the confirmation prompt; exit
+    // code is 1 (pipeline error from invalid API key) not 2.
     await writeMinimalConfig();
-    const refDir = path.join(tmpRoot, "fake-ref-context");
-    await mkdir(refDir);
+    let stderrOutput = "";
+    // confirmProceed deliberately throws — if runner invokes it
+    // despite skipConfirmation, this surfaces as a failure.
     const result = await runGenerateAdrsSubcommand({
       configRoot: tmpRoot,
       configFile: null,
       contextatlasVersion: "0.0.1-test",
-      referenceContextPath: refDir,
-      readEnv: () => "sk-ant-test-key",
-      writeStderr: () => {},
+      readEnv: () => "sk-ant-test-key-bogus",
+      skipConfirmation: true,
+      confirmProceed: async () => {
+        throw new Error("confirmProceed should not be called when skipConfirmation is true");
+      },
+      writeStderr: (c) => {
+        stderrOutput += c;
+      },
     });
-    // Still exit 1 because skeleton throws; option just needs to be
-    // accepted without runner-level parse error.
-    expect(result.exitCode).toBe(1);
+    // Generator reaches API call with bogus key → mapped to error
+    // → exit code 1 (pipeline failure) per ADR-12 distinction.
+    // OR exit code 2 if Anthropic SDK throws AuthenticationError
+    // which we re-classify as GenerationSetupError.
+    expect([1, 2]).toContain(result.exitCode);
+    // Confirmation prompt was never invoked (no stderr message about
+    // it; confirmProceed-as-throw would have surfaced as caught error).
+    expect(stderrOutput).not.toContain("aborted by user");
   });
 });

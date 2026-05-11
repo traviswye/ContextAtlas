@@ -111,6 +111,7 @@ export async function main(): Promise<void> {
       configFile: configFileArg,
       contextatlasVersion: version,
       budgetWarnOverride: parsed.budgetWarn,
+      skipConfirmation: parsed.yes,
       ...(parsed.referenceContext !== null
         ? { referenceContextPath: parsed.referenceContext }
         : {}),

@@ -45,13 +45,14 @@ describe("runShowGeneratePromptSubcommand (v0.7 Step 2.2.a.1 Path-γ CLI subcomm
     }
   });
 
-  it("surfaces obviously-placeholder content at Step 2.2.a.1 (forward-pointer to Step 2.2.a.2)", () => {
-    // Step 2.2.a.1 ships placeholder content per Travis Observation 1;
-    // assert that the placeholder is obviously-placeholder rather than
-    // realistic-looking. When Step 2.2.a.2 lands real prompt content,
-    // this test gets updated (or removed) — that's the substantive
-    // Step 2.2.a.2 deliverable signal.
-    expect(GENERATE_ADRS_PROMPT).toContain("placeholder");
-    expect(GENERATE_ADRS_PROMPT).toContain("Step 2.2.a.2");
+  it("surfaces canonical generate-adrs prompt content at Step 2.2.a.2 (real content; Step 2.2.a.1 placeholder superseded)", () => {
+    // Step 2.2.a.2 replaced the placeholder with canonical content.
+    // Substantive content assertions are in prompt.test.ts (which
+    // covers schema + template + severity taxonomy + reference-context
+    // handling + Refinements 1-3). This test asserts the Path-γ wiring
+    // surfaces whatever GENERATE_ADRS_PROMPT currently is — schema-
+    // grounded shape over content brittleness.
+    expect(GENERATE_ADRS_PROMPT).toContain("generating Architectural Decision Records");
+    expect(GENERATE_ADRS_PROMPT).toContain('"adrs"');
   });
 });

@@ -58,6 +58,19 @@ export interface GenerateAdrsCliOptions {
    */
   budgetWarnOverride?: number | null;
   /**
+   * True when `--yes` / `--no-confirm` CLI flag was passed. Bypasses
+   * the pre-flight cost-estimate confirmation prompt; required for
+   * CI/CD / non-interactive usage per v0.7 Step 2.2.a.2 Lock 3.
+   */
+  skipConfirmation?: boolean;
+  /**
+   * Test seam — confirmation callback override. When provided, the
+   * runner forwards it via `GeneratorContext.confirmProceed`. Default
+   * (when omitted): generator uses its built-in readline-based stdin
+   * prompt.
+   */
+  confirmProceed?: () => Promise<boolean>;
+  /**
    * Test seam — inject a fake ExtractionClient (Generator
    * implementations may reuse the same client shape if backed by
    * @anthropic-ai/sdk; mirrored from extraction cli-runner).
@@ -147,12 +160,17 @@ export async function runGenerateAdrsSubcommand(
       contextatlasCommitSha: options.contextatlasCommitSha ?? null,
       outputAdrPath,
       readEnv,
+      writeStderr,
       ...(options.referenceContextPath !== undefined
         ? { referenceContextPath: options.referenceContextPath }
         : {}),
       ...(options.budgetWarnOverride !== null &&
       options.budgetWarnOverride !== undefined
         ? { budgetWarnUsd: options.budgetWarnOverride }
+        : {}),
+      ...(options.skipConfirmation === true ? { skipConfirmation: true } : {}),
+      ...(options.confirmProceed !== undefined
+        ? { confirmProceed: options.confirmProceed }
         : {}),
       ...(options.clientOverride !== undefined
         ? { clientOverride: options.clientOverride }

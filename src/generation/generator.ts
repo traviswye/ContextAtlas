@@ -107,6 +107,35 @@ export interface GeneratorContext {
   clientOverride?: ExtractionClient;
   /** Env-var reader (defaults to process.env access; test seam). */
   readEnv: (name: string) => string | undefined;
+  /**
+   * True when the caller has bypassed the pre-flight cost-estimate
+   * confirmation prompt (CLI `--yes` / `--no-confirm` flag per Lock 3,
+   * or Skills surface where confirmation is mediated by the user's
+   * Claude Code session, not by ContextAtlas).
+   *
+   * When false (default), `confirmProceed` is invoked after the
+   * pre-flight cost estimate is printed; when true, generation
+   * proceeds without invoking `confirmProceed`.
+   */
+  skipConfirmation?: boolean;
+  /**
+   * Confirmation seam. Invoked after pre-flight cost estimate is
+   * printed to give the user an interactive y/N decision point before
+   * the Anthropic API call lands. Returns `true` to proceed, `false`
+   * to abort gracefully (Generator returns a zero-counts result with
+   * a stderr "aborted by user" notice).
+   *
+   * Default (when omitted): reads a single y/N line from stdin via
+   * `node:readline`. Tests inject a fixed callback to avoid blocking
+   * on real stdin.
+   */
+  confirmProceed?: () => Promise<boolean>;
+  /**
+   * Stderr writer used for the pre-flight cost estimate + post-flight
+   * actual-cost summary + any informational warnings. Mirrors
+   * cli-runner.ts writeStderr seam pattern.
+   */
+  writeStderr?: (chunk: string) => void;
 }
 
 /**

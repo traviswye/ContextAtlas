@@ -28,11 +28,13 @@ function buildContext(
     contextatlasCommitSha: null,
     outputAdrPath: "/tmp/fake/docs/adr",
     readEnv: () => undefined,
+    skipConfirmation: true,
+    writeStderr: () => {},
     ...overrides,
   };
 }
 
-describe("AnthropicAPIDirectGenerator (Step 2.2.a.1 skeleton)", () => {
+describe("AnthropicAPIDirectGenerator (Step 2.2.a.2 full implementation)", () => {
   it("declares costModel 'api'", () => {
     const generator = new AnthropicAPIDirectGenerator();
     expect(generator.costModel).toBe("api");
@@ -54,14 +56,38 @@ describe("AnthropicAPIDirectGenerator (Step 2.2.a.1 skeleton)", () => {
     );
   });
 
-  it("throws Step-2.2.a.2-pending error when API key is present", async () => {
-    // Skeleton state: even with API key set, generate() throws because
-    // substantive implementation lands at Step 2.2.a.2. The error
-    // explicitly references Step 2.2.a.2 so users see why.
+  it("aborts gracefully when confirmation prompt returns false", async () => {
     const generator = new AnthropicAPIDirectGenerator();
-    const context = buildContext({ readEnv: () => "sk-ant-test-key" });
-    await expect(generator.generate(context)).rejects.toThrow(
-      /Step 2.2.a.2/,
-    );
+    let stderrOutput = "";
+    const context = buildContext({
+      readEnv: () => "sk-ant-test-key",
+      skipConfirmation: false,
+      confirmProceed: async () => false,
+      writeStderr: (chunk) => {
+        stderrOutput += chunk;
+      },
+    });
+    const result = await generator.generate(context);
+    expect(result.filesGenerated).toBe(0);
+    expect(result.apiCalls).toBe(0);
+    expect(result.costUsd).toBe(0);
+    expect(stderrOutput).toContain("aborted by user");
+  });
+
+  it("prints pre-flight cost estimate to stderr before confirmation", async () => {
+    const generator = new AnthropicAPIDirectGenerator();
+    let stderrOutput = "";
+    const context = buildContext({
+      readEnv: () => "sk-ant-test-key",
+      skipConfirmation: false,
+      confirmProceed: async () => false,
+      writeStderr: (chunk) => {
+        stderrOutput += chunk;
+      },
+    });
+    await generator.generate(context);
+    expect(stderrOutput).toContain("Estimating generate-adrs cost");
+    expect(stderrOutput).toContain("Estimated input");
+    expect(stderrOutput).toContain("Estimated cost");
   });
 });

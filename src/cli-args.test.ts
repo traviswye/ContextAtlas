@@ -21,6 +21,7 @@ const EMPTY: ParsedArgs = {
   ccOnly: false,
   observe: false,
   referenceContext: null,
+  yes: false,
 };
 
 describe("parseArgs — baseline and --config-root", () => {
@@ -790,6 +791,36 @@ describe("--reference-context flag (v0.7 Step 2.2.a.1 generate-adrs)", () => {
         "--reference-context=/b",
       ]),
     ).toThrow(/specified more than once/);
+  });
+});
+
+describe("--yes / --no-confirm flag (v0.7 Step 2.2.a.2 Lock 3 confirmation bypass)", () => {
+  it("--yes accepted with 'generate-adrs' subcommand", () => {
+    expect(parseArgs(["generate-adrs", "--yes"])).toEqual({
+      ...EMPTY,
+      subcommand: "generate-adrs",
+      yes: true,
+    });
+  });
+
+  it("--no-confirm is an alias for --yes", () => {
+    expect(parseArgs(["generate-adrs", "--no-confirm"])).toEqual({
+      ...EMPTY,
+      subcommand: "generate-adrs",
+      yes: true,
+    });
+  });
+
+  it("rejects --yes when combined with non-generate-adrs subcommand", () => {
+    expect(() => parseArgs(["index", "--yes"])).toThrow(
+      /only accepted with the 'generate-adrs' subcommand/,
+    );
+  });
+
+  it("rejects --yes specified more than once", () => {
+    expect(() => parseArgs(["generate-adrs", "--yes", "--yes"])).toThrow(
+      /specified more than once/,
+    );
   });
 });
 
