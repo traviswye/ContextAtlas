@@ -59,14 +59,59 @@ export class LspClient {
    * writer to capture output without polluting Vitest stderr.
    */
   private readonly writeStderr: (chunk: string) => void;
+  /**
+   * When true, emit substantive LSP message logging at info level
+   * (method name + direction + payload truncated to 200 chars). Per
+   * v0.7 Step 2.2.d FO-6 (β) diagnostic substrate — extends existing
+   * `--verbose` CLI flag to adapter init paths for substantive
+   * cohort self-diagnosis.
+   */
+  private readonly verbose: boolean;
+  /**
+   * Wall-clock timestamp (ms; Date.now()) at `start()` invocation;
+   * null before start. Used by `getInitializeDuration()` for adapter
+   * health diagnostic exposure to doctor checks.
+   */
+  private startedAtMs: number | null = null;
+  /**
+   * Wall-clock timestamp (ms) of first message received from server;
+   * null if no message received yet. Used by `getFirstResponseLatency()`
+   * for adapter health diagnostic.
+   */
+  private firstResponseAtMs: number | null = null;
 
   constructor(
     name: string,
-    options: { writeStderr?: (chunk: string) => void } = {},
+    options: {
+      writeStderr?: (chunk: string) => void;
+      verbose?: boolean;
+    } = {},
   ) {
     this.name = name;
     this.writeStderr =
       options.writeStderr ?? ((chunk) => process.stderr.write(chunk));
+    this.verbose = options.verbose === true;
+  }
+
+  /**
+   * Wall-clock duration (ms) from `start()` to first message received
+   * from server. Null when subprocess hasn't started or no message
+   * received yet. Per v0.7 Step 2.2.d FO-6 (β) diagnostic substrate.
+   */
+  getFirstResponseLatencyMs(): number | null {
+    if (this.startedAtMs === null || this.firstResponseAtMs === null) {
+      return null;
+    }
+    return this.firstResponseAtMs - this.startedAtMs;
+  }
+
+  /**
+   * Wall-clock duration (ms) since `start()`. Null when subprocess
+   * hasn't started. Per v0.7 Step 2.2.d FO-6 (β) diagnostic substrate.
+   */
+  getUptimeMs(): number | null {
+    if (this.startedAtMs === null) return null;
+    return Date.now() - this.startedAtMs;
   }
 
   start(command: string, args: string[], cwd: string): void {
@@ -78,6 +123,14 @@ export class LspClient {
       stdio: ["pipe", "pipe", "pipe"],
     });
     this.child = child;
+    this.startedAtMs = Date.now();
+    if (this.verbose) {
+      log.info(`[lsp:${this.name}] subprocess spawned (verbose mode)`, {
+        command,
+        args,
+        cwd,
+      });
+    }
     child.stdout.on("data", (chunk: Buffer) => this.handleData(chunk));
     child.stderr.on("data", (chunk: Buffer) => {
       const msg = chunk.toString("utf8").trimEnd();
@@ -248,6 +301,20 @@ export class LspClient {
       });
       return;
     }
+    // Track first-response timestamp for adapter health diagnostic
+    // per v0.7 Step 2.2.d FO-6 (β) diagnostic substrate.
+    if (this.firstResponseAtMs === null) {
+      this.firstResponseAtMs = Date.now();
+    }
+    if (this.verbose) {
+      log.info(`[lsp:${this.name}] ← received`, {
+        method: msg.method,
+        id: msg.id,
+        hasResult: msg.result !== undefined,
+        hasError: msg.error !== undefined,
+        preview: payload.slice(0, 200),
+      });
+    }
     // Response to one of our requests
     if (
       typeof msg.id === "number" &&
@@ -333,6 +400,13 @@ export class LspClient {
     const json = JSON.stringify(msg);
     const payload = Buffer.from(json, "utf8");
     const header = `Content-Length: ${payload.length}\r\n\r\n`;
+    if (this.verbose) {
+      log.info(`[lsp:${this.name}] → sent`, {
+        method: msg.method,
+        id: msg.id,
+        preview: json.slice(0, 200),
+      });
+    }
     try {
       stdin.write(header);
       stdin.write(payload);

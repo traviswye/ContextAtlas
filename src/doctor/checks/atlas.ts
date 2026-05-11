@@ -22,13 +22,25 @@ export function atlasChecks(ctx: CheckContext): DoctorCheck[] {
 
   // 1. atlas.exists
   if (!existsSync(atlasPath)) {
+    // FO-7 fix part 2 (v0.7 Step 2.2.d Option iii hybrid): when
+    // doctor runs as init's first-run gate-check, missing atlas.json
+    // is the expected pre-extraction state for cold-start users, NOT
+    // a broken-post-extraction state. Downgrade FAIL → WARN with a
+    // first-run-aware message. Standalone doctor invocations
+    // preserve FAIL semantics (atlas absent after extraction has
+    // happened IS worth surfacing).
     out.push({
       id: "atlas.exists",
       category: "atlas",
-      status: "fail",
-      message: `atlas.json not found at ${config.atlas.path}`,
+      status: ctx.firstRun === true ? "warn" : "fail",
+      message:
+        ctx.firstRun === true
+          ? `atlas.json not yet created at ${config.atlas.path} (expected at first-run; run \`contextatlas index\` or \`contextatlas generate-adrs\` to produce it)`
+          : `atlas.json not found at ${config.atlas.path}`,
       detail:
-        "Run extraction (`contextatlas index` for ADR-only, or scripts/dogfood-extract.mjs for full v0.4 substrate) to produce the atlas.",
+        ctx.firstRun === true
+          ? "Cold-start state — atlas substrate is produced by `contextatlas index` (or by `contextatlas generate-adrs` followed by `contextatlas index`). Init completes without it; downstream commands create the atlas as part of their substantive work."
+          : "Run extraction (`contextatlas index` for ADR-only, or scripts/dogfood-extract.mjs for full v0.4 substrate) to produce the atlas.",
     });
     return out;
   }

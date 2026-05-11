@@ -63,6 +63,7 @@ export const TOP_LEVEL_KEYS = [
   "extraction",
   "mcp",
   "observability",
+  "lsp",
 ] as const;
 const TOP_LEVEL_KEY_SET = new Set<string>(TOP_LEVEL_KEYS);
 
@@ -177,6 +178,7 @@ function validate(
   const extraction = validateExtraction(parsed.extraction, configPath);
   const mcp = validateMcp(parsed.mcp, configPath);
   const observability = validateObservability(parsed.observability, configPath);
+  const lsp = validateLsp(parsed.lsp, configPath);
 
   const out: ContextAtlasConfig = {
     version: 1,
@@ -192,7 +194,52 @@ function validate(
   if (extraction !== undefined) out.extraction = extraction;
   if (mcp !== undefined) out.mcp = mcp;
   if (observability !== undefined) out.observability = observability;
+  if (lsp !== undefined) out.lsp = lsp;
   return out;
+}
+
+/**
+ * Validate the optional `lsp` section per v0.7 Step 2.2.d FO-6 (β)
+ * diagnostic substrate. Currently exposes one knob:
+ *
+ *   - `initialize_timeout_ms` (number): timeout for LSP `initialize`
+ *     request during adapter spawn. Default 30000ms. Substantial
+ *     codebases may need substantively longer.
+ *
+ * Returns undefined when section absent (preserves default behavior).
+ */
+function validateLsp(
+  raw: unknown,
+  configPath: string,
+): ContextAtlasConfig["lsp"] | undefined {
+  if (raw === undefined) return undefined;
+  if (raw === null || typeof raw !== "object" || Array.isArray(raw)) {
+    throw new Error(
+      `Invalid 'lsp' section: expected object, got ${describeType(raw)}. ` +
+        `Source: ${configPath}`,
+    );
+  }
+  const obj = raw as Record<string, unknown>;
+  const out: { initializeTimeoutMs?: number } = {};
+  if (obj.initialize_timeout_ms !== undefined) {
+    const v = obj.initialize_timeout_ms;
+    if (
+      typeof v !== "number" ||
+      !Number.isFinite(v) ||
+      !Number.isInteger(v) ||
+      v < 1000 ||
+      v > 600_000
+    ) {
+      throw new Error(
+        `Invalid 'lsp.initialize_timeout_ms': expected integer milliseconds ` +
+          `between 1000 and 600000, got ${describeType(v)}` +
+          (typeof v === "number" ? ` (${v})` : "") +
+          `. Source: ${configPath}`,
+      );
+    }
+    out.initializeTimeoutMs = v;
+  }
+  return Object.keys(out).length === 0 ? undefined : out;
 }
 
 /**

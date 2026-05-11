@@ -130,8 +130,12 @@ export async function runGenerateAdrsSubcommand(
 
   const adapters = new Map<LanguageCode, LanguageAdapter>();
   try {
+    const adapterOptions =
+      config.lsp?.initializeTimeoutMs !== undefined
+        ? { initializeTimeoutMs: config.lsp.initializeTimeoutMs }
+        : undefined;
     for (const lang of config.languages) {
-      const adapter = createAdapter(lang);
+      const adapter = createAdapter(lang, adapterOptions);
       try {
         await adapter.initialize(sourceRoot);
       } catch (err) {

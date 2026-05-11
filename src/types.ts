@@ -406,6 +406,23 @@ export interface ContextAtlasConfig {
     logPath?: string;
   };
   /**
+   * Optional Language Server Protocol knobs per v0.7 Step 2.2.d
+   * FO-6 (β) diagnostic substrate. Substantively launch-worthy
+   * observability rather than dev-only scaffolding.
+   *
+   * `initializeTimeoutMs`: timeout for the LSP `initialize` request
+   * during adapter spawn (default 30000ms = 30s). Substantial
+   * codebases that stress the language server's initial-analysis
+   * pass may need substantively longer timeouts. Users with
+   * sufficient evidence can bump to 60000+ via this config.
+   *
+   * YAML key: `lsp.initialize_timeout_ms` (snake_case); TS shape
+   * is `initializeTimeoutMs` (camelCase) per parser convention.
+   */
+  lsp?: {
+    initializeTimeoutMs?: number;
+  };
+  /**
    * Optional MCP-server query-time knobs (v0.3 Theme 1.2 Fix 3).
    * These affect how the MCP server ranks/composes responses from
    * an already-extracted atlas; they do not affect extraction.

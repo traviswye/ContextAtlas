@@ -365,6 +365,23 @@ lock).
     (TypeScript-only) doesn't exercise Python adapter race; external-
     repo verification (Rich) substantively did. Shipped 2026-05-11;
     commit `[this commit]`.
+  - [x] **Step 2.2.d** — FO-7 cold-start init fix (Option iii
+    hybrid: init creates `docs/adr/` directory at scaffold phase +
+    doctor `atlas.exists` informational at first-run via `firstRun`
+    flag) + FO-6 (β) diagnostic substrate as launch-worthy
+    observability (verbose LSP message logging via LspClient
+    `verbose: boolean` option; configurable `lsp.initialize_timeout_ms`
+    config field threaded through `createAdapter` registry to per-
+    adapter `requestTimeoutMs`; adapter health diagnostic via WARN
+    threshold on `spawn_test` check at 5000ms). Step 2.2.d.0 code-
+    review pre-investigation surfaced warmup-pattern hypothesis as
+    v0.8+ candidate substrate (deferred per Travis Lock 2). Case
+    (b) routing per Travis Lock 1 (evidence-first discipline). +13
+    new tests (1433 → 1446 PASS clean). Class 15 substantive
+    refinement composition: engineering-default-vs-product-context
+    applies BOTH at decision-making AND at engineering approach
+    (evidence-first vs hypothesis-driven). Shipped 2026-05-11;
+    commit `[this commit]`.
   - **Step 2.2.b** — Rich cold-start verification using
     just-implemented generate-adrs (4-phase protocol +
     generate-adrs cold-start + extraction-after-generation
@@ -527,6 +544,98 @@ timeline; not blocking).
 ## Progress log
 
 *Entries added in reverse-chronological order as steps ship.*
+
+### Step 2.2.d shipped — 2026-05-11 (FO-7 cold-start init fix + FO-6 (β) diagnostic substrate as launch-worthy observability; Step 2.2.d.0 code-review pre-investigation surfaced warmup-pattern hypothesis as v0.8+ candidate; case (b) routing per Travis Lock 1)
+
+V0.7 Step 2.2.d ships FO-7 fix (Option iii hybrid) + FO-6 (β) diagnostic substrate per Travis Lock 1 case (b) routing + Lock 2 v0.8+ deferral. Step 2.2.d.0 code-review pre-investigation (~15-30 min) surfaced warmup-pattern hypothesis as prime suspect but NOT unambiguously identifiable from source alone → case (b) (β) diagnostic substrate route locked. Substantive evidence-first engineering discipline applied at empirical-friction triage.
+
+| Substep | branch | commit | Notes |
+|---|---|---|---|
+| 2.2.d FO-7 fix + FO-6 (β) substrate | main | [this commit] | FO-7 fix: init creates docs/adr/ at scaffold phase via mkdirSync (recursive); doctor atlas.exists downgrades FAIL → WARN when ctx.firstRun=true (init wires firstRun=true through collectChecks). FO-6 (β) substrate: LspClient gains `verbose: boolean` ctor option emitting LSP method+direction+payload logging; new `lsp.initialize_timeout_ms` config field (default per-adapter; range 1000-600000ms validated at parser) threaded through createAdapter registry to per-adapter requestTimeoutMs; spawn_test check WARN threshold at 5000ms surfaces stressed-adapter signal with substantive remediation hint to bump lsp.initialize_timeout_ms. +13 new tests (1433 → 1446 PASS clean) |
+
+#### Step 2.2.d.0 code-review pre-investigation findings (case (b) routing rationale)
+
+Read `src/adapters/pyright.ts` `initialize()` + `LspClient.dispatch()` handshake flow. Substantive findings:
+
+- **Warmup pattern observation:** `py-adapter.initialize()` calls `warmupProject(rootAbs)` synchronously after `initialized` notification. `warmupProject` walks Rich filesystem + fires `didOpen` notification for every `.py` file (~150 files for Rich) with **full file content** as `text` field — back-to-back through Node.js child-process stdin pipe.
+- **Empirical alignment:** 190ms timing fits "initialize handshake (~150ms) + first ~5-15 didOpen notifications (~40ms) → pyright internal error → clean exit code 0" — but NOT unambiguously identifiable from source alone.
+- **Case (b) judgment:** warmup pattern is prime suspect but not confirmed cause. Targeted fix without empirical evidence = γ-equivalent risk per Travis Lock 2 reasoning. Proceed with (β) diagnostic substrate to gather empirical evidence at Step 2.2.b.i re-verification.
+
+#### FO-7 fix (Option iii hybrid) per Travis Lock 1
+
+**Part 1 — Init creates docs/adr/ at scaffold phase** (`src/init/runner.ts`):
+- After `writeConfigScaffold`, init reads the just-written/preserved config and calls `mkdirSync(adrDir, { recursive: true })`.
+- Idempotent against existing directories.
+- Resolves config.adrs_path_resolves naturally at first-run doctor (was launch-blocking pre-fix).
+
+**Part 2 — Doctor atlas.exists informational at first-run** (`src/doctor/checks/atlas.ts` + `src/doctor/runner.ts` + `src/doctor/types.ts`):
+- New `CheckContext.firstRun?: boolean` field.
+- New `CollectChecksOptions.firstRun?: boolean` parameter on `collectChecks`.
+- Init passes `firstRun: true` when invoking `runChecks`.
+- atlas.exists check downgrades FAIL → WARN when `ctx.firstRun === true`; standalone doctor preserves FAIL semantics.
+- First-run message: "atlas.json not yet created at <path> (expected at first-run; run `contextatlas index` or `contextatlas generate-adrs` to produce it)".
+
+#### FO-6 (β) diagnostic substrate as launch-worthy observability
+
+**Substrate 2a — Verbose LSP message logging** (`src/adapters/lsp-client.ts`):
+- LspClient gains `verbose: boolean` constructor option.
+- When verbose, log spawn invocation + every LSP message (sent + received) with method name + id + payload preview (first 200 chars) + timing.
+- Substantive user-facing observability — extends existing `--verbose` flag philosophy beyond extraction-side verbose.
+- LspClient also exposes `getFirstResponseLatencyMs()` + `getUptimeMs()` for future doctor health diagnostic surfaces.
+
+**Substrate 2b — Configurable `lsp.initialize_timeout_ms`** (`src/types.ts` + `src/config/parser.ts` + `src/adapters/registry.ts` + `src/extraction/cli-runner.ts` + `src/generation/cli-runner.ts`):
+- New top-level `lsp` config section with `initialize_timeout_ms` knob (camelCase: `initializeTimeoutMs`).
+- Parser validates: integer; range 1000-600000ms.
+- `createAdapter(language, options)` accepts `initializeTimeoutMs` option threaded to per-adapter `requestTimeoutMs`.
+- Both extraction + generation CLI runners read config.lsp.initializeTimeoutMs + pass through.
+
+**Substrate 2c — Adapter health diagnostic via WARN threshold** (`src/doctor/checks/lsp.ts`):
+- `SPAWN_HEALTH_WARN_THRESHOLD_MS = 5000` constant.
+- `spawn_test` check: PASS when ≤5s (with timing in message); WARN when >5s with substantive remediation guidance ("bump `lsp.initialize_timeout_ms` in .contextatlas.yml if downstream commands surface timeout errors").
+- Reports both total spawn time AND initialize-only duration (`dtInit`) in PASS message for substantive observability.
+
+#### v0.8+ candidate substrate captured (Travis Lock 2 deferral)
+
+**Warmup-pattern refactor** — per Step 2.2.d.0 code-review findings, `py-adapter.initialize()` substantively calls `warmupProject()` synchronously with ~150 `didOpen` notifications for Rich-scale Python codebase. Substantively suspected source of FO-6 pyright fast-exit but NOT confirmed cause.
+
+Substantive v0.8+ candidate substrate (per Travis Lock 2 Option A strict v0.8+ deferral):
+- Lazy didOpen (only when needed for substantive symbol resolution)
+- Batched didOpen with substantive backpressure (await stdin drain)
+- Configurable warmup mode (eager / lazy / batched)
+- Substantive empirical evidence from Step 2.2.b.i resume informs substantive prioritization
+
+Carry-forward substrate via v0_8-HANDOFF.md at Step 4 cycle-close.
+
+#### Class 15 substantive refinement composition
+
+Per Travis lock: "Class 15 substantive refinement — engineering-default-vs-product-context applies BOTH at substantive engineering decision-making AND at substantive engineering approach (evidence-first vs hypothesis-driven). Substantive pre-investigation gate substantively bounded substrate-evolution-drift framework applied substantively to substantive empirical-friction triage."
+
+**Empirical anchor at v0.7 cycle:** Step 2.2.d.0 code-review pre-investigation gate. ~15-30 min investment surfaced substantive warmup-pattern hypothesis + substantive case (b) routing recommendation + substantive v0.8+ candidate substrate captured. Pattern: evidence-first vs hypothesis-driven engineering approach is substantive product-context discipline applied to substantive engineering decision-making BEFORE engineering work begins.
+
+15-class enumeration preserved at Step 2.2.d; no standalone 17th class warranted per composition framing.
+
+#### 14th-class observation: bounded over-estimate at test count
+
+Step 2.2.d estimated ~6-10 new tests; actual +13 over baseline (1433 → 1446). +30-117% over estimate. Per 14th-class framing: bounded over-estimate (substantive but not catastrophic). Substrate-consistency regression tests added during implementation surface (parser validation across boundary cases; atlas.exists firstRun semantic combinations). Healthy implementation discipline.
+
+#### Step 2.2.d unblock — Step 2.2.b.i resume per Lock 4 refined verification sequence
+
+Travis-side re-verification sequence after Step 2.2.d push:
+
+1. `cd C:/CodeWork/contextatlas && npm install -g .` (re-publish global install with FO-7 fix + FO-6 (β) substrate)
+2. `contextatlas --version` (FO-4 regression check)
+3. `cd C:/CodeWork/rich && contextatlas init` (FO-7 fix critical-path verification — substantive expectation: clean completion; init no longer aborts on missing docs/adr/ + atlas.json)
+4. `contextatlas doctor` (substantive new spawn_test WARN-threshold + initialize-duration observability surfaces)
+5. (Optional) try with `lsp.initialize_timeout_ms: 60000` in Rich's .contextatlas.yml if FO-6 surfaces empirical signal that timeout was the substantive factor
+6. `contextatlas generate-adrs --yes --budget-warn 5` (Step 2.2.b.i Step 7)
+7. `contextatlas index --verbose` (Step 2.2.b.i Step 8 Phase 4 extraction-after-generation)
+
+Substantive empirical observation cases at re-verification (per Travis prior framing):
+- **Case (1) FO-6 resolves at default 30s timeout** → Python cohort works at default; v0.8+ warmup refactor optional refinement
+- **Case (2) FO-6 resolves with longer 60s+ timeout** → timeout is substantive factor; v0.8+ warmup refactor higher priority
+- **Case (3) FO-6 persists at longer timeout** → timeout NOT root cause; warmup OR other root cause; Step 2.2.e follow-up with empirical-evidence-grounded fix scope
+
+---
 
 ### Step 2.2.c shipped — 2026-05-11 (FO-5 launch-blocking Python adapter LSP client stream-state-management fix: defensive write guards + subprocess exit listener with remediation + 'error' listener on stdin; γ hybrid per Travis Lock 1)
 

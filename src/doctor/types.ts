@@ -61,4 +61,10 @@ export interface CheckContext {
   readonly config: ContextAtlasConfig | null;
   readonly configPath: string | null;
   readonly configError: string | null;
+  /**
+   * True when doctor runs as init's first-run gate-check per v0.7
+   * Step 2.2.d FO-7 fix. Atlas-related checks adjust FAIL semantics
+   * for the expected pre-extraction state of cold-start users.
+   */
+  readonly firstRun?: boolean;
 }

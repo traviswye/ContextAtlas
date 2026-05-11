@@ -25,6 +25,15 @@ import { findSampleSymbol } from "./sample-symbol.js";
 const SPAWN_TIMEOUT_MS = 10_000;
 
 /**
+ * Soft-WARN threshold for spawn_test duration per v0.7 Step 2.2.d
+ * FO-6 (β) diagnostic substrate. spawn_test that takes longer than
+ * this surfaces as WARN with substantive observation that the
+ * adapter is stressed (substantial codebase or LSP-server-internal
+ * issue). Below threshold remains PASS with timing in message.
+ */
+const SPAWN_HEALTH_WARN_THRESHOLD_MS = 5_000;
+
+/**
  * Extended ceiling for deep health check — initialize + listSymbols
  * + findReferences + shutdown can take longer than minimal
  * spawn_test, especially on first-run cold-start adapter init.
@@ -170,13 +179,35 @@ async function checkSpawn(
   const real = (async (): Promise<DoctorCheck> => {
     try {
       await adapter.initialize(repoRoot);
+      const dtInit = Date.now() - t0;
       await adapter.shutdown();
       const dt = Date.now() - t0;
+      // FO-6 (β) diagnostic substrate (v0.7 Step 2.2.d): WARN when
+      // adapter spawn substantively exceeds the health threshold.
+      // Substantive empirical signal that the adapter or codebase is
+      // stressed (substantial-codebase first-analysis pass, LSP
+      // server slow to respond, etc.). Below threshold remains PASS
+      // with timing in message for substantive observability.
+      if (dt > SPAWN_HEALTH_WARN_THRESHOLD_MS) {
+        return {
+          id,
+          category: "lsp",
+          status: "warn",
+          message: `slow spawn (${dt}ms total; initialize ${dtInit}ms) — above ${SPAWN_HEALTH_WARN_THRESHOLD_MS}ms health threshold`,
+          detail:
+            `Adapter spawned + initialized + shutdown but took longer than ` +
+            `expected. Substantive causes: (a) substantial codebase stressing ` +
+            `LSP server's initial-analysis pass; (b) LSP server slow to ` +
+            `respond; (c) cold filesystem cache. Bump ` +
+            `\`lsp.initialize_timeout_ms\` in .contextatlas.yml if downstream ` +
+            `commands surface timeout errors.`,
+        };
+      }
       return {
         id,
         category: "lsp",
         status: "pass",
-        message: `completed in ${dt}ms`,
+        message: `completed in ${dt}ms (initialize ${dtInit}ms)`,
       };
     } catch (err) {
       return {

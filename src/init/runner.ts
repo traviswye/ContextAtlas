@@ -26,10 +26,11 @@
  *   - smoke test FAIL → exit code 2 (Q4.0.7 spec)
  */
 
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync } from "node:fs";
 import { dirname, resolve as pathResolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { loadConfig } from "../config/parser.js";
 import { detectLanguagesFromFilesystem } from "../doctor/checks/state-detection.js";
 import { collectChecks } from "../doctor/runner.js";
 import type { DoctorResult } from "../doctor/types.js";
@@ -86,6 +87,7 @@ export interface InitRunOptions {
    */
   readonly collectChecksOverride?: (
     repoRoot: string,
+    options?: { firstRun?: boolean },
   ) => Promise<DoctorResult>;
   /**
    * Test seam: inject filesystem language detector. Avoids walking
@@ -204,6 +206,29 @@ export async function runInitSubcommand(
     languages,
     observe: options.observe === true,
   });
+
+  // FO-7 fix part 1 (v0.7 Step 2.2.d Option iii hybrid): create the
+  // ADR directory at scaffold phase so the cold-start workflow can
+  // proceed (`init` → `generate-adrs`). Pre-fix init's first-run
+  // doctor FAILed `config.adrs_path_resolves` when the directory
+  // didn't exist, which blocked cold-start users (no existing ADRs)
+  // from completing onboarding. mkdirSync with recursive=true is
+  // idempotent against existing directories.
+  //
+  // Reads the directory path from the just-written/preserved config
+  // (covers both `created` and `preserved` scaffold paths uniformly).
+  try {
+    const configForAdrDir = loadConfig(options.configRoot);
+    const adrDirAbs = pathResolve(
+      options.configRoot,
+      configForAdrDir.adrs.path,
+    );
+    mkdirSync(adrDirAbs, { recursive: true });
+  } catch (err) {
+    log.warn("init: failed to ensure ADR directory exists; init proceeds", {
+      err: String(err),
+    });
+  }
   // FO-3 fix (v0.7 Step 2.1.a): differentiate created vs preserved log
   // payloads. `languages` here is the filesystem-detected list — it
   // describes what init would write to a fresh scaffold. When init
@@ -220,7 +245,15 @@ export async function runInitSubcommand(
   }
 
   // First doctor run (gateway check) per Q4.0.4 lock.
-  const doctorResult = await runChecks(options.configRoot);
+  //
+  // FO-7 fix part 2 (v0.7 Step 2.2.d Option iii hybrid): pass
+  // `firstRun: true` so atlas.exists downgrades FAIL → WARN for
+  // cold-start users (atlas substantively NOT YET created; expected
+  // pre-extraction state). Standalone doctor invocations preserve
+  // FAIL semantics (atlas absent post-extraction IS worth surfacing).
+  const doctorResult = await runChecks(options.configRoot, {
+    firstRun: true,
+  });
 
   // FAIL aborts init per Q4.0.4 + Q4.3.5 locks.
   if (doctorResult.summary.fail > 0) {

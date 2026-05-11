@@ -150,8 +150,14 @@ export async function runIndexSubcommand(
 
   const adapters = new Map<LanguageCode, LanguageAdapter>();
   try {
+    // Thread LSP initialize-timeout config (v0.7 Step 2.2.d FO-6 β)
+    // through to per-adapter requestTimeoutMs option.
+    const adapterOptions =
+      config.lsp?.initializeTimeoutMs !== undefined
+        ? { initializeTimeoutMs: config.lsp.initializeTimeoutMs }
+        : undefined;
     for (const lang of config.languages) {
-      const adapter = createAdapter(lang);
+      const adapter = createAdapter(lang, adapterOptions);
       try {
         await adapter.initialize(sourceRoot);
       } catch (err) {

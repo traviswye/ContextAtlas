@@ -72,12 +72,38 @@ export async function runDoctorSubcommand(
   return { exitCode: result.exitCode };
 }
 
+export interface CollectChecksOptions {
+  /**
+   * True when invoked from `init`'s first-run gate-check per v0.7
+   * Step 2.2.d FO-7 fix (Option iii hybrid). First-run state implies:
+   *
+   *   - Atlas substantively NOT YET extracted (so `atlas.exists` FAIL
+   *     would be a false-positive — it's the expected pre-extraction
+   *     state, not a broken-post-extraction state)
+   *
+   * When `firstRun === true`, atlas-related checks are downgraded:
+   *
+   *   - `atlas.exists` FAIL → WARN with first-run-aware message
+   *   - Other atlas.* checks gated on atlas.exists pass (so they
+   *     surface only when atlas substantively exists)
+   *
+   * Subsequent doctor invocations (standalone `contextatlas doctor`;
+   * NOT from init) preserve the original FAIL semantics — at that
+   * point atlas absent IS a broken-post-extraction state worth
+   * surfacing.
+   */
+  readonly firstRun?: boolean;
+}
+
 /**
  * Run the full check set, gated by config presence. Exposed for
  * direct unit testing (the orchestrator can be invoked without the
  * stdout-writing wrapper).
  */
-export async function collectChecks(repoRoot: string): Promise<DoctorResult> {
+export async function collectChecks(
+  repoRoot: string,
+  options: CollectChecksOptions = {},
+): Promise<DoctorResult> {
   const configPath = pathResolve(repoRoot, ".contextatlas.yml");
   const configExists = existsSync(configPath);
 
@@ -96,6 +122,7 @@ export async function collectChecks(repoRoot: string): Promise<DoctorResult> {
     config,
     configPath: configExists ? configPath : null,
     configError,
+    firstRun: options.firstRun === true,
   };
 
   const checks: DoctorCheck[] = [];
