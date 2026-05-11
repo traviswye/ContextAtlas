@@ -27,15 +27,33 @@
  *          the binary is run from a non-git checkout (e.g., a
  *          published npm install). Earlier-version atlases import
  *          cleanly with the field absent.
+ *   - 1.4: v0.7 Step 2.3.a.1 adds optional
+ *          `claims[].symbol_candidates` — the raw symbol-candidate
+ *          strings produced by Skill-path extraction reasoning before
+ *          LSP resolution. Populated by `/index-atlas` Skill writes;
+ *          consumed by `contextatlas resolve-symbols` to produce the
+ *          canonical `symbol_ids` array via R8 name-form
+ *          normalization. Retained on the persisted atlas as honest-
+ *          scope-acknowledgment substrate for unresolved candidates
+ *          (records what the LLM extracted; what LSP could and could
+ *          not resolve). Absent on CLI-path atlases (resolution
+ *          happens inline during extraction). Earlier-version atlases
+ *          import cleanly with the field absent.
  */
 
 import type { Severity, SymbolId, SymbolKind } from "../types.js";
 
 /** Newest-version atlas the exporter writes and the importer prefers. */
-export const ATLAS_VERSION = "1.3" as const;
+export const ATLAS_VERSION = "1.4" as const;
 
 /** All atlas versions the importer accepts. */
-export const SUPPORTED_ATLAS_VERSIONS = ["1.0", "1.1", "1.2", "1.3"] as const;
+export const SUPPORTED_ATLAS_VERSIONS = [
+  "1.0",
+  "1.1",
+  "1.2",
+  "1.3",
+  "1.4",
+] as const;
 export type AtlasVersion = (typeof SUPPORTED_ATLAS_VERSIONS)[number];
 
 export interface AtlasSymbolEntry {
@@ -64,6 +82,18 @@ export interface AtlasClaimEntry {
   rationale?: string;
   excerpt?: string;
   symbol_ids: SymbolId[];
+  /**
+   * Raw symbol-candidate strings produced by Skill-path extraction
+   * reasoning before LSP resolution (atlas schema v1.4+, v0.7 Step
+   * 2.3.a.1). Populated by `/index-atlas` Skill writes; consumed by
+   * `contextatlas resolve-symbols` to produce the canonical
+   * `symbol_ids` array via R8 name-form normalization. Retained on
+   * the persisted atlas as honest-scope-acknowledgment substrate for
+   * unresolved candidates (records what the LLM extracted; what LSP
+   * could and could not resolve). Absent on CLI-path atlases
+   * (resolution happens inline during extraction).
+   */
+  symbol_candidates?: string[];
 }
 
 /**

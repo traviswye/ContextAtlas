@@ -37,6 +37,7 @@ import { createAdapter } from "./adapters/registry.js";
 import { HELP_TEXT, parseArgs } from "./cli-args.js";
 import { loadConfig } from "./config/parser.js";
 import { runDoctorSubcommand } from "./doctor/runner.js";
+import { runResolveSymbolsSubcommand } from "./extraction/cli-resolve-symbols.js";
 import { runIndexSubcommand } from "./extraction/cli-runner.js";
 import { runShowPromptSubcommand } from "./extraction/cli-show-prompt.js";
 import { runGenerateAdrsSubcommand } from "./generation/cli-runner.js";
@@ -109,6 +110,19 @@ export async function main(): Promise<void> {
   // Read-only + idempotent; no config / adapter setup needed.
   if (subcommand === "show-generate-prompt") {
     const result = runShowGeneratePromptSubcommand();
+    process.exit(result.exitCode);
+  }
+
+  // v0.7 Step 2.3.a.1 — resolve-symbols subcommand. Approach D
+  // Skill→LSP bridge: enriches a Skill-produced claims-only atlas
+  // with LSP-resolved symbol IDs + a fresh symbols[] inventory.
+  // Zero API calls (local LSP subprocess only). Read-only on config;
+  // atomic write on atlas.json.
+  if (subcommand === "resolve-symbols") {
+    const result = await runResolveSymbolsSubcommand({
+      configRoot,
+      configFile: configFileArg,
+    });
     process.exit(result.exitCode);
   }
 

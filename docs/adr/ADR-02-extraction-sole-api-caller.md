@@ -331,3 +331,136 @@ historical record per v0.5 + v0.6 + v0.7 inheritance discipline.
   v0.7 9-class (Path-γ CLI subcommand) = 10-class recursive catch-
   pattern observation enumeration for v0.7+ ship-gate working-
   content-gap-inventory inheritance.
+
+- **2026-05-11** — v0.7 Step 2.3.a substrate-consistency closure
+  amendment: substantive Path-γ Read-tool refactor + Skill→LSP
+  bridge per Travis Decision-3-α lock at Step 2.3 Checkpoint 2
+  disposition surface. Covers BOTH Step 2.3.a.0 (Path-γ refactor)
+  AND Step 2.3.a.1 (Approach D resolve-symbols bridge) in a single
+  comprehensive amendment per Travis Lock 4.
+
+  **Driver:** Step 2.3 Checkpoint 2 empirical verification at
+  rich-skill/ Claude Code session surfaced 3 substantive
+  divergences from canonical Skill workflow:
+  1. FO-12: bash-injection prompt-load pattern requires
+     `Bash(contextatlas:*)` allowlist + introduces first-run
+     permission gate friction
+  2. FO-13: Skill agent improvised Python-script-based atlas
+     encoding instead of responding with JSON literal directly
+     (substantively non-equivalent to canonical workflow)
+  3. Substrate non-equivalence: Skill produced claims-only atlas
+     (`symbols: []`, `claims[].symbol_ids: []`) because Claude
+     Code Skills lack LSP tool access; CLI baseline atlas has
+     full LSP-resolved symbol substrate
+
+  Travis Decision-3-α framing: substantive substrate-consistency
+  claim at v1.0 launch substantively requires ContextAtlas's
+  onboarding substrate (ADRs + extractions + atlas) to be
+  consistent across entry points. Substrate inconsistency
+  substantively undermines launch-narrative claim of reliable
+  architectural context. Elevated from v0.8+ candidate to v0.7
+  launch-blocking scope.
+
+  **§permitted-modules invariant extension:**
+
+  Two new substrate categories permitted:
+  - Build-time-generated prompt artifacts: `dist/extraction/
+    prompt.md` + `dist/generation/prompt.md` (derived from canonical
+    `src/extraction/prompt.ts:EXTRACTION_PROMPT` +
+    `src/generation/prompt.ts:GENERATE_ADRS_PROMPT` via
+    `scripts/generate-prompt-artifacts.mjs` at npm build time).
+    Single-source-of-truth at .ts preserved; .md artifacts derived;
+    init-time copy into user repo's `.contextatlas/prompts/`;
+    Claude Code Skills consume via Read tool. Parity test
+    (`src/extraction/prompt-artifact-parity.test.ts`) guards
+    against silent build-script drift.
+  - `contextatlas resolve-symbols` CLI subcommand
+    (`src/extraction/cli-resolve-symbols.ts`): Skill→LSP bridge.
+    Reads claims-only atlas; spawns LSP adapters; resolves raw
+    symbol candidates via R8 name-form normalization
+    (`src/extraction/resolver.ts:expandCandidateForms` +
+    `resolveCandidatesWithNormalization`); writes enriched atlas
+    atomically. Zero API cost (local LSP subprocess only).
+
+  **§Decision entry-point-determined cost model extension:**
+
+  Substantive distinction surfaced between two categories of bash
+  invocation within Claude Code Skills:
+  - **Avoidable static-content-load bash** (REMOVED at Step
+    2.3.a.0): the prompt-load step using `` !`contextatlas
+    show-prompt` `` and `` !`contextatlas show-generate-prompt` ``
+    bash injection. Substantively replaceable by Read tool against
+    a static .md artifact; substrate-consistency-friendly
+    (deterministic content; survives Claude Code session
+    permission gate without first-run friction). Replaced by
+    Read-tool-against-`.contextatlas/prompts/*.md` pattern.
+  - **Necessary subprocess-interaction bash** (ADDED at Step
+    2.3.a.1): the end-of-Skill `contextatlas resolve-symbols`
+    invocation. Substantively NOT replaceable by Read tool — LSP
+    servers are inherently dynamic subprocesses; symbol-walk
+    requires subprocess interaction; cannot be substituted by file
+    reads. Bounded to single end-of-workflow invocation (not per-
+    document); covered by existing `Bash(contextatlas:*)`
+    allowlist; no expansion of permission gate surface.
+
+  **§Consequences cost-accounting clarification:**
+
+  Skill path tail-step `contextatlas resolve-symbols` is **zero
+  API cost** (local LSP subprocess only; no Anthropic API call).
+  Skill path cost-model substantively preserved: subscription
+  tokens absorbed for extraction reasoning + zero for LSP
+  resolution. Cohort cost-model framing at v1.0 launch documents
+  unchanged from Path-3 entry-point-determined model.
+
+  **Substantive substrate-consistency claim defended:**
+
+  Post-Step-2.3.a substep cluster, both entry points produce
+  atlases substantively equivalent at the substrate layer:
+  - CLI path (`contextatlas index`): API-direct extraction +
+    inline LSP resolution → full-fidelity atlas
+  - Skill path (`/index-atlas` Claude Code Skill): subscription-
+    bounded extraction + end-of-Skill `contextatlas
+    resolve-symbols` bridge → full-fidelity atlas
+
+  Both paths populate `symbols[]` via same LSP walk substrate;
+  both paths populate `claims[].symbol_ids` via same resolver
+  substrate (with R8 normalization specifically catching Skill-
+  produced canonical file-path-symbol form + Python dotted
+  notation observed at v0.7 Step 2.2.b cluster empirical surface).
+
+  **Atlas schema v1.4 bump rationale:**
+
+  Optional `claims[].symbol_candidates?: string[]` field added
+  (atlas schema v1.4 per `src/storage/types.ts`). Populated by
+  Skill-path extraction at write time; consumed by `contextatlas
+  resolve-symbols` at LSP-resolution time; retained on persisted
+  atlas as honest-scope-acknowledgment substrate for unresolved
+  candidates (records what LLM extracted; what LSP could and
+  could not resolve). Absent on CLI-path atlases (inline
+  resolution; no transit state needed). Backward-compatible:
+  earlier-version atlases import cleanly with the field absent
+  per ATLAS_VERSION minor-bump precedent.
+
+  **Cross-references:**
+  - Step 2.3.a.0 commit (Path-γ refactor + prompt artifact
+    substrate)
+  - Step 2.3.a.1 commit (this amendment + resolve-symbols bridge)
+  - CLAUDE.md frozen-prompt invariant scope clarification (v0.7
+    Step 2.3.a.0 amendment): substrate value canonical; load
+    mechanism evolves
+  - `.claude/skills/index-atlas/SKILL.md` workflow steps 4-6:
+    canonical schema v1.4 write + end-of-Skill resolve-symbols
+    invocation with substantive bash-rationale framing
+  - `.claude/skills/generate-adrs/SKILL.md` Read-tool prompt-load
+    pattern
+
+  Cycle-execution observation 11 (NEW): substantive product-
+  judgment surface at empirical-evidence-warranting moment.
+  Travis Decision-3-α at Step 2.3 Checkpoint 2 elevated this
+  substep cluster from v0.8+ candidate to v0.7 launch-blocking
+  scope per substantive cohort-substrate-consistency framing.
+  Dev investigation surfaced Approach D bounded engineering path
+  (~3-5 cycle days; reuses existing LSP adapter substrate);
+  empirical implementation verified the bounded scope holds.
+  Composes with 10-class enumeration → 11-class for v0.7+ ship-
+  gate working-content-gap-inventory inheritance.

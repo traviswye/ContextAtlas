@@ -56,8 +56,32 @@ config), this skill:
 3. **Validates** the JSON claims structure against the schema
    (claims array; each claim has `symbol_candidates` + `claim` +
    `severity` + `rationale` + `excerpt`).
-4. **Persists** validated claims to `.contextatlas/index.db`
-   (SQLite) + `atlas.json` (committable artifact).
+4. **Persists** validated claims to `.contextatlas/atlas.json` in
+   atlas schema v1.4 shape: claims include the raw
+   `symbol_candidates` array from extraction reasoning AND a
+   placeholder empty `symbol_ids: []` array (resolved in the next
+   step). The `symbols[]` top-level array is also left empty at
+   this point — the LSP walk happens in step 5.
+5. **Bridges to LSP** by invoking `contextatlas resolve-symbols`
+   via Bash. This CLI subcommand spawns LSP adapters for each
+   configured language, walks the codebase, builds a symbol
+   inventory, resolves each claim's `symbol_candidates` into
+   canonical `symbol_ids` via R8 name-form normalization (handles
+   bare names, file-path-symbol form `path/file.ext:Symbol`, and
+   Python dotted notation `module.path.Symbol`), and writes the
+   enriched atlas back atomically. Cost: zero API calls (local LSP
+   subprocess only). The post-step-5 atlas substantively matches
+   the CLI-path atlas at the substrate-consistency layer.
+
+   **Substantive bash invocation rationale:** unlike the deprecated
+   `contextatlas show-prompt` (static content load; replaceable by
+   Read tool against the artifact per Step 2.3.a.0), the
+   `resolve-symbols` invocation is necessary subprocess interaction
+   — LSP servers are inherently dynamic processes and cannot be
+   substituted by file reads. The `Bash(contextatlas:*)` allowlist
+   that cohort users already added at Skill setup covers this
+   invocation. v0.7 Step 2.3.a.1 substrate-evolution lock per
+   Travis Decision-3-α framing.
 
 ## How extraction works
 
@@ -103,8 +127,19 @@ For each source document:
 4. Validate the JSON parses + each claim has all required fields.
    Drop malformed claims (log warning); don't fail the whole run.
 5. Persist validated claims to `.contextatlas/atlas.json` using
-   the Write tool. (SQLite `.contextatlas/index.db` persistence is
-   the CLI path's responsibility; Skills write JSON-only at v0.7.)
+   the Write tool. Schema v1.4 shape: each claim carries the raw
+   `symbol_candidates` array from extraction reasoning plus a
+   placeholder empty `symbol_ids: []` (resolved in step 6).
+   `symbols[]` top-level is also empty at this point. (SQLite
+   `.contextatlas/index.db` persistence is the CLI path's
+   responsibility; Skills write JSON-only at v0.7.)
+6. Invoke `contextatlas resolve-symbols` via Bash to enrich the
+   atlas with LSP-resolved symbol IDs. The CLI spawns LSP adapters,
+   walks the codebase, resolves each claim's `symbol_candidates`
+   into canonical `symbol_ids` via R8 name-form normalization, and
+   writes the enriched atlas back atomically. Zero API cost (local
+   LSP only). Report stdout output verbatim to the user — it
+   surfaces the resolved-claim count + unresolved-candidate count.
 
 ## Cost model
 
@@ -120,11 +155,17 @@ This skill uses Claude Code session tools to perform extraction:
 
 - **Read** for the canonical extraction prompt artifact
   (`.contextatlas/prompts/extraction.md`) + source document content
-- **Write** for `.contextatlas/atlas.json` persistence
-- **Bash** for listing source documents (find / ls / glob for ADR /
-  docstring / commit-message discovery). Bash invocation of legacy
-  `contextatlas show-prompt` is deprecated; use Read tool against
-  the artifact instead.
+- **Write** for `.contextatlas/atlas.json` persistence (claims-only
+  stub state)
+- **Bash** for two purposes:
+  - Listing source documents (find / ls / glob for ADR / docstring /
+    commit-message discovery)
+  - **Final workflow step:** invoking `contextatlas resolve-symbols`
+    to bridge the claims-only atlas to a full-fidelity atlas with
+    LSP-resolved symbol IDs (necessary subprocess interaction per
+    v0.7 Step 2.3.a.1 substrate-evolution lock). Bash invocation of
+    legacy `contextatlas show-prompt` is deprecated; use Read tool
+    against the artifact instead.
 
 Bundled helper scripts deferred to v0.8+ per v0.7 ship scope.
 SKILL.md instructs Claude how to use Read/Write/Bash tools to
@@ -136,6 +177,13 @@ perform work without bundled helper scripts at v0.7.
   run `contextatlas init` in this repo (or init failed to copy
   artifacts). Surface remediation: instruct user to run
   `contextatlas init` and retry. Do NOT improvise the prompt.
+- **`contextatlas resolve-symbols` exits non-zero**: surface stderr
+  output to user with remediation guidance. Common cases: LSP
+  adapter init failed (peer dependencies missing — `npm install`
+  contextatlas peer deps); atlas malformed (re-run /index-atlas to
+  rewrite); config invalid (run `contextatlas doctor` to diagnose).
+  Atlas remains in claims-only stub state; user can re-invoke
+  `contextatlas resolve-symbols` manually after fixing the issue.
 - **Source document missing**: log warning; skip the document; continue.
 - **Malformed JSON output**: log warning with first 200 chars of
   output; skip the document; continue.

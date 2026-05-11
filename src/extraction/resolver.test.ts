@@ -12,8 +12,10 @@ import type {
 import type { SourceFile } from "./file-walker.js";
 import {
   buildSymbolInventory,
+  expandCandidateForms,
   resolveCandidate,
   resolveCandidates,
+  resolveCandidatesWithNormalization,
 } from "./resolver.js";
 
 class StubAdapter implements LanguageAdapter {
@@ -195,5 +197,143 @@ describe("resolveCandidate / resolveCandidates", () => {
       "sym:ts:src/orders/processor.ts:OrderProcessor",
     ]);
     expect(res.unresolved).toEqual(["Ghost"]);
+  });
+});
+
+describe("expandCandidateForms (R8 name-form normalization v0.7 Step 2.3.a.1)", () => {
+  it("returns the raw form first for a bare identifier", () => {
+    expect(expandCandidateForms("Console")).toEqual(["Console"]);
+  });
+
+  it("strips file-path-symbol prefix and emits both forms", () => {
+    expect(expandCandidateForms("rich/console.py:Console")).toEqual([
+      "rich/console.py:Console",
+      "Console",
+    ]);
+  });
+
+  it("strips Python dotted notation and emits both forms", () => {
+    expect(expandCandidateForms("rich.console.Console")).toEqual([
+      "rich.console.Console",
+      "Console",
+    ]);
+  });
+
+  it("handles Class.method dotted form (returns method as last segment)", () => {
+    expect(expandCandidateForms("Console.print")).toEqual([
+      "Console.print",
+      "print",
+    ]);
+  });
+
+  it("emits both colon-stripped and dot-stripped variants for mixed form", () => {
+    // Mixed canonical-file-path-symbol with dotted segment after
+    const variants = expandCandidateForms("rich/console.py:Console.print");
+    expect(variants).toContain("rich/console.py:Console.print");
+    expect(variants).toContain("Console.print");
+    expect(variants).toContain("print");
+  });
+
+  it("dedupes when stripped forms collapse to the same string", () => {
+    // Bare identifier — colon strip + dot strip both no-ops; only raw
+    expect(expandCandidateForms("Console")).toEqual(["Console"]);
+  });
+
+  it("returns empty array for empty or whitespace-only input", () => {
+    expect(expandCandidateForms("")).toEqual([]);
+    expect(expandCandidateForms("   ")).toEqual([]);
+    expect(expandCandidateForms("\n\t")).toEqual([]);
+  });
+
+  it("trims surrounding whitespace before expanding", () => {
+    expect(expandCandidateForms("  Console  ")).toEqual(["Console"]);
+  });
+
+  it("ignores leading/trailing colons gracefully", () => {
+    // `:Symbol` has colon at index 0 → not split (index <= 0)
+    expect(expandCandidateForms(":Symbol")).toEqual([":Symbol"]);
+    // `Symbol:` has colon at end → not split (index >= len-1)
+    expect(expandCandidateForms("Symbol:")).toEqual(["Symbol:"]);
+  });
+});
+
+describe("resolveCandidatesWithNormalization (R8 v0.7 Step 2.3.a.1)", () => {
+  // Build a fresh inventory for this group.
+  const adapter = new StubAdapter("python", [".py"], {
+    "console.py": [
+      sym({ id: "sym:py:rich/console.py:Console", name: "Console", language: "python", path: "rich/console.py" }),
+      sym({ id: "sym:py:rich/console.py:print", name: "print", language: "python", path: "rich/console.py" }),
+    ],
+    "segment.py": [
+      sym({ id: "sym:py:rich/segment.py:Segment", name: "Segment", language: "python", path: "rich/segment.py" }),
+    ],
+  });
+
+  function buildInv() {
+    const adapters = new Map<LanguageCode, LanguageAdapter>([["python", adapter]]);
+    return buildSymbolInventory(adapters, [
+      srcFile("console.py"),
+      srcFile("segment.py"),
+    ]);
+  }
+
+  it("resolves bare identifier directly", async () => {
+    const inv = await buildInv();
+    const res = resolveCandidatesWithNormalization(inv, ["Console"]);
+    expect(res.symbolIds).toEqual(["sym:py:rich/console.py:Console"]);
+    expect(res.unresolved).toEqual([]);
+  });
+
+  it("resolves canonical file-path-symbol form via stripped variant", async () => {
+    const inv = await buildInv();
+    const res = resolveCandidatesWithNormalization(inv, [
+      "rich/console.py:Console",
+    ]);
+    expect(res.symbolIds).toEqual(["sym:py:rich/console.py:Console"]);
+    expect(res.unresolved).toEqual([]);
+  });
+
+  it("resolves Python dotted notation via stripped variant (FO-10 substantively addressed)", async () => {
+    const inv = await buildInv();
+    const res = resolveCandidatesWithNormalization(inv, [
+      "rich.console.Console",
+    ]);
+    expect(res.symbolIds).toEqual(["sym:py:rich/console.py:Console"]);
+    expect(res.unresolved).toEqual([]);
+  });
+
+  it("resolves Class.method to method symbol when bare class is also present", async () => {
+    const inv = await buildInv();
+    const res = resolveCandidatesWithNormalization(inv, ["Console.print"]);
+    // First variant ("Console.print") doesn't resolve; second variant ("print") matches.
+    expect(res.symbolIds).toEqual(["sym:py:rich/console.py:print"]);
+    expect(res.unresolved).toEqual([]);
+  });
+
+  it("retains unresolved raw candidate (for R11 diagnostic visibility)", async () => {
+    const inv = await buildInv();
+    const res = resolveCandidatesWithNormalization(inv, [
+      "rich/typo.py:NotARealSymbol",
+    ]);
+    expect(res.symbolIds).toEqual([]);
+    expect(res.unresolved).toEqual(["rich/typo.py:NotARealSymbol"]);
+  });
+
+  it("deduplicates across multiple matching candidates", async () => {
+    const inv = await buildInv();
+    const res = resolveCandidatesWithNormalization(inv, [
+      "Console",
+      "rich.console.Console",
+      "rich/console.py:Console",
+    ]);
+    expect(res.symbolIds).toEqual(["sym:py:rich/console.py:Console"]);
+    expect(res.unresolved).toEqual([]);
+  });
+
+  it("treats empty-string candidates as unresolved (preserved as-is)", async () => {
+    const inv = await buildInv();
+    const res = resolveCandidatesWithNormalization(inv, [""]);
+    expect(res.symbolIds).toEqual([]);
+    expect(res.unresolved).toEqual([""]);
   });
 });

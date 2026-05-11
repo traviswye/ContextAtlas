@@ -807,7 +807,7 @@ describe("runIndexSubcommand (ADR-12)", () => {
       version: string;
       generator: { contextatlas_commit_sha?: string };
     };
-    expect(atlasOnDisk.version).toBe("1.3");
+    expect(atlasOnDisk.version).toBe("1.4");
     expect(atlasOnDisk.generator.contextatlas_commit_sha).toBe(sha);
   });
 

@@ -129,3 +129,116 @@ export function resolveCandidates(
   }
   return { symbolIds: Array.from(seen), unresolved };
 }
+
+/**
+ * Expand a raw Skill-produced symbol candidate string into the ordered
+ * list of name variants to try against the LSP-derived symbol
+ * inventory (R8 name-form normalization per v0.7 Step 2.3.a.1).
+ *
+ * Skill-side reasoning produces candidates in heterogeneous forms:
+ *   - `Console` — bare identifier (resolver MVP target form)
+ *   - `rich/console.py:Console` — canonical file-path-symbol form
+ *     (produced when reference-context substrate guides LLM toward
+ *     ContextAtlas's canonical reference style per Step 2.2.b.ii
+ *     observation)
+ *   - `rich.console.Console` — Python dotted notation (Python
+ *     standard import path style; produced under cold-start without
+ *     reference context per Step 2.2.b.i observation; surfaced FO-10)
+ *   - `Console.print` — method-on-class dotted form (catches the
+ *     method; class lookup deferred to LSP follow-on if warranted)
+ *
+ * Returns variants in priority order; the resolver tries each variant
+ * against the LSP inventory; first match wins. If no variant matches,
+ * the raw candidate goes to the unresolved bucket per existing
+ * resolveCandidates() contract.
+ *
+ * Empty strings + whitespace-only candidates return an empty array
+ * (caller treats as unresolved). Variants are deduplicated.
+ */
+export function expandCandidateForms(raw: string): string[] {
+  const trimmed = raw.trim();
+  if (trimmed.length === 0) return [];
+
+  const variants: string[] = [];
+  const add = (v: string): void => {
+    const t = v.trim();
+    if (t.length > 0 && !variants.includes(t)) variants.push(t);
+  };
+
+  // 1. Raw form first — matches when Skill produced a bare identifier
+  //    that's already in the resolver MVP target form.
+  add(trimmed);
+
+  // 2. Strip file-path prefix: `path/file.ext:Symbol` → `Symbol`.
+  //    Canonical file-path-symbol form observed at Step 2.2.b.ii
+  //    reference-context-aided generation. Split on rightmost `:`
+  //    so symbols containing `::` (C++/Rust-style; not in MVP target
+  //    languages but tolerated) still produce a sensible last segment.
+  //    Use the colon-stripped result as basis for further dot
+  //    stripping so file-path segments like `console.py` don't leak
+  //    spurious variants like `py:Console`.
+  let afterColon = trimmed;
+  const colonIdx = trimmed.lastIndexOf(":");
+  if (colonIdx > 0 && colonIdx < trimmed.length - 1) {
+    afterColon = trimmed.substring(colonIdx + 1);
+    add(afterColon);
+  }
+
+  // 3. Strip dotted prefix: `module.path.Symbol` → `Symbol`. Python
+  //    standard import notation observed at Step 2.2.b.i cold-start
+  //    generation surfaced FO-10. Also catches `Class.method` →
+  //    `method` (caller's responsibility to interpret; resolver MVP
+  //    matches by bare name only). Applied to the colon-stripped
+  //    intermediate so `rich/console.py:Console.print` correctly
+  //    yields `["rich/console.py:Console.print", "Console.print",
+  //    "print"]`.
+  const dotIdx = afterColon.lastIndexOf(".");
+  if (dotIdx > 0 && dotIdx < afterColon.length - 1) {
+    add(afterColon.substring(dotIdx + 1));
+  }
+
+  return variants;
+}
+
+/**
+ * Resolve every candidate in a list using R8 name-form normalization
+ * variants (v0.7 Step 2.3.a.1 — Skill→LSP symbol-resolution bridge).
+ *
+ * For each raw candidate, expands into the ordered list of name
+ * variants via expandCandidateForms(); tries each variant against the
+ * LSP-derived inventory; the first variant that resolves to one or
+ * more SymbolIds wins. If no variant resolves, the raw candidate goes
+ * to the unresolved bucket (preserved in atlas.json's
+ * claims[].symbol_candidates field per R11 honest-scope-
+ * acknowledgment discipline).
+ *
+ * Cross-language matches surface via the existing resolveCandidate()
+ * debug log; this wrapper does not change cross-language behavior.
+ */
+export function resolveCandidatesWithNormalization(
+  inventory: SymbolInventory,
+  candidates: readonly string[],
+): { symbolIds: SymbolId[]; unresolved: string[] } {
+  const seen = new Set<SymbolId>();
+  const unresolved: string[] = [];
+  for (const raw of candidates) {
+    const variants = expandCandidateForms(raw);
+    if (variants.length === 0) {
+      // Empty / whitespace-only candidate — preserve for diagnostic
+      // visibility.
+      unresolved.push(raw);
+      continue;
+    }
+    let matched = false;
+    for (const variant of variants) {
+      const ids = resolveCandidate(inventory, variant);
+      if (ids.length > 0) {
+        for (const id of ids) seen.add(id);
+        matched = true;
+        break;
+      }
+    }
+    if (!matched) unresolved.push(raw);
+  }
+  return { symbolIds: Array.from(seen), unresolved };
+}

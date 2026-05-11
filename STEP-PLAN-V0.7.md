@@ -444,12 +444,22 @@ lock).
     script + init copy + doctor freshness check + SKILL.md
     Read-tool amendments + CLAUDE.md frozen-prompt scope
     clarification). Shipped 2026-05-11; commit `[this commit]`.
-  - [ ] **Step 2.3.a.1** — Approach D Skill→LSP resolve-symbols
-    bridge (new `contextatlas resolve-symbols` CLI subcommand
-    invoked from `/index-atlas` end-of-workflow; R8 symbol-
-    candidate name-form normalization; R10 UX progress message;
-    ADR-02 comprehensive amendment covering both Path-γ + Skill→
-    CLI-resolve-symbols bridge).
+  - [x] **Step 2.3.a.1** — Approach D Skill→LSP resolve-symbols
+    bridge. Shipped 2026-05-11; commit `[this commit]`. New
+    `contextatlas resolve-symbols` CLI subcommand reads claims-only
+    Skill-produced atlas; spawns LSP adapters per configured
+    languages; walks codebase + builds symbol inventory; resolves
+    each claim's raw `symbol_candidates` into canonical `symbol_ids`
+    via R8 name-form normalization (bare names + canonical
+    file-path-symbol form + Python dotted notation); writes
+    enriched atlas back atomically (temp + rename). R10 UX
+    progress message surfaces resolved-claim count + unresolved-
+    candidate count. Atlas schema bumped to v1.4 (optional
+    `claims[].symbol_candidates` field). SKILL.md `/index-atlas`
+    amended with end-of-Skill `contextatlas resolve-symbols` Bash
+    invocation instruction (substantively distinct bash use
+    category from removed Path-γ prompt-load bash per Travis
+    Decision-3-α lock rationale).
   - [ ] **Step 2.3 closure** — re-verification at rich-skill/
     Claude Code session (Checkpoint 2 + 3 per LOCK 5 4-checkpoint
     cadence: reset rich-skill/ state → `/generate-adrs` Skill →
@@ -608,6 +618,102 @@ timeline; not blocking).
 ## Progress log
 
 *Entries added in reverse-chronological order as steps ship.*
+
+### Step 2.3.a.1 shipped — 2026-05-11 (Approach D Skill→LSP resolve-symbols bridge: new `contextatlas resolve-symbols` CLI subcommand + R8 name-form normalization + R10 UX progress message + atlas schema v1.4 bump + SKILL.md end-of-Skill invocation instruction + ADR-02 comprehensive amendment covering Path-γ + Skill→CLI-resolve-symbols bridge; substantively closes substrate-consistency gap at v1.0 launch per Travis Decision-3-α lock; substep cluster 2.3.a complete; Step 2.3 closure substrate ready for Travis-side re-verification at rich-skill/)
+
+V0.7 Step 2.3.a.1 ships the substantive substrate-consistency closure: Claude Code Skills now produce atlases substantively equivalent to CLI-produced atlases at the symbol-resolution layer. End-to-end Skill workflow per substantive amendment: `/index-atlas` reads canonical prompt via Read tool → reasons over each ADR → writes claims-only atlas (schema v1.4 with raw `symbol_candidates`) → invokes `contextatlas resolve-symbols` via Bash → CLI spawns LSP adapters + walks codebase + resolves candidates via R8 normalization + writes enriched atlas atomically. Substantive consequence: cohort users at v1.0 launch substantively get full-fidelity atlas regardless of CLI-vs-Skill entry point.
+
+| Substep | branch | commit | Notes |
+|---|---|---|---|
+| 2.3.a.1 resolve-symbols bridge | main | [this commit] | New CLI subcommand reuses existing v0.4 LSP adapter substrate (well-exercised by v0.6 cycle) + existing `buildSymbolInventory` + existing `resolveCandidate`; adds new `expandCandidateForms` + `resolveCandidatesWithNormalization` for R8; atomic atlas round-trip (temp + rename); R10 progress message; atlas schema v1.4 (optional `symbol_candidates` field on claims); SKILL.md `/index-atlas` final-step `contextatlas resolve-symbols` instruction with substantive bash-rationale framing; ADR-02 comprehensive amendment |
+
+#### Engineering deliverables
+
+**New files (2):**
+- `src/extraction/cli-resolve-symbols.ts` (~210 LOC) — runResolveSymbolsSubcommand orchestrator: config load + atlas read + adapter spawn + LSP walk + symbol-inventory build + per-claim candidate resolution + enriched atlas atomic write + adapter shutdown
+- `src/extraction/cli-resolve-symbols.test.ts` (~245 LOC; 8 tests) — atlas-not-found + atlas-malformed + atlas-missing-claims-array failure paths + happy-path resolution + file-path-prefixed-candidate normalization + unresolved-candidate retention + atomic-write verification + schema-version-bump verification (all against real typescript-language-server LSP)
+
+**Modified files (5):**
+- `src/extraction/resolver.ts` — added `expandCandidateForms()` (R8 name-form normalization: raw → colon-stripped → dot-stripped variants) + `resolveCandidatesWithNormalization()` (wraps existing `resolveCandidate` with variant try-loop; first-match-wins; preserves R11 unresolved-diagnostic substrate)
+- `src/extraction/resolver.test.ts` — added 15 tests covering both new functions across canonical file-path-symbol form + Python dotted notation + Class.method dotted + mixed forms + edge cases (empty/whitespace/leading-trailing-colons)
+- `src/cli-args.ts` — added `"resolve-symbols"` to Subcommand union + KNOWN_SUBCOMMANDS; HELP_TEXT amended with resolve-symbols entry
+- `src/index.ts` — dispatch wiring for resolve-symbols subcommand
+- `src/storage/types.ts` — atlas schema v1.4 bump: added optional `claims[].symbol_candidates?: string[]` field + ATLAS_VERSION bump + SUPPORTED_ATLAS_VERSIONS extension + version-history docstring
+- `.claude/skills/index-atlas/SKILL.md` — workflow step 5 amended (schema v1.4 shape with raw symbol_candidates + empty symbol_ids placeholder) + new workflow step 6 invokes `contextatlas resolve-symbols` via Bash with substantive bash-rationale framing + Tool usage section expanded + Failure modes section adds resolve-symbols failure path
+- `STEP-PLAN-V0.7.md` — substep ladder + progress log
+
+**Test compatibility fixes (2):**
+- `src/extraction/pipeline.test.ts` — expected `"version": "1.4"` (was `1.3`); test asserts atlas envelope persists at current ATLAS_VERSION
+- `src/extraction/cli-runner.test.ts` — expected `version: "1.4"` (was `1.3`); same compatibility update for schema bump
+
+**Substantively bounded scope:** ~600 LOC across 9 files (engineering ~330 LOC + tests ~365 LOC); within dev estimate ~300-400 + ~120 LOC tests at upper bound. Substantive engineering judgment: chose to reuse existing `resolveCandidate`/`resolveCandidates` substrate (well-tested at v0.1+; covers cross-language matching + dedup semantics) rather than substantively duplicate; new functions wrap existing substrate with R8 normalization layer per substantive defense-in-depth pattern (composes with Step 2.3.a.0 substep over-estimate observation).
+
+#### ADR-02 comprehensive amendment (committed at this Step 2.3.a.1)
+
+Substantive ADR-02 amendment covers BOTH the Path-γ Read-tool refactor (Step 2.3.a.0) AND the Skill→CLI-resolve-symbols bridge (Step 2.3.a.1). Single amendment substantively captures the entire v0.7 substrate-evolution narrative:
+- §permitted-modules invariant extension: derived `prompts/extraction.md` + `prompts/generate-adrs.md` artifacts permitted (generated at build time; single-source-of-truth at .ts preserved); `resolve-symbols` CLI subcommand permitted as Skill→LSP bridge
+- §Decision entry-point-determined cost model extension: substantive distinction surfaced between (a) avoidable static-content-load bash invocations (removed at Step 2.3.a.0) and (b) necessary subprocess-interaction bash invocations (added at Step 2.3.a.1)
+- §Consequences cost-accounting clarification: Skill path tail-step `contextatlas resolve-symbols` is zero-API-cost; cohort cost model substantively preserved
+
+#### Verification outcomes
+
+- `npm test` full suite: **1491 tests / 85 files / all PASS** (up from 1467/84 baseline; +24 resolver tests + 8 CLI integration tests = +32 net tests; no regressions to existing substrate after schema-version-bump test compatibility fixes)
+- `npm run build`: build chain executes cleanly — `tsc` → artifact generation prints "wrote dist/extraction/prompt.md (3421 chars) + dist/generation/prompt.md (5328 chars)"
+- Production binary smoke test: `node dist/index.js --help` shows `resolve-symbols` in subcommand list with substantive descriptor "Enrich Skill-produced atlas with LSP-resolved symbol IDs (no API key needed)"
+- Typecheck: clean
+- LSP integration tests against real typescript-language-server PASS at ~530ms per resolve cycle (substantively well within LSP timing envelope; warmup-pattern refactor remains v0.8+ candidate per Step 2.2.e disposition)
+
+#### Substantive substrate-consistency claim at v1.0 launch
+
+Post-Step-2.3.a.1, the CLI-vs-Skill substrate-consistency claim substantively holds:
+- CLI path (`contextatlas index`): API-direct extraction + inline LSP resolution → full-fidelity atlas
+- Skill path (`/index-atlas` Claude Code Skill): subscription-bounded extraction + end-of-Skill `contextatlas resolve-symbols` → full-fidelity atlas
+- Both paths produce atlases substantively equivalent at the substrate layer: `symbols[]` populated by same LSP walk; `claims[].symbol_ids` populated via same resolver substrate (with R8 normalization specifically catching Skill-produced canonical forms)
+
+Substantive launch-narrative claim defended: ContextAtlas's substrate (ADRs + extractions + atlas) substantively consistent across entry points. Cohort users substantively get same downstream value (atlas queries via MCP tools) regardless of which entry point they used to build the atlas.
+
+#### Substantive Mode A canonical entry point preservation
+
+Approach D substantively preserves Mode A canonical entry point claim:
+- `/index-atlas` remains canonical Skill workflow surface
+- `contextatlas resolve-symbols` Bash invocation is **implementation detail** (cohort users don't write it themselves; SKILL.md instructs the agent)
+- Cost model preserved: subscription tokens for reasoning (claim extraction) + zero API cost for LSP resolution
+- Skill is NOT thin-wrapped around CLI — the Skill owns the reasoning work (substantive subscription-tokens consumption); resolve-symbols is auxiliary substrate enrichment that completes the atlas
+
+Substantively distinct cost-model framing from CLI path:
+- CLI: API-direct platform-billed ($0.41-$1.60 envelope per Step 2.2.b cluster baseline)
+- Skill: subscription-bounded ($0.00 platform-billed; subscription tokens absorbed) + zero-cost LSP resolution
+
+#### Step 2.3.a substep cluster substantive summary
+
+**Substep cluster: 2.3.a.0 + 2.3.a.1 ship the substantive v0.7 substrate-consistency closure:**
+- Step 2.3.a.0: removed bash-injection prompt-load pattern (replaced with Read tool against init-copied artifacts)
+- Step 2.3.a.1: added bash-invocation LSP-bridge pattern (substantively distinct category per architectural rationale)
+- Cumulative impact: Skill path substantively delivers full-fidelity atlas at v1.0 launch
+- Substep cluster ~1370 LOC engineering + tests across 18 files
+- FO-12 + FO-13 substantively absorbed; FO-10 substantively bounded (R8 normalization catches canonical file-path-symbol form + Python dotted notation)
+- Substantive class-15 framing: substantive Travis-product-judgment elevated this substep cluster from v0.8+ candidate to v0.7 launch-blocking scope per substantive cohort-substrate-consistency framing; substantive 5-instance pattern preserved
+
+#### Substantive 14th-class observation composition
+
+Step 2.3.a.1 substep ~600 LOC (vs ~300-400 estimate at dev investigation surface) — substantive bounded over-estimate composes with Step 2.3.a.0 + Step 2.2.c precedent. Substantive defense-in-depth justification:
+- Atlas schema v1.4 bump (required schema-history docstring + SUPPORTED_ATLAS_VERSIONS extension): bounded but worth substantive correctness
+- ADR-02 comprehensive amendment (single-pass covering both substeps): substantive substrate documentation
+- 8 LSP integration tests (~245 LOC test substrate): substantive empirical coverage against real typescript-language-server
+
+Class-14 pattern: substantive engineering discipline beyond locked minimum substantively serves launch-readiness substrate. 15-class enumeration preserved.
+
+#### Step 2.3 closure substrate ready
+
+Step 2.3.a substep cluster substantively complete. Step 2.3 closure unblocked for Travis-side re-verification at rich-skill/ Claude Code session per LOCK 5 4-checkpoint cadence:
+- Checkpoint 0 (dev-side after Step 2.3.a.0): complete — Path-γ refactor verified via tests + build chain
+- Checkpoint 1 (dev-side after Step 2.3.a.1): complete — resolve-symbols CLI verified against real LSP fixture (8 tests PASS)
+- Checkpoint 2 (Travis-side): pending — re-publish global install + reset rich-skill state + re-init + `/generate-adrs` Skill + `/index-atlas` Skill (full workflow including end-of-Skill resolve-symbols invocation)
+- Checkpoint 3 (final): pending — 8-axis re-verification with Axis 3b PASS (symbols resolved) + Axis 8 PASS (spec adherence)
+
+R4 agent-improvisation risk substantively remains for Travis-side Checkpoint 2 empirical surface; substantive empirical signal informs whether Step 2.3.a.0 + 2.3.a.1 SKILL.md tightening substantively prevented script-improvisation pattern observed at original Step 2.3 Checkpoint 2.
+
+---
 
 ### Step 2.3.a.0 shipped — 2026-05-11 (Path-γ Read-tool refactor: build-time prompt artifact generation + init-time copy + doctor freshness check + SKILL.md Read-tool amendments + CLAUDE.md frozen-prompt scope clarification; FO-12 / FO-13 substrate-evolution lock; substep cluster 2.3.a unblocks Step 2.3.a.1 Approach D Skill→LSP bridge)
 

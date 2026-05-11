@@ -602,7 +602,7 @@ describe("runExtractionPipeline", () => {
       "utf8",
     );
     expect(atlasOnDisk).toContain(`"contextatlas_commit_sha": "${sha}"`);
-    expect(atlasOnDisk).toContain('"version": "1.3"');
+    expect(atlasOnDisk).toContain('"version": "1.4"');
   });
 
   it("omits contextatlas_commit_sha from atlas.json when null is passed (binary not in git)", async () => {
