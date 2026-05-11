@@ -287,11 +287,15 @@ lock).
   difference explicit + §10 condition #8 3-tier severity-
   gradient fallback paths + §Revision history TL;DR prefix).
   Shipped 2026-05-10; commit `[this commit]`.
-- [ ] **Step 2.1** — ContextAtlas-on-itself verification
+- [x] **Step 2.1** — ContextAtlas-on-itself verification
   (operational baseline; 4-phase protocol; gate before Step 2.2
-  cold-start verification). Phase 1 + Phase 2 PASS; Phase 3 + 4
-  pending Travis-set ANTHROPIC_API_KEY per locked execution
-  cadence.
+  cold-start verification). All 4 phases PASS clean. Atlas
+  freshly extracted at HEAD `40d8b77`; 512 claims + 1002 symbols
+  + 19 ADRs + 1595 claim-symbol links; cost $0.88 script-
+  reported; query latency 0.04-0.70ms (~140-2500× margin under
+  sub-100ms ADR-02 invariant). Substrate-consistency between
+  state-detection + extraction empirically verified.
+  Shipped 2026-05-11; commit `[this commit]`.
 - [x] **Step 2.1.a** — FO-1 + FO-2 + FO-3 friction-observation
   fixes + Scope γ' multi-format substrate (.md + .rst + 3
   naming conventions + unified `src/utils/adr-enumeration.ts` +
@@ -472,6 +476,84 @@ timeline; not blocking).
 ## Progress log
 
 *Entries added in reverse-chronological order as steps ship.*
+
+### Step 2.1 shipped — 2026-05-11 (ContextAtlas-on-itself operational baseline 4-phase verification PASS + substrate-consistency empirically verified + 14th cycle-execution observation class captured)
+
+V0.7 Step 2.1 ships ContextAtlas-on-itself dogfood operational baseline 4-phase verification per Q2.0.2 lock. All 4 phases PASS clean against the post-Step-2.1.a substrate. Substrate-consistency between state-detection + extraction empirically verified end-to-end at production surface (FO-2 fix verified). 14th cycle-execution observation class captured per Travis Step 2.1.a lock (estimate-vs-empirical-scope-divergence handling at substantive interpretive work).
+
+| Substep | branch | commit | Notes |
+|---|---|---|---|
+| 2.1 4-phase verification PASS | main | [this commit] | Phase 1 init (FO-3 fix verified) + Phase 2 doctor 26P/3W/0F (FO-2 fix verified — `19 ADR(s) detected`) + Phase 3 fresh extraction Mode B (5 files / 130 claims / $0.88 cost / 0 errors; atlas at HEAD `40d8b77`) + Phase 4 smoke test query (38-57 claims per ADR-referenced symbol; latency 0.04-0.70ms sub-100ms invariant verified); substrate-consistency between state-detection ADR count (19) and extraction prose discovery (26 = 19 ADRs + 7 doc-bucket) empirically verified |
+
+#### 4-phase verification results
+
+- **Phase 1 — Install & init.** `node dist/index.js init` against existing `.contextatlas.yml` reports `init: existing config preserved` with no misleading languages payload (FO-3 fix empirically verified). Extraction exit code 2 expected — orthogonal to Phase 1 scope (ANTHROPIC_API_KEY env var initially not set; Phase 1 closes before reaching that path).
+
+- **Phase 2 — Doctor.** `node dist/index.js doctor` reports 25 PASS / 4 WARN / 0 FAIL pre-extraction → 26 PASS / 3 WARN / 0 FAIL post-extraction (after Phase 3 refreshed atlas at HEAD). Substantive WARN improvements: `state-detection.adrs.count` reports `19 ADR(s) detected` (FO-2 fix verified — pre-fix this surfaced `0 ADRs matching pattern` WARN); atlas SHA-vs-HEAD consistency restored. Remaining post-extraction WARN is ANTHROPIC_API_KEY-not-set advisory (orthogonal informational; not launch-blocking).
+
+- **Phase 3 — Index (CLI Mode B).** `node dist/index.js index --verbose` executed by Travis with API key set in PowerShell session per Option (ii) execution cadence lock. Substantive outcomes:
+  - **files_extracted=5** (3 changed + 2 added) + **files_unchanged=21** + **files_deleted=56** (95-commit-gap cleanup)
+  - **claims_written=130** (new); **claims total in atlas=512**; **symbols=1002**; **claim-symbol links=1595**; **distinct symbols with claims=104**
+  - **unresolved_candidates=63** (3 ADRs + 2 docs); mostly path refs + MCP tool names + external package refs — non-blocking per ADR-authoring-validation discipline
+  - **unresolved_frontmatter_hints=4** (ADR-02 `ExtractionPipeline`; ADR-19 `judgeClient` / `rubricPrompt` / `anonymizeOutput`) — author-intent placeholders for concepts not yet implemented as literal TS symbols; non-blocking
+  - **wall_clock_ms=113568** (~113 sec for 19-ADR + 84-source-file substrate); **api_calls=5** (cache-friendly); **cost_usd=$0.8824** script-reported full pricing; platform-billed will be ~$0.30-0.50 with prompt-cache discount
+  - **extracted_at_sha=`40d8b77f...`** matches HEAD (Step 2.1.a commit); **atlas_exported=true**; **extraction_errors=0**
+
+- **Phase 4 — Smoke test query.** Throwaway smoke test script (`scripts/phase4-smoke-test.mjs`; deleted post-verification per honest-scope) invoked `buildBundle()` against `.contextatlas/index.db` in atlas-only-mode for 6 target symbols. Substantive outcomes:
+  - **atlas-only-mode active** (atlas SHA matches HEAD; no LSP spawn needed for intent-only signal)
+  - **Latency 0.04-0.70ms** across 6 symbols — well under sub-100ms ADR-02 query-time invariant (~140-2500× margin)
+  - **Substantive bundles returned**: `buildBundle` 38 claims; `LanguageAdapter` 57 claims; `TypeScriptAdapter` 25 claims; sample claim severity=`hard` with substantive ADR-derived text
+  - **Symbol resolution** working at production surface (TS adapter symbol-id resolution matches DB claim-symbol link symbol_id format `sym:ts:<path>:<name>` per ADR-01)
+
+#### Substrate-consistency empirical verification
+
+Post-Step-2.1.a FO-2 fix verified end-to-end at production surface. **State-detection ADR count (19) = Extraction ADR-bucket count (19)** through shared `enumerateAdrFiles()` module from `src/utils/adr-enumeration.ts`. Total prose discovery breakdown:
+
+- ADR bucket (19 files): 19 ADR-NN-name.md files matching Scope γ' regex (Nygard / ADR-NN / Date conventions × .md / .rst extensions)
+- Doc bucket (7 files): README.md + DESIGN.md + RUBRIC.md at repo root + 3 probe-findings.md files under docs/adr/ (correctly classified as doc-bucket per FO-2 fix; non-conforming basenames fall through to `docs/**/*.md` glob) + ~1 misc doc
+
+Pre-Step-2.1.a divergence (state-detection regex `^\d{4}-.*\.md$` reported 0 against ADR-NN convention while extraction permissively accepted ANY `.md` including probe-findings) eliminated at source. The single shared enumeration module is the substrate-consistency invariant per FO-2 fix architecture.
+
+#### cost_model field verification
+
+Per Step 1.5 honest-scope acknowledgment: `cost_model` field is set on runtime `ExtractionResult` per Q1.0.5 δ at the Strategy-pattern boundary (covered by `factory.test.ts` + `extractors/*.test.ts` unit tests at 1353/1353 PASS). The field is NOT surfaced by the CLI summary line OR persisted to atlas.json (atlas.json metadata persistence DEFERRED to v0.8+ per Step 1.5 GAP). End-to-end Q1.0.5 δ runtime verification is implicit via passing tests; production CLI surface doesn't expose it. v0.7 ship-gate Step 5.5 absorbed-item annotation captures this gap with v0.8+ forward-pointer.
+
+#### Friction observations + 3-bucket triage outcome (Step 2.1)
+
+Per Q2.0.3 lock — 3-bucket friction-observation triage protocol applied at Step 2.1 verification surface:
+
+- **launch-blocking-fix-now bucket** (4 items, all absorbed at Step 2.1.a commit `40d8b77`):
+  - FO-1 (USAGE constant drift)
+  - FO-2 (state-detection vs extraction ADR enumeration divergence)
+  - FO-3 (init log misleading languages payload)
+  - Plus Scope γ' multi-format substrate + reference-context feature scope expansion (substantively new launch scope from Travis FIRST/SECOND/THIRD reframes; absorbed inline at Step 2.1.a per Option A)
+
+- **v0.8+ candidate bucket** (1 item):
+  - cost_model atlas.json metadata persistence GAP (Q1.0.5 δ pre-registered for v0.8+ per Step 1.5 honest-scope acknowledgment; carried-forward to v0.7 ship-gate Step 5.5 absorbed-item annotation with v0.8+ forward-pointer)
+
+- **honest-scope-acknowledgment bucket** (0 items new at Step 2.1; existing acknowledgments inherited from earlier substeps preserved)
+
+#### 14th cycle-execution observation class captured per Travis Step 2.1.a lock
+
+**14th class — Estimate-vs-empirical-scope-divergence handling at substantive interpretive work.** When implementation work emerges from substantive interpretive scope (parser implementation; prompt engineering; novel architectural primitives), empirical implementation cost may diverge from pre-implementation scope estimate. Bounded over-estimate (35-80%) reflects honest implementation discipline + warrants acceptance with commit-body acknowledgment of cost-vs-estimate divergence (substantive interpretive work has inherent estimate uncertainty). Catastrophic over-estimate (3-5×+) signals substantive scope misjudgment + warrants rescope condition trigger per Q-pre-4 substrate-evolution drift framework. Discipline: estimate cost-vs-empirical accuracy as cycle-execution metadata; track per-substep at progress log; surface bounded acceptance vs catastrophic rescope at trigger moment via inline adjudication.
+
+Substantive distinction from class 10 (substrate-verification-at-each-substep-boundary):
+- Class 10: correctness verification (does substrate behave as expected?)
+- Class 14: scope-accuracy verification (does work cost match estimate?)
+- Different signal sources; different recovery mechanisms; substantive composition (both apply at substep boundaries; serve different verification purposes)
+
+Empirical anchor at v0.7 cycle: Step 2.1.a rST parser at ~270 LOC vs ~150-200 LOC estimate (35-80% bounded over-estimate; accepted with commit-body acknowledgment per Step 2.1.a commit `40d8b77`).
+
+Composes with 13-class enumeration captured through Step 2.1.a = **14-class enumeration at Step 2.1 close** for v0.7 ship-gate working-content-gap-inventory + v0.8+ inheritance.
+
+#### Step 2.1 unblock — Step 2.2 Rich cold-start verification cluster
+
+Step 2.2 cluster unblocked:
+- **Step 2.2.a** generate-adrs feature implementation (CLI subcommand + Skills surface + tests + reference-context feature per Step 2.1.a amendment + Q2.2.a.1-Q2.2.a.4 pre-registered adjudications + GENERATE_ADRS_PROMPT canonical prompt drafting at Step 2.2.a surface)
+- **Step 2.2.b.i** Pure cold-start: Rich without reference context
+- **Step 2.2.b.ii** Reference-context-aided: Rich with `django/deps` reference context
+
+---
 
 ### Step 2.1.a shipped — 2026-05-11 (FO-1 + FO-2 + FO-3 friction-observation fixes + Scope γ' multi-format substrate + v0.7-SCOPE.md amendment per Option A inline + 13th cycle-execution observation class)
 
