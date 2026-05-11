@@ -412,8 +412,21 @@ lock).
       empirically refuted at Checkpoint 2). v0.7 launch-readiness
       verified empirically at external-repo dogfood surface.
       Shipped 2026-05-11; commit `[this commit]`.
-    - [ ] **Step 2.2.b.ii** — Reference-context-aided: Rich with
-      `django/deps` reference context
+    - [x] **Step 2.2.b.ii** — Reference-context-aided: Rich +
+      `django/deps/final/` reference context PASS-with-
+      substantively-positive-A/B (15 ADRs in 2:32; $0.94 generate-
+      adrs + $0.66 Phase 4 = $1.60 platform-billed; 107 new claims;
+      extraction-errors=0). 8-axis verification clean with Axis 8c
+      substantively positive: reference-context-aided ADRs use
+      canonical `path/file.py:Symbol` form (substantively bounds
+      FO-10 friction) + substantively richer depth/quality than
+      Step 2.2.b.i cold-start baseline. New FO-11 surfaced
+      (generate-adrs doesn't clean docs/adr/ before writing; v0.8+
+      `--overwrite`-flag candidate). Substep cluster Step 2.2.b
+      cumulative $2.79 platform-billed; closes empirical-verification
+      scope for both pure-cold-start + reference-context-aided
+      workflows. 15-class enumeration preserved. Shipped 2026-05-11;
+      commit `[this commit]`.
 - [ ] **Step 2.3** — CLI-vs-Skill extraction equivalence
   verification per Q2.0.X protocol (applied to extraction
   across target repos with ADRs OR post-generate-adrs at Rich;
@@ -572,6 +585,80 @@ timeline; not blocking).
 ## Progress log
 
 *Entries added in reverse-chronological order as steps ship.*
+
+### Step 2.2.b.ii shipped — 2026-05-11 (Rich + django/deps/final/ reference-context-aided verification PASS-with-substantively-positive-A/B; 15 ADRs at $0.94; Phase 4 incremental at $0.66; Axis 8c substantively positive: reference-context-aided ADRs use canonical file-path-symbol form bounding FO-10; new FO-11 v0.8+ candidate; Step 2.2.b cluster cumulative $2.79; closes empirical-verification scope for primary + reference-context-aided workflows)
+
+V0.7 Step 2.2.b.ii ships Rich + django/deps/final/ reference-context-aided verification result. **Substantive empirical validation of v0.7 reference-context feature at production surface.** End-to-end loop empirically closed: generate-adrs against Rich with `--reference-context C:/CodeWork/deps/final/` → 15 reference-context-aided ADRs in 2:32 wall-clock at $0.94 platform-billed (within $0.66-$2.29 estimate range) → Phase 4 incremental extraction (SHA-diff detected 15 added + 17 unchanged Step-2.2.b.i baseline preserved) → 107 new claims + atlas + index.db rebuilt at $0.66 → cumulative $1.60 platform-billed. **Substep cluster Step 2.2.b cumulative $2.79 platform-billed** (Step 2.2.b.i $1.19 + Step 2.2.b.ii $1.60).
+
+| Substep | branch | commit | Notes |
+|---|---|---|---|
+| 2.2.b.ii reference-context-aided | main | [this commit] | 8-axis verification PASS-with-substantively-positive-A/B; Axis 8a (reference-context walker fires correctly per pre-flight + 13 documents enumerated) + 8b (soft-warning threshold non-fire at 64k well under 500k) + **8c substantively positive A/B vs Step 2.2.b.i baseline (3 substantive launch-narrative claims with empirical backing)**; new FO-11 surfaced (generate-adrs doesn't clean docs/adr/ before writing; v0.8+ `--overwrite`-flag candidate per Travis Lock 1); substep cluster Step 2.2.b closes empirical-verification scope |
+
+#### Axis 8c substantively positive A/B — 3 launch-narrative claims with empirical backing
+
+Per Travis Lock 2 confirmation; substantive Step 5 ship gate launch documents substrate:
+
+**Claim 1 — Reference-context-aided generation produces substantively richer ADR depth/quality than cold-start:**
+- Step 2.2.b.i (cold-start): 16 ADRs; "short but direct" depth per Travis qualitative review
+- Step 2.2.b.ii (reference-context-aided): 15 ADRs; substantively richer depth + more descriptive titles + more substantive symbol references
+- Substantive empirical evidence: side-by-side ADR comparison from Tee logs
+
+**Claim 2 — Reference-context-aided generation substantively bounds FO-10 symbol-resolution friction:**
+- Step 2.2.b.i: `rich.console.ConsoleRenderable` (Python dotted notation; doesn't match pyright local symbol names)
+- Step 2.2.b.ii: `rich/console.py:ConsoleRenderable` (file-path + colon + name; **mirrors ADR-01 canonical `sym:lang:path:name` form**)
+- **Substantive surprise worth direct capture:** reference-context substrate substantively guided LLM toward canonical ContextAtlas symbol-reference form. Possible mechanism: Django DEPs reference context exhibits architectural-decision-making style using file-path-symbol references; LLM absorbed pattern from reference substrate. Either way: reference-context-aided generation has substantively reduced unresolved-symbol friction vs cold-start.
+
+**Claim 3 — Substantive cost trade-off favorable:**
+- $0.41 incremental in Rich/django case ($0.94 reference-context-aided vs $0.47 cold-start)
+- Substantive substrate-consistency improvement + substantive depth/quality improvement at bounded marginal cost
+- Substantive cohort value: users with existing architectural docs get substantively higher-quality ADR substrate at substantively bounded incremental cost
+
+#### Substantive substrate observation — reference-context substantively improves substrate-consistency
+
+Step 2.2.b.ii reveals reference-context substantively impacts MORE than depth/quality — it substantively impacts substrate-consistency at symbol-reference level. Reference-context-aided ADRs use canonical file-path-symbol form (`path/file.py:Symbol`) which substantively maps to ContextAtlas's `sym:lang:path:name` canonical ID format per ADR-01.
+
+**Substantive launch-narrative observation:** reference-context isn't just about ADR depth; it substantively raises substrate quality at multiple axes (depth + symbol-reference form + topic-coverage breadth). Substantive product differentiation for cohort users with existing architectural documentation.
+
+#### New friction observation FO-11 — generate-adrs doesn't clean before writing
+
+**Substantive observation:** running `generate-adrs` twice produces 31 ADRs in `docs/adr/` (16 from Step 2.2.b.i baseline + 15 from Step 2.2.b.ii reference-context-aided). New files written with new slugs (different filenames; numbering prefix conflicts but technically distinct files); old ADRs preserved.
+
+**Substantive substrate impact:**
+- Phase 4 SHA-diff handles substrate cleanly (17 unchanged + 15 added per incremental extraction; bonus empirical validation of v0.6 incremental-extraction pattern at substantial-codebase scale)
+- Real users at v1.0 launch substantively won't run generate-adrs twice; substantive cohort feedback informs whether v0.8+ priority
+
+**Disposition per Travis Lock 1: (α) v0.8+ candidate** + **honest-scope-acknowledgment at launch documents:**
+> "generate-adrs writes new ADRs with slug-derived filenames; re-running preserves existing ADRs (overwrite behavior is v0.8+ candidate). For iterative regeneration, clear docs/adr/ manually OR run against different codebase clones."
+
+v0.8+ candidate substrate captured: `--overwrite` flag (~15-30 LOC bounded) + default-safe behavior + cohort-feedback-driven priority. Carry-forward via v0_8-HANDOFF.md at Step 4 cycle-close.
+
+#### Step 2.2.b substep cluster summary
+
+**Cumulative empirical verification scope:**
+- Step 2.2.b.0 (FO-4 launch-readiness UX) + Step 2.2.c (FO-5 LspClient stream-state) + Step 2.2.d (FO-7 cold-start init + FO-6 β diagnostic) + Step 2.2.e (FO-8 cold-start UX consistency + FO-6 thesis refuted) + Step 2.2.b.i (pure-cold-start PASS-with-bounded) + Step 2.2.b.ii (reference-context-aided PASS-with-substantively-positive-A/B)
+- 5 FO observations absorbed at cluster (FO-4/5/7/8 fixed; FO-6 thesis empirically refuted)
+- 4 forward-carry to v0.8+ (FO-9 PS-wrapper / FO-10 symbol-resolution-gap [substantively bounded in reference-context-aided case] / FO-11 generate-adrs cleanup / ADR-depth-iterative-refinement)
+- 1 substantive v0.8+ engineering candidate preserved (warmup-pattern refactor)
+- **$2.79 cumulative platform-billed** ($0.47 + $0.72 + $0.94 + $0.66)
+- Substep cluster closes empirical-verification scope for both pure-cold-start + reference-context-aided workflows. **v0.7 launch-readiness substantively verified at substantive external-repo dogfood surface across both substantive workflows.**
+
+#### 14th-class observation refinement candidate (v0.8+)
+
+Step 2.2.b.i pre-flight estimate ~80% over (token estimate substantively conservative); Step 2.2.b.ii estimate substantively tighter alignment ($0.94 actual within $0.66-$2.29 range; ~42% range hit). Substantive observation: reference-context-aided estimate is tighter because reference-context tokens (64k from .rst file sizes) substantively dominate input + have predictable size. Cold-start estimate depends on codebase-walker `char/4` approximation which conservatively under-estimates.
+
+**v0.8+ candidate substrate captured:** refine cold-start token estimation logic to substantively match actual consumption (e.g., better tokenizer approximation; per-language tokenizer-aware estimates). Bounded scope; cohort-feedback-driven priority. Carry-forward via v0_8-HANDOFF.md.
+
+#### 15-class observation enumeration preserved at Step 2.2.b.ii
+
+No new observation class warranted. Step 2.2.b.ii surfaced substantive substrate observations (Axis 8c substantively positive A/B; FO-11 cleanup behavior; estimate-alignment refinement candidate) but all compose with existing 15-class enumeration.
+
+#### Step 2.2.b.ii unblock — Step 2.3 CLI-vs-Skill equivalence verification
+
+Step 2.3 unblocked per locked Q2.0.X CLI-vs-Skill extraction equivalence verification protocol. Substantive empirical work surface: structural-match-first (≥99% per-claim schema compliance) + claim-text-fuzzy (Levenshtein ≤30% OR cosine ≥0.7) + claim-count sanity-check (±25%) at n=2 trials per surface per target repo.
+
+Substantive consideration: Step 2.3 + Step 2.4 require BOTH CLI Mode B AND Skills Mode A (subscription-bounded via `/index-atlas` + `/generate-adrs` slash commands). Skills mode requires Claude Code session invocation — substantively different execution surface than Step 2.2.b CLI-only verification. Worth substantive Step 2.3 design adjudications inline at Step 2.3.0 design phase.
+
+---
 
 ### Step 2.2.b.i shipped — 2026-05-11 (Rich pure cold-start verification PASS-with-bounded-observations; 16 ADRs generated in 2:13 at $0.47; Phase 4 extraction closes loop empirically; 5 FO observations absorbed via substep cluster 2.2.b.0/c/d/e; 3 bounded observations forward-carry to v0.8+)
 
