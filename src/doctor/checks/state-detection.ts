@@ -27,7 +27,7 @@
  * concerns.
  */
 
-import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { resolve as pathResolve, join as pathJoin } from "node:path";
 
 import {
@@ -35,6 +35,10 @@ import {
   readHeadSha,
 } from "../../queries/atlas-only-mode.js";
 import type { LanguageCode } from "../../types.js";
+import {
+  ADR_NAMING_PATTERNS,
+  enumerateAdrFiles,
+} from "../../utils/adr-enumeration.js";
 import type { CheckContext, DoctorCheck } from "../types.js";
 import { walkForSourceFiles } from "./sample-symbol.js";
 
@@ -78,17 +82,20 @@ const ATLAS_SUPPORTED_LANGUAGES: ReadonlySet<LanguageCode> = new Set<LanguageCod
   "go",
 ]);
 
-const ADR_PATTERN = /^\d{4}-.*\.md$/;
-
 // ---------------------------------------------------------------------------
 // Per-dimension detectors
 // ---------------------------------------------------------------------------
 
 /**
- * ADRs dimension: pattern-match `^\d{4}-.*\.md$` in resolved ADR
- * directory per Q3.3.2 lock + refinement. Config-driven path if
+ * ADRs dimension: enumerate ADR files via the unified adr-enumeration
+ * module (3 naming conventions × 2 extensions, recursive depth-2 walk
+ * per Scope γ' lock at v0.7 Step 2.1.a). Config-driven path if
  * `.contextatlas.yml` specifies `adrs.path`; canonical `docs/adr/`
  * fallback otherwise.
+ *
+ * Before v0.7 Step 2.1.a the detector used a hard-coded Nygard regex
+ * that diverged from the extraction-side walker; FO-2 fix unifies
+ * both code paths on enumerateAdrFiles().
  */
 function detectAdrs(ctx: CheckContext): DoctorCheck[] {
   // Resolve ADR directory: config-driven if specified; canonical fallback
@@ -118,11 +125,9 @@ function detectAdrs(ctx: CheckContext): DoctorCheck[] {
     ];
   }
 
-  // Count *.md files matching ADR pattern in adrDir
-  let adrCount: number;
+  let adrFiles;
   try {
-    const entries = readdirSync(adrDir);
-    adrCount = entries.filter((name) => ADR_PATTERN.test(name)).length;
+    adrFiles = enumerateAdrFiles(adrDir);
   } catch (err) {
     return [
       {
@@ -135,29 +140,37 @@ function detectAdrs(ctx: CheckContext): DoctorCheck[] {
     ];
   }
 
-  if (adrCount === 0) {
+  if (adrFiles.length === 0) {
     return [
       {
         id: "state-detection.adrs.count",
         category: "state-detection",
         status: "warn",
-        message: "ADR directory exists but contains 0 ADRs matching pattern",
+        message: "ADR directory exists but contains 0 ADRs matching supported conventions",
         detail:
-          `ADR directory ${adrDir} has no files matching ` +
-          `${ADR_PATTERN.source}. ContextAtlas requires ADRs for atlas ` +
-          `extraction substrate; please add at least one numbered ADR ` +
-          `(e.g., 0001-overview.md).`,
+          `ADR directory ${adrDir} contains no files matching the ` +
+          `supported naming conventions (Nygard \`0001-name.md|rst\`, ` +
+          `\`ADR-NN-name.md|rst\`, or date-prefixed \`YYYY-MM-DD-name.md|rst\`). ` +
+          `ContextAtlas requires ADRs for atlas extraction substrate; add at ` +
+          `least one ADR matching a supported convention.`,
       },
     ];
   }
+
+  const mdCount = adrFiles.filter((f) => f.format === "md").length;
+  const rstCount = adrFiles.filter((f) => f.format === "rst").length;
+  const formatSummary = rstCount > 0 ? ` (${mdCount} .md + ${rstCount} .rst)` : "";
 
   return [
     {
       id: "state-detection.adrs.count",
       category: "state-detection",
       status: "pass",
-      message: `${adrCount} ADR(s) detected`,
-      detail: `Pattern ${ADR_PATTERN.source} matched ${adrCount} files in ${adrDir}`,
+      message: `${adrFiles.length} ADR(s) detected${formatSummary}`,
+      detail:
+        `Matched ${adrFiles.length} files in ${adrDir} against supported ` +
+        `naming conventions (${ADR_NAMING_PATTERNS.length} patterns; ` +
+        `.md + .rst extensions; recursive depth-2 walk).`,
     },
   ];
 }

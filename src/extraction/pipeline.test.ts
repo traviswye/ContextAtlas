@@ -269,8 +269,8 @@ describe("runExtractionPipeline", () => {
   });
 
   it("skipShaDiff forces full re-extract even when SHAs match baseline (ADR-12 --full)", async () => {
-    writeFileSync(pathJoin(tmp, "docs", "adr", "A.md"), "v1");
-    writeFileSync(pathJoin(tmp, "docs", "adr", "B.md"), "v1");
+    writeFileSync(pathJoin(tmp, "docs", "adr", "ADR-71.md"), "v1");
+    writeFileSync(pathJoin(tmp, "docs", "adr", "ADR-72.md"), "v1");
     const adapter = adapterForSrc({});
     const client1 = makeStubClient([
       { claims: [makeClaim({ claim: "A1" })] },
@@ -307,8 +307,8 @@ describe("runExtractionPipeline", () => {
   });
 
   it("re-extracts only the changed file", async () => {
-    writeFileSync(pathJoin(tmp, "docs", "adr", "A.md"), "v1");
-    writeFileSync(pathJoin(tmp, "docs", "adr", "B.md"), "v1");
+    writeFileSync(pathJoin(tmp, "docs", "adr", "ADR-71.md"), "v1");
+    writeFileSync(pathJoin(tmp, "docs", "adr", "ADR-72.md"), "v1");
     const adapter = adapterForSrc({});
     const client1 = makeStubClient([
       { claims: [makeClaim({ claim: "claim-A-v1" })] },
@@ -323,7 +323,7 @@ describe("runExtractionPipeline", () => {
     });
 
     // Change only B.md. Fresh DB, same on-disk atlas.
-    writeFileSync(pathJoin(tmp, "docs", "adr", "B.md"), "v2 — changed");
+    writeFileSync(pathJoin(tmp, "docs", "adr", "ADR-72.md"), "v2 — changed");
     const db2 = openDatabase(":memory:");
     const client2 = makeStubClient([
       { claims: [makeClaim({ claim: "claim-B-v2" })] },
@@ -344,8 +344,8 @@ describe("runExtractionPipeline", () => {
   });
 
   it("cleans up claims + source_shas when a file is deleted from disk", async () => {
-    writeFileSync(pathJoin(tmp, "docs", "adr", "A.md"), "v1");
-    writeFileSync(pathJoin(tmp, "docs", "adr", "B.md"), "v1");
+    writeFileSync(pathJoin(tmp, "docs", "adr", "ADR-71.md"), "v1");
+    writeFileSync(pathJoin(tmp, "docs", "adr", "ADR-72.md"), "v1");
     const adapter = adapterForSrc({});
     const client1 = makeStubClient([
       { claims: [makeClaim({ claim: "A" })] },
@@ -360,7 +360,7 @@ describe("runExtractionPipeline", () => {
     });
 
     // Delete B.
-    rmSync(pathJoin(tmp, "docs", "adr", "B.md"));
+    rmSync(pathJoin(tmp, "docs", "adr", "ADR-72.md"));
     const db2 = openDatabase(":memory:");
     const result = await runExtractionPipeline({
       repoRoot: tmp,
@@ -373,14 +373,14 @@ describe("runExtractionPipeline", () => {
     expect(result.atlasExported).toBe(true);
 
     const shas = listSourceShas(db2);
-    expect(Object.keys(shas)).toEqual(["docs/adr/A.md"]);
+    expect(Object.keys(shas)).toEqual(["docs/adr/ADR-71.md"]);
     const claims = listAllClaims(db2).map((c) => c.claim);
     expect(claims).toEqual(["A"]);
     db2.close();
   });
 
   it("does not write atlas.json when atlas.committed is false", async () => {
-    writeFileSync(pathJoin(tmp, "docs", "adr", "A.md"), "v1");
+    writeFileSync(pathJoin(tmp, "docs", "adr", "ADR-71.md"), "v1");
     const cfg = baseConfig();
     cfg.atlas.committed = false;
     const adapter = adapterForSrc({});
@@ -422,8 +422,8 @@ describe("runExtractionPipeline", () => {
   });
 
   it("throws when every attempted extraction errors (config/key problem)", async () => {
-    writeFileSync(pathJoin(tmp, "docs", "adr", "A.md"), "v1");
-    writeFileSync(pathJoin(tmp, "docs", "adr", "B.md"), "v1");
+    writeFileSync(pathJoin(tmp, "docs", "adr", "ADR-71.md"), "v1");
+    writeFileSync(pathJoin(tmp, "docs", "adr", "ADR-72.md"), "v1");
     const adapter = adapterForSrc({});
     await expect(
       runExtractionPipeline({
@@ -437,8 +437,8 @@ describe("runExtractionPipeline", () => {
   });
 
   it("tolerates per-document failure when others succeed", async () => {
-    writeFileSync(pathJoin(tmp, "docs", "adr", "A.md"), "v1");
-    writeFileSync(pathJoin(tmp, "docs", "adr", "B.md"), "v1");
+    writeFileSync(pathJoin(tmp, "docs", "adr", "ADR-71.md"), "v1");
+    writeFileSync(pathJoin(tmp, "docs", "adr", "ADR-72.md"), "v1");
     const adapter = adapterForSrc({});
     const result = await runExtractionPipeline({
       repoRoot: tmp,
@@ -547,7 +547,7 @@ describe("runExtractionPipeline", () => {
   });
 
   it("reports unresolved symbol candidates without failing", async () => {
-    writeFileSync(pathJoin(tmp, "docs", "adr", "A.md"), "v1");
+    writeFileSync(pathJoin(tmp, "docs", "adr", "ADR-71.md"), "v1");
     const adapter = adapterForSrc({});
     const result = await runExtractionPipeline({
       repoRoot: tmp,
@@ -649,7 +649,7 @@ describe("runExtractionPipeline", () => {
     mkdirSync(sourceRoot, { recursive: true });
     mkdirSync(pathJoin(benchmarksRoot, ".contextatlas"), { recursive: true });
     writeFileSync(
-      pathJoin(adrDir, "ADR-EXT.md"),
+      pathJoin(adrDir, "ADR-201.md"),
       "---\nid: ADR-EXT\n---\n\nExtPoint must be stable across releases.\n",
     );
     writeFileSync(
@@ -713,7 +713,7 @@ describe("runExtractionPipeline", () => {
     expect(claims).toHaveLength(1);
     // source_path is relative to the ADR dir (outside-source-root
     // branch of proseRelPath), matching ADR-08's stated rule.
-    expect(claims[0]?.sourcePath).toBe("ADR-EXT.md");
+    expect(claims[0]?.sourcePath).toBe("ADR-201.md");
     expect(claims[0]?.source).toBe("ADR-EXT");
     expect(claims[0]?.symbolIds).toEqual(["sym:ts:example.ts:ExtPoint"]);
 
@@ -728,7 +728,7 @@ describe("runExtractionPipeline", () => {
     expect(() => readFileSync(atlasInBenchmarks, "utf8")).not.toThrow();
     const atlasText = readFileSync(atlasInBenchmarks, "utf8");
     expect(atlasText).toContain("ExtPoint");
-    expect(atlasText).toContain("ADR-EXT.md");
+    expect(atlasText).toContain("ADR-201.md");
   });
 });
 
@@ -934,7 +934,7 @@ describe("runExtractionPipeline — ADR authoring validation", () => {
 
   it("all-resolve happy path: ADR authoring validation warning silent", async () => {
     writeFileSync(
-      pathJoin(tmp, "docs", "adr", "ADR-clean.md"),
+      pathJoin(tmp, "docs", "adr", "ADR-310.md"),
       "---\nid: ADR-clean\nsymbols:\n  - Real\n---\nBody.",
     );
     writeFileSync(pathJoin(tmp, "src", "x.ts"), "export class Real {}");
@@ -971,11 +971,11 @@ describe("runExtractionPipeline — ADR authoring validation", () => {
 
   it("some-unresolved warning path: warn line fires once with totals + file count", async () => {
     writeFileSync(
-      pathJoin(tmp, "docs", "adr", "ADR-mixed-A.md"),
+      pathJoin(tmp, "docs", "adr", "ADR-311.md"),
       "---\nid: ADR-mixed-A\nsymbols:\n  - Ghost\n  - Real\n---\nBody.",
     );
     writeFileSync(
-      pathJoin(tmp, "docs", "adr", "ADR-mixed-B.md"),
+      pathJoin(tmp, "docs", "adr", "ADR-312.md"),
       "---\nid: ADR-mixed-B\nsymbols:\n  - AlsoGhost\n---\nBody.",
     );
     writeFileSync(pathJoin(tmp, "src", "x.ts"), "export class Real {}");
@@ -1017,11 +1017,11 @@ describe("runExtractionPipeline — ADR authoring validation", () => {
 
   it("all-unresolved sanity case: warn line fires once with correct totals", async () => {
     writeFileSync(
-      pathJoin(tmp, "docs", "adr", "ADR-broken-A.md"),
+      pathJoin(tmp, "docs", "adr", "ADR-321.md"),
       "---\nid: ADR-broken-A\nsymbols:\n  - GhostA1\n  - GhostA2\n---\nBody.",
     );
     writeFileSync(
-      pathJoin(tmp, "docs", "adr", "ADR-broken-B.md"),
+      pathJoin(tmp, "docs", "adr", "ADR-322.md"),
       "---\nid: ADR-broken-B\nsymbols:\n  - GhostB1\n---\nBody.",
     );
     // No source symbols at all — every frontmatter declaration unresolved.

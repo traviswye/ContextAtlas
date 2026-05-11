@@ -146,15 +146,15 @@ describe("walkProseFiles", () => {
     const externalAdrs = pathJoin(tmp, "external-adrs");
     mkdirSync(projectRoot, { recursive: true });
     mkdirSync(externalAdrs, { recursive: true });
-    writeFileSync(pathJoin(externalAdrs, "ADR-EXT-01.md"), "external body 1");
-    writeFileSync(pathJoin(externalAdrs, "ADR-EXT-02.md"), "external body 2");
+    writeFileSync(pathJoin(externalAdrs, "ADR-101.md"), "external body 1");
+    writeFileSync(pathJoin(externalAdrs, "ADR-102.md"), "external body 2");
 
     const files = walkProseFiles(projectRoot, {
       adrs: { path: "../external-adrs", format: "markdown-frontmatter" },
       docs: { include: [] },
     });
     const adrPaths = files.map((f) => f.relPath).sort();
-    expect(adrPaths).toEqual(["ADR-EXT-01.md", "ADR-EXT-02.md"]);
+    expect(adrPaths).toEqual(["ADR-101.md", "ADR-102.md"]);
     for (const f of files) {
       expect(f.bucket).toBe("adr");
       expect(f.sha).toMatch(/^[a-f0-9]{64}$/);
@@ -171,7 +171,7 @@ describe("walkProseFiles", () => {
     const source = pathJoin(tmp, "source");
     mkdirSync(adrDir, { recursive: true });
     mkdirSync(source, { recursive: true });
-    writeFileSync(pathJoin(adrDir, "ADR-X.md"), "body X");
+    writeFileSync(pathJoin(adrDir, "ADR-201.md"), "body X");
 
     const files = walkProseFiles(
       source,
@@ -182,9 +182,9 @@ describe("walkProseFiles", () => {
       cfgHome, // configRoot explicit; different from sourceRoot
     );
     // adrs.path "adrs" resolves against configRoot (not sourceRoot),
-    // finding the ADR at cfg-home/adrs/ADR-X.md. Since that's outside
+    // finding the ADR at cfg-home/adrs/ADR-201.md. Since that's outside
     // sourceRoot, the stored relPath uses the fallback base (the ADR dir).
-    expect(files.map((f) => f.relPath)).toEqual(["ADR-X.md"]);
+    expect(files.map((f) => f.relPath)).toEqual(["ADR-201.md"]);
     expect(files[0]?.bucket).toBe("adr");
   });
 
@@ -194,13 +194,13 @@ describe("walkProseFiles", () => {
     // branch), preserving backward-compat output when layout allows.
     const externalAdrs = pathJoin(tmp, "abs-external");
     mkdirSync(externalAdrs, { recursive: true });
-    writeFileSync(pathJoin(externalAdrs, "ADR-ABS.md"), "abs body");
+    writeFileSync(pathJoin(externalAdrs, "ADR-301.md"), "abs body");
 
     const files = walkProseFiles(tmp, {
       adrs: { path: externalAdrs, format: "markdown-frontmatter" },
       docs: { include: [] },
     });
-    expect(files.map((f) => f.relPath)).toEqual(["abs-external/ADR-ABS.md"]);
+    expect(files.map((f) => f.relPath)).toEqual(["abs-external/ADR-301.md"]);
   });
 
   it("computes SHA for each file and returns paths in deterministic order", () => {

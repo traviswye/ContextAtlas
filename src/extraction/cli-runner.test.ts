@@ -668,7 +668,7 @@ describe("runIndexSubcommand (ADR-12)", () => {
 
   it("default mode: frontmatter-warning breakdown printed when unresolved frontmatter symbols exist", async () => {
     writeFileSync(
-      pathJoin(tmp, "docs", "adr", "ADR-mixed.md"),
+      pathJoin(tmp, "docs", "adr", "ADR-50.md"),
       "---\nid: ADR-mixed\nsymbols:\n  - Ghost\n  - AlsoGhost\n---\nbody\n",
     );
     const stderr = captureStderr();
@@ -688,14 +688,14 @@ describe("runIndexSubcommand (ADR-12)", () => {
     expect(err).toMatch(
       /\[warn\] ADR authoring validation: 2 unresolved frontmatter symbol\(s\) across 1 file\(s\)/,
     );
-    expect(err).toMatch(/ADR-mixed\.md:.*Ghost.*AlsoGhost/);
+    expect(err).toMatch(/ADR-50\.md:.*Ghost.*AlsoGhost/);
     // Default summary still reports the count.
     expect(stdout.joined()).toMatch(/unresolved_frontmatter_hints=2/);
   });
 
   it("default mode: silent when no frontmatter symbols are unresolved", async () => {
     writeFileSync(
-      pathJoin(tmp, "docs", "adr", "ADR-clean.md"),
+      pathJoin(tmp, "docs", "adr", "ADR-51.md"),
       "---\nid: ADR-clean\n---\nbody\n",
     );
     const stderr = captureStderr();
@@ -716,7 +716,7 @@ describe("runIndexSubcommand (ADR-12)", () => {
 
   it("--verbose mode: frontmatter breakdown NOT duplicated (verbose printer supersedes)", async () => {
     writeFileSync(
-      pathJoin(tmp, "docs", "adr", "ADR-mixed.md"),
+      pathJoin(tmp, "docs", "adr", "ADR-50.md"),
       "---\nid: ADR-mixed\nsymbols:\n  - Ghost\n---\nbody\n",
     );
     const stderr = captureStderr();
@@ -742,11 +742,11 @@ describe("runIndexSubcommand (ADR-12)", () => {
 
   it("--json mode: frontmatter_unresolved_by_file field present with correct shape", async () => {
     writeFileSync(
-      pathJoin(tmp, "docs", "adr", "ADR-json-A.md"),
+      pathJoin(tmp, "docs", "adr", "ADR-401.md"),
       "---\nid: ADR-json-A\nsymbols:\n  - Ghost1\n  - Ghost2\n---\nbody\n",
     );
     writeFileSync(
-      pathJoin(tmp, "docs", "adr", "ADR-json-B.md"),
+      pathJoin(tmp, "docs", "adr", "ADR-402.md"),
       "---\nid: ADR-json-B\nsymbols:\n  - Ghost3\n---\nbody\n",
     );
     const stderr = captureStderr();
@@ -771,10 +771,10 @@ describe("runIndexSubcommand (ADR-12)", () => {
     expect(payload.unresolved_frontmatter_hints).toBe(3);
     expect(payload.frontmatter_unresolved_by_file).toHaveLength(2);
     const a = payload.frontmatter_unresolved_by_file.find((x) =>
-      x.source_path.endsWith("ADR-json-A.md"),
+      x.source_path.endsWith("ADR-401.md"),
     );
     const b = payload.frontmatter_unresolved_by_file.find((x) =>
-      x.source_path.endsWith("ADR-json-B.md"),
+      x.source_path.endsWith("ADR-402.md"),
     );
     expect(a?.symbols).toEqual(["Ghost1", "Ghost2"]);
     expect(b?.symbols).toEqual(["Ghost3"]);
@@ -849,7 +849,7 @@ describe("runIndexSubcommand (ADR-12)", () => {
 
   it("--json mode: frontmatter_unresolved_by_file is empty array when none unresolved", async () => {
     writeFileSync(
-      pathJoin(tmp, "docs", "adr", "ADR-clean.md"),
+      pathJoin(tmp, "docs", "adr", "ADR-51.md"),
       "---\nid: ADR-clean\n---\nbody\n",
     );
     const stdout = captureStdout();

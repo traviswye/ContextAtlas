@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { parseArgs, type ParsedArgs } from "./cli-args.js";
+import { KNOWN_SUBCOMMANDS, parseArgs, USAGE, type ParsedArgs } from "./cli-args.js";
 
 /**
  * Baseline shape: what every "no flags set" result looks like. Tests
@@ -743,5 +743,24 @@ describe("parseArgs — --narrow-attribution (v0.3 Fix 2)", () => {
     const before = parseArgs(["--narrow-attribution=drop", "index"]);
     const after = parseArgs(["index", "--narrow-attribution=drop"]);
     expect(before).toEqual(after);
+  });
+});
+
+describe("USAGE / KNOWN_SUBCOMMANDS substrate-consistency (v0.7 Step 2.1.a FO-1)", () => {
+  it("USAGE string mentions every KNOWN_SUBCOMMANDS entry", () => {
+    for (const sub of KNOWN_SUBCOMMANDS) {
+      expect(USAGE).toContain(sub);
+    }
+  });
+
+  it("USAGE string omits any subcommand not in KNOWN_SUBCOMMANDS", () => {
+    // Extract the bracketed subcommand list from USAGE; assert it equals
+    // KNOWN_SUBCOMMANDS exactly. Drift here is what FO-1 caught at Step
+    // 2.1 verification surface (show-prompt added to KNOWN_SUBCOMMANDS
+    // at Step 1.4b but USAGE wasn't updated).
+    const match = /\[([^\]]+)\]/.exec(USAGE);
+    expect(match).not.toBeNull();
+    const usageSubcommands = match![1].split("|");
+    expect(usageSubcommands).toEqual([...KNOWN_SUBCOMMANDS]);
   });
 });

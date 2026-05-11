@@ -179,18 +179,23 @@ export interface ParsedArgs {
   observe: boolean;
 }
 
-const USAGE =
-  "Usage: contextatlas [index|doctor|init] [--config-root <path>] [--config <file>] " +
-  "[--check] [--full] [--json] [--cc-only] [--observe] [--budget-warn <usd>] [--verbose] " +
-  "[--narrow-attribution <drop|drop-with-fallback>] " +
-  "(see ADR-08, ADR-11, ADR-12, ADR-20)";
-
-const KNOWN_SUBCOMMANDS: readonly Subcommand[] = [
+export const KNOWN_SUBCOMMANDS: readonly Subcommand[] = [
   "index",
   "doctor",
   "init",
   "show-prompt",
 ];
+
+/**
+ * Built from KNOWN_SUBCOMMANDS so the usage string can never drift from
+ * the actual set of accepted subcommands (substrate-consistency
+ * invariant per v0.7 Step 2.1.a FO-1 fix).
+ */
+export const USAGE =
+  `Usage: contextatlas [${KNOWN_SUBCOMMANDS.join("|")}] [--config-root <path>] [--config <file>] ` +
+  "[--check] [--full] [--json] [--cc-only] [--observe] [--budget-warn <usd>] [--verbose] " +
+  "[--narrow-attribution <drop|drop-with-fallback>] " +
+  "(see ADR-08, ADR-11, ADR-12, ADR-20)";
 
 /**
  * Common mistakes mapped to the right subcommand name. Kept small and

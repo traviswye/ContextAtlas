@@ -20,6 +20,10 @@ import { globSync } from "glob";
 import { Minimatch } from "minimatch";
 
 import type { ContextAtlasConfig } from "../types.js";
+import {
+  enumerateAdrFiles,
+  type AdrFormat,
+} from "../utils/adr-enumeration.js";
 import { normalizePath, toRelativePath } from "../utils/paths.js";
 
 export type ProseBucket = "adr" | "doc";
@@ -29,6 +33,12 @@ export interface ProseFile {
   relPath: string;
   sha: string;
   bucket: ProseBucket;
+  /**
+   * File format inferred from extension. Present on ADR-bucket files
+   * (where Scope γ' walking accepts .md + .rst); doc-bucket files are
+   * treated as Markdown via the existing glob path.
+   */
+  format?: AdrFormat;
 }
 
 export interface SourceFile {
@@ -134,15 +144,23 @@ export function walkProseFiles(
   // ADR bucket first — wins on overlap with docs. Resolved against
   // configRoot so external-ADR setups (adrs.path starting with /, or
   // traversing ../) work per ADR-08.
+  //
+  // Enumeration via unified adr-enumeration module (v0.7 Step 2.1.a
+  // Scope γ' lock): 3 naming conventions × .md + .rst; recursive walk
+  // capped at depth 2. Non-conforming `.md` files (e.g., probe-
+  // findings notes whose basename doesn't match an ADR convention)
+  // fall through to the docs-bucket glob below if `docs.include`
+  // covers them.
   const adrAbsDir = pathResolve(absConfigRoot, config.adrs.path);
-  for (const absPath of listMarkdownRecursive(adrAbsDir)) {
-    if (seen.has(absPath)) continue;
-    seen.add(absPath);
+  for (const adrFile of enumerateAdrFiles(adrAbsDir)) {
+    if (seen.has(adrFile.absPath)) continue;
+    seen.add(adrFile.absPath);
     out.push({
-      absPath,
-      relPath: proseRelPath(absPath, absSourceRoot, adrAbsDir),
-      sha: computeFileSha(absPath),
+      absPath: adrFile.absPath,
+      relPath: proseRelPath(adrFile.absPath, absSourceRoot, adrAbsDir),
+      sha: computeFileSha(adrFile.absPath),
       bucket: "adr",
+      format: adrFile.format,
     });
   }
 
@@ -211,32 +229,6 @@ function proseRelPath(
     return toRelativePath(normalizedProse, normalizedSourceRoot);
   }
   return toRelativePath(normalizedProse, normalizePath(absFallbackBase));
-}
-
-function listMarkdownRecursive(dir: string): string[] {
-  const out: string[] = [];
-  let entries;
-  try {
-    entries = readdirSync(dir, { withFileTypes: true });
-  } catch (err) {
-    const code = (err as NodeJS.ErrnoException).code;
-    // A configured adrs.path that doesn't exist is a user error we
-    // should flag — but empty-corpus is a supported case, and walking
-    // a non-existent dir when the user just hasn't created ADRs yet
-    // shouldn't crash. Return empty and let the pipeline continue.
-    if (code === "ENOENT") return out;
-    throw err;
-  }
-  for (const entry of entries) {
-    if (entry.name.startsWith(".")) continue;
-    const full = pathJoin(dir, entry.name);
-    if (entry.isDirectory()) {
-      out.push(...listMarkdownRecursive(full));
-    } else if (entry.isFile() && extname(entry.name).toLowerCase() === ".md") {
-      out.push(full);
-    }
-  }
-  return out;
 }
 
 // ---------------------------------------------------------------------------

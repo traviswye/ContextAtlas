@@ -204,15 +204,20 @@ export async function runInitSubcommand(
     languages,
     observe: options.observe === true,
   });
-  log.info(
-    scaffoldResult.status === "created"
-      ? `init: config scaffold created at ${scaffoldResult.path}`
-      : `init: existing config preserved at ${scaffoldResult.path}`,
-    {
+  // FO-3 fix (v0.7 Step 2.1.a): differentiate created vs preserved log
+  // payloads. `languages` here is the filesystem-detected list — it
+  // describes what init would write to a fresh scaffold. When init
+  // preserves an existing config, that list does NOT describe what's
+  // on disk and including it in the log payload misled the reader at
+  // Step 2.1 Phase 1 verification surface.
+  if (scaffoldResult.status === "created") {
+    log.info(`init: config scaffold created at ${scaffoldResult.path}`, {
       languages: [...languages],
       observability: options.observe === true,
-    },
-  );
+    });
+  } else {
+    log.info(`init: existing config preserved at ${scaffoldResult.path}`);
+  }
 
   // First doctor run (gateway check) per Q4.0.4 lock.
   const doctorResult = await runChecks(options.configRoot);

@@ -61,6 +61,7 @@ import {
   type ProseFile,
 } from "./file-walker.js";
 import { parseFrontmatterSymbols } from "./frontmatter.js";
+import { parseRstSymbols } from "../parsing/rst-parser.js";
 import {
   DEFAULT_COMMIT_LIMIT,
   extractGitSignal,
@@ -614,7 +615,15 @@ function writeClaimsForFile(
   // ahead of model inference). Unresolved ones are excluded from the
   // merge so they don't inflate the claim-level unresolved count; they
   // are tracked separately as a per-file summary stat.
-  const frontmatterSymbols = parseFrontmatterSymbols(rawContents, file.relPath);
+  //
+  // Format dispatch (v0.7 Step 2.1.a Scope γ' substrate): ADR-bucket
+  // files carry a `format` tag from the unified ADR enumeration
+  // module. `.rst` ADRs use rST field-list parsing; `.md` ADRs +
+  // doc-bucket files use YAML frontmatter parsing.
+  const frontmatterSymbols =
+    file.format === "rst"
+      ? parseRstSymbols(rawContents)
+      : parseFrontmatterSymbols(rawContents, file.relPath);
   const frontmatterResolvable: string[] = [];
   const frontmatterUnresolvedNames: string[] = [];
   for (const fmSym of frontmatterSymbols) {

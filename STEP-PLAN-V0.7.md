@@ -289,6 +289,22 @@ lock).
   Shipped 2026-05-10; commit `[this commit]`.
 - [ ] **Step 2.1** — ContextAtlas-on-itself verification
   (operational baseline; 4-phase protocol; gate before Step 2.2
+  cold-start verification). Phase 1 + Phase 2 PASS; Phase 3 + 4
+  pending Travis-set ANTHROPIC_API_KEY per locked execution
+  cadence.
+- [x] **Step 2.1.a** — FO-1 + FO-2 + FO-3 friction-observation
+  fixes + Scope γ' multi-format substrate (.md + .rst + 3
+  naming conventions + unified `src/utils/adr-enumeration.ts` +
+  custom subset `src/parsing/rst-parser.ts`) + v0.7-SCOPE.md
+  amendment per Option A inline (reference-context feature +
+  user-configured-root scope + status-subdirectory v0.8+
+  deferral + 3 new §6 risks + §7.3' substrate locks + §8
+  criteria #17 + #18 + §9 cost framing revision + §10 rescope
+  condition #9). 13th cycle-execution observation class
+  captured + refinement to class 10 (substrate-verification-at-
+  each-substep-boundary). Shipped 2026-05-11; commit
+  `[this commit]`.
+  (operational baseline; 4-phase protocol; gate before Step 2.2
   cold-start verification).
 - [ ] **Step 2.2** — Rich cold-start verification cluster:
   - **Step 2.2.a** — generate-adrs feature implementation (CLI
@@ -456,6 +472,80 @@ timeline; not blocking).
 ## Progress log
 
 *Entries added in reverse-chronological order as steps ship.*
+
+### Step 2.1.a shipped — 2026-05-11 (FO-1 + FO-2 + FO-3 friction-observation fixes + Scope γ' multi-format substrate + v0.7-SCOPE.md amendment per Option A inline + 13th cycle-execution observation class)
+
+V0.7 Step 2.1.a ships FO fixes + Scope γ' multi-format substrate (.md + .rst + 3 naming conventions + unified `src/utils/adr-enumeration.ts` module consumed by both state-detection + extraction code paths + custom subset `src/parsing/rst-parser.ts` parser) + v0.7-SCOPE.md amendment per Option A inline (reference-context feature scope expansion + user-configured-root scope framing + status-subdirectory lifecycle v0.8+ deferral). 13th cycle-execution observation class captured + refinement to class 10 (substrate-verification-at-each-substep-boundary). 1353/1353 tests PASS clean.
+
+| Substep | branch | commit | Notes |
+|---|---|---|---|
+| 2.1.a FO fixes + Scope γ' substrate + amendment | main | [this commit] | FO-1 (USAGE constant + substrate-consistency regression test) + FO-2 (unified ADR enumeration module + multi-format support) + FO-3 (init log differentiation per Option ii) + Scope γ' multi-format substrate + rST parser custom subset (Approach b) + v0.7-SCOPE.md amendment per Option A inline (9-section + 3 new §6 risks + §7.3' substrate locks + §8 #17/#18 + §10 condition #9 with 3-tier fallback) + STEP-PLAN-V0.7.md Step 2.1.a entry + 13th observation class + class 10 refinement |
+
+#### Friction observations + fixes
+
+- **FO-1 — USAGE constant drift artifact from Step 1.4b.** `show-prompt` was added to `KNOWN_SUBCOMMANDS` array at Step 1.4b but the USAGE string at `src/cli-args.ts:182-186` wasn't updated alongside. Fix: USAGE constant rebuilt from `KNOWN_SUBCOMMANDS.join("|")` so substrate-consistency is structurally guaranteed. Regression test in `cli-args.test.ts` asserts USAGE-vs-KNOWN_SUBCOMMANDS substrate-consistency invariant. Launch-blocking-fix-now triage.
+
+- **FO-2 — State-detection vs extraction ADR enumeration divergence.** State-detection used a hard-coded Nygard-only regex `^\d{4}-.*\.md$` (`src/doctor/checks/state-detection.ts:81`); extraction file-walker used permissive `.md`-extension-only filter (`src/extraction/file-walker.ts:216-240`). Doctor reported 0 ADRs against this repo's `ADR-NN-name.md` convention while extraction extracted 22 .md files (including probe-findings notes). Fix: new unified `src/utils/adr-enumeration.ts` module consumed by both code paths; multi-naming regex (Nygard + ADR-NN + Date with trailing `-name` optional) × multi-extension (.md + .rst); recursive walk capped at depth 2 for legitimate sub-organization. Non-conforming `.md` files (probe-findings.md, README.md inside `docs/adr/`) fall through to docs-bucket via `docs/**/*.md` glob — substrate preserved at extraction surface, classification improved (probe-findings classified as "doc" not "adr"). Launch-blocking-fix-now triage.
+
+- **FO-3 — init log "existing config preserved" misleading payload.** `src/init/runner.ts:212` emitted `{languages: [...languages], observability: ...}` payload after preserved-config log line — but `languages` here is filesystem-DETECTED list, not preserved-config-derived. Fix per Option (ii) lock: differentiate `created` path (logs detected languages — current behavior preserved) vs `preserved` path (drops misleading `languages` field; emits status-only message). Launch-blocking-fix-now triage.
+
+#### Scope γ' multi-format substrate
+
+- **Unified ADR enumeration:** `src/utils/adr-enumeration.ts` exports `enumerateAdrFiles(adrDir)` consumed by both `src/doctor/checks/state-detection.ts` + `src/extraction/file-walker.ts`. Eliminates FO-2 divergence at substrate level.
+
+- **Multi-naming regex:** 3 patterns covering Nygard (`0001-name.md|rst`), ADR-NN (`ADR-01-name.md|rst`), Date (`2026-05-11-name.md|rst`); trailing `-name` suffix optional (refined during fixture-rename surface review to cover real-world short forms like `ADR-01.md`).
+
+- **Multi-extension:** `.md` + `.rst` with extension-based format dispatch in pipeline; YAML frontmatter `:symbols:` field for `.md`; rST field-list `:symbols:` field for `.rst`.
+
+- **rST parser custom subset (Approach b):** `src/parsing/rst-parser.ts` ~270 LOC parser + ~150 LOC test fixtures. Supports title detection (overline + underline + underline-only forms), field-list metadata, section headers via adornment-hierarchy (first-occurrence-in-document character → level), plain-text content within sections, inline hyperlinks (\`text <url>\`__ → "text (url)"). NOT supported: rST directives, substitutions, footnotes, tables, transition lines. Primary v0.7 consumer: `parseRstSymbols` mirror of `parseFrontmatterSymbols`. Secondary v0.7+ consumer: `parseRst` structured output for generate-adrs reference-context at Step 2.2.a.
+
+- **Recursive depth-2 walk:** Covers legitimate sub-organization within user-configured ADR root. Cap at 2 prevents unbounded walks. Travis mid-cycle clarification: depth-2 walk handles flat-OR-single-subdirectory organization; does NOT reason about status-subdirectory lifecycle semantics (v0.8+ scope).
+
+#### Test coverage outcome
+
+1353/1353 tests PASS clean. Net +30 tests vs 1323 v0.6 baseline:
+- adr-enumeration.test.ts: 11 tests (predicate + walker + fixture combinations)
+- rst-parser.test.ts: 12 tests (parseRstSymbols + parseRst across title/field/sections/hyperlinks/empty/unsupported)
+- cli-args.test.ts: 2 tests (USAGE substrate-consistency regression)
+- Test fixtures renamed across pipeline.test.ts + cli-runner.test.ts + file-walker.test.ts to canonical naming (ADR-101 / ADR-201 / ADR-71/72 / ADR-401/402 / ADR-310/311/312 / ADR-321/322 / ADR-50/51 — all matching ADR-\d+ pattern). Mechanical rename per Scope γ' substrate enforcement.
+
+#### v0.7-SCOPE.md amendment scope (Option A inline)
+
+- **§2 PRIMARY (a) extraction Scope boundaries** — user-configured-root scope-boundary added
+- **§2 PRIMARY (b) generate-adrs** — Scope bullets extended (reference-context feature + Scope γ' multi-format substrate); Scope boundaries extended (AsciiDoc/plain-text v0.8+ deferral + reference-context token budget management adjud at Step 2.2.a inline + status-subdirectory lifecycle v0.8+ deferral with full v0.8+ scope framing)
+- **§5 substep ladder Step 2** — Step 2.1.a added; Step 2.2.b expanded to b.i + b.ii cluster
+- **§6 Risks** — 3 new risk subsections added: multi-format ADR extraction surface regressions; reference-context feature token budget challenges; status-subdirectory misuse at v0.7 launch
+- **§7 §7.3'** — Step 2.1.a substrate locks subsection + user-configured-root vs status-subdirectory-reasoning distinction + 13th observation class + class 10 refinement
+- **§8 Success criteria** — criteria #17 (multi-format substrate) + #18 (reference-context-aided generate-adrs); closing sentence "All sixteen criteria" → "All eighteen criteria"
+- **§9 Cost framing** — generate-adrs row revised (incl. reference-context); cumulative estimate ~$25-70 → ~$30-80
+- **§10 Rescope conditions** — condition #9 added with 3-tier severity-gradient fallback paths (cumulative fallback OR split fallback per single-failure-mode signal — (9a) token budget failures only / (9b) rST coverage gap failures only)
+- **§Revision history** — 2026-05-11 amendment entry with TL;DR prefix + FIRST/SECOND/THIRD reframe distinction per Refinement 2
+
+#### Travis substantive reframes (3 distinct at Step 2.1.a)
+
+- **FIRST (at FO-2 surface):** Multi-format support combined with multi-naming conventions = low-hanging v0.7 feature. Scope γ original .md-only → Scope γ' .md + .rst.
+- **SECOND (substantively distinct):** Reference-context-aided generate-adrs bridges heterogeneous real-world documentation to canonical ContextAtlas-format ADRs. Solves "we can't support every format directly" by turning it into a migration-path feature.
+- **THIRD (mid-cycle review at amendment in-flight):** Status-subdirectory lifecycle semantics ≠ directory-organization-preference. User-configured-root scope at v0.7 launch; status-subdirectory lifecycle reasoning v0.8+ scope.
+
+#### 13th cycle-execution observation class + class 10 refinement
+
+**13th class — scope-constraint friction signals feature opportunity.** Step 2.1 surfaced ADR format variability (FO-2) as constraint friction; Travis reframe surfaced feature opportunity (reference-context-aided generate-adrs). Generalizable pattern: when scope friction surfaces, ask whether it signals (a) substantive scope problem needing rescope OR (b) feature opportunity needing scope expansion in a different direction.
+
+**Class 10 refinement — substrate-verification-at-each-substep-boundary.** Mid-cycle review surfaced status-subdirectory semantic distinction that could have produced silent extraction failures against status-organized repos. Sub-pattern: when an implementation surface (recursive depth-2 walk) seems to handle a pattern (status-subdirectory organization) syntactically, verify semantic implications match user intent. "Walks the directory" ≠ "extracts the right substrate." Captured as refinement to class 10 rather than new 14th class to avoid class proliferation; either framing substantively equivalent.
+
+#### Q-pre-4 Path A pre-state amendment discipline applied
+
+Amendment lands BEFORE substantive Step 2.2.a generate-adrs implementation begins against superseded scope. Single commit batches FO fixes + Scope γ' substrate + scope amendment per Option A — refined scope emerged AT Step 2.1.a surface; FO-2 fix substantively requires multi-format substrate; amendment captures the substrate that FO-2 fix enables; cleanest audit trail showing causal chain (substrate observation → scope reframe → fix implementation in one commit boundary).
+
+#### Step 2.1.a unblock — Step 2.1 Phase 3 + 4 execution
+
+Phase 1 + Phase 2 verification PASS at Step 2.1.a re-verify:
+- Phase 1: `node dist/index.js init` against existing `.contextatlas.yml` reports `init: existing config preserved` (FO-3 fix verified — no misleading languages payload).
+- Phase 2: `node dist/index.js doctor` reports 26 PASS / 3 WARN / 0 FAIL — improved from 25/4/0 pre-Step-2.1.a (FO-2 fix verified — `state-detection.adrs.count` now reports `19 ADR(s) detected` instead of `0 ADRs matching pattern` WARN; 3 remaining WARNs are atlas-stale-SHA + ANTHROPIC_API_KEY-not-set + git-atlas-consistent which are orthogonal).
+
+Phase 3 + 4 execution pending Travis setting `ANTHROPIC_API_KEY` in shell environment + running `node dist/index.js index` per locked Phase 3 + 4 execution cadence after Step 2.1.a push.
+
+---
 
 ### Step 2.0.1 shipped — 2026-05-10 (v0.7-SCOPE.md amendment per Option B lock + Q-pre-4 Path A pre-state amendment framework)
 
