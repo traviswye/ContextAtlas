@@ -339,6 +339,17 @@ lock).
       `--yes` / `--no-confirm` CLI flag + 39 new tests (1422/1422
       PASS); 15th cycle-execution observation class captured.
       Shipped 2026-05-11; commit `[this commit]`.
+  - [x] **Step 2.2.b.0** — FO-4 launch-readiness first-impression UX
+    fixes (mini-substep BEFORE Step 2.2.b.i empirical verification
+    per Travis Lock 1). `--version` + `--help` flags added (POSIX-
+    convention; short-circuit before subcommand dispatch; bypass
+    cross-flag validation); doctor peer-dependency install guidance
+    refined (per-language substantive install commands for pyright +
+    typescript-language-server matching gopls precedent per Travis
+    Lock 2); +6 new tests (1428/1428 PASS clean). Composes with
+    15-class observation enumeration as engineering-default-vs-
+    product-context surface at pre-empirical-verification boundary.
+    Shipped 2026-05-11; commit `[this commit]`.
   - **Step 2.2.b** — Rich cold-start verification using
     just-implemented generate-adrs (4-phase protocol +
     generate-adrs cold-start + extraction-after-generation
@@ -501,6 +512,79 @@ timeline; not blocking).
 ## Progress log
 
 *Entries added in reverse-chronological order as steps ship.*
+
+### Step 2.2.b.0 shipped — 2026-05-11 (FO-4 launch-readiness first-impression UX: --version + --help flags + doctor peer-dependency install guidance refinement; pre-Step-2.2.b.i empirical verification baseline)
+
+V0.7 Step 2.2.b.0 ships FO-4 launch-readiness first-impression UX fixes as mini-substep BEFORE Step 2.2.b.i empirical verification per Travis Lock 1. Substantive friction observation surfaced at dev's pre-flight investigation of Python adapter setup (Step 2.2.b.i pre-flight): `node dist/index.js --version` produces `Unknown argument` error, and `--help` similarly. Real v1.0 users will type these first to verify global install + see what commands are available; the error path is launch-blocking first-impression UX.
+
+| Substep | branch | commit | Notes |
+|---|---|---|---|
+| 2.2.b.0 launch-readiness UX | main | [this commit] | --version + --help flags in cli-args.ts (short-circuit before cross-flag validation per POSIX convention; bypass subcommand dispatch; exit 0); HELP_TEXT constant + KNOWN_SUBCOMMANDS substrate-consistency invariant test (test asserts HELP_TEXT mentions every subcommand); src/index.ts routes --version + --help before subcommand dispatch; doctor lsp.ts `resolveNodeBin` refined with PEER_DEP_INSTALL_GUIDANCE per-language substantive install commands (pyright + typescript-language-server matching gopls precedent per ADR-13 + ADR-03); +6 new tests (1428/1428 PASS clean) |
+
+#### Travis Lock 1 applied — --version + --help flags
+
+Both flags work end-to-end at production binary surface:
+
+- `node dist/index.js --version` → `contextatlas 0.6.0` + exit 0
+- `node dist/index.js --help` → full HELP_TEXT (subcommand list + global options + subcommand-specific options + repo URL) + exit 0
+
+POSIX-convention short-circuit: parser returns early when `--version` or `--help` is set, bypassing cross-flag validation. Combining `--version --full` (otherwise incompatible) works because --version takes priority — matches user expectation.
+
+HELP_TEXT subcommand list is built from KNOWN_SUBCOMMANDS at module-eval time (same substrate-consistency invariant as USAGE per Step 2.1.a FO-1 fix). Test asserts HELP_TEXT mentions every KNOWN_SUBCOMMANDS entry — drift between subcommand additions and help docs is impossible.
+
+#### Travis Lock 2 applied — doctor peer-dependency install guidance refinement
+
+`src/doctor/checks/lsp.ts` `resolveNodeBin` FAIL path previously emitted vague fallback "install the peer dependency in your project's node_modules" — no package name or exact install command. Refined with `PEER_DEP_INSTALL_GUIDANCE` per-language map:
+
+- **typescript:** `Install via npm install -g typescript-language-server (global) or npm install --save-dev typescript-language-server (per-project). Per ADR-03 the TypeScript adapter requires typescript-language-server as a peer dependency.`
+- **python:** `Install via npm install -g pyright (global) or npm install --save-dev pyright (per-project). Per ADR-13 the Python adapter uses pyright as a peer dependency.`
+
+Matches gopls precedent (`resolvePathBin` already emits substantive install command per ADR-14). README documentation for peer dependencies lands at Step 5 ship-gate launch-readiness substrate per Lock 2 substrate-capture cadence.
+
+#### Observation 3 investigation outcome (Python adapter setup requirements)
+
+Investigated before Step 2.2.b.0 work began:
+- `pyright` is a peer dependency (`peerDependencies` + `peerDependenciesMeta.pyright.optional: false`); not auto-installed by `npm install -g contextatlas`
+- Resolution mechanism: `require.resolve("pyright/langserver.index.js")` at runtime
+- No `pyrightconfig.json` required (adapter doesn't depend on it)
+- No `pip install` required for Rich-style codebases — pyright is static type-checker; works against source alone; cross-file analysis via adapter `didOpen` walkthrough on initialize per ADR-13
+
+Substantive findings informed Step 2.2.b.i revised setup commands (clone Rich + `npm install -g .` + `npm install -g pyright typescript-language-server` + install verification via `contextatlas --version` post-Step-2.2.b.0).
+
+#### Composes with 15-class observation enumeration (per Travis dev-judgment surface)
+
+Step 2.2.b.0 represents v0.7 cycle's first instance of launch-readiness friction surfaced PRE-EMPIRICAL-VERIFICATION rather than AT-EMPIRICAL-VERIFICATION. Travis caught the gap during dev's pre-flight Step 2.2.b.i investigation, before Step 2.2.b.i empirical verification would have surfaced it as friction.
+
+Per Travis dev-judgment surface: composes with **class 15 (engineering-default-vs-product-context)** rather than standalone 16th class. Pattern: launch-readiness first-impression UX is product-context concern that engineering-pattern feature-completeness work may miss; product-context surface (Travis pre-flight review) surfaces gap before empirical verification. Engineering default at Step 2.2.a.1 mechanical infrastructure + Step 2.2.a.2 substantive content focused on substantive feature wiring — didn't surface --version / --help launch-readiness gap. Travis pre-flight pasteback surface caught it.
+
+15-class enumeration preserved at Step 2.2.b.0; class 15 composes with both Step 2.2.a.2 (token budget engineering-default vs product-context) AND Step 2.2.b.0 (launch-readiness engineering-default vs product-context). Distinct empirical anchors; same pattern class.
+
+#### Step 2.2.b.0 unblock — Step 2.2.b.i revised execution cadence
+
+Step 2.2.b.i unblocked with revised pre-flight setup commands:
+
+```powershell
+# (a) Clone Rich
+cd C:/CodeWork
+git clone https://github.com/Textualize/rich
+
+# (b) Global install ContextAtlas + peer dependencies
+cd C:/CodeWork/contextatlas
+npm install -g .
+npm install -g pyright typescript-language-server
+
+# (c) Install verification (POST-Step-2.2.b.0)
+contextatlas --version           # NEW: cleaner sanity check than show-prompt
+contextatlas --help              # NEW: surfaces available subcommands
+
+# (d) Adapter sanity check
+cd C:/CodeWork/contextatlas
+contextatlas doctor              # If peer deps missing, refined install guidance surfaces
+```
+
+Step 2.2.b.i CLI execution per dev's prior surface plan applies post-Step-2.2.b.0 push.
+
+---
 
 ### Step 2.2.a.2 shipped — 2026-05-11 (substantive interpretive content: GENERATE_ADRS_PROMPT canonical + AnthropicAPIDirectGenerator full implementation + reference-context feature + SKILL.md + 15th cycle-execution observation class)
 

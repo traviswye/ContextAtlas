@@ -201,6 +201,20 @@ export interface ParsedArgs {
    * Default false (interactive y/N prompt before API call).
    */
   yes: boolean;
+  /**
+   * True when `--version` was passed. Causes the binary to print the
+   * ContextAtlas version + exit 0 before any subcommand dispatch.
+   * Standard POSIX-convention launch-readiness flag per v0.7 Step
+   * 2.2.b.0 FO-4 fix.
+   */
+  version: boolean;
+  /**
+   * True when `--help` was passed. Causes the binary to print the
+   * help text + exit 0 before any subcommand dispatch. Standard
+   * POSIX-convention launch-readiness flag per v0.7 Step 2.2.b.0
+   * FO-4 fix.
+   */
+  help: boolean;
 }
 
 export const KNOWN_SUBCOMMANDS: readonly Subcommand[] = [
@@ -222,6 +236,52 @@ export const USAGE =
   "[--check] [--full] [--json] [--cc-only] [--observe] [--budget-warn <usd>] [--verbose] " +
   "[--narrow-attribution <drop|drop-with-fallback>] " +
   "(see ADR-08, ADR-11, ADR-12, ADR-20)";
+
+/**
+ * Help text emitted on `contextatlas --help`. v0.7 Step 2.2.b.0 FO-4
+ * fix — substantive launch-readiness UX so v1.0 users get a useful
+ * answer to `contextatlas --help` instead of the
+ * Unknown-argument-error path. Subcommand list is rendered from
+ * KNOWN_SUBCOMMANDS at module-eval time so this can't drift from the
+ * accepted subcommand set.
+ */
+export const HELP_TEXT = `contextatlas — codebase-architectural context engine
+
+Usage: contextatlas <subcommand> [options]
+
+Subcommands:
+  init                  Scaffold .contextatlas.yml config + onboarding pipeline
+  doctor                Verify ContextAtlas setup + adapter prerequisites
+  index                 Extract architectural claims into atlas (requires ANTHROPIC_API_KEY)
+  generate-adrs         Generate ADRs from codebase (requires ANTHROPIC_API_KEY; one-time-per-repo)
+  show-prompt           Output canonical EXTRACTION_PROMPT (Path-γ Skills integration)
+  show-generate-prompt  Output canonical GENERATE_ADRS_PROMPT (Path-γ Skills integration)
+
+Global options:
+  --version             Show version + exit
+  --help                Show this help + exit
+  --config-root <path>  Override config root (default: cwd)
+  --config <file>       Override config file path
+
+Subcommand options (selected; see individual subcommand for full set):
+  index, generate-adrs:
+    --budget-warn <usd>   Emit warning if cumulative cost exceeds threshold
+  index:
+    --full                Bypass SHA-diff gating; re-extract everything
+    --verbose             Per-file unresolved-token detail on stderr
+    --narrow-attribution <drop|drop-with-fallback>
+                          Override extraction.narrow_attribution config
+  generate-adrs:
+    --reference-context <path>
+                          Walk reference documentation as prompt input
+    --yes / --no-confirm  Bypass pre-flight cost-estimate confirmation prompt
+  init:
+    --observe             Enable observability (per ADR-20)
+  mcp (default; no subcommand):
+    --observe             Per-session observability override
+
+See https://github.com/traviswye/contextatlas for full documentation
+and architectural decision records.`;
 
 /**
  * Common mistakes mapped to the right subcommand name. Kept small and
@@ -250,6 +310,8 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
   let observe = false;
   let referenceContext: string | null = null;
   let yes = false;
+  let version = false;
+  let help = false;
   let subcommand: Subcommand = "mcp";
   let subcommandSeen = false;
 
@@ -516,7 +578,41 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
       i += 1;
       continue;
     }
+    if (arg === "--version") {
+      version = true;
+      i += 1;
+      continue;
+    }
+    if (arg === "--help") {
+      help = true;
+      i += 1;
+      continue;
+    }
     throw new Error(`Unknown argument '${arg}'. ${USAGE}`);
+  }
+
+  // --version + --help short-circuit before cross-flag validation
+  // (POSIX convention: --version / --help take priority over other
+  // flag combinations; index.ts dispatches on these before any
+  // subcommand work runs).
+  if (version || help) {
+    return {
+      subcommand,
+      configRoot,
+      configFile,
+      check,
+      full,
+      json,
+      budgetWarn,
+      verbose,
+      narrowAttribution,
+      ccOnly,
+      observe,
+      referenceContext,
+      yes,
+      version,
+      help,
+    };
   }
 
   // ADR-12 flag-vs-subcommand compatibility rules.
@@ -597,6 +693,8 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
     observe,
     referenceContext,
     yes,
+    version,
+    help,
   };
 }
 

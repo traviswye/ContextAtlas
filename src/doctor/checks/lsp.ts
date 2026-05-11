@@ -59,6 +59,25 @@ function checkExecutable(lang: LanguageCode): DoctorCheck[] {
   return out;
 }
 
+/**
+ * Per-language peer-dependency install guidance for the
+ * `lsp.<lang>.executable_in_path` FAIL path. v0.7 Step 2.2.b.0 FO-4
+ * refinement: surface substantive install commands matching gopls's
+ * existing precedent (`resolvePathBin` below). Empty guidance falls
+ * back to the generic peer-dependency-in-node_modules hint.
+ */
+const PEER_DEP_INSTALL_GUIDANCE: Partial<Record<LanguageCode, string>> = {
+  typescript:
+    "Install via `npm install -g typescript-language-server` (global) " +
+    "or `npm install --save-dev typescript-language-server` (per-project). " +
+    "Per ADR-03 the TypeScript adapter requires typescript-language-server " +
+    "as a peer dependency.",
+  python:
+    "Install via `npm install -g pyright` (global) or " +
+    "`npm install --save-dev pyright` (per-project). Per ADR-13 the " +
+    "Python adapter uses pyright as a peer dependency.",
+};
+
 function resolveNodeBin(lang: LanguageCode, modulePath: string): DoctorCheck {
   const require = createRequire(import.meta.url);
   try {
@@ -71,15 +90,18 @@ function resolveNodeBin(lang: LanguageCode, modulePath: string): DoctorCheck {
       detail: resolved,
     };
   } catch (err) {
+    const guidance = PEER_DEP_INSTALL_GUIDANCE[lang];
+    const errMessage = err instanceof Error ? err.message : String(err);
     return {
       id: `lsp.${lang}.executable_in_path`,
       category: "lsp",
       status: "fail",
       message: `${modulePath} not resolvable`,
       detail:
-        err instanceof Error
-          ? err.message
-          : "install the peer dependency in your project's node_modules",
+        guidance !== undefined
+          ? `${guidance} Underlying resolution error: ${errMessage}`
+          : `Install the peer dependency in your project's node_modules. ` +
+            `Underlying resolution error: ${errMessage}`,
     };
   }
 }

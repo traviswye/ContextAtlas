@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { KNOWN_SUBCOMMANDS, parseArgs, USAGE, type ParsedArgs } from "./cli-args.js";
+import { HELP_TEXT, KNOWN_SUBCOMMANDS, parseArgs, USAGE, type ParsedArgs } from "./cli-args.js";
 
 /**
  * Baseline shape: what every "no flags set" result looks like. Tests
@@ -22,6 +22,8 @@ const EMPTY: ParsedArgs = {
   observe: false,
   referenceContext: null,
   yes: false,
+  version: false,
+  help: false,
 };
 
 describe("parseArgs — baseline and --config-root", () => {
@@ -791,6 +793,44 @@ describe("--reference-context flag (v0.7 Step 2.2.a.1 generate-adrs)", () => {
         "--reference-context=/b",
       ]),
     ).toThrow(/specified more than once/);
+  });
+});
+
+describe("--version + --help launch-readiness flags (v0.7 Step 2.2.b.0 FO-4 fix)", () => {
+  it("--version sets parsed.version=true and short-circuits cross-flag validation", () => {
+    expect(parseArgs(["--version"])).toEqual({
+      ...EMPTY,
+      version: true,
+    });
+  });
+
+  it("--help sets parsed.help=true and short-circuits cross-flag validation", () => {
+    expect(parseArgs(["--help"])).toEqual({
+      ...EMPTY,
+      help: true,
+    });
+  });
+
+  it("--version short-circuits even when combined with otherwise-incompatible flags", () => {
+    // Without --version, `--full` alone would fail flag-vs-subcommand
+    // validation. --version bypasses that check.
+    expect(parseArgs(["--version", "--full"]).version).toBe(true);
+    expect(parseArgs(["--full", "--version"]).version).toBe(true);
+  });
+
+  it("--help short-circuits even when combined with otherwise-incompatible flags", () => {
+    expect(parseArgs(["--help", "--budget-warn", "5"]).help).toBe(true);
+  });
+
+  it("HELP_TEXT mentions every KNOWN_SUBCOMMANDS entry (substrate-consistency invariant)", () => {
+    for (const sub of KNOWN_SUBCOMMANDS) {
+      expect(HELP_TEXT).toContain(sub);
+    }
+  });
+
+  it("HELP_TEXT mentions --version + --help flags themselves", () => {
+    expect(HELP_TEXT).toContain("--version");
+    expect(HELP_TEXT).toContain("--help");
   });
 });
 

@@ -34,7 +34,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { LATEST_PROTOCOL_VERSION } from "@modelcontextprotocol/sdk/types.js";
 
 import { createAdapter } from "./adapters/registry.js";
-import { parseArgs } from "./cli-args.js";
+import { HELP_TEXT, parseArgs } from "./cli-args.js";
 import { loadConfig } from "./config/parser.js";
 import { runDoctorSubcommand } from "./doctor/runner.js";
 import { runIndexSubcommand } from "./extraction/cli-runner.js";
@@ -74,6 +74,18 @@ export async function main(): Promise<void> {
   const configRoot = configRootArg
     ? pathResolve(configRootArg)
     : process.cwd();
+
+  // v0.7 Step 2.2.b.0 FO-4 — --version + --help short-circuit before
+  // any subcommand dispatch (POSIX-convention launch-readiness UX).
+  // Read-only + idempotent + no config / adapter setup required.
+  if (parsed.version) {
+    process.stdout.write(`contextatlas ${version}\n`);
+    process.exit(0);
+  }
+  if (parsed.help) {
+    process.stdout.write(`${HELP_TEXT}\n`);
+    process.exit(0);
+  }
 
   // ADR-12 dispatch: the `index` subcommand runs the extraction
   // pipeline and exits. It does not load MCP-server-specific code
