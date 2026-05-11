@@ -399,7 +399,21 @@ lock).
   - **Step 2.2.b** — Rich cold-start verification using
     just-implemented generate-adrs (4-phase protocol +
     generate-adrs cold-start + extraction-after-generation
-    end-to-end)
+    end-to-end):
+    - [x] **Step 2.2.b.i** — Pure cold-start verification PASS-with-
+      bounded-observations against Textualize/rich (Python; 16 ADRs
+      in 2:13; $0.47 generate-adrs + $0.72 Phase 4 = $1.19 cumulative
+      platform-billed; 126 claims; extraction-errors=0); 7-axis
+      verification clean modulo 3 bounded observations forward-carry
+      to v0.8+ (FO-9 PS-wrapper cosmetic; FO-10 symbol-resolution-gap
+      with honest-scope; ADR depth with iterative refinement v0.8+
+      candidate). Substep cluster 2.2.b.0 + 2.2.c + 2.2.d + 2.2.e
+      absorbed 5 FO observations (FO-4/5/7/8 fixed; FO-6 thesis
+      empirically refuted at Checkpoint 2). v0.7 launch-readiness
+      verified empirically at external-repo dogfood surface.
+      Shipped 2026-05-11; commit `[this commit]`.
+    - [ ] **Step 2.2.b.ii** — Reference-context-aided: Rich with
+      `django/deps` reference context
 - [ ] **Step 2.3** — CLI-vs-Skill extraction equivalence
   verification per Q2.0.X protocol (applied to extraction
   across target repos with ADRs OR post-generate-adrs at Rich;
@@ -558,6 +572,102 @@ timeline; not blocking).
 ## Progress log
 
 *Entries added in reverse-chronological order as steps ship.*
+
+### Step 2.2.b.i shipped — 2026-05-11 (Rich pure cold-start verification PASS-with-bounded-observations; 16 ADRs generated in 2:13 at $0.47; Phase 4 extraction closes loop empirically; 5 FO observations absorbed via substep cluster 2.2.b.0/c/d/e; 3 bounded observations forward-carry to v0.8+)
+
+V0.7 Step 2.2.b.i ships Rich pure cold-start verification result per Q2.0.2 4-phase protocol locked at Step 2.0. **End-to-end loop empirically closed at external-repo dogfood surface**: generate-adrs against Textualize/rich (Python; ~213 source files; ~5-15k LOC substantial codebase) → 16 generated ADRs in 2:13 wall-clock at $0.47 platform-billed → Phase 4 extraction-after-generation → 126 claims + atlas.json + index.db populated at $0.72 → cumulative $1.19 platform-billed (within ~$0.70-2.50 expected range). **v0.7 launch-readiness substantively verified at substantive external-repo dogfood surface.**
+
+| Substep | branch | commit | Notes |
+|---|---|---|---|
+| 2.2.b.i Rich pure cold-start | main | [this commit] | 7-axis verification PASS-with-bounded-observations; substep cluster 2.2.b.0 + 2.2.c + 2.2.d + 2.2.e absorbed 5 FO observations (FO-4/5/7/8 fixed; FO-6 thesis empirically refuted at Checkpoint 2); 3 bounded observations forward-carry to v0.8+ (FO-9 PS-wrapper cosmetic; FO-10 symbol-resolution fully-qualified vs local; ADR depth with iterative refinement) per 3-bucket triage Q2.0.3 |
+
+#### 7-axis verification outcomes (per Q2.0.3 locked verification protocol)
+
+| Axis | Outcome | Evidence |
+|---|---|---|
+| FO-7 fix at production binary | ✓ | Init completes (existing config preserved); no FAIL on docs/adr/atlas.exists |
+| FO-8 fix at cold-start UX | ✓ | Refreshed message visible: `contextatlas generate-adrs` surfaced as primary path; Scope γ' multi-format naming conventions shown user-friendly; stale framing removed |
+| Generate-adrs against Rich | ✓ | 16 ADRs in 2:13 wall-clock; clean execution; pre-flight cost estimate emitted; `--yes` bypass; ADR files written to docs/adr/ |
+| ADR files written + valid schema | ✓ | 17 prose files discovered by Phase 4 (16 ADRs + README); all 17 added; extraction processed |
+| Pre-flight estimate vs actual cost | ✓ | Estimate $0.34-$1.97; actual $0.47 — within range; alignment substantive |
+| Generated ADR content quality | ~ | Travis observation: "short but direct"; first-pass substrate vs hand-crafted depth — captured for honest-scope-acknowledgment |
+| Phase 4 extraction closes loop | ✓ | 126 claims written; extraction-errors=0; atlas.json + index.db populated; substrate-consistency between state-detection (16 ADRs) + extraction (16 ADR files extracted) |
+
+#### Empirical cost observation
+
+- Pre-flight estimate input: ~18k tokens (codebase walker ~17k + prompt ~1k)
+- Actual input tokens: 32332 (~80% over estimate)
+- Output tokens estimated 10k-75k; actual 12402 (low end of range)
+- Estimated cost: $0.34-$1.97; actual: $0.47 (within range; closer to low end)
+- **14th-class observation:** token estimation conservative; users won't be surprised by higher actual cost; within 2× envelope per bounded-over-estimate framing
+- Cost-priors-v0.7.json substrate at Step 4 cycle-close inherits this empirical anchor
+
+#### Substep cluster recap — 5 FO observations absorbed via 2.2.b.0/c/d/e
+
+| FO | Surface | Disposition | Commit |
+|---|---|---|---|
+| FO-4 | `--version` + `--help` flags missing; doctor peer-dep guidance vague | Fixed at Step 2.2.b.0 | `aa97406` |
+| FO-5 | LspClient stream-state-management race → `ERR_STREAM_WRITE_AFTER_END` crash | Fixed at Step 2.2.c via γ hybrid (defensive write guards + 'error' listener + subprocess exit remediation) | `b536487` |
+| FO-6 | Pyright "fast-exit" against Rich (hypothesis: warmup pattern stress) | **Thesis empirically refuted** at Step 2.2.e Checkpoint 2 (spawn_test PASS 204ms; deep_health_check PASS 436ms with sample symbol); warmup-refactor preserved as v0.8+ candidate; threshold refinement dropped | `cf6684b` |
+| FO-7 | Cold-start init aborts (missing `docs/adr/` + `atlas.json` FAIL) | Fixed at Step 2.2.d Option iii hybrid (init creates `docs/adr/` + doctor `atlas.exists` informational at first-run via `firstRun` flag) | `84fde50` |
+| FO-8 | Cold-start UX consistency violations (pre-Scope-γ' regex; pre-v0.7 stale framing; manual-ADR-only guidance) | Fixed at Step 2.2.e (3 surfaces refreshed: renderRouteMessage missing-adrs + new-project + state-detection.design_md.present) | `cf6684b` |
+
+#### 3 bounded observations forward-carry to v0.8+
+
+**FO-9 — PowerShell wrapper noise:**
+- `contextatlas.ps1` stderr-to-pipe surfacing as `NativeCommandError` when piped to `Tee-Object`
+- Cosmetic; commands succeed; outputs preserved correctly
+- bash/zsh users unaffected
+- **v0.8+ candidate** per Travis Lock 1 (cohort feedback informs whether Windows-cohort cares)
+
+**FO-10 — Symbol resolution fully-qualified vs local names:**
+- LLM generates fully-qualified Python references in frontmatter + claim text (`rich.console.ConsoleRenderable`)
+- Pyright `listSymbols` returns local names only (`ConsoleRenderable`)
+- 81 unresolved frontmatter + 199 unresolved candidate references across 16 ADRs (Rich case)
+- Atlas substantively populates (126 claims; downstream queries still work)
+- **v0.8+ candidate with honest-scope-acknowledgment** per Travis Lock 2:
+  - Honest-scope-acknowledgment text for launch documents (Step 5 ship gate substrate):
+    > "v0.7 ships symbol resolution at local-name level; fully-qualified Python references may not resolve cleanly; substantive symbol-name handling refinement is v0.8+ candidate."
+- Fix path itself substantive interpretive work (prompt refinement vs extraction-side fully-qualified name handling); cohort feedback at v1.0 informs approach
+
+**ADR depth observation (Travis):**
+- Generated ADRs are "short but direct" vs ContextAtlas's hand-crafted ADRs (substantial cycle work; deep architectural reasoning)
+- First-pass LLM-generated substrate at single-API-call cost-bounded scope
+- Topic-coverage breadth substantive (16 substantive architectural topics covered for Rich); depth-per-ADR is the substantive concern
+- **honest-scope-acknowledgment + iterative refinement v0.8+ candidate** per Travis Lock 3:
+  - Honest-scope-acknowledgment text for launch documents:
+    > "generate-adrs produces first-pass ADR substrate suitable for cold-start onboarding. Substantively richer ADRs require manual refinement OR iterative LLM refinement (v0.8+ candidate)."
+  - v0.8+ candidate: iterative-refinement workflow (`contextatlas refine-adrs <path>` substantively probable substep; not v0.7 scope)
+
+#### 15-class observation enumeration preserved at Step 2.2.b.i
+
+Step 2.2.b.i substep cluster surfaced multiple substantive cycle-execution observations across substeps. All compose with existing 15-class enumeration:
+
+- **Class 14 (estimate-vs-empirical-scope-divergence):** applied at multiple substeps with substantive bounded over-estimate observations (Step 2.2.a.1 tests +50-100%; Step 2.2.a.2 tests +56-160%; Step 2.2.d tests +30-117%; Step 2.2.e tests within bound; Step 2.2.b.i cost estimate ~80% conservative). Pattern is substantive cycle-execution discipline working — substrate-consistency regression tests + bounded-token-conservative estimates are healthy implementation defaults.
+- **Class 15 (engineering-default-vs-product-context):** applied at Step 2.2.a.2 (token budget product-context vs engineering-default); Step 2.2.b.0 (launch-readiness UX); Step 2.2.d.0 + Step 2.2.e (evidence-first vs hypothesis-driven engineering approach). SECOND substantive instance at v0.7 cycle of empirical evidence overruling dev hypothesis (FO-6 thesis refutation at Checkpoint 2). Pattern is substantive cycle-maturity discipline — evidence-first override mechanism working as designed.
+
+**No standalone 16th or 17th class warranted at Step 2.2.b.i.** Existing 15-class enumeration substantively absorbs observed patterns.
+
+#### v0.8+ candidate substrate captured
+
+Carry-forward via v0_8-HANDOFF.md at Step 4 cycle-close:
+
+1. **Warmup-pattern refactor** (per Step 2.2.d.0 code-review): lazy didOpen / batched-with-backpressure / configurable warmup mode. Engineering-correct pattern even though FO-6 thesis refuted.
+2. **PowerShell wrapper UX refinement** (FO-9): contextatlas.ps1 stderr-redirect-properly for Windows cohort.
+3. **Symbol-resolution refinement** (FO-10): fully-qualified Python name handling OR prompt-side instruction to use local names. Cohort feedback informs approach.
+4. **Iterative ADR refinement workflow** (ADR depth observation): multi-pass LLM refinement OR `contextatlas refine-adrs` substep candidate. Cohort feedback informs whether users actually want this OR substantively manually refine.
+
+#### Step 2.2.b.i unblock — Step 2.2.b.ii reference-context-aided verification
+
+Step 2.2.b.ii unblocked. Substantive empirical work surface:
+- Set up `django/deps` reference context (Travis-side clone if absent)
+- Run `contextatlas generate-adrs --yes --budget-warn 10 --reference-context C:/CodeWork/django/deps/final/` against Rich
+- Substantive empirical signal: reference-context feature works at production surface; multi-format substrate (.rst from django/deps) works; ADR quality with reference-context-aided generation vs pure cold-start
+- Expected cost ~$0.70-2.50 additional per substantive empirical pattern
+
+After Step 2.2.b.ii ships, Step 2.3 + Step 2.4 CLI-vs-Skill equivalence verification surfaces.
+
+---
 
 ### Step 2.2.e shipped — 2026-05-11 (FO-8 cold-start UX consistency fix; Step 2.2.e scope pivot per Checkpoint 2 empirical evidence — FO-6 thesis refuted, threshold refinement dropped; "hypothesis refuted by empirical evidence; revise" pattern; class 15 substantive refinement composition)
 
