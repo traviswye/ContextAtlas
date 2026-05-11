@@ -20,6 +20,7 @@ const EMPTY: ParsedArgs = {
   narrowAttribution: null,
   ccOnly: false,
   observe: false,
+  referenceContext: null,
 };
 
 describe("parseArgs — baseline and --config-root", () => {
@@ -571,7 +572,7 @@ describe("parseArgs — --budget-warn", () => {
 
   it("rejected on non-index subcommand (default/mcp)", () => {
     expect(() => parseArgs(["--budget-warn", "5"])).toThrow(
-      /--budget-warn is only accepted with the 'index' subcommand/,
+      /--budget-warn is only accepted with the 'index' or 'generate-adrs' subcommand/,
     );
   });
 
@@ -743,6 +744,76 @@ describe("parseArgs — --narrow-attribution (v0.3 Fix 2)", () => {
     const before = parseArgs(["--narrow-attribution=drop", "index"]);
     const after = parseArgs(["index", "--narrow-attribution=drop"]);
     expect(before).toEqual(after);
+  });
+});
+
+describe("--reference-context flag (v0.7 Step 2.2.a.1 generate-adrs)", () => {
+  it("--reference-context space form → extracts path", () => {
+    expect(parseArgs(["generate-adrs", "--reference-context", "/path/to/refs"])).toEqual({
+      ...EMPTY,
+      subcommand: "generate-adrs",
+      referenceContext: "/path/to/refs",
+    });
+  });
+
+  it("--reference-context equal form → extracts path", () => {
+    expect(parseArgs(["generate-adrs", "--reference-context=/path/to/refs"])).toEqual({
+      ...EMPTY,
+      subcommand: "generate-adrs",
+      referenceContext: "/path/to/refs",
+    });
+  });
+
+  it("throws when --reference-context value missing", () => {
+    expect(() => parseArgs(["generate-adrs", "--reference-context"])).toThrow(
+      /requires a path argument/,
+    );
+  });
+
+  it("throws when --reference-context value is empty (equal form)", () => {
+    expect(() => parseArgs(["generate-adrs", "--reference-context="])).toThrow(
+      /non-empty path/,
+    );
+  });
+
+  it("throws when --reference-context combined with non-generate-adrs subcommand", () => {
+    expect(() => parseArgs(["index", "--reference-context=/path"])).toThrow(
+      /only accepted with the 'generate-adrs' subcommand/,
+    );
+  });
+
+  it("throws when --reference-context specified more than once", () => {
+    expect(() =>
+      parseArgs([
+        "generate-adrs",
+        "--reference-context=/a",
+        "--reference-context=/b",
+      ]),
+    ).toThrow(/specified more than once/);
+  });
+});
+
+describe("generate-adrs + show-generate-prompt subcommand recognition (Step 2.2.a.1)", () => {
+  it("recognises 'generate-adrs' as a subcommand", () => {
+    expect(parseArgs(["generate-adrs"])).toEqual({
+      ...EMPTY,
+      subcommand: "generate-adrs",
+    });
+  });
+
+  it("recognises 'show-generate-prompt' as a subcommand", () => {
+    expect(parseArgs(["show-generate-prompt"])).toEqual({
+      ...EMPTY,
+      subcommand: "show-generate-prompt",
+    });
+  });
+
+  it("accepts --budget-warn with 'generate-adrs' subcommand", () => {
+    expect(parseArgs(["generate-adrs", "--budget-warn", "10"])).toEqual({
+      ...EMPTY,
+      subcommand: "generate-adrs",
+      budgetWarn: 10,
+    });
   });
 });
 

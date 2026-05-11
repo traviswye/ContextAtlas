@@ -313,7 +313,27 @@ lock).
 - [ ] **Step 2.2** — Rich cold-start verification cluster:
   - **Step 2.2.a** — generate-adrs feature implementation (CLI
     subcommand + Skills file + tests; Q2.2.a.1-Q2.2.a.4
-    adjudications surface inline at substep entry)
+    adjudications surface inline at substep entry). Substep-
+    split (B) two-substep per Step 2.2.a pre-implementation
+    surface lock:
+    - [x] **Step 2.2.a.1** — Generator infrastructure
+      (mechanical): NEW `src/generation/` directory parallel to
+      `src/extraction/` per Q2.2.a.1 α; Generator interface +
+      factory + 2 skeleton concrete generators
+      (`AnthropicAPIDirectGenerator` skeleton +
+      `ClaudeCodeOnlyGenerator` informational-stub per Path-3
+      inheritance); Path-γ `contextatlas show-generate-prompt`
+      CLI subcommand per Q2.2.a.2; `contextatlas generate-adrs`
+      CLI dispatcher with `--reference-context <path>` flag
+      wiring (per Travis Observation 2 interface-level lock);
+      30 new tests; 1383/1383 PASS clean. Shipped 2026-05-11;
+      commit `[this commit]`.
+    - [ ] **Step 2.2.a.2** — Substantive interpretive content:
+      `GENERATE_ADRS_PROMPT` drafting inline + Skills SKILL.md
+      content inline + reference-context feature substantive
+      scope (token budget management adjudication α/β/γ/δ) +
+      `AnthropicAPIDirectGenerator` full implementation +
+      ~15-20 additional tests
   - **Step 2.2.b** — Rich cold-start verification using
     just-implemented generate-adrs (4-phase protocol +
     generate-adrs cold-start + extraction-after-generation
@@ -476,6 +496,63 @@ timeline; not blocking).
 ## Progress log
 
 *Entries added in reverse-chronological order as steps ship.*
+
+### Step 2.2.a.1 shipped — 2026-05-11 (Generator infrastructure mechanical: parallel src/generation/ + Generator interface + factory + 2 skeleton concrete generators + Path-γ show-generate-prompt + generate-adrs CLI dispatcher + 30 new tests)
+
+V0.7 Step 2.2.a.1 ships mechanical Generator infrastructure parallel to Extractor pattern per Q2.2.a.1 α + Q2.2.a.3 β locks. Skeleton state — `AnthropicAPIDirectGenerator.generate()` throws Step-2.2.a.2-pending error after API-key setup-error check; substantive content (GENERATE_ADRS_PROMPT real draft + Skills SKILL.md + reference-context functional consumption + Anthropic API orchestration + ADR file writing) lands at Step 2.2.a.2 substantive interpretive surface per discipline #3 cadence.
+
+| Substep | branch | commit | Notes |
+|---|---|---|---|
+| 2.2.a.1 generator infrastructure | main | [this commit] | NEW src/generation/ (parallel module per Q2.2.a.1 α); Generator + GeneratorContext + GenerationSetupError interface (parallel to Extractor per Q2.2.a.3 β); getGenerator factory (Path-3 entry-point-determined dispatch matching src/extraction/factory.ts); AnthropicAPIDirectGenerator skeleton + ClaudeCodeOnlyGenerator informational-stub; cli-show-generate-prompt Path-γ subcommand (Q2.2.a.2 lock); cli-runner generate-adrs dispatcher with --reference-context flag wiring (Travis Obs 2 interface-level lock); GENERATE_ADRS_PROMPT obviously-placeholder constant (Travis Obs 1); cli-args.ts adds 2 new subcommands + --reference-context flag handling; src/index.ts routes new subcommands; +30 new tests across factory + generators + cli-show-generate-prompt + cli-runner + cli-args; 1383/1383 PASS clean |
+
+#### Pre-implementation lock verification at Step 2.2.a.1 entry
+
+- **Q2.2.a.1 α** — NEW `src/generation/` directory parallel to `src/extraction/`. Dev verification at implementation entry: lean α still substantively right; no substrate-evolution drift; clean separation; factory pattern + Strategy interface + concrete generators + prompt constant + CLI runner adjacent (parallel to extraction). **LOCKED α.**
+- **Q2.2.a.2** — `contextatlas show-generate-prompt` outputs `GENERATE_ADRS_PROMPT` canonical constant. Path-γ inheritance from Step 1.4b. No verification work needed; **LOCKED** as inherited.
+- **Q2.2.a.3 β** — NEW Generator interface parallel to Extractor (not reuse with mode-field dispatch). Dev verification: extraction semantics (read prose → produce claims) vs generation semantics (read code → produce ADRs) substantively distinct contracts; forcing single interface adds awkward mode-field dispatch. Reuse opportunity at Strategy-pattern factory level + CLI subcommand infrastructure (Path-γ) only — not at interface level. **LOCKED β.**
+- **Q2.2.a.4** — No `research/prompts/` directory; `EXTRACTION_PROMPT` at `src/extraction/prompt.ts`; `GENERATE_ADRS_PROMPT` greenfield at `src/generation/prompt.ts`. **LOCKED** as inherited.
+
+#### Substep-split (B) two-substep lock
+
+Per Step 2.2.a pre-implementation surface adjudication:
+- **2.2.a.1 (this commit)** mechanical infrastructure: Generator interface + factory + 2 skeleton concrete generators + Path-γ CLI subcommand + CLI dispatch wiring + ~15-20 infrastructure tests (actual: 30 tests; per 14th-class observation discipline, +50-100% over estimate is bounded over-estimate territory — substantive substrate-consistency regression tests on the cli-args path added more tests than originally planned)
+- **2.2.a.2 (next substep)** substantive interpretive content: GENERATE_ADRS_PROMPT drafting + Skills SKILL.md content + reference-context feature scope + AnthropicAPIDirectGenerator full implementation + ~15-20 substantive-content tests
+
+Matches Step 1.4a/1.4b precedent (mechanical infrastructure → substantive interpretive content).
+
+#### Travis Observation 1 applied — obviously-placeholder GENERATE_ADRS_PROMPT
+
+Per Travis Step 2.2.a.1 Observation 1, the Step 2.2.a.1 placeholder is obviously-placeholder rather than realistic-looking. Surface text:
+
+> `[GENERATE_ADRS_PROMPT placeholder — actual prompt content drafted at Step 2.2.a.2 substantive interpretive work surface per discipline #3 cadence. The contextatlas show-generate-prompt CLI subcommand will surface real prompt output once Step 2.2.a.2 ships; subcommand code is unchanged.]`
+
+Test asserts placeholder properties (`expect(GENERATE_ADRS_PROMPT).toContain("placeholder")` + `expect(GENERATE_ADRS_PROMPT).toContain("Step 2.2.a.2")`); test updates (or removes) at Step 2.2.a.2 when real prompt content lands. Path-γ separation working as designed — the subcommand outputs whatever `GENERATE_ADRS_PROMPT` is current; Step 2.2.a.2 swap requires zero subcommand code changes.
+
+#### Travis Observation 2 applied — reference-context at Generator interface level
+
+Per Travis Step 2.2.a.1 Observation 2, `referenceContextPath?: string` placed at `GeneratorContext` interface level (not concrete `AnthropicAPIDirectGenerator` level). Feature is part of Generator contract semantics; concrete implementations decide how to use reference context (or ignore it for stub). Interface stability preserved across 2.2.a.1 → 2.2.a.2 — Step 2.2.a.2 substantive content populates the field via CLI flag parsing without interface change.
+
+#### Travis Observation 3 applied — show-generate-prompt forward-pointer
+
+Per Travis Step 2.2.a.1 Observation 3, the `contextatlas show-generate-prompt` subcommand outputs the placeholder content at Step 2.2.a.1. When Step 2.2.a.2 lands real prompt content, the same subcommand surfaces real `GENERATE_ADRS_PROMPT` output without any code changes to the subcommand itself (Path-γ separation works as designed). Captured at module docstring + commit body for future readers.
+
+#### CLI verification at production surface (post-build)
+
+- `node dist/index.js show-generate-prompt` → outputs placeholder + trailing newline + exit 0 (Path-γ wiring works mechanically)
+- `node dist/index.js generate-adrs` → dispatches to AnthropicAPIDirectGenerator → API-key setup check fails (no env var) → `GenerationSetupError` mapped to exit code 2 per ADR-12 discipline → clear error message on stderr
+
+#### Step 2.2.a.1 unblock — Step 2.2.a.2 substantive interpretive content
+
+Step 2.2.a.2 unblocked. Substantive work surface:
+- `GENERATE_ADRS_PROMPT` canonical prompt drafting (substantive interpretive work; drafted inline at Step 2.2.a.2 surface for Travis review per discipline #3 cadence)
+- Reference-context feature scope inline surfacing (token budget management approach α/β/γ/δ adjudication)
+- `AnthropicAPIDirectGenerator` full implementation (codebase walk + reference-context handling + Anthropic API orchestration + ADR file writing)
+- `.claude/skills/generate-adrs/SKILL.md` content (substantive interpretive work; Travis review per discipline #3 cadence before commit)
+- ~15-20 substantive-content tests
+
+After Step 2.2.a.2 ships, Step 2.2.b.i (Rich pure cold-start verification) + Step 2.2.b.ii (Rich + django/deps reference-context-aided verification) unblock.
+
+---
 
 ### Step 2.1 shipped — 2026-05-11 (ContextAtlas-on-itself operational baseline 4-phase verification PASS + substrate-consistency empirically verified + 14th cycle-execution observation class captured)
 

@@ -96,7 +96,14 @@
  * `main()` as a side effect of importing.
  */
 
-export type Subcommand = "mcp" | "index" | "doctor" | "init" | "show-prompt";
+export type Subcommand =
+  | "mcp"
+  | "index"
+  | "doctor"
+  | "init"
+  | "show-prompt"
+  | "generate-adrs"
+  | "show-generate-prompt";
 
 export interface ParsedArgs {
   /**
@@ -177,6 +184,15 @@ export interface ParsedArgs {
    * Rejected on `index` or `doctor` invocations. v0.6 Step 6.2.
    */
   observe: boolean;
+  /**
+   * `--reference-context <path>` CLI flag value for the
+   * `generate-adrs` subcommand (per v0.7 Step 2.1.a Travis SECOND
+   * substantive reframe — reference-context-aided generate-adrs).
+   * `null` when the flag is absent. Step 2.2.a.1 ships flag parsing;
+   * Step 2.2.a.2 lands substantive consumption via
+   * `GeneratorContext.referenceContextPath`.
+   */
+  referenceContext: string | null;
 }
 
 export const KNOWN_SUBCOMMANDS: readonly Subcommand[] = [
@@ -184,6 +200,8 @@ export const KNOWN_SUBCOMMANDS: readonly Subcommand[] = [
   "doctor",
   "init",
   "show-prompt",
+  "generate-adrs",
+  "show-generate-prompt",
 ];
 
 /**
@@ -222,6 +240,7 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
   let narrowAttribution: "drop" | "drop-with-fallback" | null = null;
   let ccOnly = false;
   let observe = false;
+  let referenceContext: string | null = null;
   let subcommand: Subcommand = "mcp";
   let subcommandSeen = false;
 
@@ -450,6 +469,34 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
       i += 1;
       continue;
     }
+    if (arg === "--reference-context" || arg.startsWith("--reference-context=")) {
+      if (referenceContext !== null) {
+        throw new Error(
+          `Flag --reference-context specified more than once. ${USAGE}`,
+        );
+      }
+      let value: string;
+      if (arg.startsWith("--reference-context=")) {
+        value = arg.slice("--reference-context=".length);
+        i += 1;
+      } else {
+        const next = argv[i + 1];
+        if (next === undefined || next.startsWith("-")) {
+          throw new Error(
+            `Flag --reference-context requires a path argument. ${USAGE}`,
+          );
+        }
+        value = next;
+        i += 2;
+      }
+      if (value.length === 0) {
+        throw new Error(
+          `Flag --reference-context requires a non-empty path argument. ${USAGE}`,
+        );
+      }
+      referenceContext = value;
+      continue;
+    }
     throw new Error(`Unknown argument '${arg}'. ${USAGE}`);
   }
 
@@ -476,9 +523,13 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
       `Flag --json is only accepted with the 'index', 'doctor', or 'init' subcommand. ${USAGE}`,
     );
   }
-  if (budgetWarn !== null && subcommand !== "index") {
+  if (
+    budgetWarn !== null &&
+    subcommand !== "index" &&
+    subcommand !== "generate-adrs"
+  ) {
     throw new Error(
-      `Flag --budget-warn is only accepted with the 'index' subcommand. ${USAGE}`,
+      `Flag --budget-warn is only accepted with the 'index' or 'generate-adrs' subcommand. ${USAGE}`,
     );
   }
   if (verbose && subcommand !== "index") {
@@ -502,6 +553,11 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
         `(no MCP tool surface to observe under '${subcommand}'). ${USAGE}`,
     );
   }
+  if (referenceContext !== null && subcommand !== "generate-adrs") {
+    throw new Error(
+      `Flag --reference-context is only accepted with the 'generate-adrs' subcommand. ${USAGE}`,
+    );
+  }
 
   return {
     subcommand,
@@ -515,6 +571,7 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
     narrowAttribution,
     ccOnly,
     observe,
+    referenceContext,
   };
 }
 

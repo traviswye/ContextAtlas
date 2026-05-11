@@ -39,6 +39,8 @@ import { loadConfig } from "./config/parser.js";
 import { runDoctorSubcommand } from "./doctor/runner.js";
 import { runIndexSubcommand } from "./extraction/cli-runner.js";
 import { runShowPromptSubcommand } from "./extraction/cli-show-prompt.js";
+import { runGenerateAdrsSubcommand } from "./generation/cli-runner.js";
+import { runShowGeneratePromptSubcommand } from "./generation/cli-show-generate-prompt.js";
 import { runInitSubcommand } from "./init/runner.js";
 import { log } from "./mcp/logger.js";
 import { createServer } from "./mcp/server.js";
@@ -86,6 +88,33 @@ export async function main(): Promise<void> {
   // no config + no adapter setup needed.
   if (subcommand === "show-prompt") {
     const result = runShowPromptSubcommand();
+    process.exit(result.exitCode);
+  }
+
+  // v0.7 Step 2.2.a.1 — show-generate-prompt subcommand outputs
+  // canonical GENERATE_ADRS_PROMPT (Path-γ Skills mechanism prompt
+  // loading; mirrors show-prompt at the generation surface).
+  // Read-only + idempotent; no config / adapter setup needed.
+  if (subcommand === "show-generate-prompt") {
+    const result = runShowGeneratePromptSubcommand();
+    process.exit(result.exitCode);
+  }
+
+  // v0.7 Step 2.2.a.1 — generate-adrs subcommand dispatches to the
+  // Generator factory (skeleton at Step 2.2.a.1; substantive
+  // generation work lands at Step 2.2.a.2). --reference-context CLI
+  // flag wires into GeneratorContext.referenceContextPath per Path 1
+  // scope expansion + Travis SECOND substantive reframe.
+  if (subcommand === "generate-adrs") {
+    const result = await runGenerateAdrsSubcommand({
+      configRoot,
+      configFile: configFileArg,
+      contextatlasVersion: version,
+      budgetWarnOverride: parsed.budgetWarn,
+      ...(parsed.referenceContext !== null
+        ? { referenceContextPath: parsed.referenceContext }
+        : {}),
+    });
     process.exit(result.exitCode);
   }
 
