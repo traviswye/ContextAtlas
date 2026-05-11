@@ -276,6 +276,17 @@ lock).
   4-phase verification protocol; 3-bucket friction-observation
   triage; 6-substep ladder; CLI-vs-Skill equivalence protocol;
   Path 1 scope expansion to v0.7 PRIMARY).
+- [x] **Step 2.0.1** — v0.7-SCOPE.md amendment per Option B lock
+  (separate commit per Q-pre-4 Path A pre-state amendment
+  framework; substantively significant PRIMARY scope expansion
+  warrants dedicated commit per discipline #3 cadence applied to
+  scope-doc amendments; matches v0.6 Step 8.2 v0_7-HANDOFF.md
+  amendment pattern). 9-section amendment: §2 + §4 + §5 + §6 +
+  §7 + §8 + §9 + §10 + §Revision history; 3 substantive
+  refinements applied (§6 Mitigation calibration-scope-
+  difference explicit + §10 condition #8 3-tier severity-
+  gradient fallback paths + §Revision history TL;DR prefix).
+  Shipped 2026-05-10; commit `[this commit]`.
 - [ ] **Step 2.1** — ContextAtlas-on-itself verification
   (operational baseline; 4-phase protocol; gate before Step 2.2
   cold-start verification).
@@ -445,6 +456,55 @@ timeline; not blocking).
 ## Progress log
 
 *Entries added in reverse-chronological order as steps ship.*
+
+### Step 2.0.1 shipped — 2026-05-10 (v0.7-SCOPE.md amendment per Option B lock + Q-pre-4 Path A pre-state amendment framework)
+
+V0.7 Step 2.0.1 ships v0.7-SCOPE.md amendment commit capturing
+substantive Path 1 scope expansion locked at Step 2.0 (commit
+`d52d42c`): generate-adrs feature added to v0.7 PRIMARY scope at
+both CLI + Skills surfaces per Path-3 entry-point-determined
+architecture inheritance. Q-pre-4 Path A pre-state amendment
+framework applied — amendment lands BEFORE substantive Step 2.1+
+work begins against superseded scope; preserves audit trail
+integrity per substrate-evolution drift discipline.
+
+| Substep | branch | commit | Notes |
+|---|---|---|---|
+| 2.0.1 v0.7-SCOPE.md amendment | main | [this commit] | 9-section amendment per Option B lock: §2 + §4 + §5 + §6 + §7 + §8 + §9 + §10 + §Revision history; PRIMARY (a) extraction + PRIMARY (b) generate-adrs dual-subsection framing; SECONDARY 3-repo → 2-repo narrative; §7.3' shipped-locks subsection preserves §7.3 deferred-questions as historical record; 3 substantive refinements applied (§6 + §10 + §Revision history) |
+
+#### Amendment scope summary
+
+- **§2 PRIMARY subsections** — PRIMARY (a) extraction renamed for disambiguation; PRIMARY (b) generate-adrs new subsection inserted; SECONDARY narrative 3-repo → 2-repo per Q2.0.1 lock
+- **§4 Item-level descriptions** — generate-adrs implementation detail subsection added
+- **§5 Substep ladder** — Step 2 entry revised to 6-substep cluster ladder per Q2.0.4; Step 2.0.1 amendment substep explicit
+- **§6 Risks** — generate-adrs scope creep risk + mitigation added (Refinement 1: calibration-scope-difference explicit at v0.7-ship-bearing-cycle iteration scope, not v0.1-v0.5 multi-cycle scope)
+- **§7 Ambiguity adjudications** — new §7.3' shipped-locks subsection captures Q2.0.1-Q2.0.4 + Q2.0.X + Q2.2.a.1-Q2.2.a.4 (Q-pre-4 Path A: preserves §7.3 deferred-questions as historical record)
+- **§8 Success criteria** — criteria #15 + #16 added (generate-adrs functional + CLI-vs-Skill equivalence); closing sentence "All fourteen criteria" → "All sixteen criteria"
+- **§9 Cost framing** — generate-adrs row added; SECONDARY 3-repo → 2-repo; cumulative estimate ~$15-50 → ~$25-70
+- **§10 Rescope conditions** — condition #8 (generate-adrs scope creep) added (Refinement 2: 3-tier severity-gradient fallback paths — (a) Path 3 fallback Skills-only deferral / (b) full calibration deferral / (c) full feature deferral)
+- **§Revision history** — 2026-05-10 amendment entry with full scope summary (Refinement 3: TL;DR prefix opener)
+
+#### Refinement applications (per discipline #3 cadence)
+
+3 substantive refinement passes applied at v0.7-SCOPE.md amendment surface before commit per discipline #3 cadence applied to substantive interpretive scope-doc amendments:
+
+- **Refinement 1 (§6)** — Mitigation language captures calibration-scope-difference explicit framing: v0.7-ship-bearing-cycle iteration scope (Step 2.2.a substantive interpretive work + Step 2.2.b empirical verification) ≠ v0.1-v0.5 multi-cycle prompt iteration scope. Prevents reader-expectation creep toward equivalent rigor.
+- **Refinement 2 (§10)** — Rescope condition #8 trigger thresholds explicit (~2 substantive iteration cycles beyond ~1-2 day estimate; OR Generator interface diverges from locked Strategy primitives) + 3-tier severity-gradient fallback paths (a) Path 3 Skills-only deferral / (b) full calibration deferral / (c) full feature deferral. Travis adjudication required at trigger moment.
+- **Refinement 3 (§Revision history)** — TL;DR prefix added before existing detailed 2026-05-10 entry narrative. Reader-friendly opener; detailed paragraph follows as full context.
+
+#### Q-pre-4 Path A pre-state amendment discipline applied
+
+Amendment lands BEFORE substantive Step 2.1+ work begins against superseded (3-repo, extraction-only PRIMARY) scope. Preserves audit trail — scope-doc reflects current substrate per cycle execution; superseded pre-state scope captured as historical record via §7.3 preservation (deferred-questions snapshot at pre-amendment substrate) + §Revision history 2026-05-10 entry (substantive rationale + scope-shift narrative).
+
+#### Cycle-execution observation — discipline #3 cadence working as designed at scope-doc amendment surface
+
+3 substantive refinement passes applied at v0.7-SCOPE.md amendment surface (§6 + §10 + §Revision history) before commit. Matches discipline #3 cadence applied to substantive interpretive scope-doc amendments. Dev surfaced amendment text inline before commit; Travis review surfaced 3 refinements; dev applied refinements + commits. Clean cycle-execution discipline precedent for v0.8+ scope-doc amendment cadence inheritance. Composes with existing 12-class enumeration (substrate-evolution drift + discipline #3 cadence + Q-pre-4 Path A pre-state amendment framework working as designed at substantive scope expansion moment); no new observation class required.
+
+#### Step 2.0.1 unblock — Step 2.1 ContextAtlas-on-itself verification
+
+Step 2.1 unblocked. Operational baseline 4-phase protocol verification begins next: install & init + doctor + index CLI Mode B + smoke test query against `C:/CodeWork/contextatlas` (33 ADRs; operational baseline; regression-test gate per Q2.0.2 SECONDARY closure criteria).
+
+---
 
 ### Step 2.0 shipped — 2026-05-10 (Step 2 SECONDARY design adjudications + Path 1 generate-adrs scope expansion to v0.7 PRIMARY)
 
