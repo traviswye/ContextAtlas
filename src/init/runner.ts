@@ -47,6 +47,10 @@ import type { LanguageCode } from "../types.js";
 
 import { writeConfigScaffold } from "./config-scaffold.js";
 import { upsertMcpRegistration } from "./mcp-registration.js";
+import {
+  copyPromptArtifacts,
+  type PromptArtifactCopyResult,
+} from "./prompt-artifact-copy.js";
 import { decideRoute, type Route } from "./routing.js";
 import { runSmokeTest } from "./smoke-test.js";
 import {
@@ -108,6 +112,12 @@ export interface InitRunOptions {
    * + Q4.4.7 locks.
    */
   readonly resolveBinaryPathOverride?: string;
+  /**
+   * Test seam: override the prompt-artifact source directory (the
+   * package's `dist/`). Lets unit tests point at a fixture directory
+   * instead of resolving from import.meta.url. Per v0.7 Step 2.3.a.0.
+   */
+  readonly promptArtifactDistRootOverride?: string;
 }
 
 export interface InitRunResult {
@@ -228,6 +238,31 @@ export async function runInitSubcommand(
     log.warn("init: failed to ensure ADR directory exists; init proceeds", {
       err: String(err),
     });
+  }
+
+  // v0.7 Step 2.3.a.0: copy canonical prompt artifacts into
+  // `.contextatlas/prompts/` so Claude Code skills (`/index-atlas`,
+  // `/generate-adrs`) can load them via Read tool against a
+  // predictable cwd-relative path. Path-γ refactor per FO-12/FO-13
+  // substrate-evolution lock at Step 2.3 Checkpoint 2 disposition.
+  let promptArtifactResult: PromptArtifactCopyResult | null = null;
+  try {
+    promptArtifactResult = copyPromptArtifacts({
+      configRoot: options.configRoot,
+      packageDistRootOverride: options.promptArtifactDistRootOverride,
+    });
+    log.info(
+      `init: prompt artifacts copied to ${promptArtifactResult.extractionMdPath} + ${promptArtifactResult.generateAdrsMdPath}`,
+      {
+        gitignoreUpdated: promptArtifactResult.gitignoreUpdated,
+        gitignoreMissing: promptArtifactResult.gitignoreMissing,
+      },
+    );
+  } catch (err) {
+    log.warn(
+      "init: failed to copy prompt artifacts; Claude Code skills (`/index-atlas`, `/generate-adrs`) may need manual prompt-load fallback",
+      { err: String(err) },
+    );
   }
   // FO-3 fix (v0.7 Step 2.1.a): differentiate created vs preserved log
   // payloads. `languages` here is the filesystem-detected list — it

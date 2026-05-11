@@ -63,6 +63,38 @@ These are decisions already made. Do not relitigate them.
   pipeline. Refinements within the prompt require calibration
   evidence parallel to v0.3 Step 9.
 
+  **Frozen-prompt invariant scope clarification (v0.7 Step 2.3.a.0
+  amendment per FO-12 / FO-13 substrate-evolution lock):** the
+  invariant applies to the **substrate value** (the prompt text
+  itself, severity taxonomy, output schema, model choice) — NOT to
+  the **load mechanism**. The load mechanism evolves:
+
+    - CLI path (Anthropic API direct): imports the constant from
+      `src/extraction/prompt.ts` directly. Unchanged.
+    - Claude Code Skills path (`/index-atlas`, `/generate-adrs`,
+      subscription-bounded): loads via Read tool against
+      `.contextatlas/prompts/extraction.md` +
+      `.contextatlas/prompts/generate-adrs.md` artifacts. These
+      artifacts are generated at build time (`scripts/generate-
+      prompt-artifacts.mjs` runtime-imports the compiled constants
+      from `dist/` and writes .md files alongside) and copied into
+      the user repo by `contextatlas init`. Sync discipline:
+      doctor's `extraction.prompts_artifact_fresh` check warns on
+      drift between user-repo artifacts and the installed package's
+      canonical source. v0.7 supersedes the prior `!\`contextatlas
+      show-prompt\`` bash-injection pattern (Path-γ-via-bash);
+      Skills must use Read tool against the artifact for
+      substrate-consistency (script-improvisation observed at Step
+      2.3 Checkpoint 2 substantively non-equivalent to canonical
+      workflow). Legacy `contextatlas show-prompt` +
+      `contextatlas show-generate-prompt` CLI subcommands retained
+      as backward-compat through v0.8+.
+
+  The same scope clarification applies to `GENERATE_ADRS_PROMPT`
+  (canonical at `src/generation/prompt.ts`; build-time artifact at
+  `dist/generation/prompt.md`; init-copied to
+  `.contextatlas/prompts/generate-adrs.md`).
+
 ## Current Version
 
 - **Current:** v0.6 shipped 2026-05-09 (tag `v0.6.0`). v0.7

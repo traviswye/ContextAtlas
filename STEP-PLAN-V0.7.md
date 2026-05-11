@@ -431,7 +431,30 @@ lock).
   verification per Q2.0.X protocol (applied to extraction
   across target repos with ADRs OR post-generate-adrs at Rich;
   structural-match-first + claim-text-fuzzy + claim-count
-  sanity-check).
+  sanity-check). Step 2.3 paused at Checkpoint 2 disposition
+  surface 2026-05-11 after Skill execution surfaced 3
+  substantive divergences (FO-13: Path-γ bash-injection
+  prompt-load skipped; script-improvisation instead of direct
+  JSON; symbol-resolution architectural-skip). Travis Decision-
+  3-α lock elevated Path-γ Read-tool refactor + Approach D
+  Skill→LSP bridge from v0.8+ candidates to v0.7 launch-
+  blocking scope per substantive cohort-substrate-consistency
+  framing. Substep cluster decomposition per LOCK 2:
+  - [x] **Step 2.3.a.0** — Path-γ Read-tool refactor (build
+    script + init copy + doctor freshness check + SKILL.md
+    Read-tool amendments + CLAUDE.md frozen-prompt scope
+    clarification). Shipped 2026-05-11; commit `[this commit]`.
+  - [ ] **Step 2.3.a.1** — Approach D Skill→LSP resolve-symbols
+    bridge (new `contextatlas resolve-symbols` CLI subcommand
+    invoked from `/index-atlas` end-of-workflow; R8 symbol-
+    candidate name-form normalization; R10 UX progress message;
+    ADR-02 comprehensive amendment covering both Path-γ + Skill→
+    CLI-resolve-symbols bridge).
+  - [ ] **Step 2.3 closure** — re-verification at rich-skill/
+    Claude Code session (Checkpoint 2 + 3 per LOCK 5 4-checkpoint
+    cadence: reset rich-skill/ state → `/generate-adrs` Skill →
+    `/index-atlas` Skill → 8-axis re-verification with Axis 3b
+    Symbol resolution PASS + Axis 8 Spec adherence PASS).
 - [ ] **Step 2.4** — CLI-vs-Skill generate-adrs equivalence
   verification (NEW substep per Path 1 scope expansion;
   parallels Q2.0.X protocol applied to generation feature).
@@ -585,6 +608,76 @@ timeline; not blocking).
 ## Progress log
 
 *Entries added in reverse-chronological order as steps ship.*
+
+### Step 2.3.a.0 shipped — 2026-05-11 (Path-γ Read-tool refactor: build-time prompt artifact generation + init-time copy + doctor freshness check + SKILL.md Read-tool amendments + CLAUDE.md frozen-prompt scope clarification; FO-12 / FO-13 substrate-evolution lock; substep cluster 2.3.a unblocks Step 2.3.a.1 Approach D Skill→LSP bridge)
+
+V0.7 Step 2.3.a.0 ships the Path-γ Read-tool refactor that replaces Skill prompt-loading bash injection (`!`contextatlas show-prompt``) with Read tool against `.contextatlas/prompts/extraction.md` + `.contextatlas/prompts/generate-adrs.md` artifacts. Substantive driver: Travis Decision-3-α lock at Step 2.3 Checkpoint 2 disposition surface elevated this refactor from v0.8+ candidate to v0.7 launch-blocking scope per substantive cohort-substrate-consistency framing ("This isn't just a framework for Claude Code to recreate. The onboarding process — setting up ADRs / extractions / atlas — needs to be consistent. These are foundational pieces of the tool.").
+
+| Substep | branch | commit | Notes |
+|---|---|---|---|
+| 2.3.a.0 Path-γ refactor | main | [this commit] | Build script `scripts/generate-prompt-artifacts.mjs` runtime-imports compiled prompt constants from `dist/extraction/prompt.js` + `dist/generation/prompt.js` and writes .md artifacts alongside; npm `build` script chains `tsc && node scripts/generate-prompt-artifacts.mjs`; `contextatlas init` copies .md artifacts from package's `dist/` into user repo's `.contextatlas/prompts/`; stamps user's `.gitignore` with `.contextatlas/prompts/` entry (substring-tolerant; never creates a `.gitignore`); new doctor check `extraction.prompts_artifact_exists` + `extraction.prompts_artifact_fresh` (PASS / WARN-missing / WARN-stale / WARN-package-source-missing); both SKILL.md files amended to Read-tool + JSON-literal-direct discipline (deprecation note for legacy `show-prompt` / `show-generate-prompt`); CLAUDE.md frozen-prompt invariant scope clarification (substrate value canonical; load mechanism evolves) |
+
+#### Engineering deliverables
+
+**New files (5):**
+- `scripts/generate-prompt-artifacts.mjs` (~75 LOC) — build-time .md artifact generation from compiled .js prompt constants
+- `src/init/prompt-artifact-copy.ts` (~140 LOC) — `copyPromptArtifacts()` helper + `stampGitignore()` internal; test seam via `packageDistRootOverride`
+- `src/doctor/checks/prompts.ts` (~120 LOC) — two-check module (`extraction.prompts_artifact_exists` + `extraction.prompts_artifact_fresh`) with PASS / WARN-missing / WARN-stale / WARN-package-source-missing states
+- `src/init/prompt-artifact-copy.test.ts` (~200 LOC; 9 tests) — copy correctness + idempotence + gitignore stamping + missing-source failure modes
+- `src/doctor/checks/prompts.test.ts` (~165 LOC; 6 tests) — all four check states + multi-artifact variations
+- `src/extraction/prompt-artifact-parity.test.ts` (~55 LOC; 2 tests) — dist artifact-vs-source parity (skip-gracefully when dist not built)
+
+**Modified files (6):**
+- `package.json` — build script chains artifact generation after `tsc`
+- `src/init/runner.ts` — wires `copyPromptArtifacts` into init flow after scaffold + ADR-dir-ensure; `promptArtifactDistRootOverride` test seam
+- `src/doctor/runner.ts` — wires `promptArtifactChecks` into both limited + normal mode collect flow
+- `.claude/skills/index-atlas/SKILL.md` — Read tool against `.contextatlas/prompts/extraction.md` + explicit JSON-literal-direct discipline + deprecation note for legacy `show-prompt` + revised Tool usage + revised Failure modes
+- `.claude/skills/generate-adrs/SKILL.md` — Read tool against `.contextatlas/prompts/generate-adrs.md` + explicit JSON-literal-direct discipline + deprecation note for legacy `show-generate-prompt` + revised Tool usage + revised Failure modes
+- `CLAUDE.md` — frozen-prompt invariant scope clarification (substrate value canonical; load mechanism evolves; covers both EXTRACTION_PROMPT + GENERATE_ADRS_PROMPT)
+
+**Substantively bounded scope:** ~750 LOC across 11 files (engineering ~335 LOC + tests ~420 LOC); matches dev pre-implementation estimate ~100-150 + 80-120 LOC tests at lower bound. Variance: test substrate substantively grew to 17 tests (vs estimate ~5-10) due to comprehensive gitignore-stamping coverage + multi-artifact state combinations at doctor check. Substantively healthy over-test scope at substrate-evolution work.
+
+#### Verification outcomes
+
+- `npm test` full suite: **1467 tests / 84 files / all PASS** (100% — no regressions to existing substrate)
+- 17 new tests / 3 new test files / all PASS
+- `npm run build`: build chain executes cleanly — `tsc` → artifact generation prints "wrote dist/extraction/prompt.md (3421 chars) + dist/generation/prompt.md (5328 chars)"
+- Typecheck: PASS (no errors)
+- ESLint: not run at this commit (existing convention; pre-commit hook automation deferred to v0.6+ candidate per CLAUDE.md "minimize dependencies")
+
+#### Substantive substrate observations
+
+**Path-γ load mechanism evolution preserves frozen-prompt invariant.** Per CLAUDE.md v0.7 Step 2.3.a.0 amendment: the prompt's substrate value (text content + severity taxonomy + output schema + model choice) remains canonical at `src/extraction/prompt.ts` + `src/generation/prompt.ts`. Build script reads compiled .js → writes .md alongside; init copies .md to user repo → Skills Read-tool the artifact. Single-source-of-truth preserved; load mechanism evolves with substrate-consistency goals. Parity test (`prompt-artifact-parity.test.ts`) guards against silent build-script drift.
+
+**Sync discipline via doctor's `prompts_artifact_fresh` check.** When user upgrades contextatlas package without re-running `init`, the user's local `.contextatlas/prompts/*.md` files drift from the installed package's canonical source. Doctor surfaces this as WARN with remediation guidance (run `contextatlas init` to refresh). Substantive cohort UX: surfaced before Skill invocation hits stale prompt; not a silent runtime divergence.
+
+**Gitignore stamping discipline.** `copyPromptArtifacts` appends `.contextatlas/prompts/` to user's `.gitignore` only when file exists AND entry not already present; never creates `.gitignore` (would be surprising side-effect). Substring-tolerant entry detection covers user variants (trailing slash / wildcard / leading slash). Substantively bounded init-side intervention; user retains ignore-policy authority.
+
+#### FO-12 + FO-13 substrate-evolution lock substantively absorbed
+
+Step 2.3.a.0 substantively absorbs FO-12 (Skill first-run permission UX) + FO-13 (Skill execution path improvisation against SKILL.md spec) by removing the bash-injection prompt-load pattern entirely. Substantive consequence: cohort install path SHRINKS at v1.0 (allowlist scope reduces; Skills no longer require `Bash(contextatlas:*)` allowlist for prompt-load step — though Step 2.3.a.1 will reintroduce a bounded `contextatlas resolve-symbols` bash invocation for LSP-symbol-resolution).
+
+#### Substantive class-15 framing composition (fifth instance worth direct capture)
+
+Substantive Travis-product-judgment-overrides-Claude-advisor-framing pattern at substantive empirical-signal-warranting moment. Fifth instance at v0.7 cycle:
+
+1. Travis catching 200k context window correction at Step 2.2.a.2
+2. Empirical evidence refuting FO-6 thesis at Checkpoint 2
+3. Dev catching 3-stage workflow oversight at Step 2.3 Checkpoint 1
+4. Travis substantively elevating Path-γ Read-tool-refactor from v0.8+ candidate to v0.7 launch-blocking scope at Step 2.3 Checkpoint 2 disposition surface
+5. Travis substantively elevating Divergence 3 (symbol resolution) from v0.8+ candidate to v0.7 launch-blocking scope at Step 2.3 Checkpoint 2 surface (Step 2.3.a.1 scope)
+
+Substantive Claude-advisor acknowledgment worth capture: prior framing substantively overweighted "bash-injection pattern = always bad" without substantively distinguishing necessary subprocess interaction from avoidable static content loads. Dev's substantive architectural distinction at Approach D investigation surface substantively corrected this framing — end-of-Skill bash for LSP-resolve is substantively different category from per-document bash for prompt-load. 15-class enumeration preserved.
+
+#### Step 2.3.a.0 unblocks — Step 2.3.a.1 Approach D engineering surface
+
+Step 2.3.a.0 substantively substrate-ready for Step 2.3.a.1 Approach D resolve-symbols engineering work:
+- Build chain substrate ready (`npm run build` produces artifacts)
+- Init flow substrate ready (artifacts copied; doctor verifies freshness)
+- SKILL.md substrate ready for end-of-Skill `contextatlas resolve-symbols` bash invocation (Step 2.3.a.1 amends `/index-atlas` SKILL.md with the final step)
+- CLAUDE.md substrate ready for ADR-02 comprehensive amendment at Step 2.3.a.1
+
+---
 
 ### Step 2.2.b.ii shipped — 2026-05-11 (Rich + django/deps/final/ reference-context-aided verification PASS-with-substantively-positive-A/B; 15 ADRs at $0.94; Phase 4 incremental at $0.66; Axis 8c substantively positive: reference-context-aided ADRs use canonical file-path-symbol form bounding FO-10; new FO-11 v0.8+ candidate; Step 2.2.b cluster cumulative $2.79; closes empirical-verification scope for primary + reference-context-aided workflows)
 
