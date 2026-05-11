@@ -382,6 +382,20 @@ lock).
     applies BOTH at decision-making AND at engineering approach
     (evidence-first vs hypothesis-driven). Shipped 2026-05-11;
     commit `[this commit]`.
+  - [x] **Step 2.2.e** — FO-8 cold-start UX consistency fix
+    (`contextatlas generate-adrs` surfaced as canonical cold-start
+    path in `renderRouteMessage` missing-adrs + new-project routes;
+    Scope γ' multi-format naming conventions shown user-friendly;
+    v0.6/v0.7-H2 stale framing removed at init renderRouteMessage +
+    state-detection.adrs.count + state-detection.design_md.present
+    detail messages). Step 2.2.e scope pivot per Checkpoint 2
+    empirical evidence: FO-6 thesis refuted (pyright works against
+    Rich; spawn_test 204ms + deep_health_check 436ms PASS); FO-6
+    spawn_test threshold refinement dropped from scope. v0.8+
+    warmup-refactor candidate substrate preserved. +4 new tests
+    (1446 → 1450 PASS clean). "Hypothesis refuted by empirical
+    evidence; revise" pattern; class 15 substantive refinement
+    composition. Shipped 2026-05-11; commit `[this commit]`.
   - **Step 2.2.b** — Rich cold-start verification using
     just-implemented generate-adrs (4-phase protocol +
     generate-adrs cold-start + extraction-after-generation
@@ -544,6 +558,66 @@ timeline; not blocking).
 ## Progress log
 
 *Entries added in reverse-chronological order as steps ship.*
+
+### Step 2.2.e shipped — 2026-05-11 (FO-8 cold-start UX consistency fix; Step 2.2.e scope pivot per Checkpoint 2 empirical evidence — FO-6 thesis refuted, threshold refinement dropped; "hypothesis refuted by empirical evidence; revise" pattern; class 15 substantive refinement composition)
+
+V0.7 Step 2.2.e ships FO-8 cold-start UX consistency fix per Travis Lock 1 + substantive scope pivot per Checkpoint 2 empirical evidence. Pre-Step-2.2.e cadence: Travis-side `contextatlas doctor` against Rich PASSED spawn_test (204ms / initialize 179ms) + PASSED deep_health_check (436ms; sample `<module>` at `benchmarks/benchmarks.py`). **Pyright substantively works against Rich; original FO-6 thesis substantively refuted by empirical evidence.**
+
+| Substep | branch | commit | Notes |
+|---|---|---|---|
+| 2.2.e FO-8 fix + scope pivot | main | [this commit] | renderRouteMessage missing-adrs + new-project routes refreshed in src/init/runner.ts:392-433: contextatlas generate-adrs surfaced as canonical primary path; Scope γ' 3 naming conventions × .md + .rst shown user-friendly (Nygard / ADR-NN / Date-prefix); pre-Scope-γ' regex `^\d{4}-.*\.md$` removed from user-facing message; pre-v0.7 stale framings ("v0.6 doesn't auto-generate ADRs", "H2 ADR generation pipeline will scaffold further") removed. Plus FO-8-family observation refresh: state-detection.adrs.count detail + state-detection.design_md.present detail get same launch-narrative-consistent refresh; design_md detail now mentions "Architectural narrative substantively improves generate-adrs output quality (reference context for the LLM during ADR generation)". +4 new tests (1446 → 1450 PASS clean) |
+
+#### Checkpoint 2 empirical evidence summary
+
+`contextatlas doctor` against Rich (post-Step-2.2.d):
+- ✓ `lsp.python.spawn_test completed in 204ms (initialize 179ms)`
+- ✓ `lsp.python.deep_health_check deep health completed in 436ms` (sample: `<module>` at `benchmarks/benchmarks.py`)
+- ~ Expected WARNs: `atlas.exists` FAIL (standalone doctor; expected) + `state-detection.adrs.count` WARN (empty docs/adr/) + `state-detection.design_md.present` WARN (Rich has no DESIGN.md) + `state-detection.git.atlas_consistent` WARN (no atlas.json yet) + `deps.installed` WARN (no node_modules at Rich; correct for non-source-clone)
+
+**Substantive re-analysis of FO-6:** pyright's "fast exit" pattern (~200-450ms) at Step 3 traces was misread by dev — it's the normal LSP shutdown flow triggered by doctor's checkSpawn + checkDeepHealth cycles (spawn → initialize → query → shutdown). The sendRaw "stdin not writable" warn is a benign race in `dispatch().then(respond)` chain fired during/after normal shutdown; caught by FO-5 defensive write; **no functional impact on pyright's substantive work**. The original FO-6 thesis (pyright stressed by warmup pattern crashing during init) was substantively wrong.
+
+#### Step 2.2.e scope pivot per Travis Lock 1
+
+Original Step 2.2.e scope (locked at prior cadence): FO-8 fix + FO-6 spawn_test threshold refinement (Option B: masked-degradation → visible-degradation).
+
+Pivoted scope per Checkpoint 2 empirical evidence (dev surfaced revision; Travis Lock 1 confirmed):
+- ✓ FO-8 fix: launch-blocking cold-start UX consistency violation
+- ✗ FO-6 spawn_test threshold refinement: DROPPED — empirical evidence shows current 5000ms threshold is correct as designed; lowering would WARN on healthy adapters (false-positive UX worse than current never-firing). v0.8+ warmup-refactor candidate substrate preserved per Travis Lock 2 prior decision (silent v0.8+ deferral).
+
+#### "Hypothesis refuted by empirical evidence; revise" pattern (class 15 substantive refinement composition)
+
+Substantive cycle-execution observation worth capture:
+
+Substep flow: Step 2.2.d.0 code-review pre-investigation gate (evidence-first discipline per Travis Lock at Step 2.2.d) → Step 2.2.d (β) diagnostic substrate shipped (launch-worthy observability) → Step 2.2.b.i resume Checkpoint 1 + Checkpoint 2 empirical signal gathering → **empirical evidence refuted the original FO-6 thesis** → Step 2.2.e scope pivot.
+
+**Evidence-first discipline substantively prevented (γ) hypothesis-driven fix at Step 2.2.d.** If dev had shipped warmup-pattern fix on Step 2.2.d.0 hypothesis without empirical evidence, the fix would have been substantively wrong (pyright doesn't need warmup fix; the warmup pattern is fine; v0.8+ engineering refinement only).
+
+Composes substantively with **class 15 substantive refinement** per Travis prior lock: "engineering-default-vs-product-context applies BOTH at engineering decision-making AND at engineering approach (evidence-first vs hypothesis-driven)." (β) diagnostic substrate delivered launch-worthy observability AS DESIGNED even when the original hypothesis was wrong — substantive substrate substantively serves cohort at v1.0 launch regardless of original framing.
+
+15-class enumeration preserved at Step 2.2.e; no standalone 17th class warranted.
+
+**Substantive substrate-evolution observation:** this is the SECOND substantive instance at v0.7 cycle of empirical evidence overruling a dev hypothesis (first was Travis catching the 200k context-window error in my prior FO-6 design surfacing; second is the FO-6 thesis itself). Pattern is substantively healthy v0.7 engineering discipline — evidence-first override mechanism working as designed.
+
+#### v0.8+ candidate substrate preserved
+
+**Warmup-pattern refactor** (per Step 2.2.d.0 code-review findings): py-adapter.initialize() warmupProject pattern fires ~150 didOpen notifications synchronously for Rich-scale Python codebases. Substantively-correct engineering pattern to refine (lazy didOpen / batched-with-backpressure / configurable warmup mode) regardless of FO-6 outcome. **No launch-narrative documentation needed at v1.0** per Travis Lock 2 silent deferral; cohort feedback at v1.0 informs prioritization organically.
+
+#### 14th-class observation: bounded over-estimate at test count
+
+Step 2.2.e estimated ~3-5 new tests; actual 4 (within bound). 14th-class discipline pattern: substep where estimate matched actual (no bounded over-estimate). Substantive cycle-execution observation: bounded over-estimate isn't inevitable; tightly-scoped substantive interpretive work (FO-8 message refresh) hit estimate cleanly.
+
+#### Step 2.2.e unblock — Step 2.2.b.i Steps 5-7 ready to proceed
+
+Travis-side re-verification sequence after Step 2.2.e push (per Lock 3 + Option A cadence):
+
+1. `cd C:/CodeWork/contextatlas && npm install -g .` (re-publish with FO-8 fix)
+2. `cd C:/CodeWork/rich && contextatlas init` (FO-8 message refresh substantively observable IF cold-start path triggered)
+3. `contextatlas generate-adrs --yes --budget-warn 5 2>&1 | Tee-Object -FilePath step7-generate-adrs.txt`
+4. `contextatlas index --verbose 2>&1 | Tee-Object -FilePath step8-phase4-extraction.txt`
+
+Substantive expectation per empirical evidence: pyright works → generate-adrs against Rich expected to succeed → Phase 4 extraction-after-generation closes end-to-end loop empirically.
+
+---
 
 ### Step 2.2.d shipped — 2026-05-11 (FO-7 cold-start init fix + FO-6 (β) diagnostic substrate as launch-worthy observability; Step 2.2.d.0 code-review pre-investigation surfaced warmup-pattern hypothesis as v0.8+ candidate; case (b) routing per Travis Lock 1)
 

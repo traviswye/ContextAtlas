@@ -118,9 +118,13 @@ function detectAdrs(ctx: CheckContext): DoctorCheck[] {
         status: "warn",
         message: "ADR directory not found",
         detail:
-          `Expected ADR directory at ${adrDir}. v0.6 onboarding requires ` +
-          `ADRs (manually-authored at v0.6; v0.7 H2 ADR generation ` +
-          `pipeline scaffolds further).`,
+          `Expected ADR directory at ${adrDir}. ContextAtlas requires ` +
+          `ADRs for atlas extraction substrate. Run ` +
+          `\`contextatlas generate-adrs --yes\` to generate ADRs from ` +
+          `your codebase, or create manually following supported ` +
+          `naming conventions (Nygard \`0001-name.md|rst\`, ` +
+          `\`ADR-NN-name.md|rst\`, or date-prefixed ` +
+          `\`YYYY-MM-DD-name.md|rst\`).`,
       },
     ];
   }
@@ -282,8 +286,10 @@ function detectMarkdownFile(
       status: "warn",
       message: `${filename} not found at repo root`,
       detail:
-        `For best results, add ${filename} per ADR-bootstrap pattern; ` +
-        `v0.7 H2 ADR generation pipeline will scaffold further.`,
+        `For best results, add ${filename} at repo root. ` +
+        `Architectural narrative in ${filename} substantively improves ` +
+        `\`contextatlas generate-adrs\` output quality (reference context ` +
+        `for the LLM during ADR generation).`,
     });
     return out;
   }

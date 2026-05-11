@@ -132,7 +132,10 @@ describe("runInitSubcommand — doctor + routing + atlas + smoke + MCP orchestra
     });
     expect(result.exitCode).toBe(0);
     expect(stdoutCapture).toContain("code present but no ADRs found");
-    expect(stdoutCapture).toContain("Re-run: contextatlas init");
+    // FO-8 fix (v0.7 Step 2.2.e): cold-start guidance now surfaces
+    // `contextatlas generate-adrs` as canonical primary path instead
+    // of "Re-run: contextatlas init" after manual ADR authoring.
+    expect(stdoutCapture).toContain("contextatlas generate-adrs");
   });
 
   it("new-project path: code warn + ADR warn → exit code 0 + guidance message (no atlas pipeline)", async () => {
@@ -149,7 +152,82 @@ describe("runInitSubcommand — doctor + routing + atlas + smoke + MCP orchestra
     });
     expect(result.exitCode).toBe(0);
     expect(stdoutCapture).toContain("empty/sparse project state detected");
-    expect(stdoutCapture).toContain("Create README + DESIGN.md");
+    // FO-8 fix (v0.7 Step 2.2.e): new-project guidance surfaces
+    // generate-adrs as primary cold-start path; manual route preserved.
+    expect(stdoutCapture).toContain("contextatlas generate-adrs");
+  });
+
+  describe("FO-8 cold-start UX consistency (v0.7 Step 2.2.e)", () => {
+    it("missing-adrs message surfaces contextatlas generate-adrs as canonical cold-start path", async () => {
+      const checks: DoctorCheck[] = [
+        check("state-detection.adrs.count", "warn"),
+        check("state-detection.code.present", "pass"),
+      ];
+      await runInitSubcommand({
+        configRoot: tmpRoot,
+        ccOnly: false,
+        writeStdout: captureStdout,
+        detectLanguagesOverride: () => ["typescript"],
+        collectChecksOverride: async () => makeDoctorResult(checks),
+      });
+      // Substantive primary guidance: generate-adrs command surfaced
+      // with --yes flag + ANTHROPIC_API_KEY framing.
+      expect(stdoutCapture).toContain("contextatlas generate-adrs --yes");
+      expect(stdoutCapture).toContain("ANTHROPIC_API_KEY");
+    });
+
+    it("missing-adrs message shows Scope γ' multi-format naming conventions (not pre-Scope-γ' regex)", async () => {
+      const checks: DoctorCheck[] = [
+        check("state-detection.adrs.count", "warn"),
+        check("state-detection.code.present", "pass"),
+      ];
+      await runInitSubcommand({
+        configRoot: tmpRoot,
+        ccOnly: false,
+        writeStdout: captureStdout,
+        detectLanguagesOverride: () => ["typescript"],
+        collectChecksOverride: async () => makeDoctorResult(checks),
+      });
+      // Substantive: 3 supported naming conventions × .md + .rst.
+      expect(stdoutCapture).toContain("Nygard");
+      expect(stdoutCapture).toContain("ADR-NN");
+      expect(stdoutCapture).toContain("Date-prefix");
+      // Pre-Scope-γ' regex should NOT appear in user-facing message.
+      expect(stdoutCapture).not.toContain("^\\d{4}-.*\\.md$");
+    });
+
+    it("missing-adrs message removes pre-v0.7 stale framing", async () => {
+      const checks: DoctorCheck[] = [
+        check("state-detection.adrs.count", "warn"),
+        check("state-detection.code.present", "pass"),
+      ];
+      await runInitSubcommand({
+        configRoot: tmpRoot,
+        ccOnly: false,
+        writeStdout: captureStdout,
+        detectLanguagesOverride: () => ["typescript"],
+        collectChecksOverride: async () => makeDoctorResult(checks),
+      });
+      // Substantive stale framings removed:
+      expect(stdoutCapture).not.toContain("v0.6 doesn't auto-generate ADRs");
+      expect(stdoutCapture).not.toContain("H2 ADR generation pipeline");
+    });
+
+    it("new-project message surfaces generate-adrs + removes stale v0.7 H2 framing", async () => {
+      const checks: DoctorCheck[] = [
+        check("state-detection.adrs.count", "warn"),
+        check("state-detection.code.present", "warn"),
+      ];
+      await runInitSubcommand({
+        configRoot: tmpRoot,
+        ccOnly: false,
+        writeStdout: captureStdout,
+        detectLanguagesOverride: () => [],
+        collectChecksOverride: async () => makeDoctorResult(checks),
+      });
+      expect(stdoutCapture).toContain("contextatlas generate-adrs");
+      expect(stdoutCapture).not.toContain("H2 ADR generation pipeline");
+    });
   });
 
   it("automated-with-warning path: substantive warn surfaced as advisory inline", async () => {
