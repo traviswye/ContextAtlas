@@ -45,9 +45,28 @@ export class LspClient {
   >();
   private buffer: Buffer = Buffer.alloc(0);
   private readonly name: string;
+  /**
+   * Tracks whether {@link stop} was invoked. Distinguishes intentional
+   * shutdown from unexpected subprocess exit per v0.7 Step 2.2.c FO-5
+   * fix: when subprocess exits with `shuttingDown === false`, the
+   * exit listener emits substantive remediation guidance to stderr
+   * (Travis Lock 1 γ hybrid scope).
+   */
+  private shuttingDown = false;
+  /**
+   * Test seam — stderr writer used for unexpected-exit remediation
+   * guidance. Default emits to `process.stderr`. Tests inject a fake
+   * writer to capture output without polluting Vitest stderr.
+   */
+  private readonly writeStderr: (chunk: string) => void;
 
-  constructor(name: string) {
+  constructor(
+    name: string,
+    options: { writeStderr?: (chunk: string) => void } = {},
+  ) {
     this.name = name;
+    this.writeStderr =
+      options.writeStderr ?? ((chunk) => process.stderr.write(chunk));
   }
 
   start(command: string, args: string[], cwd: string): void {
@@ -69,8 +88,38 @@ export class LspClient {
     child.on("error", (err) => {
       log.error(`[lsp:${this.name}] subprocess error`, { err: String(err) });
     });
+    // FO-5 fix (v0.7 Step 2.2.c): attach 'error' listener on stdin so
+    // a closed-pipe write doesn't surface as an unhandled 'error'
+    // event on the Socket (which previously crashed the Node process
+    // with ERR_STREAM_WRITE_AFTER_END against substantial Python
+    // codebases like Rich).
+    child.stdin.on("error", (err) => {
+      log.warn(`[lsp:${this.name}] stdin write error`, { err: String(err) });
+    });
     child.on("exit", (code, signal) => {
       log.info(`[lsp:${this.name}] subprocess exited`, { code, signal });
+      // FO-5 fix: when subprocess exits without `stop()` being called,
+      // surface substantive remediation guidance to stderr per Travis
+      // Lock 1 γ hybrid scope. Helps users distinguish "adapter exited
+      // cleanly during normal shutdown" from "adapter crashed; expect
+      // downstream friction".
+      if (!this.shuttingDown) {
+        this.writeStderr(
+          `[warn] ${this.name} LSP subprocess exited unexpectedly ` +
+            `(code ${code ?? "null"}, signal ${signal ?? "null"}). ` +
+            `Adapter is in a degraded state; downstream operations ` +
+            `(generate-adrs, index, doctor deep-health-check) may ` +
+            `surface friction. If the subprocess is pyright, ` +
+            `substantial codebases with unresolved imports or type ` +
+            `errors may stress pyright's initial analysis pass — try ` +
+            `narrowing the workspace via --config-root pointing at a ` +
+            `smaller subdirectory, or install runtime dependencies ` +
+            `(pip install -r requirements.txt) to resolve missing ` +
+            `imports. Open an issue at ` +
+            `https://github.com/traviswye/contextatlas if behavior is ` +
+            `unexpected.\n`,
+        );
+      }
       for (const pending of this.pending.values()) {
         clearTimeout(pending.timeoutHandle);
         pending.reject(
@@ -89,6 +138,16 @@ export class LspClient {
     params?: JsonValue,
     timeoutMs = 30_000,
   ): Promise<T> {
+    // FO-5 fix (v0.7 Step 2.2.c): preserve clear-error UX for
+    // request callers by checking subprocess state up-front. sendRaw
+    // itself is now defensive (no-op on closed state) — without this
+    // upfront check, request() callers would block until the 30s
+    // timeout fires rather than getting an immediate rejection.
+    if (!this.child) {
+      return Promise.reject(
+        new Error(`LSP client '${this.name}' is not started.`),
+      );
+    }
     const id = this.nextId++;
     return new Promise<T>((resolve, reject) => {
       const timeoutHandle = setTimeout(() => {
@@ -105,13 +164,7 @@ export class LspClient {
         timeoutHandle,
         method,
       });
-      try {
-        this.sendRaw({ jsonrpc: "2.0", id, method, params });
-      } catch (err) {
-        clearTimeout(timeoutHandle);
-        this.pending.delete(id);
-        reject(err as Error);
-      }
+      this.sendRaw({ jsonrpc: "2.0", id, method, params });
     });
   }
 
@@ -132,6 +185,7 @@ export class LspClient {
 
   async stop(): Promise<void> {
     if (!this.child) return;
+    this.shuttingDown = true;
     const child = this.child;
     try {
       await this.request("shutdown", null, 5_000);
@@ -254,13 +308,39 @@ export class LspClient {
   }
 
   private sendRaw(msg: JsonRpcMessage): void {
+    // FO-5 fix (v0.7 Step 2.2.c): defensive write guards prevent the
+    // pre-fix crash path where async server-response handlers fire
+    // AFTER the subprocess has exited or closed stdin. Pre-fix
+    // sendRaw threw on `!this.child` (uncaught when called from the
+    // `.then(respond)` chain in dispatch()) and an unguarded write
+    // on a closed stdin surfaced as ERR_STREAM_WRITE_AFTER_END /
+    // unhandled 'error' event on Socket = crash.
     if (!this.child) {
-      throw new Error(`LSP client '${this.name}' is not started.`);
+      log.warn(
+        `[lsp:${this.name}] sendRaw called after subprocess exited; dropping message`,
+        { method: msg.method ?? "<response>" },
+      );
+      return;
+    }
+    const stdin = this.child.stdin;
+    if (!stdin.writable || stdin.writableEnded) {
+      log.warn(
+        `[lsp:${this.name}] sendRaw called but stdin is not writable; dropping message`,
+        { method: msg.method ?? "<response>" },
+      );
+      return;
     }
     const json = JSON.stringify(msg);
     const payload = Buffer.from(json, "utf8");
     const header = `Content-Length: ${payload.length}\r\n\r\n`;
-    this.child.stdin.write(header);
-    this.child.stdin.write(payload);
+    try {
+      stdin.write(header);
+      stdin.write(payload);
+    } catch (err) {
+      log.warn(
+        `[lsp:${this.name}] sendRaw write failed; dropping message`,
+        { method: msg.method ?? "<response>", err: String(err) },
+      );
+    }
   }
 }

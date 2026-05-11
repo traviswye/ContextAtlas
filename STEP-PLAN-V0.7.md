@@ -350,6 +350,21 @@ lock).
     15-class observation enumeration as engineering-default-vs-
     product-context surface at pre-empirical-verification boundary.
     Shipped 2026-05-11; commit `[this commit]`.
+  - [x] **Step 2.2.c** — FO-5 launch-blocking Python adapter LSP
+    client stream-state-management fix (mini-substep BEFORE Step
+    2.2.b.i resume per Travis Lock 2). Travis-side Step 2.2.b.i
+    Step 6 surfaced ERR_STREAM_WRITE_AFTER_END crash against Rich
+    init. γ hybrid fix per Lock 1: defensive write guards in
+    `LspClient.sendRaw` + 'error' listener on `child.stdin` +
+    subprocess exit listener with substantive remediation guidance
+    to stderr on unexpected exit (distinguishes intentional
+    `stop()` via `shuttingDown` flag); upfront subprocess-state
+    check in `request()` preserves clear-error UX. +5 new tests
+    (1428 baseline → 1433 PASS clean). 16th-class observation:
+    composes with class 10 + class 15 — internal-dogfood
+    (TypeScript-only) doesn't exercise Python adapter race; external-
+    repo verification (Rich) substantively did. Shipped 2026-05-11;
+    commit `[this commit]`.
   - **Step 2.2.b** — Rich cold-start verification using
     just-implemented generate-adrs (4-phase protocol +
     generate-adrs cold-start + extraction-after-generation
@@ -512,6 +527,70 @@ timeline; not blocking).
 ## Progress log
 
 *Entries added in reverse-chronological order as steps ship.*
+
+### Step 2.2.c shipped — 2026-05-11 (FO-5 launch-blocking Python adapter LSP client stream-state-management fix: defensive write guards + subprocess exit listener with remediation + 'error' listener on stdin; γ hybrid per Travis Lock 1)
+
+V0.7 Step 2.2.c ships FO-5 launch-blocking-fix-now triage outcome per Q2.0.3 framework. Travis-side Step 2.2.b.i Step 6 (`contextatlas init` against Rich) surfaced `ERR_STREAM_WRITE_AFTER_END` crash with unhandled `'error'` event on Socket. Substantive root cause: race condition in `LspClient` where async server-initiated request responder fires AFTER subprocess closes stdin → uncaught write throws crashes Node process. Pyright itself works against Rich (Travis verified `pyright --version` + `node ...langserver.index.js --stdio` + `node ...pyright/index.js` all functional); the bug is in ContextAtlas's LSP client contract handling subprocess termination.
+
+| Substep | branch | commit | Notes |
+|---|---|---|---|
+| 2.2.c FO-5 fix | main | [this commit] | γ hybrid fix per Travis Lock 1: defensive write guards in `LspClient.sendRaw` (writable + writableEnded checks + try/catch around stdin.write); 'error' listener on `child.stdin` (prevents unhandled 'error' Socket events); subprocess exit listener with `shuttingDown` flag distinguishing intentional `stop()` from unexpected exit + emits substantive remediation guidance to stderr (per-language: "If subprocess is pyright, substantial codebases with unresolved imports or type errors may stress pyright's initial analysis pass — try narrowing workspace via --config-root OR install runtime dependencies"); upfront subprocess-state check in `request()` preserves clear-error UX; +5 new tests (1428 baseline → 1433 PASS clean) |
+
+#### FO-5 root cause analysis
+
+**Race condition path** (verified empirically at Travis-side Step 2.2.b.i Step 6):
+
+1. ContextAtlas's `py-adapter.initialize()` spawns pyright-langserver subprocess
+2. Pyright sends server-initiated request (likely `client/registerCapability` or `workspace/configuration` per LSP handshake)
+3. `LspClient.dispatch()` processes asynchronously via `Promise.resolve(handler(msg.params ?? null)).then(respond)`
+4. **Before the async handler resolves**, pyright's stdin closes (subprocess exits OR pipe ends — likely pyright crashed during initial analysis of Rich's 455-error-laden codebase)
+5. The `.then(respond)` callback fires after the close → `respond()` calls `sendRaw()` → `this.child.stdin.write(payload)` throws `ERR_STREAM_WRITE_AFTER_END` → unhandled `'error'` event on Socket = crash
+
+**Why ContextAtlas-on-itself (Step 2.1) didn't surface this:**
+
+ContextAtlas is TypeScript-only; never exercises Python adapter race. Rich (Textualize/rich; Python codebase) is the **first time Python adapter runs against a substantial external codebase**. Per Travis's substantive paste-back verification: pyright surfaces 455 errors + 30 warnings against Rich's static analysis — substantial type-resolution stress that likely triggered pyright's early stdin-close path.
+
+#### γ hybrid fix scope (Travis Lock 1)
+
+- **Defensive write guards in `sendRaw`** (was: threw on `!this.child`; now no-ops with log.warn). Plus: `writable + writableEnded` checks + try/catch around `stdin.write()`. Three layers of defense against stream-state failure.
+- **`'error'` listener on `child.stdin`** at `start()` time — catches stream errors that would otherwise surface as unhandled `'error'` events on Socket = crash. Logs at warn level.
+- **Subprocess exit listener with remediation** — `shuttingDown` flag (set by `stop()`) distinguishes intentional shutdown from unexpected exit. Unexpected exit emits substantive stderr message: exit code/signal + per-language remediation guidance (narrow workspace via --config-root / install runtime deps / open issue with repro).
+- **Upfront subprocess-state check in `request()`** — preserves clear-error UX for request callers; rejects immediately on `!this.child` rather than waiting for 30s timeout.
+
+#### Test coverage outcome (+5 tests; within Travis Lock 3 estimate)
+
+5 mock-based tests against actual subprocess lifecycle (no real pyright dependency for v0.7 simplicity per Lock 3 lean; integration tests with real pyright deferred to v0.8+):
+
+- `request()` rejects immediately on un-started client (clear-error UX preserved)
+- `notify()` on un-started client no-ops (no throw)
+- Subprocess unexpected exit emits remediation guidance to stderr
+- `stop()` suppresses remediation guidance (intentional shutdown via `shuttingDown` flag)
+- `notify()` after subprocess exit no-ops (no `ERR_STREAM_WRITE_AFTER_END` crash)
+
+#### 16th cycle-execution observation class — composition vs standalone framing
+
+Per Travis dev-judgment surface: composes with **class 10 (substrate-verification-at-each-substep-boundary)** + **class 15 (engineering-default-vs-product-context)** rather than standalone 16th class. Substantive distinction the observation captures:
+
+**Pattern:** Internal dogfood verification (Step 2.1 ContextAtlas-on-itself; TypeScript-only) exercises one substrate axis. External-repo verification (Step 2.2.b.i Rich; Python codebase) exercises substantively different substrate axis. **Pyright-against-external-Python-repo** is the substantive launch-readiness verification that Step 2.1 doesn't exercise.
+
+**Substantive framing for v0.7+ inheritance:** internal dogfood is necessary-but-not-sufficient for launch-readiness verification. Substantive coverage requires external-substrate diversity (external repos × multiple language adapters × varying codebase characteristics). Composes with class 10 (verification scope at substep boundary) + class 15 (engineering defaults didn't anticipate Python-adapter-against-external-repo edge case until product-context surface caught it).
+
+15-class enumeration preserved; observation captured as composition + substantive refinement noting external-substrate-axis-coverage discipline rather than new 16th standalone class. Alternative "dogfood-substrate-axis-coverage" 16th-class framing surfaced for Travis adjudication if subsequent friction warrants standalone class.
+
+#### Step 2.2.c unblock — Step 2.2.b.i resume per Travis Lock 4 refined verification sequence
+
+Travis-side re-verification sequence after Step 2.2.c push lands:
+
+1. Re-publish global install: `cd C:/CodeWork/contextatlas && npm install -g .`
+2. Regression FO-4 check: `contextatlas --version` (expected `contextatlas 0.6.0`)
+3. Init against Rich: `cd C:/CodeWork/rich && contextatlas init` (substantive: does init complete cleanly? Does stderr warning surface about pyright state?)
+4. Doctor against Rich: `contextatlas doctor` (substantive: state-detection report against Python codebase; Python adapter spawn health)
+5. Step 2.2.b.i Step 7 (`contextatlas generate-adrs --yes --budget-warn 5`) per locked plan
+6. Step 8 (`contextatlas index --verbose`) Phase 4 extraction-after-generation
+
+Substantive empirical evidence the fix works AT EACH SURFACE + substantively informs what Rich's adapter substrate looks like before generate-adrs verification proceeds.
+
+---
 
 ### Step 2.2.b.0 shipped — 2026-05-11 (FO-4 launch-readiness first-impression UX: --version + --help flags + doctor peer-dependency install guidance refinement; pre-Step-2.2.b.i empirical verification baseline)
 
