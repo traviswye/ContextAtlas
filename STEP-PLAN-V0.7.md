@@ -529,6 +529,36 @@ lock).
 - [ ] **Step 2.4** — CLI-vs-Skill generate-adrs equivalence
   verification (NEW substep per Path 1 scope expansion;
   parallels Q2.0.X protocol applied to generation feature).
+  Step 2.4 Outcome A — Skill reference-context-aided
+  verification PASS at Step 2.3.c.0 refined substrate; all
+  4 cohort entry surfaces empirically defended. Substep
+  cluster decomposition per Travis Lock 1:
+  - [x] **Step 2.4.a** — CLI substrate-evolution per Option β
+    closing audit-surfaced CLI-vs-Skill gaps. Shipped
+    2026-05-12; commit `[this commit]`. β-1: extended
+    thinking enabled at CLI generation API call
+    (`thinking: { type: "enabled", budget_tokens: 32_000 }`
+    in `src/generation/generators/anthropic-api-direct.ts`;
+    closes API-parameter-equivalence with Skill `effort:
+    xhigh` per claude-code-guide investigation; SDK 0.27.3
+    type-cast workaround acknowledged with v0.8+ SDK-upgrade
+    candidate). β-2: auto-invoke `validate-adrs` post-
+    generation in `src/generation/cli-runner.ts` with
+    refined stderr remediation template (canonical CLI
+    cohort paths forward per FO-11 status — no --overwrite
+    flag at v0.7); non-zero exit → exit code 1; graceful-
+    abort path preserved via `filesGenerated === 0` skip.
+    `generatorOverride` test seam added for substantive
+    isolated testing.
+  - [ ] **Step 2.4.b** — β-3 empirical CLI cost + depth
+    measurement at C:/CodeWork/rich/ (refined substrate;
+    Travis discretion Path A run OR Path B v0.8+ deferral).
+  - [ ] **Step 2.4.c** — Step 2.4 closure commit (β-4
+    honest-scope-acknowledgment of CLI single-shot vs
+    Skill multi-step architectural framing; β-3 outcome OR
+    deferral framing per Travis lean; CLAUDE.md residual
+    "30-50 file reads" language housekeeping per Travis
+    Step 2.3.c.0 push observation).
 - [ ] **Step 2.5** — Step 2 close (cumulative outcome; v1.0
   ship-gate criterion #2 closure; launch-blocking issues
   triaged per Q2.0.3 protocol).
@@ -679,6 +709,62 @@ timeline; not blocking).
 ## Progress log
 
 *Entries added in reverse-chronological order as steps ship.*
+
+### Step 2.4.a shipped — 2026-05-12 (CLI substrate-evolution per Option β closing CLI-vs-Skill audit-surfaced gaps at API-parameter + mechanical-floor-enforcement layers: extended thinking enabled at CLI generation API call (β-1; 32k budget) + auto-invoke validate-adrs post-generation in CLI runner (β-2; refined stderr remediation template); generatorOverride test seam added; 7 net new tests + 1527 baseline preserved)
+
+V0.7 Step 2.4.a ships bounded CLI substrate-evolution closing the substantive CLI-vs-Skill substrate-equivalence gaps Travis sidebar-surfaced before Step 2.4 closure. Audit findings: refined GENERATE_ADRS_PROMPT + model pinning were already equivalent across both surfaces; extended thinking + auto-invoke validate-adrs gates were Skill-side only at Step 2.3.c.0 close. Step 2.4.a brings CLI surface to substrate-equivalent at the API-parameter + mechanical-enforcement layers.
+
+| Substep | branch | commit | Notes |
+|---|---|---|---|
+| 2.4.a CLI substrate-evolution | main | [this commit] | β-1 extended thinking enabled (32k budget); β-2 auto-invoke validate-adrs gate with refined remediation template; SDK 0.27.3 type-cast workaround for thinking parameter (v0.8+ SDK upgrade candidate); generatorOverride test seam; graceful-abort path preserved via filesGenerated === 0 skip |
+
+#### Engineering deliverables
+
+**Modified files (3):**
+- `src/generation/generators/anthropic-api-direct.ts` — β-1: extended thinking enabled in anthropic.messages.create call (`thinking: { type: "enabled", budget_tokens: 32_000 }`); SDK 0.27.3 type-cast workaround documented inline (cast to `Anthropic.Messages.MessageCreateParamsNonStreaming` bypasses excess-property check; runtime API forwards parameter; thinking blocks naturally skipped by `extractTextFromResponse` consuming only `type === "text"` blocks)
+- `src/generation/cli-runner.ts` — β-2: imports `runValidateAdrsSubcommand` from `./cli-validate-adrs.js`; auto-invokes post-generator.generate() with refined stderr remediation on non-zero exit (canonical CLI cohort paths forward template per Travis Lock 1 + FO-11 acknowledgment of no --overwrite flag at v0.7); graceful-abort path (`filesGenerated === 0`) skips validate-adrs to preserve user-declined-confirmation semantics; `generatorOverride?: Generator` test seam added
+- `src/generation/cli-runner.test.ts` — 7 new tests: 2 β-1 source content assertions (thinking parameter literal present; inside messages.create call); 3 β-2 end-to-end tests via generatorOverride seam (PASS path → exit 0 + validate-adrs PASS on stdout; FAIL path → exit 1 + refined remediation template on stderr; setup-error path → exit 2 + validate-adrs NOT invoked); 2 β-2 source content assertions (cli-runner imports validate-adrs subcommand; canonical remediation template present)
+
+**Substantively bounded scope:** ~90 LOC engineering + ~180 LOC tests across 3 files. Matches Travis Lock 1 estimate (~60-90 LOC + 5-8 tests).
+
+#### Verification outcomes
+
+- `npm test` full suite: **1527 tests / 85 files / all PASS** (+7 net tests vs Step 2.3.c.0 baseline of 1520)
+- 7 new cli-runner tests (4 existing + 7 new); all PASS
+- `npm run build`: clean (prompt artifact regeneration unchanged at 12481 chars)
+- Typecheck: clean (SDK 0.27.3 thinking type-cast workaround compiles cleanly)
+
+#### SDK 0.27.3 type-cast workaround (v0.8+ candidate captured)
+
+`@anthropic-ai/sdk` v0.27.3 does NOT type the `thinking` parameter in `MessageCreateParamsBase` (added in ~v0.32+). β-1 uses an inline cast (`as Anthropic.Messages.MessageCreateParamsNonStreaming`) to bypass TypeScript's excess-property check on the literal object passed to `anthropic.messages.create`. Runtime behavior: the SDK forwards the parameter unmodified to the Anthropic API; the API supports extended thinking; response blocks of `type === "thinking"` are naturally skipped by the existing `extractTextFromResponse` helper which consumes only `type === "text"` blocks.
+
+**v0.8+ SDK upgrade candidate:** bump `@anthropic-ai/sdk` to `^0.32.0` or later for canonical typed surface on extended thinking + adaptive reasoning. Bounded engineering (~1 LOC in package.json + regression test sweep); deferred to keep Step 2.4.a scope tight per Travis substrate-evolution-as-bounded-engineering pattern.
+
+#### Substantive CLI-vs-Skill substrate-equivalence post-Step-2.4.a
+
+| Substrate layer | Skill substrate | CLI substrate (post-2.4.a) | Status |
+|---|---|---|---|
+| Refined GENERATE_ADRS_PROMPT (single-source-of-truth) | Via Read tool against `.contextatlas/prompts/generate-adrs.md` | Direct import from `src/generation/prompt.ts` | EQUIVALENT (always was) |
+| Model pinning | `model: claude-opus-4-7` frontmatter | `GENERATION_MODEL = "claude-opus-4-7"` constant | EQUIVALENT (always was) |
+| Extended thinking / adaptive reasoning | `effort: xhigh` frontmatter (includes thinking) | `thinking: { type: "enabled", budget_tokens: 32_000 }` (β-1) | **EQUIVALENT post-Step-2.4.a** |
+| validate-adrs mechanical-floor gate | MANDATORY Phase C in SKILL.md | Auto-invoked post-generation in cli-runner (β-2) | **EQUIVALENT post-Step-2.4.a** |
+| Multi-step Phase A investigation workflow | Phase A multi-agent dispatch possible | Single-shot API call | ARCHITECTURAL DIFFERENCE — bounded by validate-adrs mechanical floor at both surfaces; honest-scope-acknowledgment for v1.0 launch documents per Step 2.4.c |
+
+#### FO-11 status acknowledged in β-2 remediation template
+
+β-2's stderr remediation template explicitly notes: "`contextatlas generate-adrs` does not currently overwrite existing ADRs — explicit removal required for fresh attempts. --overwrite flag is a v0.8+ candidate." This honestly captures FO-11 forward-carry status; CLI cohort users at v1.0 understand the cleanup discipline.
+
+#### Class-15 framing composition (eleventh instance at v0.7 cycle worth direct capture)
+
+Substantive Travis-product-judgment-overrides-Claude-advisor-framing 11-instance pattern at v0.7 cycle: Travis surfaced CLI-vs-Skill substrate-equivalence question BEFORE Step 2.4 closure lock (substantive compare-surfaces discipline at substrate-evolution maturity). Dev audit revealed 2 substantive bounded gaps (β-1 extended thinking + β-2 validate-adrs auto-invoke). Travis Lock 2 no-wall-clock-ceiling absorbed; Step 2.4.a substep-cluster decomposition pattern preserved. 15-class enumeration preserved.
+
+#### Step 2.4.b + 2.4.c unblocked
+
+Per locked cadence:
+- Step 2.4.b (β-3 empirical CLI cost+depth measurement): Travis discretion Path A (run at C:/CodeWork/rich/ refined substrate) OR Path B (defer to v0.8+ with inferential cost framing in launch documents)
+- Step 2.4.c (Step 2.4 closure + β-4 honest-scope-acknowledgment + CLAUDE.md residual housekeeping)
+
+---
 
 ### Step 2.3.c.0 shipped — 2026-05-12 (generation-side β-bounded mechanical-floor substrate per Travis Lock 1 + refinements: GENERATE_ADRS_PROMPT 4-dimension refinement + SKILL.md model+effort frontmatter pinning + contextatlas validate-adrs CLI subcommand + /generate-adrs Phase A/B/C workflow restructure + deliberate cost-narrative shift)
 

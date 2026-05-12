@@ -28,9 +28,11 @@ import { openDatabase } from "../storage/db.js";
 import type { LanguageAdapter, LanguageCode } from "../types.js";
 
 import type { ExtractionClient } from "../extraction/anthropic-client.js";
+import { runValidateAdrsSubcommand } from "./cli-validate-adrs.js";
 import { getGenerator } from "./factory.js";
 import {
   GenerationSetupError,
+  type Generator,
   type GeneratorContext,
 } from "./generator.js";
 
@@ -82,6 +84,14 @@ export interface GenerateAdrsCliOptions {
   writeStdout?: (chunk: string) => void;
   /** Test seam — replace stderr write. */
   writeStderr?: (chunk: string) => void;
+  /**
+   * Test seam — inject a fake Generator instead of resolving via
+   * `getGenerator(config)`. Lets tests exercise the post-generation
+   * validate-adrs gate path (v0.7 Step 2.4.a β-2) without making
+   * real Anthropic API calls. Production callers omit; only tests
+   * supply.
+   */
+  generatorOverride?: Generator;
 }
 
 export type GenerateAdrsExitCode = 0 | 1 | 2;
@@ -153,7 +163,7 @@ export async function runGenerateAdrsSubcommand(
 
     const outputAdrPath = pathResolve(options.configRoot, config.adrs.path);
 
-    const generator = getGenerator(config);
+    const generator = options.generatorOverride ?? getGenerator(config);
     const generatorContext: GeneratorContext = {
       config,
       configRoot: options.configRoot,
@@ -181,8 +191,9 @@ export async function runGenerateAdrsSubcommand(
         : {}),
     };
 
+    let generationResult;
     try {
-      await generator.generate(generatorContext);
+      generationResult = await generator.generate(generatorContext);
     } catch (err) {
       if (err instanceof GenerationSetupError) {
         writeStderr(`generate-adrs: ${err.message}\n`);
@@ -191,6 +202,58 @@ export async function runGenerateAdrsSubcommand(
       log.error("generate-adrs: generation failed", { err: String(err) });
       writeStderr(
         `generate-adrs: ${err instanceof Error ? err.message : String(err)}\n`,
+      );
+      return { exitCode: 1 };
+    }
+
+    // Graceful-abort path: when the user declines confirmation, the
+    // generator returns zeroResult (filesGenerated === 0). No ADRs
+    // produced → validate-adrs has nothing to verify → skip the
+    // Step 2.4.a β-2 mandatory gate. Exit code 0 preserved.
+    if (generationResult.filesGenerated === 0) {
+      return { exitCode: 0 };
+    }
+
+    // v0.7 Step 2.4.a β-2: auto-invoke validate-adrs post-generation
+    // per Travis Lock 1. Closes CLI-vs-Skill mechanical-floor-
+    // enforcement substrate equivalence — Skill /generate-adrs has
+    // MANDATORY Phase C validate-adrs gate; CLI now auto-invokes
+    // the same canonical depth-floor verification. Non-zero exit
+    // surfaces structured remediation + maps to exit code 1 (per
+    // ADR-12 pipeline-failure — generation succeeded but downstream
+    // depth-floor verification failed). Per Travis FO-11 status
+    // (no --overwrite flag at v0.7), remediation path 2 includes
+    // explicit manual-rm guidance for fresh attempt.
+    const validateResult = await runValidateAdrsSubcommand({
+      configRoot: options.configRoot,
+      configFile: options.configFile,
+      ...(options.writeStdout !== undefined
+        ? { writeStdout: options.writeStdout }
+        : {}),
+      writeStderr,
+    });
+
+    if (validateResult.exitCode !== 0) {
+      writeStderr(
+        [
+          "",
+          "contextatlas generate-adrs: ADRs generated but `validate-adrs` canonical depth-floor verification failed.",
+          "",
+          "Per-ADR remediation written to stderr above.",
+          "",
+          "Canonical CLI cohort paths forward:",
+          "  1. Manually edit failing ADRs at docs/adr/ to address each",
+          "     remediation, then re-run:",
+          "       contextatlas validate-adrs",
+          "  2. OR remove docs/adr/ and re-run for fresh attempt:",
+          "       (PowerShell)  Remove-Item -Recurse -Force docs/adr/",
+          "       (bash)        rm -rf docs/adr/",
+          "       contextatlas generate-adrs",
+          "     (Note: `contextatlas generate-adrs` does not currently",
+          "     overwrite existing ADRs — explicit removal required for",
+          "     fresh attempts. --overwrite flag is a v0.8+ candidate.)",
+          "",
+        ].join("\n"),
       );
       return { exitCode: 1 };
     }

@@ -178,11 +178,24 @@ export class AnthropicAPIDirectGenerator implements Generator {
     const anthropic = new Anthropic({ apiKey });
     let response;
     try {
+      // v0.7 Step 2.4.a β-1: extended thinking enabled per Travis
+      // Lock 3 (32k budget; substantively similar to Skill
+      // `effort: xhigh` adaptive reasoning per claude-code-guide
+      // investigation). Closes API-parameter-equivalence with
+      // Skill substrate at the thinking layer. SDK 0.27.3 does
+      // NOT type the `thinking` parameter (added in ~0.32+);
+      // `as` cast bypasses excess-property check at the
+      // literal-passing boundary. Runtime API forwards the
+      // parameter; thinking blocks in response are naturally
+      // skipped by extractTextFromResponse (consumes only
+      // type === "text" blocks). SDK upgrade to v0.32+ for
+      // canonical typed surface is v0.8+ candidate.
       response = await anthropic.messages.create({
         model: GENERATION_MODEL,
         max_tokens: GENERATION_MAX_TOKENS,
         messages: [{ role: "user", content: fullPrompt }],
-      });
+        thinking: { type: "enabled", budget_tokens: 32_000 },
+      } as Anthropic.Messages.MessageCreateParamsNonStreaming);
     } catch (err) {
       throw mapAnthropicError(err);
     }
