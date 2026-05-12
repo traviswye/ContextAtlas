@@ -47,41 +47,86 @@ config), this skill:
    `contextatlas init` before retrying.
 
    **DO NOT** improvise an extraction prompt from training-data
-   familiarity. **DO NOT** invoke the legacy `contextatlas
-   show-prompt` CLI subcommand (deprecated at v0.7 Step 2.3.a.0 per
-   FO-12 / FO-13 substrate-evolution lock; retained as
-   backward-compat path through v0.8+ but Skills must use Read tool
-   against the artifact for substrate-consistency).
+   familiarity. The legacy `contextatlas show-prompt` CLI subcommand
+   was removed entirely at v0.7 Step 2.3.b.0 — there is no
+   alternative path. Use Read tool against the artifact.
 
 3. **Validates** the JSON claims structure against the schema
    (claims array; each claim has `symbol_candidates` + `claim` +
    `severity` + `rationale` + `excerpt`).
 4. **Persists** validated claims to `.contextatlas/atlas.json` in
-   atlas schema v1.4 shape: claims include the raw
-   `symbol_candidates` array from extraction reasoning AND a
-   placeholder empty `symbol_ids: []` array (resolved in the next
-   step). The `symbols[]` top-level array is also left empty at
-   this point — the LSP walk happens in step 5.
-5. **Bridges to LSP** by invoking `contextatlas resolve-symbols`
-   via Bash. This CLI subcommand spawns LSP adapters for each
-   configured language, walks the codebase, builds a symbol
-   inventory, resolves each claim's `symbol_candidates` into
-   canonical `symbol_ids` via R8 name-form normalization (handles
-   bare names, file-path-symbol form `path/file.ext:Symbol`, and
-   Python dotted notation `module.path.Symbol`), and writes the
-   enriched atlas back atomically. Cost: zero API calls (local LSP
-   subprocess only). The post-step-5 atlas substantively matches
-   the CLI-path atlas at the substrate-consistency layer.
+   the canonical AtlasFileV1 v1.4 shape (see "Canonical atlas
+   schema" section below for the exact shape — your output MUST
+   match this structure).
+5. **Validates the written atlas** by invoking `contextatlas
+   validate-atlas` via Bash (MANDATORY GATE — see workflow steps).
+6. **Bridges to LSP** by invoking `contextatlas resolve-symbols`
+   via Bash (MANDATORY — atlas is incomplete without this step).
+7. **Verifies the final atlas** by invoking `contextatlas doctor`
+   via Bash and reporting the output to the user (MANDATORY).
 
-   **Substantive bash invocation rationale:** unlike the deprecated
-   `contextatlas show-prompt` (static content load; replaceable by
-   Read tool against the artifact per Step 2.3.a.0), the
-   `resolve-symbols` invocation is necessary subprocess interaction
-   — LSP servers are inherently dynamic processes and cannot be
-   substituted by file reads. The `Bash(contextatlas:*)` allowlist
-   that cohort users already added at Skill setup covers this
-   invocation. v0.7 Step 2.3.a.1 substrate-evolution lock per
-   Travis Decision-3-α framing.
+## Canonical atlas schema (v1.4) — your output MUST match this
+
+The atlas.json you write at workflow step 4 MUST conform exactly to
+this shape. Mimic the structure below; the `contextatlas
+validate-atlas` mandatory gate (step 5) will reject any deviation
+with specific remediation, and the workflow cannot proceed until
+the atlas validates.
+
+```json
+{
+  "version": "1.4",
+  "generated_at": "2026-05-11T20:00:00.000Z",
+  "generator": {
+    "contextatlas_version": "0.7.0",
+    "extraction_model": "claude-opus-4-7"
+  },
+  "source_shas": {
+    "docs/adr/ADR-01-name.md": "abc123def456...",
+    "docs/adr/ADR-02-other.md": "789def012abc..."
+  },
+  "symbols": [],
+  "claims": [
+    {
+      "source": "adr:ADR-01-name.md",
+      "source_path": "docs/adr/ADR-01-name.md",
+      "source_sha": "abc123def456...",
+      "severity": "hard",
+      "claim": "Brief architectural claim about the symbol(s)",
+      "rationale": "Why this claim matters architecturally",
+      "excerpt": "Direct quote from the source document",
+      "symbol_ids": [],
+      "symbol_candidates": ["SymbolName1", "SymbolName2"]
+    }
+  ]
+}
+```
+
+### Schema invariants (MANDATORY)
+
+- Top-level fields exactly: `version`, `generated_at`, `generator`,
+  `source_shas`, `symbols`, `claims`. Nothing else. Do NOT add
+  `cost_usd`, `cost_model`, `repo`, `sources`, or any other
+  top-level field.
+- `version`: the string `"1.4"`. Not `"1"`. Not `"1.3"` (deprecated
+  for new writes).
+- `generator`: a structured object with `contextatlas_version` +
+  `extraction_model` string fields. NOT a free-form string like
+  `"contextatlas/index-atlas skill"`.
+- `claims`: a flat top-level array. Each claim is one object with
+  ALL the fields shown above. Do NOT nest claims inside a
+  `sources: [{ claims: [...] }]` structure — the canonical schema
+  has claims at the top level and records each claim's source via
+  the per-claim `source` + `source_path` + `source_sha` fields.
+- `symbols`: empty array at the time you write the atlas. The
+  `contextatlas resolve-symbols` step 6 populates it via LSP walk.
+- `claims[].symbol_ids`: empty array at the time you write the
+  atlas. Step 6 populates it.
+- `claims[].symbol_candidates`: the raw symbol names you extracted
+  from the source document text. Step 6 resolves them into the
+  canonical `symbol_ids` array.
+- `severity`: one of exactly `"hard"`, `"soft"`, `"context"`. No
+  other values.
 
 ## How extraction works
 
@@ -98,48 +143,68 @@ For each source document:
 2. Mentally concatenate `EXTRACTION_PROMPT + documentBody +
    "\n---\n"`. The `EXTRACTION_PROMPT` value was loaded once at the
    start of the skill from `.contextatlas/prompts/extraction.md`.
-3. Reason through the document content; produce a JSON output
-   matching the schema:
-
-   ```json
-   {
-     "claims": [
-       {
-         "symbol_candidates": ["SymbolName1", "SymbolName2"],
-         "claim": "Brief architectural claim about the symbol(s)",
-         "severity": "hard|soft|context",
-         "rationale": "Why this claim matters architecturally",
-         "excerpt": "Direct quote from the source document"
-       }
-     ]
-   }
-   ```
-
-   **RESPOND WITH THE JSON LITERAL DIRECTLY.** Do NOT write a
-   Python/JS/shell script to generate `atlas.json` by encoding the
-   claims as data literals. Reason through each document; produce
-   the JSON as your direct textual response; then proceed to step 4
-   for persistence. Script-based encoding (observed at v0.7 Step
-   2.3 Checkpoint 2 as FO-13 substrate divergence) is substantively
-   non-equivalent to the canonical Skill workflow and is
-   explicitly disallowed.
-
+3. Reason through the document content; produce JSON claims
+   matching the per-claim schema shown in "Canonical atlas schema"
+   above. **RESPOND WITH THE JSON LITERAL DIRECTLY.** Do NOT write
+   a Python/JS/shell script to generate `atlas.json` by encoding
+   the claims as data literals. Reason through each document;
+   produce the JSON as your direct textual response.
 4. Validate the JSON parses + each claim has all required fields.
    Drop malformed claims (log warning); don't fail the whole run.
-5. Persist validated claims to `.contextatlas/atlas.json` using
-   the Write tool. Schema v1.4 shape: each claim carries the raw
-   `symbol_candidates` array from extraction reasoning plus a
-   placeholder empty `symbol_ids: []` (resolved in step 6).
-   `symbols[]` top-level is also empty at this point. (SQLite
-   `.contextatlas/index.db` persistence is the CLI path's
-   responsibility; Skills write JSON-only at v0.7.)
-6. Invoke `contextatlas resolve-symbols` via Bash to enrich the
-   atlas with LSP-resolved symbol IDs. The CLI spawns LSP adapters,
-   walks the codebase, resolves each claim's `symbol_candidates`
-   into canonical `symbol_ids` via R8 name-form normalization, and
-   writes the enriched atlas back atomically. Zero API cost (local
-   LSP only). Report stdout output verbatim to the user — it
-   surfaces the resolved-claim count + unresolved-candidate count.
+5. Persist the full atlas to `.contextatlas/atlas.json` using the
+   Write tool, conforming exactly to the canonical schema above.
+   Compute SHA-256 hashes of each source document and populate
+   `source_shas`. Each claim's `source_sha` field must match the
+   corresponding hash in `source_shas` for that source file. Leave
+   `symbols: []` and each `claims[].symbol_ids: []` empty.
+
+### MANDATORY GATES (workflow steps 5b-7)
+
+**Step 5b — MANDATORY validate-atlas gate.** After writing
+atlas.json (step 5), invoke `contextatlas validate-atlas` via
+Bash. If the exit code is NON-ZERO, the atlas does NOT conform to
+the canonical schema. Read the stderr output (contains specific
+remediation for each failing invariant); fix the atlas.json
+shape; re-invoke `contextatlas validate-atlas`. DO NOT proceed to
+step 6 until `contextatlas validate-atlas` exits 0.
+
+**Step 6 — MANDATORY resolve-symbols invocation.** After
+validate-atlas exits 0, invoke `contextatlas resolve-symbols` via
+Bash. This CLI subcommand spawns LSP adapters, walks the codebase,
+resolves each claim's `symbol_candidates` into canonical
+`symbol_ids` via R8 name-form normalization, and writes the
+enriched atlas back atomically. **The atlas is INCOMPLETE without
+this step** — `symbols[]` remains empty and `claims[].symbol_ids`
+stays unpopulated; downstream MCP query tools (get_symbol_context,
+find_by_intent, impact_of_change) cannot operate without resolved
+symbols. Report stdout output verbatim to the user — it surfaces
+the resolved-claim count + unresolved-candidate count. Zero API
+cost (local LSP subprocess only).
+
+**Step 7 — MANDATORY doctor verification.** After resolve-symbols
+completes, invoke `contextatlas doctor` via Bash and report the
+output to the user. Specifically verify that:
+- `atlas.has_symbols` reports PASS with a non-zero symbol count
+- `atlas.has_claims` reports PASS with a non-zero claim count
+- `atlas.schema_version_compatible` reports PASS
+
+If `atlas.has_symbols` is FAIL, the workflow did NOT complete
+successfully — go back and identify which step (resolve-symbols
+likely) was skipped or failed; do not report success to the user
+until doctor confirms the atlas substrate is canonical.
+
+### Substantive bash invocation rationale
+
+The three Bash invocations (`validate-atlas`, `resolve-symbols`,
+`doctor`) are necessary subprocess interaction — the CLI
+subcommands run schema validation against TypeScript types, spawn
+LSP adapters, and inspect filesystem state, none of which Read
+tool can substitute. The `Bash(contextatlas:*)` allowlist covers
+all three. Unlike the deprecated `show-prompt` / `show-generate-
+prompt` subcommands (static content; removed at v0.7 Step 2.3.b.0
+per Travis foundational substrate-consistency framing), these
+invocations are load-bearing for cross-path substrate equivalence
+with the CLI extraction path.
 
 ## Cost model
 
@@ -156,20 +221,26 @@ This skill uses Claude Code session tools to perform extraction:
 - **Read** for the canonical extraction prompt artifact
   (`.contextatlas/prompts/extraction.md`) + source document content
 - **Write** for `.contextatlas/atlas.json` persistence (claims-only
-  stub state)
-- **Bash** for two purposes:
+  stub state in canonical AtlasFileV1 v1.4 shape per "Canonical
+  atlas schema" section above)
+- **Bash** for:
   - Listing source documents (find / ls / glob for ADR / docstring /
     commit-message discovery)
-  - **Final workflow step:** invoking `contextatlas resolve-symbols`
-    to bridge the claims-only atlas to a full-fidelity atlas with
-    LSP-resolved symbol IDs (necessary subprocess interaction per
-    v0.7 Step 2.3.a.1 substrate-evolution lock). Bash invocation of
-    legacy `contextatlas show-prompt` is deprecated; use Read tool
-    against the artifact instead.
+  - Computing SHA-256 hashes of source documents (`sha256sum`) for
+    populating `source_shas` + `claims[].source_sha` fields
+  - **MANDATORY workflow gate (step 5b)**: invoking `contextatlas
+    validate-atlas` to verify the atlas conforms to canonical schema
+    before resolve-symbols. Non-zero exit code MUST trigger fix +
+    re-validate loop; workflow blocks until atlas validates.
+  - **MANDATORY workflow step 6**: invoking `contextatlas
+    resolve-symbols` to bridge claims-only atlas to full-fidelity
+    atlas with LSP-resolved symbol IDs. Atlas is INCOMPLETE without
+    this step.
+  - **MANDATORY workflow step 7**: invoking `contextatlas doctor`
+    to verify final atlas substrate is canonical (atlas.has_symbols
+    PASS).
 
 Bundled helper scripts deferred to v0.8+ per v0.7 ship scope.
-SKILL.md instructs Claude how to use Read/Write/Bash tools to
-perform work without bundled helper scripts at v0.7.
 
 ## Failure modes
 
@@ -177,13 +248,26 @@ perform work without bundled helper scripts at v0.7.
   run `contextatlas init` in this repo (or init failed to copy
   artifacts). Surface remediation: instruct user to run
   `contextatlas init` and retry. Do NOT improvise the prompt.
+- **`contextatlas validate-atlas` exits non-zero (workflow step 5b
+  gate)**: read stderr carefully — it contains specific remediation
+  for each failing schema invariant (e.g., "Top-level `generator`
+  must be an object", "Top-level `claims` field missing — but a
+  non-canonical `sources` array was found instead"). Apply each
+  remediation; re-write the atlas.json; re-invoke
+  `contextatlas validate-atlas`. DO NOT proceed to step 6 until
+  validate-atlas exits 0.
 - **`contextatlas resolve-symbols` exits non-zero**: surface stderr
   output to user with remediation guidance. Common cases: LSP
   adapter init failed (peer dependencies missing — `npm install`
-  contextatlas peer deps); atlas malformed (re-run /index-atlas to
-  rewrite); config invalid (run `contextatlas doctor` to diagnose).
-  Atlas remains in claims-only stub state; user can re-invoke
-  `contextatlas resolve-symbols` manually after fixing the issue.
+  contextatlas peer deps); atlas malformed (re-validate via
+  validate-atlas); config invalid (run `contextatlas doctor` to
+  diagnose). User can re-invoke `contextatlas resolve-symbols`
+  manually after fixing the issue.
+- **`contextatlas doctor` reports `atlas.has_symbols` FAIL (workflow
+  step 7 verification)**: resolve-symbols was likely skipped or
+  failed silently. Go back to step 6 and re-invoke. Do NOT report
+  Skill workflow success to the user while atlas.has_symbols
+  reports FAIL.
 - **Source document missing**: log warning; skip the document; continue.
 - **Malformed JSON output**: log warning with first 200 chars of
   output; skip the document; continue.

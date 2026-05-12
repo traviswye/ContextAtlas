@@ -54,11 +54,9 @@ INPUT (not direct extraction substrate).
    the user to run `contextatlas init` before retrying.
 
    **DO NOT** improvise the generate-adrs prompt from training-data
-   familiarity. **DO NOT** invoke the legacy `contextatlas
-   show-generate-prompt` CLI subcommand (deprecated at v0.7 Step
-   2.3.a.0 per FO-12 / FO-13 substrate-evolution lock; retained as
-   backward-compat path through v0.8+ but Skills must use Read tool
-   against the artifact for substrate-consistency).
+   familiarity. The legacy `contextatlas show-generate-prompt` CLI
+   subcommand was removed entirely at v0.7 Step 2.3.b.0 — there is
+   no alternative path. Use Read tool against the artifact.
 
 4. **Concatenate** prompt + codebase inventory + reference context
    (if provided) → reason through the input → produce JSON output
@@ -149,9 +147,10 @@ This skill uses Claude Code session tools to perform generation:
   + reference-context content
 - **Write** for ADR file persistence at `docs/adr/`
 - **Bash** for listing files (find / ls / glob for source +
-  reference-context discovery). Bash invocation of legacy
-  `contextatlas show-generate-prompt` is deprecated; use Read tool
-  against the artifact instead.
+  reference-context discovery). The legacy
+  `contextatlas show-generate-prompt` CLI subcommand was removed
+  at v0.7 Step 2.3.b.0; the canonical prompt is only available via
+  Read tool against the artifact.
 
 Bundled helper scripts deferred to v0.8+ per v0.7 ship scope.
 

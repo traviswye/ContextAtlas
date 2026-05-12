@@ -101,10 +101,9 @@ export type Subcommand =
   | "index"
   | "doctor"
   | "init"
-  | "show-prompt"
   | "generate-adrs"
-  | "show-generate-prompt"
-  | "resolve-symbols";
+  | "resolve-symbols"
+  | "validate-atlas";
 
 export interface ParsedArgs {
   /**
@@ -222,10 +221,9 @@ export const KNOWN_SUBCOMMANDS: readonly Subcommand[] = [
   "index",
   "doctor",
   "init",
-  "show-prompt",
   "generate-adrs",
-  "show-generate-prompt",
   "resolve-symbols",
+  "validate-atlas",
 ];
 
 /**
@@ -257,8 +255,7 @@ Subcommands:
   index                 Extract architectural claims into atlas (requires ANTHROPIC_API_KEY)
   generate-adrs         Generate ADRs from codebase (requires ANTHROPIC_API_KEY; one-time-per-repo)
   resolve-symbols       Enrich Skill-produced atlas with LSP-resolved symbol IDs (no API key needed)
-  show-prompt           Output canonical EXTRACTION_PROMPT (Path-γ Skills integration; deprecated v0.7+)
-  show-generate-prompt  Output canonical GENERATE_ADRS_PROMPT (Path-γ Skills integration; deprecated v0.7+)
+  validate-atlas        Validate atlas.json against canonical schema (no API key needed)
 
 Global options:
   --version             Show version + exit

@@ -39,9 +39,8 @@ import { loadConfig } from "./config/parser.js";
 import { runDoctorSubcommand } from "./doctor/runner.js";
 import { runResolveSymbolsSubcommand } from "./extraction/cli-resolve-symbols.js";
 import { runIndexSubcommand } from "./extraction/cli-runner.js";
-import { runShowPromptSubcommand } from "./extraction/cli-show-prompt.js";
+import { runValidateAtlasSubcommand } from "./extraction/cli-validate-atlas.js";
 import { runGenerateAdrsSubcommand } from "./generation/cli-runner.js";
-import { runShowGeneratePromptSubcommand } from "./generation/cli-show-generate-prompt.js";
 import { runInitSubcommand } from "./init/runner.js";
 import { log } from "./mcp/logger.js";
 import { createServer } from "./mcp/server.js";
@@ -94,22 +93,29 @@ export async function main(): Promise<void> {
   // exit-code contract. Dispatch runs before config load so
   // subcommand-specific config-error semantics stay owned by
   // subcommand code.
-  // v0.7 Step 1.4b — show-prompt subcommand outputs canonical
-  // EXTRACTION_PROMPT (Path-γ Skills mechanism prompt loading per
-  // ADR-02 v0.7 amendment + Q1.0.2 sub-shape lock). Dispatch
-  // before config load: subcommand is read-only + idempotent;
-  // no config + no adapter setup needed.
-  if (subcommand === "show-prompt") {
-    const result = runShowPromptSubcommand();
-    process.exit(result.exitCode);
-  }
+  // v0.7 Step 2.3.b.0 — show-prompt + show-generate-prompt CLI
+  // subcommands removed entirely per Travis β-bounded Lock 1.
+  // Skills consume canonical prompts via Read tool against
+  // `.contextatlas/prompts/extraction.md` +
+  // `.contextatlas/prompts/generate-adrs.md` artifacts (init-
+  // copied from the installed package at Step 2.3.a.0).
+  // Empirical evidence at Step 2.3 re-verification showed agents
+  // chose Bash injection of the deprecated subcommand even when
+  // SKILL.md instructed Read tool; hard removal eliminates the
+  // alternative path. R4 manifestation triage per Travis
+  // foundational-substrate-consistency framing.
 
-  // v0.7 Step 2.2.a.1 — show-generate-prompt subcommand outputs
-  // canonical GENERATE_ADRS_PROMPT (Path-γ Skills mechanism prompt
-  // loading; mirrors show-prompt at the generation surface).
-  // Read-only + idempotent; no config / adapter setup needed.
-  if (subcommand === "show-generate-prompt") {
-    const result = runShowGeneratePromptSubcommand();
+  // v0.7 Step 2.3.b.0 — validate-atlas subcommand. β-bounded
+  // mechanical schema validation at CLI boundary per Travis Lock 1.
+  // Reads atlas.json; validates canonical AtlasFileV1 v1.4 shape;
+  // structured remediation guidance to stderr on failure (exit 2);
+  // exit 0 on success. Used as MANDATORY GATE in /index-atlas Skill
+  // workflow between atlas write + resolve-symbols invocation.
+  if (subcommand === "validate-atlas") {
+    const result = await runValidateAtlasSubcommand({
+      configRoot,
+      configFile: configFileArg,
+    });
     process.exit(result.exitCode);
   }
 

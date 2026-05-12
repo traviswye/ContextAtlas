@@ -460,11 +460,29 @@ lock).
     invocation instruction (substantively distinct bash use
     category from removed Path-γ prompt-load bash per Travis
     Decision-3-α lock rationale).
+  - [x] **Step 2.3.b.0** — β-bounded mechanical-enforcement
+    substrate per Travis Decision-3-α + Lock 1 (after empirical R4
+    manifestation at Step 2.3 Checkpoint 2/3 surfaced D4' atlas
+    schema fidelity divergence + persistent legacy bash invocation
+    + resolve-symbols skip). Shipped 2026-05-11; commit `[this
+    commit]`. Hard removal of deprecated `show-prompt` +
+    `show-generate-prompt` CLI subcommands (no backward-compat).
+    New `contextatlas validate-atlas` CLI subcommand validates
+    atlas.json against canonical AtlasFileV1 v1.4 schema at the
+    CLI boundary; structured remediation stderr on failure.
+    SKILL.md `/index-atlas` amended with canonical atlas schema
+    example embedded inline + MANDATORY workflow gates (Step 5b
+    validate-atlas → Step 6 resolve-symbols → Step 7 doctor).
+    CLAUDE.md + ADR-02 amendments document β-bounded substrate-
+    evolution rationale. Escalation contingency to β-full (Skill-
+    as-MCP-orchestrator) preserved if mandatory gates still
+    substantively skipped per LOCK 3.
   - [ ] **Step 2.3 closure** — re-verification at rich-skill/
-    Claude Code session (Checkpoint 2 + 3 per LOCK 5 4-checkpoint
-    cadence: reset rich-skill/ state → `/generate-adrs` Skill →
-    `/index-atlas` Skill → 8-axis re-verification with Axis 3b
-    Symbol resolution PASS + Axis 8 Spec adherence PASS).
+    Claude Code session post-Step-2.3.b.0 (Checkpoint 2 + 3 per
+    LOCK 5 4-checkpoint cadence: reset rich-skill/ state →
+    `/generate-adrs` Skill → `/index-atlas` Skill with mandatory
+    gates → 8-axis re-verification with Axis 3b Symbol resolution
+    PASS + Axis 8 Spec adherence PASS).
 - [ ] **Step 2.4** — CLI-vs-Skill generate-adrs equivalence
   verification (NEW substep per Path 1 scope expansion;
   parallels Q2.0.X protocol applied to generation feature).
@@ -618,6 +636,103 @@ timeline; not blocking).
 ## Progress log
 
 *Entries added in reverse-chronological order as steps ship.*
+
+### Step 2.3.b.0 shipped — 2026-05-11 (β-bounded mechanical-enforcement substrate per Travis Decision-3-α + Lock 1 after empirical R4 manifestation at Step 2.3 Checkpoint 2/3: hard removal of deprecated show-prompt + show-generate-prompt CLI subcommands; new contextatlas validate-atlas CLI subcommand with canonical AtlasFileV1 v1.4 schema validation at CLI boundary; SKILL.md /index-atlas canonical atlas example embedded inline + MANDATORY workflow gates Step 5b validate-atlas → Step 6 resolve-symbols → Step 7 doctor; ADR-02 + CLAUDE.md β-bounded substrate-evolution amendments; escalation contingency to β-full preserved per Lock 3)
+
+V0.7 Step 2.3.b.0 ships the β-bounded mechanical-enforcement substrate response to empirical R4 manifestation observed at Step 2.3 Checkpoint 2/3 re-verification. Driver: Travis foundational substrate-consistency framing ("It's unacceptable for CLI and CC to have different foundationally even if a model doesn't give word for word 1:1 atlas back between the two") substantively requires mechanical enforcement of canonical schema + workflow ordering at the CLI boundary, not text-only SKILL.md spec compliance. Empirical evidence at Step 2.3 re-verification: agents continued invoking deprecated `show-prompt` / `show-generate-prompt` CLI subcommands despite Step 2.3.a.0 SKILL.md Read-tool instructions AND invented non-canonical atlas schemas (`"version": "1"` + `sources` nesting + custom `cost_usd`/`cost_model`/`repo` top-level fields) AND skipped the mandatory `resolve-symbols` invocation entirely. R4 manifestation closer to Outcome C than Outcome B per LOCK 5 contingency framing.
+
+| Substep | branch | commit | Notes |
+|---|---|---|---|
+| 2.3.b.0 β-bounded mechanical enforcement | main | [this commit] | Hard removal of show-prompt + show-generate-prompt CLI subcommands (no backward-compat); new `contextatlas validate-atlas` CLI subcommand validates atlas.json against canonical AtlasFileV1 v1.4 with specific remediation for empirical D4' divergences (version mismatch + non-canonical sources nesting + missing/wrong generator + invented top-level fields + invalid claims); SKILL.md `/index-atlas` canonical atlas schema example embedded inline + MANDATORY workflow gates (Step 5b validate-atlas → Step 6 resolve-symbols → Step 7 doctor); SKILL.md `/generate-adrs` Read-tool-only path framing; CLAUDE.md frozen-prompt invariant scope extension; ADR-02 comprehensive β-bounded substrate-evolution amendment with escalation contingency to β-full preserved per Lock 3 |
+
+#### Engineering deliverables
+
+**New files (2):**
+- `src/extraction/cli-validate-atlas.ts` (~260 LOC) — `runValidateAtlasSubcommand` orchestrator with `validateAtlasShape` validator; covers all empirical D4' divergences with specific remediation guidance per failure mode
+- `src/extraction/cli-validate-atlas.test.ts` (~245 LOC; 20 tests) — canonical PASS + v1.3 backward-compat + every specific failure mode (version + generator + sources nesting + missing keys + claim shape + non-canonical top-level fields + invalid root type + remediation guidance verification)
+
+**Deleted files (4):**
+- `src/extraction/cli-show-prompt.ts` (removed entirely)
+- `src/extraction/cli-show-prompt.test.ts` (removed entirely)
+- `src/generation/cli-show-generate-prompt.ts` (removed entirely)
+- `src/generation/cli-show-generate-prompt.test.ts` (removed entirely)
+
+**Modified files (7):**
+- `src/cli-args.ts` — Subcommand union + KNOWN_SUBCOMMANDS + HELP_TEXT: removed `show-prompt` / `show-generate-prompt`; added `validate-atlas`
+- `src/index.ts` — dispatch wiring for `validate-atlas`; removed dispatch for both deprecated subcommands; updated comment block to document Step 2.3.b.0 hard removal rationale
+- `src/cli-args.test.ts` — replaced "show-generate-prompt recognition" tests with "removed CLI subcommands (regression confirms removal)" + "validate-atlas subcommand recognition" tests
+- `.claude/skills/index-atlas/SKILL.md` — canonical atlas schema (v1.4) example section embedded; workflow rewritten with MANDATORY GATES sub-section (Step 5b validate-atlas + Step 6 resolve-symbols + Step 7 doctor); Tool usage + Failure modes sections updated
+- `.claude/skills/generate-adrs/SKILL.md` — deprecation references replaced with hard-removal framing
+- `CLAUDE.md` — frozen-prompt invariant scope clarification extended (legacy CLI removed; validate-atlas + mandatory gate framing)
+- `docs/adr/ADR-02-extraction-sole-api-caller.md` — comprehensive β-bounded amendment (~135 LOC) covering empirical driver + permitted-modules extension + mandatory workflow gates + canonical schema embed + escalation contingency
+
+**Substantively bounded scope:** ~700 LOC engineering + ~280 LOC tests across 13 files. Within dev pre-implementation estimate (~250-400 LOC + ~80 LOC tests at lower bound; ~700 LOC at upper bound consistent with Step 2.3.a.0/a.1 substrate-evolution-substep over-estimate pattern composing with 14th-class observation).
+
+#### Verification outcomes
+
+- `npm test` full suite: **1504 tests / 84 files / all PASS** (up from 1491/85 — note: 84 files because 2 deprecated test files removed + 0 new test files but cli-args.test.ts expanded with regression-confirms-removal tests; net +13 tests over Step 2.3.a.1 baseline)
+- 20 new validate-atlas tests / all PASS
+- `npm run build`: clean (prompt artifacts regenerated)
+- Production binary smoke tests:
+  - `node dist/index.js --help` surfaces `validate-atlas` subcommand
+  - `node dist/index.js show-prompt` → "Unknown subcommand 'show-prompt'" (regression confirms hard removal)
+  - `node dist/index.js show-generate-prompt` → "Unknown subcommand 'show-generate-prompt'" (regression confirms hard removal)
+- Typecheck: clean
+
+#### Substantive R4 contingency framing per LOCK 5
+
+Empirical re-verification post-Step-2.3.b.0 at rich-skill/ Claude Code session will determine which contingency applies:
+
+| Outcome | Indicators | Path forward |
+|---|---|---|
+| **A — β-bounded binds** | Read tool used for prompt-load; canonical atlas schema; validate-atlas exits 0 first try OR after agent self-correction loop; resolve-symbols invoked; doctor atlas.has_symbols PASS | Step 2.3 closes; 8-axis re-verification PASS path; v0.7 cycle continues to Step 2.4 |
+| **B — β-bounded partial** | Some mandatory gates fire; others substantively skipped OR partial divergence persists | Narrower Step 2.3.b.1 iteration (targeted at specific gap; bounded engineering) |
+| **C — β-bounded fails** | Mandatory gates substantively skipped despite hard removal of alternatives + canonical schema embed + mandatory framing | Escalation to β-full (Skill-as-MCP-orchestrator at v0.7) per Lock 3; ~5-10 additional cycle days; Travis Lock 2 no-wall-clock-ceiling absorbs |
+
+#### Substantive empirical evidence informing β-bounded over text-only options α/δ
+
+Per dev surface drill-down + Travis triangulation discipline at Step 2.3 disposition surface, β-bounded mechanical enforcement was substantively chosen over text-only-tightening options α/δ on the basis of:
+
+1. **Empirical text-tightening diminishing returns**: Step 2.3.a substep cluster already tightened SKILL.md substantively (Read tool instructions + JSON-literal-direct discipline + end-of-Skill resolve-symbols instruction). Empirical evidence at Step 2.3 Checkpoint 2/3 showed cross-session variance pattern: text instructions don't bind agent behavior reliably across Claude Code sessions.
+
+2. **D4' atlas schema fidelity divergence not addressable by text alone**: agents invent canonical atlas shape because TypeScript types aren't readable runtime substrate for them. Embedding the canonical example INLINE in SKILL.md addresses this via concrete example (proven binding mechanism for agents); validate-atlas CLI provides mechanical enforcement of canonical shape regardless of agent compliance.
+
+3. **Cascade failure pattern**: text-only options address one symptom (e.g., legacy bash usage) but cascade divergences persist (schema invention + resolve-symbols skip). Mechanical CLI-boundary validation catches the entire cascade at one point.
+
+4. **Travis foundational substrate-consistency framing rules out Option γ walk-back**: honest-scope-acknowledgment with cohort manual fallback substantively undermines the foundational claim ContextAtlas is built on. β-bounded is the bounded-scope path that defends the substrate-consistency claim at v0.7 launch; β-full preserved as escalation if empirical re-verification shows β-bounded mandatory gates still substantively skipped.
+
+#### Class-15 framing composition (eighth instance worth direct capture)
+
+Substantive Travis-product-judgment-overrides-Claude-advisor-framing 8-instance pattern at v0.7 cycle:
+
+1. Travis catching 200k context window correction (Step 2.2.a.2)
+2. Empirical evidence refuting FO-6 thesis (Step 2.2.b.i Checkpoint 2)
+3. Dev catching 3-stage workflow oversight (Step 2.3 Checkpoint 1)
+4. Travis elevating Path-γ Read-tool refactor from v0.8+ to v0.7 (Step 2.3 Checkpoint 2)
+5. Travis elevating Divergence 3 (symbol resolution) from v0.8+ to v0.7 (Step 2.3 Checkpoint 2 disposition)
+6. Step 2.3.a substrate-evolution didn't bind agent behavior — R4 manifested at Step 2.3 Checkpoint 2/3 re-verification
+7. Dev surfacing D4' atlas schema fidelity divergence + cross-session variance pattern (Claude advisor under-weighted)
+8. Travis compare-surfaces-before-locking discipline at Step 2.3.b disposition — triangulated dev + Claude advisor + Travis judgment to surface β-bounded mechanical-enforcement path over text-only tightening (rules out Option γ walk-back per foundational substrate-consistency framing)
+
+Substantive pattern: substantive evidence-first cycle discipline substantively continues serving substantive launch readiness; substantive Travis-Claude-dev triangulation substantively required at substantive critical disposition surfaces.
+
+#### Cycle wall-clock impact (Travis Lock 2 no-ceiling preserved)
+
+V0.7 cycle: 25 commits post-push (Step 2.3.b.0 = 25th). Step 2.3 closure projected as 26th commit pending re-verification outcome. If Outcome C triggers escalation to β-full, additional ~5-10 cycle days; Travis Lock 2 foundational framing absorbs whatever scope substrate-consistency substantively requires.
+
+#### Step 2.3 closure substrate ready (pending re-verification)
+
+Per LOCK 5 4-checkpoint cadence, Travis-side re-verification at rich-skill/ Claude Code session ready post-push:
+- Step (a): re-publish global install (`npm install -g .`)
+- Step (b): reset rich-skill/ state (`docs/adr/` + `.contextatlas/`)
+- Step (c): re-init rich-skill/ (verifies prompt artifacts written + gitignore stamped)
+- Steps (d-e): fresh Claude Code session in rich-skill/ cwd; verify Opus 4.7; invoke `/generate-adrs`
+- 📍 Checkpoint 2 paste-back (tool-call trace observations + ADR sample + Read-vs-Bash for prompt-load)
+- Step (f): invoke `/index-atlas`
+- 📍 Checkpoint 3 paste-back (tool-call trace summary covering validate-atlas → resolve-symbols → doctor mandatory gates; atlas metadata; doctor output)
+- 8-axis re-verification with Axis 3b Symbol resolution + Axis 8 Spec adherence evolution
+
+---
 
 ### Step 2.3.a.1 shipped — 2026-05-11 (Approach D Skill→LSP resolve-symbols bridge: new `contextatlas resolve-symbols` CLI subcommand + R8 name-form normalization + R10 UX progress message + atlas schema v1.4 bump + SKILL.md end-of-Skill invocation instruction + ADR-02 comprehensive amendment covering Path-γ + Skill→CLI-resolve-symbols bridge; substantively closes substrate-consistency gap at v1.0 launch per Travis Decision-3-α lock; substep cluster 2.3.a complete; Step 2.3 closure substrate ready for Travis-side re-verification at rich-skill/)
 

@@ -464,3 +464,134 @@ historical record per v0.5 + v0.6 + v0.7 inheritance discipline.
   empirical implementation verified the bounded scope holds.
   Composes with 10-class enumeration → 11-class for v0.7+ ship-
   gate working-content-gap-inventory inheritance.
+
+- **2026-05-11** — v0.7 Step 2.3.b.0 β-bounded mechanical-
+  enforcement substrate amendment. Empirical re-verification at
+  Step 2.3 Checkpoint 2/3 post-Step-2.3.a substep cluster
+  surfaced that the SKILL.md text-tightening approach did NOT
+  bind agent behavior across Claude Code sessions: agents
+  continued invoking the deprecated `show-prompt` /
+  `show-generate-prompt` CLI subcommands (Step 2.3.a.0 substrate
+  unused) AND invented non-canonical atlas schemas (`"version":
+  "1"`, `sources` nesting, custom `cost_usd` / `cost_model`
+  top-level fields) AND skipped the mandatory `resolve-symbols`
+  invocation entirely (Step 2.3.a.1 substrate unused). R4
+  manifestation per LOCK 5 contingency framing — closer to
+  Outcome C than Outcome B.
+
+  **Driver:** Travis foundational substrate-consistency framing
+  ("It's unacceptable for CLI and CC to have different
+  foundationally even if a model doesn't give word for word 1:1
+  atlas back between the two") substantively requires mechanical
+  enforcement of canonical schema + workflow ordering at the
+  CLI boundary, not text-only SKILL.md spec compliance hope.
+
+  **Empirical insight:** SKILL.md is instructional substrate;
+  agents read instructions; agents decide whether to follow
+  them. Cross-session variance is substrate-evolution-stable.
+  Mechanical enforcement at CLI exit codes substantively binds
+  in ways text instructions do not.
+
+  **§permitted-modules invariant extension:**
+
+  Two changes:
+  - **REMOVED** the deprecated `contextatlas show-prompt` +
+    `contextatlas show-generate-prompt` CLI subcommands entirely.
+    No backward-compat path. Skills load canonical prompts only
+    via Read tool against `.contextatlas/prompts/*.md` artifacts
+    (init-copied at Step 2.3.a.0). Empirical evidence: when the
+    deprecated subcommand existed, agents chose it because Bash
+    was familiar pattern; removal eliminates the alternative.
+  - **ADDED** `contextatlas validate-atlas` CLI subcommand
+    (`src/extraction/cli-validate-atlas.ts`). Parses
+    `.contextatlas/atlas.json`; validates against canonical
+    AtlasFileV1 schema (currently v1.4); structured remediation
+    guidance to stderr on failure (exit 2); exit 0 on success.
+    Specific failure modes cover empirical D4' divergences:
+    version mismatch + missing/wrong generator + non-canonical
+    sources nesting + missing top-level keys + invalid claim
+    shape + non-canonical top-level fields (cost_usd, cost_model,
+    repo, sources).
+
+  **§Decision mandatory workflow gates extension:**
+
+  `/index-atlas` Skill workflow now has three mandatory CLI gates
+  (per SKILL.md "MANDATORY GATES" section):
+  - **Step 5b validate-atlas gate**: after atlas.json write,
+    Skill MUST invoke `contextatlas validate-atlas` and block on
+    non-zero exit. Specific remediation in stderr → fix atlas →
+    re-validate loop until exit 0.
+  - **Step 6 resolve-symbols invocation**: MANDATORY (atlas is
+    incomplete without LSP-resolved symbol IDs; downstream MCP
+    query tools cannot operate).
+  - **Step 7 doctor verification**: after resolve-symbols, Skill
+    MUST invoke `contextatlas doctor` and verify
+    `atlas.has_symbols` reports PASS before reporting workflow
+    success.
+
+  **Canonical schema embedded in SKILL.md:**
+
+  `/index-atlas/SKILL.md` now embeds a complete realistic
+  AtlasFileV1 v1.4 example with explicit schema invariants
+  (top-level fields exact list; per-claim field requirements;
+  severity enum constraints). Agents mimic by example rather
+  than inferring from type-reference; concrete examples bind
+  more reliably than abstract type references.
+
+  **§Consequences cohort install path:**
+
+  Cohort install path unchanged structurally at v1.0 (4 steps:
+  npm install + Skills copy + allowlist + init); the
+  `Bash(contextatlas:*)` allowlist substantively covers all
+  three mandatory gate invocations. Cost model unchanged:
+  subscription tokens for extraction reasoning + zero API for
+  validate-atlas + resolve-symbols + doctor.
+
+  **Substantive substrate-consistency claim defended via
+  mechanical enforcement (not text-instructional hope):**
+
+  Post-Step-2.3.b.0, the Skill path produces atlases that pass
+  `contextatlas validate-atlas` (schema canonical) AND complete
+  `contextatlas resolve-symbols` (symbols + symbol_ids populated)
+  AND pass `contextatlas doctor` atlas.has_symbols check.
+  Equivalent substrate to CLI extraction path at the feature
+  layer; text content may vary (model-output variance) but
+  schema + symbol resolution are mechanically guaranteed.
+
+  **Escalation contingency preserved:**
+
+  If empirical re-verification at rich-skill/ Claude Code session
+  shows mandatory gates still substantively skipped despite hard
+  removal of alternatives + mandatory framing, escalation path
+  to β-full (Skill-as-MCP-orchestrator architecture; agent
+  reasoning isolated; MCP tools enforce ordering by interface
+  contract) at v0.7 per Travis Lock 3 — no wall-clock or cost
+  ceiling per Travis Lock 2.
+
+  **Cross-references:**
+  - Step 2.3 Checkpoint 2/3 empirical evidence (R4
+    manifestation; D4' atlas schema fidelity divergence)
+  - Step 2.3.b.0 commit (this amendment + validate-atlas CLI
+    + deprecated CLI removal + SKILL.md mandatory gates +
+    canonical schema embed)
+  - CLAUDE.md frozen-prompt invariant scope clarification
+    (extended at this Step 2.3.b.0 amendment to cover removed
+    show-prompt/show-generate-prompt + validate-atlas mandatory
+    gate)
+  - `.claude/skills/index-atlas/SKILL.md` "Canonical atlas
+    schema (v1.4)" section + "MANDATORY GATES" section
+
+  Cycle-execution observation 12 (NEW): substantive empirical
+  evidence overruling text-only-tightening assumption at
+  substep-cluster maturity. Step 2.3.a substep cluster
+  substantively delivered engineering substrate (build artifacts
+  + init copy + resolve-symbols bridge + ADR-02 amendment);
+  Step 2.3 re-verification empirically refuted text-binding
+  hypothesis; Step 2.3.b.0 substep added mechanical-enforcement
+  layer that engineering text-instructions alone substantively
+  could not provide. Pattern: substrate-evolution at cycle
+  maturity benefits from empirical-evidence-driven iteration;
+  text-tightening returns diminish; mechanical enforcement at
+  CLI boundary is the load-bearing substrate. Composes with
+  11-class enumeration → 12-class for v0.7+ ship-gate working-
+  content-gap-inventory inheritance.

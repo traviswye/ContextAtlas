@@ -864,18 +864,11 @@ describe("--yes / --no-confirm flag (v0.7 Step 2.2.a.2 Lock 3 confirmation bypas
   });
 });
 
-describe("generate-adrs + show-generate-prompt subcommand recognition (Step 2.2.a.1)", () => {
+describe("generate-adrs subcommand recognition (Step 2.2.a.1)", () => {
   it("recognises 'generate-adrs' as a subcommand", () => {
     expect(parseArgs(["generate-adrs"])).toEqual({
       ...EMPTY,
       subcommand: "generate-adrs",
-    });
-  });
-
-  it("recognises 'show-generate-prompt' as a subcommand", () => {
-    expect(parseArgs(["show-generate-prompt"])).toEqual({
-      ...EMPTY,
-      subcommand: "show-generate-prompt",
     });
   });
 
@@ -884,6 +877,27 @@ describe("generate-adrs + show-generate-prompt subcommand recognition (Step 2.2.
       ...EMPTY,
       subcommand: "generate-adrs",
       budgetWarn: 10,
+    });
+  });
+});
+
+describe("removed CLI subcommands (v0.7 Step 2.3.b.0 hard removal)", () => {
+  it("'show-prompt' is NOT recognised (removed at Step 2.3.b.0)", () => {
+    expect(() => parseArgs(["show-prompt"])).toThrow(/Unknown subcommand/);
+  });
+
+  it("'show-generate-prompt' is NOT recognised (removed at Step 2.3.b.0)", () => {
+    expect(() => parseArgs(["show-generate-prompt"])).toThrow(
+      /Unknown subcommand/,
+    );
+  });
+});
+
+describe("validate-atlas subcommand recognition (v0.7 Step 2.3.b.0)", () => {
+  it("recognises 'validate-atlas' as a subcommand", () => {
+    expect(parseArgs(["validate-atlas"])).toEqual({
+      ...EMPTY,
+      subcommand: "validate-atlas",
     });
   });
 });

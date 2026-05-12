@@ -84,11 +84,24 @@ These are decisions already made. Do not relitigate them.
       canonical source. v0.7 supersedes the prior `!\`contextatlas
       show-prompt\`` bash-injection pattern (Path-γ-via-bash);
       Skills must use Read tool against the artifact for
-      substrate-consistency (script-improvisation observed at Step
-      2.3 Checkpoint 2 substantively non-equivalent to canonical
-      workflow). Legacy `contextatlas show-prompt` +
-      `contextatlas show-generate-prompt` CLI subcommands retained
-      as backward-compat through v0.8+.
+      substrate-consistency. Legacy `contextatlas show-prompt` +
+      `contextatlas show-generate-prompt` CLI subcommands were
+      **removed entirely** at v0.7 Step 2.3.b.0 (β-bounded
+      substrate-evolution per Travis foundational substrate-
+      consistency framing) — empirical evidence at Step 2.3
+      Checkpoint 2/3 showed agents continued invoking the
+      deprecated subcommands when they remained functional; hard
+      removal eliminates the alternative path. v0.7 Step 2.3.b.0
+      additionally added `contextatlas validate-atlas` CLI
+      subcommand as a MANDATORY workflow gate for `/index-atlas`
+      Skill — atlas.json shape is mechanically validated against
+      AtlasFileV1 v1.4 schema at the CLI boundary; non-canonical
+      atlases fail loudly with specific remediation; Skill workflow
+      blocks until atlas validates. Combined with mandatory
+      `contextatlas resolve-symbols` + `contextatlas doctor`
+      verification steps, the Skill path substantively enforces
+      cross-path substrate equivalence with the CLI extraction
+      path.
 
   The same scope clarification applies to `GENERATE_ADRS_PROMPT`
   (canonical at `src/generation/prompt.ts`; build-time artifact at
