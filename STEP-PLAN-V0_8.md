@@ -440,6 +440,49 @@ trigger per LOCK 1 cycle-discipline constraint.
 
 *Entries added in reverse-chronological order as substeps ship.*
 
+### Step 2.2 shipped — 2026-05-12 (A2 + A3 paired absorption — A2 absorbed-at-earlier-cycle + A3 Stage 5 symbol cleanup; Cluster 2 partial scope per empirical-validation-driven scope-narrowing)
+
+V0.8 Cluster 2 Step 2.2 substantively closes per Cluster 2 partial scope confirmation. Substantive cycle-pacing margin realized: original LOCK F envelope ~3-5 cycle days (A1+A2+A3 paired) compressed to refined ~1-1.5 cycle days (A1 Step 2.1 + A3 Step 2.2.b) per empirical-validation-driven scope-narrowing discipline at Step 2.2.a investigation surface.
+
+| Substep | branch | commit | Notes |
+|---|---|---|---|
+| 2.2.a | main | (no commit; investigation surface only) | A2 + A3 empirical reproduction per Option γ discipline; 4 tests at `src/storage/v0_8-a2-a3-investigation.test.ts` documenting v0.7+ baseline state — A2 NOT vulnerable + A3 SUBSTANTIVELY VULNERABLE (3-angle demonstration) |
+| 2.2.b | main | `31421ed` | A3 absorption ship commit — Stage 5 symbol cleanup via deleteSymbolsByPath; 252 insertions / 1 deletion; npm test 1537 / 86 all PASS |
+| 2.2.b-progress | main | (this commit) | STEP-PLAN-V0_8.md §3 Step 2.2 progress log entry per LOCK 1 Option α separate progress-log commit discipline |
+
+#### A2 disposition — ABSORBED AT EARLIER CYCLE
+
+Per Step 2.2.a empirical reproduction outcome: A2 stale-CLAIMS framing per research/v0.5-candidates.md #2 substantively NOT VULNERABLE at v0.7+ baseline. Absorbed via `deleteClaimsBySourcePath` at `extractDocstringsForFile` line 818 (v0.3 Stream B substrate per JSDoc). File-level claim wipe substantively wipes renamed-symbol stale claims at re-extraction surface.
+
+Carry-forward: mark A2 as ABSORBED AT EARLIER CYCLE in `research/v1.1-candidates.md` inline annotation at Cluster 5 / Step 5.2 backlog file rename per LOCK 2.
+
+#### A3 substantive scope (Step 2.2.b ship)
+
+- **Primary fix at `src/extraction/pipeline.ts` Stage 5** (~15 LOC): added `deleteSymbolsByPath(db, deletedPath)` alongside existing `deleteClaimsBySourcePath(db, deletedPath)` + source_shas delete. Substantive JSDoc explains A3 absorption + LOCK 2.a Stage 5 placement + LOCK 2.b retain discipline.
+- **Cascade behavior**: `deleteSymbolsByPath` (storage/symbols.ts:151-154) manual cascade wipes `claim_symbols` rows referencing deleted symbols; commit claims at source_path "commit:<sha>" SURVIVE Stage 5 (LOCK 2.b retain discipline) with `symbolIds = []` post-cascade (orphan-claim-shell; historical-narrative substrate preserved).
+- **Regression tests** at `src/storage/v0_8-a2-a3-investigation.test.ts` (converted from Step 2.2.a investigation per LOCK 3 Option γ): 4 tests covering A2 preservation regression + A3 post-fix-state at Stage 5 + selective cascade (multi-symbol claim with some symbols persisting) + idempotency (repeated deletion no-op).
+
+#### Locked-design vs empirical-bug-shape observation
+
+Q2.0.2.a Option α `(file_path, symbol_id)` composite key locked at v0.8 cycle pre-planning substantively **DOES NOT FIT** actually-vulnerable A3 scenario (A3 bug surface is at symbol-cleanup-at-Stage-5 layer, not claims-composite-key layer). Q2.0.2.b "claim-source-aware deletion sweep" closer fit but canonical fix lives at SYMBOL deletion + cascade layer (`deleteSymbolsByPath` already cascades correctly; just needed invocation at Stage 5). Locked design adjudication based on historical-substrate-framing did not match empirical-substrate-state at v0.7+ baseline. 10th Class-18 trajectory observation candidate per dev-empirical-engineering-judgment-surfacing-locked-design-vs-empirical-bug-shape-mismatch-pattern per advisor surfacing.
+
+#### Cohort impact framing (substantively absorbed at Cluster 5 / Step 5.2 per Q2.0.7 lock)
+
+Cohort users at v1.0 launch with deleted source files get clean atlas state — no orphan symbols persisting at deleted file paths; no orphan `claim_symbols` rows referencing them. Commit-message-extracted claims persist as historical-narrative substrate with empty `symbolIds` post-symbol-cleanup (LOCK 2.b retain discipline; commit-narrative substrate preserved beyond symbol lifecycle).
+
+#### Test baseline preservation
+
+`npm test`: 1537 tests / 86 files / all PASS (v0.7+A1 baseline 1533 + 4 new A3 regression tests = 1537 expected). Clean baseline preservation per CLAUDE.md src-changes-require-full-test canonical discipline.
+
+#### Cycle-execution observations
+
+- **Empirical-validation-driven scope-narrowing pattern** substantively demonstrated at Step 2.2 surface — Travis Option γ disposition path triggered substantive cycle-pacing margin (Cluster 2 wall-clock compression from ~3-5 cycle days to ~1-1.5 cycle days). Substantively meaningful cycle-discipline observation.
+- **Locked-design vs empirical-bug-shape mismatch** at Q2.0.2.a Option α composite key vs A3 actual bug shape (Stage 5 symbol cleanup). 10th Class-18 trajectory observation candidate per substrate-currency-discipline gap forward-pointer at substantive implementation surface.
+
+#### Next
+
+Cluster 2 substantively closes post-Step-2.2.b-progress commit. Cluster 3 /prime-atlas Skill substrate triggers next per Option γ ordering + main-repo sequential continuation. Parallel Step 1.1 dev-side engineering at benchmarks-repo (pre-flight + `scripts/v0.8-cell-screen.mjs` + unit tests) remains pending Travis trigger per prior Adjudication 6 disposition.
+
 ### Step 2.1 shipped — 2026-05-12 (A1 absorption — ParseError + classifier branch; carries-since-v0.4 user-trust pre-launch gate per LOCK 1 launch-readiness discipline)
 
 V0.8 Cluster 2 TERTIARY A1 absorption shipped per LOCK F substep ordering (A1 first → A2+A3 paired) + Q2.0.3.a Option α per-substep atomic ship discipline. Substantively the canonical A1 fix per research/v0.5-candidates.md #1 framing (v0.4 Step 5 httpx 24-error investigation root cause masked via classifyError catch-all conflating parse-vs-API failures; cohort users at v1.0 launch get substantively distinguishable error messages enabling self-diagnosis).
