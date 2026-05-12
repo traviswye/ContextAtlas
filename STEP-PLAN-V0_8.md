@@ -488,9 +488,34 @@ Q3.0.7 Option γ composite second component (manual empirical validation at cont
 - **LOC envelope discipline**: SKILL.md 215 LOC within ~200-300 envelope per LOCK B.4 + LOCK H (substantively bounded; substantively under upper bound; substantively distinct from prior LOC overrun pattern at scope-doc + ship-prep edits).
 - **Travis relaxed-cadence signal** at "trigger all three now" + "Push when ready" at Cluster 3 trigger surface → dev pragmatic adaptation: batched Step 3.1+3.2 progress log per single .X-progress commit vs strict LOCK 1 Option α per-substep .b-progress pattern. Substantively preserves cycle-narrative documentation discipline at substantively reduced commit count.
 
+#### Travis-side manual empirical validation outcome (2026-05-12; Q3.0.7 Option γ composite second component)
+
+Travis ran `/prime-atlas` in a fresh Claude Code session at C:\CodeWork\contextatlas. Outcome:
+- ✓ Read tool loaded `.contextatlas/atlas.json` (v1.4 at SHA `fe3ae7e`; 27 source SHAs tracked) + `.mcp.json` (contextatlas server entry present)
+- ✓ Picked sentinel symbol: `sym:ts:scripts/gopls-probe.ts:COBRA_ROOT` (first entry in atlas symbols[]; deterministic per Q3.0.2.a Option α)
+- ✓ Probed `get_symbol_context` via MCP — returned bundle (git + diagnostics signals)
+- ✓ Reported "MCP connected; atlas substrate aligned. Session ready."
+- ✓ Surfaced tools-introduction prompt per Q3.0.4 substantive substrate (3 MCP tools enumeration + when-to-use patterns + cohort UX awareness + ADR-02 query-time-no-API-calls invariant)
+- ✓ 2nd person voice register preserved at SKILL opening per Q3.0.6 Option α v0.7 SKILL.md precedent inheritance
+
+Substantively the canonical Skill behavior matches locked design — empirically validates Q3.0.7 Option γ composite (dev-side unit tests + Travis-side manual empirical validation BOTH components substantively complete). Partial absorption of `research/v0.8-candidates.md` item #5 (Skill cohort entry path empirical validation at contextatlas-on-itself dogfood substrate) substantively realized.
+
+#### Step 3.X Cluster 3 close
+
+Cluster 3 substantively closes. Substantive criteria satisfied:
+- Step 3.1 /prime-atlas SKILL.md substrate shipped (215 LOC at `.claude/skills/prime-atlas/SKILL.md`) ✓
+- Step 3.2 SKILL.md content unit tests shipped (31 tests at `src/init/prime-atlas-skill-content.test.ts`) ✓
+- Q3.0.7 Option γ composite both components empirically validated (dev-side unit tests + Travis-side manual empirical validation) ✓
+- Test baseline preserved (1568 / 87 all PASS at canonical baseline) ✓
+- /prime-atlas Skill cohort discoverability surface ready for v1.0 launch ✓
+
+Cohort impact framing: cohort users at v1.0 launch get per-session entry point Skill that empirically primes Claude Code session with ContextAtlas tools substrate. README.md cohort entry paths section + CLAUDE.md Current Version block absorb /prime-atlas reference per Q3.0.5.a Option γ composite documentation discipline at Cluster 5 / Step 5.2 cycle-doc updates substep.
+
+Cluster 3 wall-clock substantively bounded: ~1-1.5 cycle days actual (Step 3.0 design ~30 min + Step 3.1 SKILL.md substrate ~1 hour + Step 3.2 unit tests ~30 min + Travis-side empirical validation ~5 min) vs ~3-5 cycle days LOCK H envelope. Substantive cycle-pacing margin substantively similar to Cluster 2 empirical-validation-driven scope-narrowing pattern.
+
 #### Next
 
-Step 3.X cluster close substantively triggers post-Travis-side manual empirical validation paste-back per Q3.0.7 Option γ composite. Cluster 4 mechanical absorption (SDK upgrade ^0.27.0 → ^0.32.0 + FO-15 + FO-16) triggers post-Cluster-3-close per Option γ main-repo sequential continuation.
+Cluster 4 mechanical absorption (SDK upgrade ^0.27.0 → ^0.32.0 + FO-15 + FO-16) triggers next per Option γ main-repo sequential continuation. Parallel Step 1.1 dev-side benchmarks-repo engineering remains pending (per Adjudication 6 carry-forward; Travis discretion at relaxed-cadence signal preserved).
 
 ### Step 2.2 shipped — 2026-05-12 (A2 + A3 paired absorption — A2 absorbed-at-earlier-cycle + A3 Stage 5 symbol cleanup; Cluster 2 partial scope per empirical-validation-driven scope-narrowing)
 
