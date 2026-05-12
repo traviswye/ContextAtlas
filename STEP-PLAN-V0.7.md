@@ -477,12 +477,29 @@ lock).
     evolution rationale. Escalation contingency to β-full (Skill-
     as-MCP-orchestrator) preserved if mandatory gates still
     substantively skipped per LOCK 3.
-  - [ ] **Step 2.3 closure** — re-verification at rich-skill/
+  - [x] **Step 2.3 closure** — re-verification at rich-skill/
     Claude Code session post-Step-2.3.b.0 (Checkpoint 2 + 3 per
-    LOCK 5 4-checkpoint cadence: reset rich-skill/ state →
-    `/generate-adrs` Skill → `/index-atlas` Skill with mandatory
-    gates → 8-axis re-verification with Axis 3b Symbol resolution
-    PASS + Axis 8 Spec adherence PASS).
+    LOCK 5 4-checkpoint cadence) **PASS — Outcome A — β-bounded
+    substrate empirically binds end-to-end.** Shipped 2026-05-12;
+    commit `[this commit]`. 12 Skill ADRs / 57 claims / 2480
+    LSP-resolved symbols / 56-of-57 claim resolution / canonical
+    AtlasFileV1 v1.4 schema first-try (no self-correction loop) /
+    all 3 mandatory gates fired in sequence (validate-atlas EXIT 0
+    → resolve-symbols → doctor 24 PASS / 5 WARN / 0 FAIL with
+    atlas.has_symbols + atlas.has_claims +
+    atlas.schema_version_compatible all PASS). Substantive
+    foundational launch-narrative claim defended: CLI + Skill paths
+    produce substrate substantively equivalent at v1.0 across all 3
+    cohort entry surfaces verified at v0.7 cycle (Step 2.2.b.i CLI
+    cold-start + Step 2.2.b.ii CLI reference-context + Step 2.3
+    Skill cold-start). Substep cluster 2.3.a.0/a.1/b.0 substantively
+    absorbed FO-12 + FO-13 + R4 manifestation. Bounded observations
+    forward-carry to v0.8+: FO-14 Skills-substrate-currency-gap,
+    FO-15 contextatlas-version-string-invention, FO-16
+    generated-at-timestamp-invention. Substantive bonus empirical
+    signal: agent proactively invoked `validate-atlas --help` +
+    `resolve-symbols --help` + `doctor --help` BEFORE writing atlas
+    — deeper engagement with canonical workflow than prior runs.
 - [ ] **Step 2.4** — CLI-vs-Skill generate-adrs equivalence
   verification (NEW substep per Path 1 scope expansion;
   parallels Q2.0.X protocol applied to generation feature).
@@ -636,6 +653,116 @@ timeline; not blocking).
 ## Progress log
 
 *Entries added in reverse-chronological order as steps ship.*
+
+### Step 2.3 closure shipped — 2026-05-12 (β-bounded substrate empirical validation at rich-skill/ Claude Code session — Outcome A; all 3 mandatory gates fired in sequence first-try; full-fidelity atlas with LSP-resolved symbols; substantive launch-narrative claim defended across 3 cohort entry surfaces)
+
+V0.7 Step 2.3 closure substantively ships the empirical validation of β-bounded substrate at the load-bearing Skill workflow surface. Travis-side re-verification at rich-skill/ Claude Code session (Opus 4.7; fresh session post-rich-skill state reset + re-init + Skills re-copy) demonstrated all three mandatory gates firing in sequence with canonical schema bound on first attempt — no self-correction loop required at validate-atlas step.
+
+| Substep | branch | commit | Notes |
+|---|---|---|---|
+| 2.3 closure | main | [this commit] | β-bounded empirical validation PASS — Outcome A; substep cluster 2.3.a.0/a.1/b.0 substantively absorbs FO-12 + FO-13 + R4 manifestation; substantive launch-narrative claim defended across CLI cold-start + CLI reference-context + Skill cold-start cohort entry surfaces |
+
+#### Step 2.3 re-verification full tool-call trace (β-bounded empirical evidence)
+
+`/generate-adrs` Skill invocation (Checkpoint 2):
+1. Read tool against `.contextatlas/prompts/generate-adrs.md` (legacy bash subcommand REMOVED at Step 2.3.b.0; Read tool is the only path)
+2. Codebase exploration (~17 file reads against `rich/` source tree)
+3. 12 Write tool invocations writing canonical ADR-NN-slug.md frontmatter shape to `docs/adr/`
+4. Final summary table reported to user
+
+**No bash injection of legacy `show-generate-prompt`** (would have failed with "Unknown subcommand" per Step 2.3.b.0 hard removal). β-bounded substrate-currency mechanism empirically binding at /generate-adrs surface.
+
+`/index-atlas` Skill invocation (Checkpoint 3):
+1. Read tool against `.contextatlas/prompts/extraction.md`
+2. `Bash(which contextatlas && contextatlas --version)` — sanity check
+3. `Bash(sha256sum for each ADR)` — computing real SHA256 hashes for `source_shas` field
+4. **Bonus empirical signal:** `Bash(contextatlas validate-atlas --help; contextatlas resolve-symbols --help; contextatlas doctor --help)` — agent proactively investigated the 3 mandatory gate subcommands BEFORE writing atlas. Substantive deeper engagement with canonical workflow than prior runs (Step 2.3 Checkpoint 2/3 pre-β-bounded agent did NOT pre-check help text; just improvised). Hypothesis: SKILL.md MANDATORY GATES + canonical schema example embed substantively raised agent's mental model of the workflow from "I'll figure out the right thing" to "I'll follow the prescribed sequence + verify the tools first."
+5. `Write(.contextatlas\atlas.json)` — direct canonical AtlasFileV1 v1.4 write (NO Python script improvisation; D4' divergence absorbed via canonical example embed)
+6. `Bash(contextatlas validate-atlas)` → EXIT=0; "conforms to canonical AtlasFileV1 schema v1.4." — **GATE 5b PASS first try**
+7. `Bash(contextatlas resolve-symbols)` → 56/57 claims resolved + 2480 symbols enumerated across 213 source files — **GATE 6 PASS**
+8. `Bash(contextatlas doctor)` → 24 PASS / 5 WARN / 0 FAIL — **GATE 7 PASS** with atlas.has_symbols ✓ (2480) + atlas.has_claims ✓ (57) + atlas.schema_version_compatible ✓ (1.4)
+9. Agent reported summary table verbatim to user
+
+#### 8-axis re-verification table (Step 2.3 evolution)
+
+| Axis | Pre-β-bounded (R4 manifested) | Post-β-bounded (Step 2.3 closure) | Evolution |
+|---|---|---|---|
+| 1. ADR count similarity | PASS (12) | PASS (12) | unchanged |
+| 2. Topic coverage overlap | PASS | PASS | unchanged |
+| 3. Symbol-reference form in claim text | PASS | PASS | unchanged |
+| **3b. Symbol resolution (LSP-populated symbols[])** | **NON-EQUIVALENT** — `symbols: []`; resolve-symbols skipped | **PASS** — 2480 symbols; 56/57 claims resolved | **EVOLVED → PASS** |
+| 4. Session context budget | PASS | PASS | unchanged |
+| 5. Output structure | PASS | PASS | unchanged |
+| 6. Error handling | N/A | N/A | unchanged |
+| 7. Model identity Opus 4.7 | PASS | PASS | unchanged |
+| **8. Spec adherence (canonical schema + workflow gates)** | **DIVERGED** — D4' schema invented + legacy bash + resolve-symbols skipped | **PASS** — canonical schema first-try + all 3 mandatory gates fired in sequence | **EVOLVED → PASS** |
+
+#### Substantive foundational launch-narrative claim empirically defended
+
+Travis's foundational substrate-consistency framing ("It's unacceptable for CLI and CC to have different foundationally even if a model doesn't give word for word 1:1 atlas back between the two") substantively empirically defended at v0.7 cycle close via 3 cohort entry surfaces:
+
+| Cohort entry surface | Verified at | Substantive substrate outcome |
+|---|---|---|
+| CLI cold-start | Step 2.2.b.i (commit `c1fa077`) | 15 ADRs / Phase 4 extraction / $0.47 platform-billed |
+| CLI reference-context-aided | Step 2.2.b.ii (commit `dc4d841`) | 15 ADRs at $0.94 + Phase 4 incremental at $0.66 / canonical file-path-symbol form bounded FO-10 |
+| Skill cold-start | Step 2.3 closure (this commit) | 12 ADRs / 57 claims / 2480 LSP-resolved symbols / canonical AtlasFileV1 v1.4 / cost $0 platform-billed (subscription-bounded) |
+
+Substantive "1:1 feature list, not 1:1 text" bar empirically met: same canonical schema + same LSP-resolved symbols + same canonical SymbolId format (sym:py:path:name per ADR-01) + same downstream consumability for MCP query tools across all 3 surfaces. Text content varies (model-output variance acceptable per Travis framing) but feature parity is mechanically defended via Step 2.3.b.0 β-bounded substrate.
+
+#### FO-12 + FO-13 + R4 substantively absorbed (substep cluster 2.3.a substantive summary)
+
+| FO | Description | Absorbed at | Mechanism |
+|---|---|---|---|
+| FO-12 | Skill first-run permission UX (legacy bash injection requires allowlist + first-run friction) | Step 2.3.a.0 + 2.3.b.0 | Path-γ Read-tool refactor (Step 2.3.a.0) removed prompt-load bash; β-bounded hard removal (Step 2.3.b.0) eliminated legacy subcommands entirely |
+| FO-13 | Skill execution path improvisation against SKILL.md spec | Step 2.3.b.0 | Mechanical CLI-boundary validation (validate-atlas) + canonical schema embedded in SKILL.md (concrete example binds agent) + MANDATORY GATES framing |
+| R4 (cross-session agent improvisation variance) | Agents substantively WILL improvise across sessions; SKILL.md text doesn't bind reliably | Step 2.3.b.0 | β-bounded mechanical enforcement at substrate-currency layer (hard removal) + canonical-schema layer (validate-atlas) + workflow-ordering layer (mandatory gates) — replaces agent-compliance hope with mechanical certainty |
+
+#### Bounded observations forward-carry to v0.8+ candidates
+
+7 substantive bounded observations carried forward to v0_8-HANDOFF.md at v0.7 cycle close per backlog-drain pattern:
+
+- **FO-9** PowerShell wrapper stderr noise (cosmetic; v0.6 cycle observation)
+- **FO-10** Symbol-resolution-gap (partially absorbed by R8 normalization at Step 2.3.a.1; residual edge cases remain)
+- **FO-11** generate-adrs no-clean-before-writing (substrate-isolation v0.8+ candidate)
+- **ADR-depth-iterative-refinement** (substantive product judgment surface; potentially Step 2.3.c candidate at v0.7 OR v0.8+)
+- **FO-14** Skills-substrate-currency-gap (cohort install-update workflow surface; init-managed Skills copy v0.8+ candidate)
+- **FO-15** contextatlas-version-string invention (agent populated `"0.7.0"` despite installed binary `"0.6.0"`; validate-atlas could check OR SKILL.md could prescribe)
+- **FO-16** generated_at-timestamp invention (agent used representative timestamp not actual time; validate-atlas could check)
+
+Plus cross-cycle inheritance items:
+- Cross-model empirical measurement (v0.5 single-judge-model carry-forward)
+- recommended_model frontmatter (Claude Code feature dependency)
+- Skill pre-flight model-detection (requires Claude Code API surface; not under contextatlas control)
+
+#### Class-15 framing composition (ninth instance at v0.7 cycle worth direct capture)
+
+Substantive Travis-product-judgment-overrides-Claude-advisor-framing 9-instance pattern at v0.7 cycle:
+
+1. Travis catching 200k context window correction (Step 2.2.a.2)
+2. Empirical evidence refuting FO-6 thesis (Step 2.2.b.i Checkpoint 2)
+3. Dev catching 3-stage workflow oversight (Step 2.3 Checkpoint 1)
+4. Travis elevating Path-γ Read-tool refactor from v0.8+ to v0.7 (Step 2.3 Checkpoint 2)
+5. Travis elevating Divergence 3 (symbol resolution) from v0.8+ to v0.7 (Step 2.3 Checkpoint 2 disposition)
+6. Step 2.3.a substrate-evolution didn't bind agent behavior — R4 manifested at Step 2.3 Checkpoint 2/3 re-verification
+7. Dev surfacing D4' atlas schema fidelity divergence + cross-session variance pattern (Claude advisor under-weighted)
+8. Travis compare-surfaces-before-locking discipline at Step 2.3.b disposition — triangulated dev + Claude advisor + Travis judgment to surface β-bounded mechanical-enforcement path (rules out Option γ walk-back)
+9. β-bounded substrate empirically binds at first re-verification — Outcome A confirmed; foundational substrate-consistency claim defended without escalation to β-full (Travis Lock 2 no-wall-clock-ceiling preserved; LOCK 3 escalation contingency unused)
+
+Substantive cycle-execution observation: substantive evidence-first cycle discipline substantively continues serving substantive launch readiness at v0.7 cycle close; substantive Travis-product-judgment trajectory substantively shapes substantive substrate-evolution at substantive cycle maturity. 15-class enumeration preserved.
+
+#### Substantive proactive-agent-investigation observation (bonus empirical signal)
+
+Worth direct framing for v1.0 launch document substrate: the post-β-bounded /index-atlas agent invocation displayed substantive proactive engagement with the canonical workflow. The agent independently invoked `--help` for all 3 mandatory gate subcommands (validate-atlas, resolve-symbols, doctor) BEFORE writing the atlas. This is substantively different agent behavior from prior runs (Step 2.3 Checkpoint 2 pre-β-bounded: agent improvised; did not pre-check help text).
+
+Substantive hypothesis: the SKILL.md MANDATORY GATES section + canonical schema example embed substantively raised the agent's mental model of the workflow from "I'll figure out the right thing" to "I'll follow the prescribed sequence + verify the tools first." Substantive bonus β-bounded benefit beyond the immediate mechanical enforcement: substantive deeper engagement with cohort-substrate workflow.
+
+Worth capture as v1.0 launch document substrate: cohort UX positive signal — Skill agent doesn't just mechanically execute; it proactively investigates the canonical workflow before committing to actions.
+
+#### Cycle wall-clock position
+
+V0.7 cycle: 26 commits total after Step 2.3 closure ship. Per Travis Lock 2 no-wall-clock-ceiling preserved; Lock 3 β-full escalation contingency unused (β-bounded empirically binds; no escalation needed). Path forward per Travis Lock 3 + Step 2.4 scope adjudication: TBD (Option A skip / Option B reference-context Skill verification / Option C cross-codebase generalization / Travis combination B+C using django/deps already-staged substrate).
+
+---
 
 ### Step 2.3.b.0 shipped — 2026-05-11 (β-bounded mechanical-enforcement substrate per Travis Decision-3-α + Lock 1 after empirical R4 manifestation at Step 2.3 Checkpoint 2/3: hard removal of deprecated show-prompt + show-generate-prompt CLI subcommands; new contextatlas validate-atlas CLI subcommand with canonical AtlasFileV1 v1.4 schema validation at CLI boundary; SKILL.md /index-atlas canonical atlas example embedded inline + MANDATORY workflow gates Step 5b validate-atlas → Step 6 resolve-symbols → Step 7 doctor; ADR-02 + CLAUDE.md β-bounded substrate-evolution amendments; escalation contingency to β-full preserved per Lock 3)
 
