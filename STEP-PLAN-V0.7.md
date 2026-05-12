@@ -628,9 +628,14 @@ scope capture; Steps 4-5 ship-gate forward-planning surface.
   18k input + 5.7k output tokens). SKILL.md /index-atlas α
   refresh-aware workflow amendment + CLAUDE.md atlas refresh
   cohort UX framing.
-- [ ] **Step 3.2** — Step 3 substep cluster close (cycle position
-  + observations aggregation + v0.8+ forward-pointers + Steps 4-5
-  ship-gate forward-planning surface).
+- [x] **Step 3.2** — Step 3 substep cluster close. Shipped
+  2026-05-12; commit `[this commit]`. Cycle position assessment
+  (v0.7 cycle 32 commits at Step 3.2 close) + observations
+  aggregation per Option b progress-log-distributed (15 cycle-
+  execution observations preserved at Class-15 capstone
+  composition) + comprehensive v0.8+ forward-pointer scope
+  capture + Steps 4-5 ship-gate forward-planning surface ready
+  for Step 4.0 design adjudication.
 
 **Unblocks.** Steps 4-5 cycle-close ship-gate work post-Step-3.2
 close per standard cycle pattern.
@@ -743,6 +748,140 @@ timeline; not blocking).
 ## Progress log
 
 *Entries added in reverse-chronological order as steps ship.*
+
+### Step 3.2 shipped — 2026-05-12 (Step 3 substep cluster close — atlas refresh + α Skill cohort UX substrate-evolution empirically validated at contextatlas-on-itself dogfood; 15 cycle-execution observations preserved at Class-15 capstone composition; Steps 4-5 ship-gate forward-planning surface ready)
+
+V0.7 Step 3.2 closes the Step 3 substep cluster as documentation-bearing close per LOCK 6 compressed-split shape. Cluster spans 3 substeps (3.0 design adjudications inline + 3.1 atlas refresh + α substrate-evolution + 3.2 close). Step 3.2 captures cluster-level deliverables, full cycle-execution observations enumeration (15 instances at Class-15 capstone composition), comprehensive v0.8+ forward-pointer scope, and Steps 4-5 ship-gate forward-planning framing.
+
+#### Step 3 substep cluster — 1-commit substrate-evolution + 1-commit close
+
+| Step | Commit | Substrate-evolution | LOC |
+|---|---|---|---|
+| 3.0 — Design adjudications (inline) | absorbed at Step 2.5/3.0 surface | Travis locks 1-6 (Interpretation B + α + critical pre-API-spend checkpoint + compressed split) | n/a |
+| 3.1 — Atlas refresh + α substrate-evolution | `1e11059` | contextatlas-on-itself v1.3 → v1.4 schema upgrade ($0.23 / 47s); SKILL.md /index-atlas α refresh-aware workflow amendment (~80 LOC); CLAUDE.md "Atlas refresh cohort UX" section (~30 LOC) | +1804 / −421 (mostly atlas.json shift; ~110 LOC substantive substrate-evolution) |
+| 3.2 — Substep cluster close | `[this commit]` | Cycle position + observations aggregation + v0.8+ forward-pointers + Steps 4-5 forward-planning | TBD |
+| **Cluster** | **2 commits** | **Dogfood + Skill cohort UX symmetry** | **~110 LOC substantive substrate** |
+
+#### Cycle position assessment
+
+V0.7 cycle: **32 commits total post-Step-3.2 close**. Steps 4-5 ship-gate work estimated commits **33-35**. Within 4-5 day timeline framing per Travis Lock 2 no-wall-clock-ceiling preserved throughout cycle.
+
+**Cumulative v0.7 cycle substrate-evolution scope at Step 3.2 close:**
+
+| Cluster | Commit range | Substrate scope |
+|---|---|---|
+| v0.7 cycle pre-planning + Step 1 (Path-3 architecture) | early-cycle commits | ADR-02 amendments; entry-point-determined cost model; Strategy pattern dispatch |
+| Step 2.1-2.2 (Skill cohort entry path + CLI verification) | mid-cycle commits | Scope γ' multi-format ADR enumeration; CLI cold-start + reference-context empirical baselines |
+| Step 2.3 substep cluster (Skill substrate-equivalence) | `b6b4a90` → `48181f8` (7 commits) | β-bounded mechanical-enforcement substrate; Path-γ refactor; Skill→LSP bridge; canonical-depth-floor enforcement; refined GENERATE_ADRS_PROMPT (4-dimension refinement); CLI substrate-equivalence audit closure |
+| Step 2.5 cluster summary | `b7ce010` | 4-cohort-entry-surface matrix; 14 cycle-execution observations preserved |
+| Step 3 substep cluster (atlas refresh + α) | `1e11059` + `[this commit]` | contextatlas-on-itself dogfood refresh; Skill cohort refresh discoverability α amendment; Class-15 instance 15 capstone |
+
+**Steps 4-5 ship-gate scope** (forward-planning surface per LOCK 6):
+
+| Step | Scope estimate | Substep count |
+|---|---|---|
+| Step 4 — Cycle-close evaluations | Documentation-bearing; ~1-2 substeps; zero API spend; lighter weight than substep cluster work | ~1-2 |
+| Step 5 — Ship gate | ~5-6 substeps per v0.5/v0.6 precedent; pre-flight verification + v0.7.0 tag prep + ship commit landing + tag landing + cross-repo back-reference + cycle close | ~5-6 |
+
+#### 15 cycle-execution observations preserved (Class-15 capstone composition)
+
+Cumulative cycle-execution observation list at v0.7 cycle Step 3 close (substrate-distributed across ADR-02 amendments + substep progress logs per Option b lock):
+
+| # | Observation | Captured at |
+|---|---|---|
+| 1 | Travis catching 200k context window correction | Step 2.2.a.2 |
+| 2 | Empirical evidence refuting FO-6 thesis | Step 2.2.b.i Checkpoint 2 |
+| 3 | Dev catching 3-stage workflow oversight | Step 2.3 Checkpoint 1 |
+| 4 | Travis elevating Path-γ Read-tool refactor from v0.8+ to v0.7 launch-blocking | Step 2.3 Checkpoint 2 disposition |
+| 5 | Travis elevating Divergence 3 (symbol resolution) from v0.8+ to v0.7 launch-blocking | Step 2.3 Checkpoint 2 disposition |
+| 6 | Step 2.3.a substrate-evolution didn't bind agent behavior — R4 manifested | Step 2.3 Checkpoint 2/3 re-verification |
+| 7 | Dev surfacing D4' atlas schema fidelity divergence + cross-session variance pattern | Step 2.3.b disposition surface |
+| 8 | Travis compare-surfaces-before-locking discipline at substrate-evolution maturity | Step 2.3.b disposition |
+| 9 | β-bounded substrate empirically binds at first re-verification — Outcome A confirmed | Step 2.3 closure |
+| 10 | Substrate-evolution co-essentiality of prompt + workflow + mechanical enforcement layers | Step 2.3.c.0 |
+| 11 | Validator-error-message-as-specification-clarification pattern | Step 2.4 Checkpoint 2 |
+| 12 | Phase A discipline generalization across workflow phases | Step 2.4 Checkpoint 3 |
+| 13 | Cross-ADR linkage emergence (candidate — defers without β-3 empirical confirmation; v0.8+) | Step 2.4 Checkpoint 4 |
+| 14 | Substrate-evolution audit-before-closure discipline (CLI-vs-Skill audit pre-Step-2.4 closure) | Step 2.4.a ADR-02 amendment |
+| 15 | **Travis-product-judgment-correcting-Claude-advisor-framing pattern at substep cluster maturity** (init's purpose conflation; empirical-correction at Step 3.1 post-execution surface) | **Step 3.1 progress log** |
+
+**Class-15 framework capstone composition.** 15 instances captured at v0.7 cycle Step 3 close substantively complete the working-content-gap-inventory enumeration. Future cycles (v0.8+) inherit this audit-trail substrate. Pattern composition substantively integrity-preserved across cycle maturity.
+
+#### Comprehensive v0.8+ forward-pointer scope capture
+
+V0.8+ candidates inventory at v0.7 cycle Step 3 close (carry-forward to v0_8-HANDOFF.md substrate inheritance):
+
+**Substrate Evolution candidates:**
+- **β-3 empirical CLI cost+depth measurement** at refined Step 2.3.c.0 substrate (carried from Step 2.4 closure deferral per Travis Path B lock)
+- **Reference-context substantive-contribution controlled A/B** (Class-15 instance 13 promotion candidate if empirically confirmed at v0.8+ surface)
+- **CLI multi-call investigation orchestrator pattern** (closes Phase A architectural difference between CLI single-shot vs Skill multi-step Phase A; Travis Framing 1 honest-scope-acknowledgment at v1.0 launch)
+- **validate-atlas auto-invocation at `index` subcommand** (CLI cohort UX symmetry parallel to β-2 substrate per Step 3.1 dev observation; ~30-50 LOC bounded engineering)
+- **contextatlas-on-itself Skill cohort entry path empirical validation** (Skill cohort dogfood symmetry; would require `contextatlas init` at contextatlas-on-itself + /generate-adrs OR /index-atlas empirical run)
+- **`/update-atlas` Skill substrate** (only if α empirically fails post-Step-3.1 at cohort scale; v0.8+ candidate β disposition)
+- **Cross-ADR linkage emergence empirical confirmation at CLI surface** (Class-15 instance 13 candidate)
+
+**Mechanical Absorption candidates:**
+- **FO-15 validate-atlas-side `contextatlas_version` invariant** (mechanical enforcement that the field matches the installed binary's version OR an allowlist of supported versions)
+- **FO-16 timestamp format invariant** (validate-atlas-side check OR SKILL.md explicit instruction to use `date -u +%Y-%m-%dT%H:%M:%S.000Z`)
+- **SDK upgrade to `^0.32.0`** (closes type-cast workaround at β-1; canonical typed surface on extended thinking parameter)
+
+**Cohort UX Refinement candidates:**
+- **Commit-message filter customization for contextatlas-on-itself dogfood** (Step 3.1 observation — `^Step \d+\.` prefix pattern for v0.7+ cycle substep-close substantive content; default conventional-commits filter under-captures)
+- **FO-9 PowerShell wrapper stderr noise** (cosmetic; pre-existing v0.6 observation)
+- **FO-11 `generate-adrs --overwrite` flag** (substantively expected at v0.8+ per β-2 remediation template framing; bounded ~15-30 LOC engineering)
+- **FO-14 Skills-substrate-currency gap** (init-managed Skills copy OR documentation pattern; cohort install-update workflow surface)
+
+**Test Substrate candidates:**
+- **Flaky LSP-interaction tests inventory + race-condition triage** (Step 2.3.c.0 + Step 3.1 recurrence; pattern observed; non-blocking; bounded engineering investigation)
+
+**Cross-cycle inheritance items (v0.5/v0.6 substrate-evolution-preserved):**
+- Cross-model empirical measurement (v0.5 single-judge-model limit; v0.8+ judge-panel graduation candidate)
+- `recommended_model` SKILL.md frontmatter (Claude Code feature dependency — not under contextatlas control)
+- Skill pre-flight model-detection (requires Claude Code API surface for session-model introspection — not under contextatlas control)
+
+#### Steps 4-5 ship-gate forward-planning surface
+
+**Step 4 — Cycle-close evaluations** (~1-2 substeps; documentation-bearing; zero API spend):
+
+Dev preview scope candidates for Step 4.0 design adjudication:
+
+- **Cycle-execution observations final aggregation** — 15 observations already progress-log-distributed per Option b; substantively complete; Step 4 captures cumulative cycle-narrative substrate
+- **V0.7 cycle thesis empirical evaluation** against v0.7-SCOPE.md framing (launch-bearing reframe per Travis pivot at v0.6 Step 7.5)
+- **V0.7-SCOPE.md success criteria verification** (each scope-doc-locked criterion empirically defended OR honest-scope-acknowledgment per established cycle close pattern)
+- **Cycle-emergent candidate consolidation for v0.8+** (v0.8+ forward-pointer scope from Step 3.2 progress log + cycle-emergent candidates surfaced during Step 4 review)
+
+Worth dev preview at Step 3.2 close; Step 4.0 design adjudications land at Step 4.0 surface for Travis lock.
+
+**Step 5 — Ship gate** (~5-6 substeps per v0.5/v0.6 precedent):
+
+Dev preview scope candidates:
+
+- **Pre-flight verification** (atlas refresh sanity check + doctor + npm test final baseline + npm run build clean)
+- **v0.7.0 tag preparation**:
+  - CLAUDE.md "Current Version" block update (v0.6 → v0.7 framing)
+  - CHANGELOG entry if applicable (per v0.5/v0.6 precedent verification)
+  - README header refresh per launch-narrative substrate consumption
+  - package.json version bump 0.6.0 → 0.7.0
+- **Ship commit landing** (per HEREDOC pattern + Step 7.5 verify)
+- **v0.7.0 tag landing** (annotated tag per v0.5/v0.6 SHA-free precedent + dual-tag operation if v1.0.0 tag also lands)
+- **Cross-repo back-reference** (ContextAtlas-benchmarks back-reference per v0.5/v0.6 pattern if applicable; check at Step 5.0 surface)
+- **Step 5 close** (cycle close progress log entry; substep cluster summary; v0.7 → v0.8+ handoff substrate generation at v0_8-HANDOFF.md)
+
+Worth dev preview at Step 3.2 close; Step 5.0 design adjudications land at Step 5.0 surface for Travis lock.
+
+#### Step 3 substep cluster substantively closes
+
+Step 3 substep cluster substantively shipped:
+- Atlas refresh on contextatlas-on-itself per dogfood discipline at refined Step 2.3.c.0 substrate
+- SKILL.md /index-atlas α refresh-aware workflow amendment (Skill cohort UX symmetry with CLI Phase 4 SHA-diff substrate)
+- CLAUDE.md "Atlas refresh cohort UX" launch-document substrate framing
+- 15 cycle-execution observations preserved at Class-15 capstone composition
+- Comprehensive v0.8+ forward-pointer scope capture
+- Steps 4-5 ship-gate forward-planning surface ready
+
+Steps 4-5 ship-gate work opens for Step 4.0 design adjudication surface post-push.
+
+---
 
 ### Step 3.1 shipped — 2026-05-12 (contextatlas-on-itself atlas refresh per ADR-12 incremental refresh substrate at refined Step 2.3.c.0 substrate; v1.3 → v1.4 schema upgrade; extracted_at_sha advance; SKILL.md /index-atlas α refresh-aware workflow amendment + CLAUDE.md cohort UX framing)
 
