@@ -440,6 +440,84 @@ trigger per LOCK 1 cycle-discipline constraint.
 
 *Entries added in reverse-chronological order as substeps ship.*
 
+### Cluster 4 shipped — 2026-05-12 (Mechanical absorption — SDK upgrade ^0.27.0 → ^0.32.0 + FO-15 + FO-16 paired absorption; Q4.0.1.c benchmarks-repo follow-up; substantive cycle-pacing margin continues)
+
+V0.8 Cluster 4 substantively closes per LOCK E ordering (SDK first → FO-15 + FO-16 paired) + 10 Q4.0.X substantive locks at Step 4.0 design adjudication surface. Substantive cycle-pacing margin continues — Cluster 4 wall-clock ~1-1.5 cycle days actual vs ~3-5 cycle days LOCK H envelope; 4 clusters now substantively bounded under LOCK H (Clusters 2 + 3 + 4 at main-repo; Cluster 1 pending Travis-side execution per Adjudication 6 carry-forward).
+
+Batched Cluster 4.X close commit absorbing Steps 4.0 + 4.1 + 4.2 + Q4.0.1.c benchmarks-repo follow-up per LOCK 1 Option α-relaxed pattern (continues Cluster 3 precedent at `664e17f`).
+
+| Substep | branch | commit | Notes |
+|---|---|---|---|
+| 4.0 | main | (this commit; design adjudication surface) | 10 Q4.0.X locks: SDK version target (Q4.0.1.a Option α ^0.32.0) + breaking-changes inventory approach (Q4.0.1.b Option α pre-edit) + Q1.0.2.d adapter_versions scope confirmed (Q4.0.1.c split — language-adapter-only; sdk_version standalone manifest field) + type-cast removal scope (Q4.0.1.d Option α paired with SDK upgrade) + baseline preservation (Q4.0.1.e) + FO-15 semver+match (Q4.0.2.a Option β) + FO-16 refined dual-invariant (Q4.0.2.b: mtime-anchor ERROR + 6mo-staleness WARNING) + substep ordering (Q4.0.3 Option α 2 ship commits) + test discipline (Q4.0.4) + ship criteria (Q4.0.5) |
+| 4.1 | main | `b3fb375` | SDK upgrade ship commit — package.json ^0.27.0 → ^0.32.0 (resolves to 0.32.1); 0.28→0.32 changelog inventory documented inline; NO breaking changes affecting `messages.create()` usage; npm test 1568/87 baseline preserved |
+| 4.2 | main | `b54befb` | FO-15 + FO-16 paired absorption — `cli-validate-atlas.ts` +95 LOC + tests +180 LOC (11 new); npm test 1579/87 all PASS (within Q4.0.4 target 1578-1581) |
+| Q4.0.1.c follow-up | benchmarks-repo | `5d86b99` | `readInstalledSdkVersion()` + `sdk_version` standalone manifest field at `scripts/v0.8-cell-screen.mjs`; EXCLUDED from Q1.0.2.d fingerprint hash per split lock; benchmarks-repo tests 16 → 17 |
+| Cluster 4.X-progress | main | (this commit) | STEP-PLAN-V0_8.md §3 batched Cluster 4 progress log entry per LOCK 1 Option α-relaxed cadence |
+
+#### Step 4.1 substantive scope — SDK upgrade ^0.27.0 → ^0.32.0
+
+SDK version target per LOCK E framing (^0.32.0; resolves to 0.32.1 — latest patch in 0.32.x range; 2024-11-05). Breaking changes inventory per Q4.0.1.b Option α:
+- **0.28.0**: parallel-tool-use disable + retry-count header — no usage impact
+- **0.29.x**: message batches API + type refactors at metadata/tool — orthogonal to `messages.create()` usage
+- **0.30.x**: computer-use beta + bedrock/vertex `beta.messages.create()` — no usage impact
+- **0.31.0**: token counting + PDFs + `isolatedModules` + `use type imports` — already compliant via `import type`
+- **0.32.x**: new haiku model + missing token-counting types — no breakers
+
+**NO breaking changes** affecting `messages.create()` with `thinking` parameter usage at `src/generation/generators/anthropic-api-direct.ts`.
+
+##### Empirical SDK type-layer finding (LOCK 1 Option γ disposition)
+
+v0.7 Step 2.4.a β-1 inline comment claimed "SDK 0.27.3 does NOT type the `thinking` parameter (added in ~0.32+)". Step 4.1 empirical verification at this commit substantively FALSIFIES the "added in ~0.32+" assumption: `grep thinking node_modules/@anthropic-ai/sdk/**/*.d.ts` returns zero matches at 0.32.1. Extended thinking is beta-feature parameter; runtime API accepts it but TypeScript types don't expose it at 0.32.x.
+
+Q4.0.1.d Option α disposition refined per empirical state: cast removal aborted at Step 4.1 commit; cast RETAINED at LOCK E ^0.32.0 version target. Inline comment substantively updated to reflect empirical state. Thinking-native-typing migration queued at `research/v0.8-candidates.md` (pre-rename until Cluster 5 / Step 5.2 per LOCK 2) as v1.0+ candidate per LOCK 1 Option γ disposition (Option β mid-cycle SDK bump to latest 0.95.x ruled out — non-launch-bearing benefit at launch-bearing cycle; wrong risk profile).
+
+#### Step 4.2 substantive scope — FO-15 + FO-16 paired absorption
+
+**FO-15 mechanical enforcement** (Q4.0.2.a Option β) at `cli-validate-atlas.ts`:
+- `isSemver(value)` helper: regex `/^\d+\.\d+\.\d+(?:-[\w.-]+)?$/` (X.Y.Z + optional prerelease)
+- `readPackageVersion()` inline helper per `src/index.ts:55` pattern (inheritance precedent; no shared utility per CLAUDE.md dependency-minimization)
+- Validate `generator.contextatlas_version` is parseable as semver AND matches installed package version
+- Closes "agent invented version" surface per FO-15 origin observation (Step 2.3 Checkpoint 3 self-absorption at v0.7 cycle)
+
+**FO-16 dual-invariant mechanical enforcement** (Q4.0.2.b refined):
+- **Invariant 1 — File-mtime anchor (ERROR)**: `generated_at` MUST be ≤ atlas file mtime; logically impossible to violate legitimately; closes "agent populated representative timestamp" surface per FO-16 origin observation; disposition: validate-atlas FAILS exit 2
+- **Invariant 2 — 6mo-staleness (WARNING)**: `generated_at` SHOULD be within 6 months of validate-atlas invocation time; informational signal for cohort users running against stale substrate; disposition: validate-atlas PASSES exit 0 with WARNING surfaced to stderr
+- ISO 8601 parse check precedes both invariants; parse failure → ERROR
+
+##### ValidateAtlasCliResult shape additive note (substrate-consistency record)
+
+`ValidateAtlasCliResult` public-surface API expanded with `warnings: readonly string[]` field per Q4.0.2.b refined dual-invariant scope. **Additive change**: existing PASS=0/FAIL=2 exit semantics preserved; new field surfaces FO-16 Invariant 2 staleness disposition. Existing callers reading `exitCode` + `errors` continue working without modification. Test seams added at `ValidateAtlasCliOptions`: `installedPackageVersionOverride` (FO-15 version-match seam) + `nowOverride` (FO-16 staleness window seam).
+
+#### Q4.0.1.c benchmarks-repo follow-up — sdk_version forensic substrate
+
+Per Q4.0.1.c split lock at Step 4.0: SDK version captured as standalone manifest field at run manifest substrate; EXCLUDED from Q1.0.2.d fingerprint hash. Forensic-data discipline: future SDK bumps preserve atlas substrate fingerprint stability; manifest field queryable for cross-cycle regression correlation if needed.
+
+Benchmarks-repo cross-repo reference: commit `5d86b99` — `readInstalledSdkVersion()` export at `scripts/v0.8-cell-screen.mjs` + JSDoc clarification on Q4.0.1.c split scope + `sdk_version` field captured once per matrix-cycle invocation + spread into each per-trial manifest at `runCellScreen`. Benchmarks-repo test baseline 16 → 17 (1 new `readInstalledSdkVersion` semver-shape test).
+
+#### 11th Class-18 trajectory observation candidate
+
+**dev-empirical-engineering-judgment-surfacing-locked-design-vs-empirical-SDK-substrate-mismatch-pre-implementation** captured at Step 4.1 surface. Same pattern as Cluster 2 Step 2.2.a A2+A3 empirical reproduction (10th candidate) but at **dependency-substrate surface** (SDK type layer) rather than **internal-code-substrate surface** (validate-atlas FO-15/FO-16 partial-absorbed state). Cross-substrate-surface reproducibility paired with 10th candidate.
+
+Substantive insight: locked design adjudications based on inferred/historical assumptions about substrate state may not match empirical reality at later cycle execution surface. Discipline preservation: pre-implementation empirical verification before substantive engineering work is the cycle-integrity-preservation pattern. 10th + 11th candidates demonstrate this discipline at both internal-code + external-dependency substrates.
+
+Class-18 trajectory disposition per Travis discretion at cycle close commit body authoring time per v0.7 Option C precedent inheritance.
+
+#### Test baseline preservation
+
+`npm test` (main-repo): 1579 / 87 all PASS (Step 3.X-progress baseline 1568 + 11 new FO-15/FO-16 tests = 1579 expected). Within Q4.0.4 target range 1578-1581. Clean baseline expansion per CLAUDE.md src-changes-require-full-test canonical discipline.
+
+`npx vitest` (benchmarks-repo): 17 tests pass (16 baseline + 1 new `readInstalledSdkVersion` test).
+
+#### Cycle-execution observations
+
+- **Substantive cycle-pacing margin continues**: 4 clusters now substantively bounded under LOCK H envelopes (Cluster 2 + Cluster 3 + Cluster 4 main-repo at ~1-1.5 cycle days each vs ~3-5 cycle days LOCK H). Cumulative cycle-pacing margin substantively reproducible across substep cluster boundaries.
+- **Locked-design-vs-empirical-substrate mismatch pattern empirically validated** at 2 surfaces (10th candidate internal-code substrate + 11th candidate dependency substrate). Substantively meaningful empirical pattern for v0.9+ cycle pre-planning discipline (empirical verification at cycle boundary before substantive candidate-item locking).
+- **Q1.0.2.d substrate fingerprint scope confirmation** (language-adapter-only; sdk_version orthogonal per Q4.0.1.c split) preserves substrate stability across future SDK bumps. Forensic-data substrate at sdk_version manifest field substantively enables cross-cycle regression correlation without retroactive substrate invalidation cascade.
+
+#### Next
+
+Cluster 4 substantively closes. Cluster 5 cycle close (ROADMAP.md + backlog file rename + v0_9-HANDOFF.md + cross-repo back-reference + ship gate + v0.8.0 annotated tag landing) CANNOT trigger until Cluster 1 completes per launch-bearing scope (Stream B matrix-completion is V1.0 ship-gate criterion #1 statistical closure substrate per LOCK A Option γ + LOCK C). Cluster 1 substantively pause-state at Step 1.1 dev-side closure (commit `d799cd1` benchmarks-repo); awaiting Travis-side execution trigger per Adjudication 6 carry-forward (~2-3 days benchmarks-repo cadence; ~$50-100 cost envelope; aggregate manifest paste-back triggers dev-side Step 1.1 final closure → Steps 1.2 → 1.3 → 1.4 → 1.5 → 1.X close at benchmarks-repo cadence → Cluster 5 main-repo cycle close).
+
 ### Step 3.1 + Step 3.2 shipped — 2026-05-12 (/prime-atlas SKILL.md substrate + content unit tests; Cluster 3 substantive progression toward Step 3.X cluster close)
 
 V0.8 Cluster 3 substeps 3.1 + 3.2 substantively ship per LOCK B.1-B.5 + Q3.0.X locks at Step 3.0 design adjudication surface. /prime-atlas Skill substantively completes the v1.0 launch cohort onboarding pipeline at 4-Skill substrate (init + /generate-adrs + /index-atlas + /prime-atlas per cohort entry surfaces).
