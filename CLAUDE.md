@@ -110,11 +110,56 @@ These are decisions already made. Do not relitigate them.
 
 ## Current Version
 
-- **Current:** v0.6 shipped 2026-05-09 (tag `v0.6.0`). v0.7
-  planning queues next per launch-bearing reframe (Travis pivot
-  at v0.6 Step 7.5).
+- **Current:** v0.7 shipped 2026-05-12 (tag `v0.7.0`); v1.0
+  public launch substrate complete. v0.8+ candidates queued
+  post-launch per `research/v0.8-candidates.md`.
 - **Strategic arc:** [`ROADMAP.md`](ROADMAP.md) covers v0.1 → v1.0.
-- **v0.6 outcome:** Early-access pipeline-mechanics + targeted
+- **v0.7 outcome:** Launch-bearing cycle ship to v1.0 public
+  launch under 3-tier scope (PRIMARY claude-code-only +
+  SECONDARY install/setup + TERTIARY deferred). PRIMARY (a)
+  Path-3 entry-point-determined architecture shipped (CLI =
+  Anthropic API direct; Skills = subscription-bounded; ADR-02
+  graduation + re-amendment; Strategy pattern + Skills
+  mechanism + legacy deprecation cycle). PRIMARY (b) generate-
+  adrs feature shipped with investigative-depth-per-decision-
+  candidate workflow + canonical depth-floor mechanical
+  enforcement via `validate-adrs`; CLI substrate-equivalence
+  closed at Step 2.4.a (β-1 extended thinking 32k budget + β-2
+  auto-invoke validate-adrs post-generation). SECONDARY
+  contextatlas-on-itself dogfood at Step 3 atlas refresh (CLI
+  Phase 4 SHA-diff incremental empirically validated; α
+  SKILL.md `/index-atlas` refresh-aware workflow amendment).
+  TERTIARY substrate-gap fixes deferred to v0.8+ per locked
+  scope. 4-cohort-entry-surface framing shipped (CLI + Skill
+  × cold-start + reference-context). 15 Class-15 cycle-
+  execution observations captured (capstone composition per
+  Step 3.2 aggregation). 21 v0.8+ forward-pointer candidates
+  consolidated at `research/v0.8-candidates.md`. V1.0 ship-
+  gate status post-v0.7: criterion #1 parenthetical CLOSED at
+  v0.5 (preserved); criterion #1 statistically-meaningful-
+  wins PARTIAL via v0.6 8-cell subset → v0.8+ matrix-
+  completion; criterion #2 newly CLOSED at v0.7 via PRIMARY
+  (a) + PRIMARY (b) pipeline-mechanics empirical verification;
+  criterion #3 NOT MET via v0.6 Tier 3 cancellation → v0.8+
+  post-launch cohort exposure execution against carried-
+  forward recruitment infrastructure. Honest 2-of-3 MET + 2
+  carried-forward framing preserved for v1.0 ship.
+- **Methodology limits acknowledged in v0.7 ship narrative:**
+  v0.7 = launch-bearing cycle; substrate-evolution + dogfood-
+  validation only; no new reference run substrate generated.
+  v0.6 F1-F9 methodology amendments + matrix-completion gate
+  + cross-vendor judge-panel graduation + cohort exposure
+  execution carried forward to v0.8+ post-launch. CLI single-
+  shot vs Skill multi-step Phase A investigation-depth-
+  variance acknowledged (Framing 1 honest-scope per ADR-02
+  amendment; both paths produce canonical-depth-floor-
+  compliant ADRs via mechanical `validate-adrs` enforcement);
+  CLI multi-call investigation orchestrator pattern v0.8+
+  candidate. β-3 empirical CLI cost+depth measurement
+  deferred to v0.8+. Class-15 trajectory holds at 15
+  instances (capstone composition); no new pattern emergence
+  at Steps 4-5 ship-gate cadence.
+- **v0.6 outcome (preserved as historical record):** Early-access pipeline-mechanics + targeted
   matrix-replication subset + cohort infrastructure shipped.
   Stream A pipeline-mechanics (5 items): A4 lazy-spawn + A6
   doctor deep LSP health check + A7 self-use onboarding pipeline
@@ -273,28 +318,35 @@ These are decisions already made. Do not relitigate them.
   baseline established across hono (TypeScript), httpx (Python), and
   cobra (Go). Stream A + Stream B both shipped. v0.2 thesis ("works
   across languages and repos") empirically validated.
-- **v0.7+ candidates.** Multiple complementary substrates per
-  launch-bearing reframe:
-  (1) `v0_7-HANDOFF.md` v0.7 launch-bearing reframe section is
-  canonical bridge document for v0.7 cycle pre-planning (PRIMARY
-  claude-code-only extraction path + SECONDARY install/setup
-  empirical verification + TERTIARY backlog-drain; v0.8+ post-
-  launch absorbs F1-F9 methodology amendments + cohort exposure
-  execution + Stream B matrix-completion).
-  (2) `../ContextAtlas-benchmarks/research/phase-10-v0.6-reference-run.md`
+- **v0.8+ candidates.** Multiple complementary substrates per
+  post-v1.0-launch posture:
+  (1) `research/v0.8-candidates.md` captures the 21 v0.8+
+  forward-pointer candidates consolidated at v0.7 cycle close
+  (substrate evolution + mechanical absorption + cohort UX
+  refinement + test substrate + cross-cycle inheritance
+  categories).
+  (2) `v0_8-HANDOFF.md` v0.8 cycle pre-planning canonical
+  bridge document (forward-pointer scope handoff; post-v1.0-
+  launch posture; cohort exposure execution per v0.6 Tier 3
+  deferred; F1-F9 atlas-substrate-version confound causal
+  investigation; matrix-completion graduation per v0.6 8-cell
+  subset).
+  (3) `../ContextAtlas-benchmarks/research/phase-10-v0.6-reference-run.md`
   §9 captures cycle-emergent v0.7+ candidates surfaced during
-  v0.6 execution (canonical inventory beyond v0_7-HANDOFF.md
-  scope per cycle-emergent-only scope discipline).
-  (3) `research/v0.5-candidates.md` remains canonical for
+  v0.6 execution (canonical inventory residual).
+  (4) `research/v0.5-candidates.md` remains canonical for
   residual unabsorbed v0.5+ items (absorbed-item in-place
   annotations mark #7/#8/#9/#12 v0.5-Step-10 closures).
-  v0.7 cycle target: launch-bearing timeline to v1.0.
-- **Historical references:** `STEP-PLAN-V0.6.md` + `STEP-PLAN-V0.5.md`
-  + `STEP-PLAN-V0.4.md` + `STEP-PLAN-V0.3.md` + `STEP-PLAN-V0.2.md`
-  progress logs document per-step execution arcs; `v0.6-SCOPE.md` +
-  `v0.5-SCOPE.md` + `v0.4-SCOPE.md` + `v0.3-SCOPE.md` + `v0.2-SCOPE.md`
-  are the scope anchors as shipped; `v0_7-HANDOFF.md` is the
-  v0.7 cycle pre-planning canonical bridge document.
+  v0.8+ cycle target: post-v1.0-launch substrate-graduation +
+  cohort exposure execution.
+- **Historical references:** `STEP-PLAN-V0.7.md` + `STEP-PLAN-V0.6.md`
+  + `STEP-PLAN-V0.5.md` + `STEP-PLAN-V0.4.md` + `STEP-PLAN-V0.3.md`
+  + `STEP-PLAN-V0.2.md` progress logs document per-step execution
+  arcs; `v0.7-SCOPE.md` + `v0.6-SCOPE.md` + `v0.5-SCOPE.md` +
+  `v0.4-SCOPE.md` + `v0.3-SCOPE.md` + `v0.2-SCOPE.md` are the scope
+  anchors as shipped; `v0_7-HANDOFF.md` was the v0.7 cycle pre-
+  planning bridge document (now historical); `v0_8-HANDOFF.md` is
+  the v0.8 cycle pre-planning canonical bridge document.
 
 When making architectural decisions, check ADRs first. ADR-13
 (Pyright) and ADR-14 (gopls) document the language-adapter LSP
@@ -317,8 +369,16 @@ confound + F9 methodology-design-gap pattern + 9 named findings)
 + Tier 3 cohort exposure cancellation (per Q7.0.9 pre-registration
 framing) + early-access pipeline-mechanics under launch-bearing
 reframe (Travis pivot at Step 7.5; v0.7 = launch-bearing not
-substrate-generation per `v0_7-HANDOFF.md`). Historical MVP build-
-plan details live in git history, not this file.
+substrate-generation per `v0_7-HANDOFF.md`). v0.7 shipped launch-
+bearing cycle to v1.0 public launch substrate complete (PRIMARY
+Path-3 entry-point-determined architecture + generate-adrs
+canonical-depth-floor enforcement; SECONDARY contextatlas-on-
+itself dogfood validation + α SKILL.md refresh-aware workflow;
+4-cohort entry-surface framing; 15 Class-15 cycle-execution
+observations capstone composition; 21 v0.8+ candidates
+consolidated at `research/v0.8-candidates.md`; V1.0 ship-gate
+2-of-3 MET + 2 carried-forward). Historical MVP build-plan
+details live in git history, not this file.
 
 ## Tool scope philosophy
 

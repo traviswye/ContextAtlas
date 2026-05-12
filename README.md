@@ -147,12 +147,13 @@ tools (which can't really be committed) and knowledge-graph tools
 
 ## Installation
 
-> **Status:** v0.1 + v0.2 + v0.3 + v0.4 + v0.5 + v0.6 shipped (v0.6 on 2026-05-09).
+> **Status:** v0.1 + v0.2 + v0.3 + v0.4 + v0.5 + v0.6 + v0.7 shipped (v0.7 on 2026-05-12).
 > Three-language baseline validated on hono (TypeScript), httpx (Python), and
 > cobra (Go) — Phase 5/6/7/8/9/10 reference runs in the
 > [benchmarks repo](https://github.com/traviswye/ContextAtlas-benchmarks).
-> v0.7 planning queues next per launch-bearing reframe. Package not yet
-> published to npm; install instructions below describe the intended shape.
+> v1.0 public launch substrate complete; v0.8+ candidates queued post-launch
+> per [`research/v0.8-candidates.md`](research/v0.8-candidates.md). Package not
+> yet published to npm; install instructions below describe the intended shape.
 
 ```bash
 # Placeholder
@@ -244,6 +245,54 @@ contextatlas index
   conservative upper bounds.
 - On subsequent runs, only files whose SHAs have changed since the
   last index get reprocessed. Usually seconds.
+
+**Alternative — Skill cohort path.** Claude Code users can trigger
+index-time work via Skills instead of CLI. After `contextatlas init`
+scaffolds `.contextatlas/prompts/`:
+
+- `/index-atlas` — runs ADR + docstring extraction via Skills
+  (subscription-bounded; no API key required)
+- `/generate-adrs` — generates canonical-depth-floor ADRs for repos
+  lacking them
+
+Both paths produce equivalent atlas substrate; choose based on cohort
+preference (CLI = Anthropic API direct; Skills = subscription-bounded;
+see [ADR-02](docs/adr/ADR-02-extraction-sole-api-caller.md) for full
+substrate-equivalence framing per v0.7 Path-3 entry-point-determined
+architecture).
+
+## Atlas refresh + cohort entry paths
+
+ContextAtlas atlas is a substrate you build once and refresh after
+code or ADR changes. The 4-cohort entry surface covers two pipeline-
+mechanic dimensions × two cohort-tooling dimensions:
+
+|                 | CLI                                          | Skills                                  |
+|-----------------|----------------------------------------------|-----------------------------------------|
+| **Cold-start**  | `contextatlas index` (full extraction)       | `/index-atlas` (full extraction)        |
+| **Refresh**     | `contextatlas index` (Phase 4 SHA-diff incremental) | `/index-atlas` (refresh-aware workflow) |
+
+**Refresh discoverability.** ONE canonical entry point per cohort
+path; behavior adapts based on substrate state. CLI: `contextatlas
+index` first run scaffolds; subsequent runs refresh incrementally
+via Phase 4 SHA-diff gating — unchanged ADR and docstring sources
+skip; only changed sources re-extracted. Skills: `/index-atlas`
+workflow dispatches cold-start vs incremental refresh based on
+whether `.contextatlas/atlas.json` already exists.
+
+**Cost framing.** SHA-diff incremental refresh per ADR-12 substrate
+is substantively cheaper than cold-start scaffolding. Typical
+incremental refresh ~$0.20-1 per run; cold-start varies with ADR
+count and size (see Installation section cost projection note above
+for empirical reference target data).
+
+**ADR generation.** New repos can bootstrap ADRs via `contextatlas
+generate-adrs` (CLI; Anthropic API) or `/generate-adrs` (Skills;
+subscription-bounded). Both paths produce canonical-depth-floor-
+compliant ADRs via mechanical `validate-adrs` enforcement at both
+surfaces. Expect $5-15 per repo on CLI path (one-time-per-repo
+investment in the foundational ADR substrate; empirical lock at
+v0.8+ post-launch). Skills path is subscription-bounded.
 
 ## Benchmark Results
 
@@ -575,11 +624,12 @@ not a core change.
 - [x] Opus 4.7 index-time extraction pipeline (validated: 100% parse
   success across 12 production-grade documents tested)
 - [x] SQLite storage with SHA-based incremental reindex
-  (atlas schema v1.3 — v0.2 added `parent_id` support for
+  (atlas schema v1.4 — v0.2 added `parent_id` support for
   flattened-child symbols required by ADR-14's interface
   method handling; v0.3 added `generator.contextatlas_commit_sha`
   per ADR-11's additive-versioning pattern; v0.4 + v0.5 + v0.6
-  unchanged at v1.3)
+  unchanged at v1.3; v0.7 bumped to v1.4 at Step 2.3.a.1 per
+  canonical AtlasFileV1 schema enforcement substrate)
 - [x] Git integration (recent commits, co-change, hot-path signals)
 - [x] Compact output format (default) + JSON format (opt-in)
 - [x] Benchmark harness (in the separate
@@ -689,32 +739,70 @@ NOT MET via Tier 3 cancellation → v0.8+ post-launch. Honest
 scope; [`v0_7-HANDOFF.md`](v0_7-HANDOFF.md) for v0.7 launch-
 bearing reframe + v0.8+ deferral substrate.
 
-**v0.7+ candidate observations queued.** Multiple complementary
-substrates per launch-bearing reframe:
-(1) [`v0_7-HANDOFF.md`](v0_7-HANDOFF.md) v0.7 launch-bearing
-reframe section is canonical bridge document for v0.7 cycle pre-
-planning (PRIMARY claude-code-only extraction path + SECONDARY
-install/setup empirical verification + TERTIARY backlog-drain;
-v0.8+ post-launch absorbs F1-F9 methodology amendments + cohort
-exposure execution + Stream B matrix-completion);
-(2) [Phase-10 reference doc §9](https://github.com/traviswye/ContextAtlas-benchmarks/blob/main/research/phase-10-v0.6-reference-run.md)
+**v0.7 shipped (2026-05-12):** Launch-bearing cycle ship to v1.0
+public launch substrate complete, under 3-tier scope (PRIMARY
+claude-code-only + SECONDARY install/setup + TERTIARY deferred).
+PRIMARY (a): Path-3 entry-point-determined architecture shipped
+(CLI = Anthropic API direct; Skills = subscription-bounded;
+ADR-02 graduation + re-amendment; Strategy pattern + Skills
+mechanism + legacy deprecation cycle). PRIMARY (b): generate-
+adrs feature shipped with investigative-depth-per-decision-
+candidate workflow + canonical depth-floor mechanical
+enforcement via `validate-adrs`; CLI substrate-equivalence
+closed at Step 2.4.a (β-1 extended thinking 32k budget + β-2
+auto-invoke validate-adrs post-generation). SECONDARY:
+contextatlas-on-itself dogfood at Step 3 atlas refresh (CLI
+Phase 4 SHA-diff incremental empirically validated; α SKILL.md
+`/index-atlas` refresh-aware workflow amendment). TERTIARY
+substrate-gap fixes deferred to v0.8+ per locked scope. 4-
+cohort entry-surface framing shipped (CLI + Skill × cold-start
++ reference-context). 15 Class-15 cycle-execution observations
+captured (capstone composition). 21 v0.8+ forward-pointer
+candidates consolidated at
+[`research/v0.8-candidates.md`](research/v0.8-candidates.md).
+V1.0 ship-gate status post-v0.7: 2-of-3 MET + 2 carried-forward
+(criterion #1 parenthetical CLOSED at v0.5 preserved; criterion
+#1 statistically-meaningful-wins PARTIAL via v0.6 8-cell subset
+→ v0.8+ matrix-completion; criterion #2 newly CLOSED at v0.7 via
+PRIMARY (a) + PRIMARY (b) pipeline-mechanics empirical
+verification; criterion #3 NOT MET via v0.6 Tier 3 cancellation
+→ v0.8+ post-launch cohort exposure execution). See
+[`v0.7-SCOPE.md`](v0.7-SCOPE.md) for original tier-level scope;
+[`v0_8-HANDOFF.md`](v0_8-HANDOFF.md) for v0.8 cycle pre-planning
+canonical bridge document.
+
+**v0.8+ candidate observations queued.** Multiple complementary
+substrates per post-v1.0-launch posture:
+(1) [`research/v0.8-candidates.md`](research/v0.8-candidates.md)
+captures the 21 v0.8+ forward-pointer candidates consolidated at
+v0.7 cycle close (substrate evolution + mechanical absorption +
+cohort UX refinement + test substrate + cross-cycle inheritance
+categories);
+(2) [`v0_8-HANDOFF.md`](v0_8-HANDOFF.md) v0.8 cycle pre-planning
+canonical bridge document (forward-pointer scope handoff; post-
+v1.0-launch posture; cohort exposure execution per v0.6 Tier 3
+deferred; F1-F9 atlas-substrate-version confound causal
+investigation; matrix-completion graduation per v0.6 8-cell
+subset);
+(3) [Phase-10 reference doc §9](https://github.com/traviswye/ContextAtlas-benchmarks/blob/main/research/phase-10-v0.6-reference-run.md)
 captures cycle-emergent v0.7+ candidates surfaced during v0.6
-execution (canonical inventory beyond v0_7-HANDOFF.md scope per
-cycle-emergent-only scope discipline);
-(3) [`research/v0.5-candidates.md`](research/v0.5-candidates.md)
+execution (canonical inventory residual);
+(4) [`research/v0.5-candidates.md`](research/v0.5-candidates.md)
 remains canonical for residual unabsorbed v0.5+ items.
-v0.7 cycle target: launch-bearing timeline to v1.0.
+v0.8+ cycle target: post-v1.0-launch substrate-graduation + cohort
+exposure execution.
 
 **Deferred to future versions (see [ROADMAP.md](ROADMAP.md) for specifics):**
-- README / `docs/` parsing for architectural claims (v0.7+;
-  docstring extraction shipped at v0.3 per "What's Implemented
-  Today" above; H2 ADR generation pipeline at v0.7 per launch-
-  bearing reframe substrate-flexibility input dimension)
+- README / `docs/` parsing for architectural claims (v0.8+
+  candidate; docstring extraction shipped at v0.3 + ADR
+  generation pipeline shipped at v0.7 via `contextatlas
+  generate-adrs` CLI + `/generate-adrs` Skill paths per "What's
+  Implemented Today" above)
 - External dogfood trial (v1.0 ship-gate criterion #3) —
   recruitment infrastructure shipped at v0.6; trial execution
   deferred to v0.8+ post-launch cohort exposure cycle per
   launch-bearing reframe Tier 3 application
-- Semantic embedding layer for `find_by_intent` (v0.7+, evidence-gated)
+- Semantic embedding layer for `find_by_intent` (v0.8+, evidence-gated)
 - Task-shaped bundle queries: `why_does_this_fail`, `onboard_to_feature`,
   `audit_change` (v0.8+ post-launch per launch-bearing reframe)
 - Hot-path caching, claim capture from agent sessions (v0.8+ post-launch)
