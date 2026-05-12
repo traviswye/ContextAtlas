@@ -1,15 +1,15 @@
 {
   "version": "1.4",
-  "generated_at": "2026-05-12T16:28:38.128Z",
-  "extracted_at_sha": "b7ce010b0d31d8c569d29b036b5ee9820a73eea6",
+  "generated_at": "2026-05-12T17:38:27.615Z",
+  "extracted_at_sha": "fe3ae7e701a680a97e90e23a23242b17965e173c",
   "generator": {
-    "contextatlas_version": "0.6.0",
-    "contextatlas_commit_sha": "b7ce010b0d31d8c569d29b036b5ee9820a73eea6",
+    "contextatlas_version": "0.7.0",
+    "contextatlas_commit_sha": "fe3ae7e701a680a97e90e23a23242b17965e173c",
     "extraction_model": "claude-opus-4-7"
   },
   "source_shas": {
     "DESIGN.md": "d4f18ee6bda2a8bd404b4d3ba48bbf84c0bd4f22885894846a3753d9e62909bc",
-    "README.md": "90c15b27402b6e4dbecae371016b39887e17dc6bb1b2c69ce5f44328570a37f1",
+    "README.md": "f200d27cd6e95aa882294b157563c578b00299400d9237be5a8c4cc80bf3d30f",
     "RUBRIC.md": "e91e0684bbadc0ca458312d85545e17ed883a58bacef2d18e39427b2045dbe85",
     "docs/adr/ADR-01-symbol-id-format.md": "02ca6af32eb69b0b78e843aa21da947682941fd7fbf4780f444c0836fe1b4aba",
     "docs/adr/ADR-02-extraction-sole-api-caller.md": "93d3794638d9819e8cda85d9a44d3505745998e0a8c93e277f1899c96b5695d3",
@@ -15670,271 +15670,281 @@
     {
       "source": "README",
       "source_path": "README.md",
-      "source_sha": "90c15b27402b6e4dbecae371016b39887e17dc6bb1b2c69ce5f44328570a37f1",
-      "severity": "hard",
-      "claim": "ADR/README/docs text content is sent to Anthropic's API at index time only; source code, git history, LSP data, and runtime queries are never sent",
-      "rationale": "Privacy contract — explicit boundary on what leaves the machine",
-      "excerpt": "Never sent anywhere: Your source code, Your git history, LSP symbol data (names, references, types), Query contents at runtime",
+      "source_sha": "f200d27cd6e95aa882294b157563c578b00299400d9237be5a8c4cc80bf3d30f",
+      "severity": "context",
+      "claim": "ADR generation (CLI and Skills paths) produces canonical-depth-floor-compliant ADRs via mechanical validate-adrs enforcement at both surfaces",
+      "rationale": "Architectural contract: both ADR-generation paths enforce depth floor via the same validator",
+      "excerpt": "Both paths produce canonical-depth-floor-compliant ADRs via mechanical `validate-adrs` enforcement at both surfaces.",
       "symbol_ids": []
     },
     {
       "source": "README",
       "source_path": "README.md",
-      "source_sha": "90c15b27402b6e4dbecae371016b39887e17dc6bb1b2c69ce5f44328570a37f1",
+      "source_sha": "f200d27cd6e95aa882294b157563c578b00299400d9237be5a8c4cc80bf3d30f",
       "severity": "context",
-      "claim": "All language adapters share an identical behavioral contract verified by a conformance test suite",
-      "rationale": "Cross-adapter consistency guarantee",
+      "claim": "Adapter conformance test suite enforces identical behavioral contract across all language adapters",
+      "rationale": "Architectural invariant for adapter equivalence",
       "excerpt": "Adapter conformance test suite (identical behavioral contract across all three adapters)",
       "symbol_ids": []
     },
     {
       "source": "README",
       "source_path": "README.md",
-      "source_sha": "90c15b27402b6e4dbecae371016b39887e17dc6bb1b2c69ce5f44328570a37f1",
+      "source_sha": "f200d27cd6e95aa882294b157563c578b00299400d9237be5a8c4cc80bf3d30f",
       "severity": "context",
-      "claim": "Architecture is designed so any subset of signals (LSP, ADRs, git, tests) produces value",
-      "rationale": "Graceful degradation property; bundles work even without ADRs",
+      "claim": "Architecture is designed so any subset of signals produces value (LSP+git+tests works even without ADRs)",
+      "rationale": "Establishes graceful-degradation property as architectural intent",
       "excerpt": "The architecture is designed so any subset of signals produces value.",
       "symbol_ids": []
     },
     {
       "source": "README",
       "source_path": "README.md",
-      "source_sha": "90c15b27402b6e4dbecae371016b39887e17dc6bb1b2c69ce5f44328570a37f1",
-      "severity": "context",
-      "claim": "Atlas schema v1.3 added parent_id to support flattened-child symbols required by ADR-14's Go interface method handling",
-      "rationale": "Schema evolution reason — Go adapter required new field",
-      "excerpt": "v0.2 added `parent_id` support for flattened-child symbols required by ADR-14's interface method handling",
+      "source_sha": "f200d27cd6e95aa882294b157563c578b00299400d9237be5a8c4cc80bf3d30f",
+      "severity": "hard",
+      "claim": "At query time, every get_symbol_context call performs only local SQLite + local LSP work with no network traffic",
+      "rationale": "Privacy and offline-operation guarantee at query time",
+      "excerpt": "No network traffic. No model calls. Your code never leaves your machine during normal use.",
       "symbol_ids": []
     },
     {
       "source": "README",
       "source_path": "README.md",
-      "source_sha": "90c15b27402b6e4dbecae371016b39887e17dc6bb1b2c69ce5f44328570a37f1",
+      "source_sha": "f200d27cd6e95aa882294b157563c578b00299400d9237be5a8c4cc80bf3d30f",
       "severity": "context",
-      "claim": "Benchmark harness lives in a separate repo so benchmarks measure the published package's actual behavior rather than an internal monorepo build",
-      "rationale": "Methodological isolation between product and measurement",
+      "claim": "Benchmark harness lives in a separate repo so benchmarks measure the published contextatlas package rather than an internal monorepo build",
+      "rationale": "Architectural separation to preserve external validity of measurements",
       "excerpt": "Keeping the harness out of this repo means the benchmarks measure the published `contextatlas` package's actual behavior rather than an internal monorepo build.",
       "symbol_ids": []
     },
     {
       "source": "README",
       "source_path": "README.md",
-      "source_sha": "90c15b27402b6e4dbecae371016b39887e17dc6bb1b2c69ce5f44328570a37f1",
+      "source_sha": "f200d27cd6e95aa882294b157563c578b00299400d9237be5a8c4cc80bf3d30f",
       "severity": "context",
-      "claim": "Claims are stored as discrete records with severity labels, keyed to symbols (claim-first vs graph-first)",
-      "rationale": "Storage and query model — optimized for 'what constrains this symbol?'",
-      "excerpt": "ContextAtlas stores discrete claims with severity labels, optimized for \"what constrains this symbol?\"",
-      "symbol_ids": []
-    },
-    {
-      "source": "README",
-      "source_path": "README.md",
-      "source_sha": "90c15b27402b6e4dbecae371016b39887e17dc6bb1b2c69ce5f44328570a37f1",
-      "severity": "context",
-      "claim": "Commit messages are used as a third claim source (in addition to ADRs and docstrings)",
-      "rationale": "v0.4 expanded claim extraction inputs",
-      "excerpt": "commit-message extraction as third claim source",
-      "symbol_ids": []
-    },
-    {
-      "source": "README",
-      "source_path": "README.md",
-      "source_sha": "90c15b27402b6e4dbecae371016b39887e17dc6bb1b2c69ce5f44328570a37f1",
-      "severity": "context",
-      "claim": "ContextAtlas delegates all structural questions to the language server (tsserver, Pyright, gopls) rather than parsing/extracting structure heuristically",
-      "rationale": "Core architectural bet — LSP-grounded vs heuristic extraction, contrasted with Graphify",
-      "excerpt": "ContextAtlas delegates all structural questions to the language server (tsserver, Pyright). Graphify derives structure via parsing and extraction.",
-      "symbol_ids": []
-    },
-    {
-      "source": "README",
-      "source_path": "README.md",
-      "source_sha": "90c15b27402b6e4dbecae371016b39887e17dc6bb1b2c69ce5f44328570a37f1",
-      "severity": "context",
-      "claim": "Currently only markdown ADRs with YAML frontmatter are supported as intent sources",
-      "rationale": "Format limitation; RST/AsciiDoc are welcome extensions",
-      "excerpt": "Currently we support markdown ADRs with YAML frontmatter. RST, AsciiDoc, and other formats are welcome extensions.",
-      "symbol_ids": []
-    },
-    {
-      "source": "README",
-      "source_path": "README.md",
-      "source_sha": "90c15b27402b6e4dbecae371016b39887e17dc6bb1b2c69ce5f44328570a37f1",
-      "severity": "context",
-      "claim": "Default output format is compact; JSON format is opt-in",
-      "rationale": "Output format design optimized for LLM consumption",
+      "claim": "Compact output format is the default; JSON format is opt-in",
+      "rationale": "Documents default output choice",
       "excerpt": "Compact output format (default) + JSON format (opt-in)",
       "symbol_ids": []
     },
     {
       "source": "README",
       "source_path": "README.md",
-      "source_sha": "90c15b27402b6e4dbecae371016b39887e17dc6bb1b2c69ce5f44328570a37f1",
+      "source_sha": "f200d27cd6e95aa882294b157563c578b00299400d9237be5a8c4cc80bf3d30f",
       "severity": "context",
-      "claim": "Five-layer architecture: MCP interface, query fusion, signal sources, extraction pipeline, storage (SQLite SHA-keyed for incremental reindex)",
-      "rationale": "Layered design with single-responsibility per layer",
-      "excerpt": "Five layers, each with one job: 1. **MCP interface.** ... 5. **Storage.** SQLite index, SHA-keyed for incremental reindex.",
+      "claim": "ContextAtlas chose symbol-keyed claims over embedding-based search because LSP symbols are exact while embeddings are fuzzy",
+      "rationale": "Records architectural bet against embeddings for code",
+      "excerpt": "Embeddings are fuzzy; LSP symbols are exact. For code, exactness wins.",
       "symbol_ids": []
     },
     {
       "source": "README",
       "source_path": "README.md",
-      "source_sha": "90c15b27402b6e4dbecae371016b39887e17dc6bb1b2c69ce5f44328570a37f1",
+      "source_sha": "f200d27cd6e95aa882294b157563c578b00299400d9237be5a8c4cc80bf3d30f",
       "severity": "context",
-      "claim": "Index incremental reindex is keyed by file SHA; only files whose SHAs changed get reprocessed",
-      "rationale": "Performance property of subsequent index runs",
-      "excerpt": "On subsequent runs, only files whose SHAs have changed since the last index get reprocessed.",
+      "claim": "ContextAtlas delegates all structural questions to the language server rather than deriving structure heuristically",
+      "rationale": "Defines LSP-grounded architectural bet differentiating from Graphify",
+      "excerpt": "ContextAtlas delegates all structural questions to the language server (tsserver, Pyright).",
       "symbol_ids": []
     },
     {
       "source": "README",
       "source_path": "README.md",
-      "source_sha": "90c15b27402b6e4dbecae371016b39887e17dc6bb1b2c69ce5f44328570a37f1",
+      "source_sha": "f200d27cd6e95aa882294b157563c578b00299400d9237be5a8c4cc80bf3d30f",
       "severity": "context",
-      "claim": "LSP adapter uses a two-readiness-signals architecture per ADR-18 for timing-race robustness",
-      "rationale": "Substrate hardening for adapter reliability",
-      "excerpt": "Stream A substrate hardening (LSP adapter timing-race robustness via two-readiness-signals architecture per ADR-18",
+      "claim": "ContextAtlas fuses four signals (LSP structure, ADR-derived architectural intent, git history, test associations) into a single MCP call returning context for a symbol",
+      "rationale": "Defines the core architectural pattern of the system: signal fusion via a single primitive call",
+      "excerpt": "Every bundle Claude receives combines four independent signals about a symbol",
       "symbol_ids": []
     },
     {
       "source": "README",
       "source_path": "README.md",
-      "source_sha": "90c15b27402b6e4dbecae371016b39887e17dc6bb1b2c69ce5f44328570a37f1",
-      "severity": "context",
-      "claim": "MCP tools return pre-composed fused bundles in one call rather than exposing graph primitives for callers to compose",
-      "rationale": "Architectural bet vs Graphify's graph_query/get_neighbors/shortest_path model",
-      "excerpt": "ContextAtlas's MCP tools return fused bundles in one call. Graphify exposes graph operations (`graph_query`, `get_neighbors`, `shortest_path`) that callers compose.",
+      "source_sha": "f200d27cd6e95aa882294b157563c578b00299400d9237be5a8c4cc80bf3d30f",
+      "severity": "hard",
+      "claim": "ContextAtlas never sends source code, git history, LSP symbol data, or query contents off the machine; only ADRs/READMEs/configured markdown docs are sent to the Anthropic API at index time",
+      "rationale": "Privacy guarantee constraining data flow",
+      "excerpt": "Never sent anywhere:\n- Your source code\n- Your git history\n- LSP symbol data (names, references, types)\n- Query contents at runtime",
       "symbol_ids": []
     },
     {
       "source": "README",
       "source_path": "README.md",
-      "source_sha": "90c15b27402b6e4dbecae371016b39887e17dc6bb1b2c69ce5f44328570a37f1",
+      "source_sha": "f200d27cd6e95aa882294b157563c578b00299400d9237be5a8c4cc80bf3d30f",
       "severity": "context",
-      "claim": "MVP language support is TypeScript and Python; Go shipped in v0.2; Java, .NET, Rust on roadmap",
-      "rationale": "Defines current and planned language coverage",
-      "excerpt": "**MVP:** TypeScript and Python. **Roadmap:** Java, Go, .NET, Rust.",
+      "claim": "ContextAtlas targets average developer codebases in the 20–300 file range, not 500k-file monorepos",
+      "rationale": "Defines target scale shaping product decisions",
+      "excerpt": "That's the codebase shape ContextAtlas targets.",
       "symbol_ids": []
     },
     {
       "source": "README",
       "source_path": "README.md",
-      "source_sha": "90c15b27402b6e4dbecae371016b39887e17dc6bb1b2c69ce5f44328570a37f1",
+      "source_sha": "f200d27cd6e95aa882294b157563c578b00299400d9237be5a8c4cc80bf3d30f",
+      "severity": "context",
+      "claim": "Extracted claims are stored locally only at .contextatlas/index.db by default",
+      "rationale": "Documents local storage location and privacy posture",
+      "excerpt": "The extracted claims database (`.contextatlas/index.db` by default)",
+      "symbol_ids": []
+    },
+    {
+      "source": "README",
+      "source_path": "README.md",
+      "source_sha": "f200d27cd6e95aa882294b157563c578b00299400d9237be5a8c4cc80bf3d30f",
+      "severity": "context",
+      "claim": "Go language adapter uses gopls per ADR-14",
+      "rationale": "Documents Go adapter backing language server",
+      "excerpt": "Go language adapter (via `gopls`, ADR-14)",
+      "symbol_ids": []
+    },
+    {
+      "source": "README",
+      "source_path": "README.md",
+      "source_sha": "f200d27cd6e95aa882294b157563c578b00299400d9237be5a8c4cc80bf3d30f",
+      "severity": "context",
+      "claim": "Incremental reindex reprocesses only files whose SHAs have changed since the last index",
+      "rationale": "Describes incremental reindex mechanism",
+      "excerpt": "only files whose SHAs have changed since the last index get reprocessed",
+      "symbol_ids": []
+    },
+    {
+      "source": "README",
+      "source_path": "README.md",
+      "source_sha": "f200d27cd6e95aa882294b157563c578b00299400d9237be5a8c4cc80bf3d30f",
+      "severity": "context",
+      "claim": "MVP language support is TypeScript and Python; the language adapter interface is a stable plugin surface so adding languages is additive, not a core change",
+      "rationale": "Describes plugin architecture and stability promise for adapters",
+      "excerpt": "The language adapter interface is a stable plugin surface — each new language is an additive contribution, not a core change.",
+      "symbol_ids": []
+    },
+    {
+      "source": "README",
+      "source_path": "README.md",
+      "source_sha": "f200d27cd6e95aa882294b157563c578b00299400d9237be5a8c4cc80bf3d30f",
+      "severity": "context",
+      "claim": "Markdown ADRs with YAML frontmatter are currently the only supported intent source format",
+      "rationale": "Documents current scope of intent source formats",
+      "excerpt": "Currently we support markdown ADRs with YAML frontmatter.",
+      "symbol_ids": []
+    },
+    {
+      "source": "README",
+      "source_path": "README.md",
+      "source_sha": "f200d27cd6e95aa882294b157563c578b00299400d9237be5a8c4cc80bf3d30f",
       "severity": "hard",
       "claim": "Node.js 20 or newer is required",
-      "rationale": "Runtime requirement",
+      "rationale": "Stated runtime requirement",
       "excerpt": "Node.js 20 or newer.",
       "symbol_ids": []
     },
     {
       "source": "README",
       "source_path": "README.md",
-      "source_sha": "90c15b27402b6e4dbecae371016b39887e17dc6bb1b2c69ce5f44328570a37f1",
+      "source_sha": "f200d27cd6e95aa882294b157563c578b00299400d9237be5a8c4cc80bf3d30f",
       "severity": "hard",
       "claim": "Python projects require Pyright on the PATH",
-      "rationale": "Runtime prerequisite for Python language adapter functionality",
+      "rationale": "Required runtime dependency for Python support",
       "excerpt": "Python projects additionally require Pyright on the PATH",
       "symbol_ids": []
     },
     {
       "source": "README",
       "source_path": "README.md",
-      "source_sha": "90c15b27402b6e4dbecae371016b39887e17dc6bb1b2c69ce5f44328570a37f1",
+      "source_sha": "f200d27cd6e95aa882294b157563c578b00299400d9237be5a8c4cc80bf3d30f",
       "severity": "context",
-      "claim": "Query-time resolution is fully local — SQLite lookup plus local LSP calls, no network traffic or model calls",
-      "rationale": "Defines runtime privacy and offline behavior",
-      "excerpt": "At query time — every `get_symbol_context` call Claude makes during your work — ContextAtlas performs a local SQLite lookup plus local LSP calls. No network traffic. No model calls.",
+      "claim": "SQLite atlas schema v1.2 added parent_id to support flattened-child symbols required by ADR-14 interface method handling",
+      "rationale": "Documents schema evolution tied to adapter requirements",
+      "excerpt": "v0.2 added `parent_id` support for flattened-child symbols required by ADR-14's interface method handling",
       "symbol_ids": []
     },
     {
       "source": "README",
       "source_path": "README.md",
-      "source_sha": "90c15b27402b6e4dbecae371016b39887e17dc6bb1b2c69ce5f44328570a37f1",
+      "source_sha": "f200d27cd6e95aa882294b157563c578b00299400d9237be5a8c4cc80bf3d30f",
       "severity": "context",
-      "claim": "Schema versioning follows ADR-11's additive-versioning pattern (e.g., generator.contextatlas_commit_sha added in v0.3)",
-      "rationale": "Versioning discipline for atlas schema",
-      "excerpt": "v0.3 added `generator.contextatlas_commit_sha` per ADR-11's additive-versioning pattern",
+      "claim": "Setting atlas.committed: false disables the committed team artifact; each developer runs their own extraction",
+      "rationale": "Documents configurable opt-out for teams that cannot commit the atlas",
+      "excerpt": "Set `atlas.committed: false` in the config.",
       "symbol_ids": []
     },
     {
       "source": "README",
       "source_path": "README.md",
-      "source_sha": "90c15b27402b6e4dbecae371016b39887e17dc6bb1b2c69ce5f44328570a37f1",
+      "source_sha": "f200d27cd6e95aa882294b157563c578b00299400d9237be5a8c4cc80bf3d30f",
+      "severity": "context",
+      "claim": "The MCP server runs on default no-arg invocation",
+      "rationale": "Describes invocation contract",
+      "excerpt": "The MCP server runs on default no-arg invocation.",
+      "symbol_ids": []
+    },
+    {
+      "source": "README",
+      "source_path": "README.md",
+      "source_sha": "f200d27cd6e95aa882294b157563c578b00299400d9237be5a8c4cc80bf3d30f",
       "severity": "soft",
-      "claim": "Setting atlas.committed: false makes every developer run their own extraction, sacrificing team artifact benefit",
-      "rationale": "Configuration option for teams that cannot commit the atlas",
-      "excerpt": "Set `atlas.committed: false` in the config. Every developer runs their own extraction. The team artifact benefit is lost",
+      "claim": "There is ONE canonical entry point per cohort path (CLI or Skills); behavior adapts based on substrate state",
+      "rationale": "Stated discoverability design principle",
+      "excerpt": "ONE canonical entry point per cohort path; behavior adapts based on substrate state.",
       "symbol_ids": []
     },
     {
       "source": "README",
       "source_path": "README.md",
-      "source_sha": "90c15b27402b6e4dbecae371016b39887e17dc6bb1b2c69ce5f44328570a37f1",
+      "source_sha": "f200d27cd6e95aa882294b157563c578b00299400d9237be5a8c4cc80bf3d30f",
       "severity": "context",
-      "claim": "Symbol-keyed claims were chosen over embedding-based search because LSP symbols are exact while embeddings are fuzzy",
-      "rationale": "Deliberate design choice; exactness preferred for code",
-      "excerpt": "We evaluated this and chose symbol-keyed claims instead. Embeddings are fuzzy; LSP symbols are exact. For code, exactness wins.",
+      "claim": "atlas.json is a committable team artifact that lives in the repo; first run imports it directly into local cache when present",
+      "rationale": "Distinguishing architectural bet: version-controlled team artifact + local cache",
+      "excerpt": "ContextAtlas produces a **committable team artifact** — `atlas.json`",
       "symbol_ids": []
     },
     {
       "source": "README",
       "source_path": "README.md",
-      "source_sha": "90c15b27402b6e4dbecae371016b39887e17dc6bb1b2c69ce5f44328570a37f1",
+      "source_sha": "f200d27cd6e95aa882294b157563c578b00299400d9237be5a8c4cc80bf3d30f",
       "severity": "context",
-      "claim": "Test-file exclusion is directory-aware",
-      "rationale": "v0.4 substrate refinement for relevance filtering",
-      "excerpt": "directory-aware test-file exclusion",
+      "claim": "find_by_intent uses FTS5 + BM25 ranking over the claims table per ADR-09",
+      "rationale": "Implementation choice for intent search",
+      "excerpt": "thin composite, FTS5 + BM25 ranking over the claims table (ADR-09)",
       "symbol_ids": []
     },
     {
       "source": "README",
       "source_path": "README.md",
-      "source_sha": "90c15b27402b6e4dbecae371016b39887e17dc6bb1b2c69ce5f44328570a37f1",
+      "source_sha": "f200d27cd6e95aa882294b157563c578b00299400d9237be5a8c4cc80bf3d30f",
       "severity": "context",
-      "claim": "atlas.json is a committable team artifact intended to live in the repo alongside code and ADRs",
-      "rationale": "Categorical architectural bet distinguishing ContextAtlas from session-memory and knowledge-graph tools",
-      "excerpt": "ContextAtlas produces a **committable team artifact** — `atlas.json` — that lives in the repo alongside your code and ADRs.",
+      "claim": "get_symbol_context is the primitive (four-signal fusion); find_by_intent and impact_of_change are thin composites built on it",
+      "rationale": "Architectural layering between primitive and composite MCP tools",
+      "excerpt": "`get_symbol_context` — the primitive, full four-signal fusion",
       "symbol_ids": []
     },
     {
       "source": "README",
       "source_path": "README.md",
-      "source_sha": "90c15b27402b6e4dbecae371016b39887e17dc6bb1b2c69ce5f44328570a37f1",
+      "source_sha": "f200d27cd6e95aa882294b157563c578b00299400d9237be5a8c4cc80bf3d30f",
       "severity": "context",
-      "claim": "find_by_intent uses FTS5 + BM25 ranking over the claims table (per ADR-09)",
-      "rationale": "Implementation choice for intent-based search",
-      "excerpt": "`find_by_intent` — thin composite, FTS5 + BM25 ranking over the claims table (ADR-09)",
-      "symbol_ids": []
-    },
-    {
-      "source": "README",
-      "source_path": "README.md",
-      "source_sha": "90c15b27402b6e4dbecae371016b39887e17dc6bb1b2c69ce5f44328570a37f1",
-      "severity": "context",
-      "claim": "get_symbol_context returns fused four-signal bundle (LSP + ADR claims + git + tests) in a single MCP call",
-      "rationale": "Core design premise — replaces 10-15 tool calls with one for symbol context queries",
-      "excerpt": "Claude calls `get_symbol_context(symbol)` and gets everything about that symbol in a single response — definition, references, governing ADR constraints, recent commits, related tests",
-      "symbol_ids": []
-    },
-    {
-      "source": "README",
-      "source_path": "README.md",
-      "source_sha": "90c15b27402b6e4dbecae371016b39887e17dc6bb1b2c69ce5f44328570a37f1",
-      "severity": "context",
-      "claim": "typescript-language-server is declared as a peer dependency rather than a direct one so users control the version",
-      "rationale": "Version control delegated to consumer; affects installation shape",
+      "claim": "typescript-language-server is declared a peer dependency rather than a direct one so the user controls the version",
+      "rationale": "Architectural choice about dependency management",
       "excerpt": "ContextAtlas declares `typescript-language-server` as a **peer dependency** rather than a direct one, so you control the version.",
       "symbol_ids": []
     },
     {
       "source": "README",
       "source_path": "README.md",
-      "source_sha": "90c15b27402b6e4dbecae371016b39887e17dc6bb1b2c69ce5f44328570a37f1",
+      "source_sha": "f200d27cd6e95aa882294b157563c578b00299400d9237be5a8c4cc80bf3d30f",
       "severity": "context",
-      "claim": "Script-reported extraction costs use full-token API pricing; platform-billed actuals reflect prompt-cache discount on the shared EXTRACTION_PROMPT prefix and typically run ~3x lower",
-      "rationale": "Cost projections are conservative upper bounds due to prompt caching",
-      "excerpt": "Script-reported extraction costs use full-token API pricing; platform-billed actuals reflect prompt-cache discount on the shared `EXTRACTION_PROMPT` prefix and typically run **~3x lower**.",
+      "claim": "v0.3 atlas schema added generator.contextatlas_commit_sha per ADR-11 additive-versioning pattern",
+      "rationale": "Documents schema additive-versioning evolution",
+      "excerpt": "v0.3 added `generator.contextatlas_commit_sha` per ADR-11's additive-versioning pattern",
+      "symbol_ids": []
+    },
+    {
+      "source": "README",
+      "source_path": "README.md",
+      "source_sha": "f200d27cd6e95aa882294b157563c578b00299400d9237be5a8c4cc80bf3d30f",
+      "severity": "context",
+      "claim": "Script-reported extraction costs reflect full-token pricing; platform-billed actuals run ~3x lower due to prompt-cache discount on the shared EXTRACTION_PROMPT prefix",
+      "rationale": "Architectural note on cost reporting and prompt caching",
+      "excerpt": "platform-billed actuals reflect prompt-cache discount on the shared `EXTRACTION_PROMPT` prefix and typically run **~3x lower**",
       "symbol_ids": [
         "sym:ts:src/extraction/prompt.ts:EXTRACTION_PROMPT"
       ]
@@ -15942,11 +15952,23 @@
     {
       "source": "README",
       "source_path": "README.md",
-      "source_sha": "90c15b27402b6e4dbecae371016b39887e17dc6bb1b2c69ce5f44328570a37f1",
+      "source_sha": "f200d27cd6e95aa882294b157563c578b00299400d9237be5a8c4cc80bf3d30f",
       "severity": "context",
-      "claim": "LanguageAdapter interface is a stable plugin surface; new languages are additive contributions, not core changes",
-      "rationale": "Extension point design — language support intended to grow via plugins",
-      "excerpt": "The language adapter interface is a stable plugin surface — each new language is an additive contribution, not a core change.",
+      "claim": "v0.7 bumped atlas schema to v1.4 per canonical AtlasFileV1 schema enforcement substrate",
+      "rationale": "Documents most recent schema bump and its rationale",
+      "excerpt": "v0.7 bumped to v1.4 at Step 2.3.a.1 per canonical AtlasFileV1 schema enforcement substrate",
+      "symbol_ids": [
+        "sym:ts:src/storage/types.ts:AtlasFileV1"
+      ]
+    },
+    {
+      "source": "README",
+      "source_path": "README.md",
+      "source_sha": "f200d27cd6e95aa882294b157563c578b00299400d9237be5a8c4cc80bf3d30f",
+      "severity": "context",
+      "claim": "The LanguageAdapter interface is small and stable; adding a new language is a self-contained project",
+      "rationale": "Plugin-surface stability claim for contributors",
+      "excerpt": "The `LanguageAdapter` interface is small and stable.",
       "symbol_ids": [
         "sym:ts:src/types.ts:LanguageAdapter"
       ]
@@ -16853,6 +16875,48 @@
     }
   ],
   "git_commits": [
+    {
+      "sha": "fe3ae7e701a680a97e90e23a23242b17965e173c",
+      "date": "2026-05-12T13:26:46-04:00",
+      "message": "Step 5.3: v0.7.0 ship — launch-bearing cycle to v1.0 substrate complete",
+      "author_email": "traviswye@gmail.com",
+      "files": [
+        "CLAUDE.md",
+        "README.md",
+        "package.json"
+      ]
+    },
+    {
+      "sha": "345696d0b4ee898f26ad70591742f952bec19c33",
+      "date": "2026-05-12T13:01:48-04:00",
+      "message": "Step 4: v0.7 cycle-close evaluations — cycle thesis empirically delivered (3-of-4 tier MET + TERTIARY deferred to v0.8+); V1.0 ship-gate 2-of-3 MET + 2 carried-forward pattern preserved; 15 cycle-execution observations + 17 v0.8+ forward-pointer candidates consolidated at research/v0.8-candidates.md for handoff substrate inheritance + context-window-resilience",
+      "author_email": "traviswye@gmail.com",
+      "files": [
+        "STEP-PLAN-V0.7.md",
+        "research/v0.8-candidates.md"
+      ]
+    },
+    {
+      "sha": "74dbf9d622a03bd12e0f694c7146f80d9b4a2758",
+      "date": "2026-05-12T12:47:45-04:00",
+      "message": "Step 3.2: Step 3 substep cluster close — atlas refresh + α Skill cohort UX substrate-evolution empirically validated at contextatlas-on-itself dogfood; 15 cycle-execution observations preserved (Class-15 capstone composition); Steps 4-5 ship-gate forward-planning surface ready",
+      "author_email": "traviswye@gmail.com",
+      "files": [
+        "STEP-PLAN-V0.7.md"
+      ]
+    },
+    {
+      "sha": "1e1105905387ac83f4c384ba043600e2d98d0828",
+      "date": "2026-05-12T12:43:55-04:00",
+      "message": "Step 3.1: contextatlas-on-itself atlas refresh per ADR-12 incremental refresh substrate (v1.3 → v1.4 schema upgrade; 1 changed file re-extracted at $0.23) + SKILL.md α refresh-aware workflow amendment + CLAUDE.md cohort UX framing",
+      "author_email": "traviswye@gmail.com",
+      "files": [
+        ".claude/skills/index-atlas/SKILL.md",
+        ".contextatlas/atlas.json",
+        "CLAUDE.md",
+        "STEP-PLAN-V0.7.md"
+      ]
+    },
     {
       "sha": "b7ce010b0d31d8c569d29b036b5ee9820a73eea6",
       "date": "2026-05-12T11:33:40-04:00",

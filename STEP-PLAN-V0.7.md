@@ -668,56 +668,86 @@ prerequisite per v0.6 Q8.0.6 lock inheritance).
 
 ---
 
-### Step 5 — Ship gate (v0.7 + v1.0 dual-tag)
+### Step 5 — Ship gate (v0.7.0)
 
-**Scope.** v0.7 + v1.0 ship gate per Q-pre-5 lock (single ship-
-gate; v0.7.0 + v1.0.0 dual tags pointing at same commit).
-9-substep ladder pattern matches v0.6 Step 9 inheritance + v0.7-
-specific dual-tag adjustments.
+**Scope.** v0.7 ship gate per Step 5.0 LOCK 1 Option α (6-substep
+ladder; tag landing as discrete substep preserves substep
+boundary discipline + tag-creation observation surface per
+v0.5/v0.6 ship-gate precedent). v1.0.0 dual-tag NOT landed this
+cycle per Travis Step 5.0 LOCK 1 directive (v0.7.0 annotated tag
+at ship commit only; v1.0.0 dual-tag deferred to post-launch
+trigger).
 
-**Substeps** (firmed at Step 5.0 per Q5.0 design adjudications
-inheritance from v0.6 Q9.0 pattern):
+**Substeps** (firmed at Step 5.0 per LOCK 1 Option α revision of
+original 8-substep ladder; v0.6 Q9.0 pattern preserved at
+abstraction):
 
-- [ ] **Step 5.0** — Design adjudications (Q5.0.1+ locks per
-  v0.6 Q9.0 pattern inheritance; Q5.0.X dual-tag operation
-  semantics + Q5.0.Y Step 5.5 absorbed-item annotation expanded
-  scope + Q5.0.Z package.json bump shape per v0.7-SCOPE.md §7.6
-  inheritance).
-- [ ] **Step 5.1** — Pre-flight verification (npm test main
-  1303/1303+ PASS + benchmarks-repo green + npm run build clean
-  + working-content gap inventory + cross-document consistency
-  verification + cycle-thesis surface enumeration; 7-class
-  recursive catch-pattern observation classes scan per v0.6
-  Step 9.1 inheritance + NEW classes if v0.7-specific surface).
-- [ ] **Step 5.2.a-d** — External-doc inline surfaces (README +
-  ROADMAP + CLAUDE.md + DESIGN.md per Q5.0 lock; Path 1 README
-  coordination canonical-state-first per Q-pre-6 + v0.6 Q9.0.3
-  inheritance; Travis launch-side polish post-ship).
-- [ ] **Step 5.3** — Verification table inline (14-criterion
-  6-column verification table per v0.6 Q9.0.4 6-column
-  inheritance + Q5.0 lock).
-- [ ] **Step 5.4** — Tag message inline (v0.7.0 + v1.0.0 dual
-  tag bodies per Q-pre-5 lock; v0.7.0 cycle-close framing;
-  v1.0.0 public-launch framing; SHA-free body per v0.5.0 +
-  v0.6.0 precedent inheritance).
-- [ ] **Step 5.5** — Absorbed-item annotations (expanded scope
-  per Q-pre-3 surface observation: 5+ items including v0.5-
-  candidates.md #6 partial-absorbed at v0.6 A6 + #13 partial-
-  absorbed at v0.6 A7 + A1 + A2 + A3 absorbed-at-v0.7 via
-  TERTIARY scope; URL-form per Q9.0.6 α-light inheritance).
-- [ ] **Step 5.6** — Ship commit + dual-tag HEREDOC alongside
-  (single ship commit per Q-pre-5; v0.7.0 + v1.0.0 tags
-  pointing at same commit; package.json bump per Q5.0.Z lock at
-  Step 5.0 design phase — lean single bump to 1.0.0).
-- [ ] **Step 5.7** — Cross-repo back-reference (benchmarks-
-  repo Phase-N ref-doc revision history if applicable; v0.7
-  cycle may not generate Phase-N ref-doc since launch-bearing
-  cycle has no matrix-replication run; potentially skip per
-  Q5.0 lock).
-- [ ] **Step 5.8** — SHA backfill (STEP-PLAN-V0.7.md Step 5
-  progress log + v0_7-HANDOFF.md placeholder fills + cross-
-  repo SHA placeholder per Q9.0.9 α inheritance; v0.5 11.8 +
-  v0.6 9.8 minimal-scope precedent).
+- [x] **Step 5.0** — Design adjudications. LOCKs 1-9 locked
+  per Step 5.0 surface: substep ladder Option α (6 substeps);
+  CHANGELOG β defer; README scope (b) full launch-narrative
+  refresh; package bump quiet capture; cross-repo back-ref α
+  ship per locked precedent; v0_8-HANDOFF.md ~150-200 LOC
+  §1-§4 framework; wall-clock estimate ~2-2.5 hours; per-
+  substep ship criteria locked.
+
+- [x] **Step 5.1** — Travis-side pre-flight verification per
+  LOCK 9. `git status` clean + `contextatlas index` Phase 4
+  SHA-diff incremental ($0.0000 / 0 API calls / 829ms; 26
+  prose files unchanged; extracted_at_sha advance 1e11059 →
+  345696d) + `contextatlas validate-atlas` exit 0
+  (AtlasFileV1 v1.4) + `contextatlas doctor` 29 PASS / 1
+  WARN / 0 FAIL per Step 3.1 baseline + `npm test` 1527
+  tests / 85 files / all PASS + `npm run build` clean.
+
+- [x] **Step 5.2** — Ship-prep edits per LOCK 3 Scope (b)
+  staging-only (no commit; staging at Step 5.2 + commit at
+  Step 5.3): CLAUDE.md Current Version block (v0.6 → v0.7
+  transition + v0.7 outcome + methodology limits inserted;
+  v0.6 preserved as historical record; v0.7+ candidates →
+  v0.8+ candidates pointer; Historical references + trailing
+  prose paragraph updated); README.md launch-narrative
+  refresh (status block + Skill cohort path Alternative
+  subsection + new "Atlas refresh + cohort entry paths"
+  section + v0.7 shipped block + v0.8+ candidates section +
+  atlas schema v1.3 → v1.4 annotation); package.json 0.6.0 →
+  0.7.0. atlas.json 4th-file disposition: LOCK 1 Option γ —
+  Travis-side revert + atlas refresh post-ship at Step 5.5.
+
+- [x] **Step 5.3** — Ship commit landing per LOCK 8 §1-§7
+  substrate structure. Commit `fe3ae7e` (3 files / 197
+  insertions / 49 deletions; subject 71 chars: "Step 5.3:
+  v0.7.0 ship — launch-bearing cycle to v1.0 substrate
+  complete"). Step 7.5 body integrity verification all
+  checks PASS (Greek letters + em-dashes + arrows + MET
+  symbols + ship-gate criterion enumeration + §1-§7 sections
+  all intact).
+
+- [x] **Step 5.4** — v0.7.0 annotated tag landing per LOCK 8
+  tag body launch-narrative substrate requirements. Initial
+  tag SHA `8ab6cc1` (1st landing) → deleted locally per LOCK
+  β Adjudication 3 atomic ship-gate discipline-leveraging
+  in-place fix for cosmetic `~$0.23` escape pattern →
+  recreated annotated tag against ship commit `fe3ae7e`
+  (final). Step 7.5 body integrity verification PASS post-
+  recreate (cosmetic fix verified; all locked LOCK 8
+  substrate content preserved exactly).
+
+- [x] **Step 5.5** — Cross-repo back-reference + v0_8-
+  HANDOFF.md + Step 5 close (γ-1 absorption shape). Atlas
+  refresh post-package-bump (FO-15 cascade empirically
+  realized: contextatlas_version="0.7.0" populated;
+  extracted_at_sha=fe3ae7e advance; ADR-12 incremental
+  refresh substrate validated at $0.1944 / 36.5s / 1 changed
+  file README.md re-extraction). Cross-repo back-reference
+  benchmarks-repo `c2a1592` at Phase-10 §12 revision history
+  per LOCK 5 (42 LOC; honest framing per LOCK 5 v0.7 launch-
+  bearing cycle main-repo only + benchmarks substrate
+  generation deferred to v0.8+ post-launch). v0_8-HANDOFF.md
+  generated per LOCK 6 §1-§4 framework (208 LOC; bounded at
+  upper edge of ~150-200 LOC LOCK 6 estimate). Step 5 close
+  commit absorbing atlas.json + v0_8-HANDOFF.md + STEP-PLAN-
+  V0.7.md progress log + atomic final push per Adjudication
+  3 atomic ship-gate discipline.
 
 **9-step locked sequence (v0.5+ canonical inheritance).** Per
 v0.6-SCOPE.md §SC #15 + v0.7-SCOPE.md §8 #12:
@@ -747,6 +777,59 @@ timeline; not blocking).
 ## Progress log
 
 *Entries added in reverse-chronological order as steps ship.*
+
+### Step 5 shipped — 2026-05-12 (v0.7.0 ship — launch-bearing cycle to v1.0 substrate complete; 3-of-4 tier MET + TERTIARY deferred to v0.8+; V1.0 ship-gate 2-of-3 MET + 2 carried-forward; atomic ship-gate discipline preserved through cosmetic `~$0.23` fix at Step 5.4 + γ-1 absorption shape at Step 5.5)
+
+V0.7 Step 5 ship gate substantively closes the v0.7 launch-bearing cycle to v1.0 public launch substrate complete. 6-substep Option α ladder per Step 5.0 LOCK 1 (substep boundary discipline + tag-creation observation surface preserved per v0.5/v0.6 precedent). Atomic ship-gate discipline preserved throughout (no GitHub state divergence until final atomic push at Step 5.5 close).
+
+#### Step 5.0 design adjudications (LOCKs 1-9)
+
+Travis surfaced 8 design adjudications post-Step-4 push trigger; dev surfaced design proposal inline per discipline #3 cadence; Travis locked LOCKs 1-9:
+- LOCK 1: Step 5 substep ladder Option α (6 substeps; tag as discrete substep)
+- LOCK 2: CHANGELOG β defer (no CHANGELOG.md at v0.5/v0.6 precedent)
+- LOCK 3: README scope (b) full launch-narrative refresh ~50-80 LOC estimate (actual +104 net LOC)
+- LOCK 4: package bump quiet capture (no new Class-15 instance)
+- LOCK 5: Cross-repo back-reference α ship per locked precedent
+- LOCK 6: v0_8-HANDOFF.md ~150-200 LOC §1-§4 framework
+- LOCK 7: Wall-clock ~2-2.5 hours
+- LOCK 8: Per-substep ship criteria + Step 5.4 tag body launch-narrative substrate requirements
+- LOCK 9: Step 5.1 Travis-side pre-flight verification cadence
+
+#### Step 5.1 Travis-side pre-flight verification
+
+All 6 LOCK 9 surfaces empirically defended. Atlas refresh Phase 4 SHA-diff incremental at $0.0000 / 0 API calls / 829ms (26 prose files unchanged; extracted_at_sha advance 1e11059 → 345696d Step 4 ship commit alignment). validate-atlas exit 0 (AtlasFileV1 v1.4 conformance). doctor 29 PASS / 1 WARN / 0 FAIL baseline preserved per Step 3.1 expectation. npm test 1527 / 85 / all PASS. npm run build clean (typecheck + lint + prompt-artifacts regen).
+
+#### Step 5.2 ship-prep edits
+
+3 files modified per LOCK 3 scope (CLAUDE.md + README.md + package.json; staging-only no commit). LOC overrun pattern observed (CLAUDE.md +56 net vs ~15-25 LOC estimate; README.md +104 net vs ~50-80 LOC estimate; Travis estimates architectural-shape estimates not LOC-budget locks; substrate-fidelity preservation at v1.0 launch-narrative density justifies). atlas.json 4th-file empirically surfaced via Step 5.1 refresh; LOCK 1 adjudication Option γ (Travis-side revert + atlas refresh post-ship at Step 5.5 per FO-15 cascade observation). Flaky LSP-interaction Windows tempdir EBUSY cleanup race 3rd recurrence (Step 2.3.c.0 + Step 3.1 + Step 5.2); reproducible pattern per research/v0.8-candidates.md Test Substrate entry. Re-run all PASS (1527 / 85). FO-15 cascade pattern empirically realized through three surfaces: build-time (npm run build outputs `contextatlas@0.7.0 build` header at Step 5.2); atlas refresh-time (Step 5.5 populates contextatlas_version="0.7.0"); tag-landing-time (v0.7.0 annotated tag at Step 5.4).
+
+#### Step 5.3 ship commit landing
+
+Ship commit `fe3ae7e` landed (3 files / 197 insertions / 49 deletions; subject 71 chars ≤72 limit). HEREDOC body per LOCK 8 §1-§7 substrate structure: §1 cycle thesis evaluation outcome; §2 PRIMARY (a) claude-code-only extraction path shipped; §3 PRIMARY (b) generate-adrs feature shipped; §4 SECONDARY install + setup 2-repo verification PASSED; §5 TERTIARY A1+A2+A3 deferred; §6 V1.0 ship-gate criteria evolution; §7 cycle integrity audit-trail substrate handoff. Step 7.5 body integrity verification all 14 checks PASS (Greek letters; em-dashes; arrows; MET symbols; ship-gate criterion enumeration; §1-§7 sections; cycle thesis evaluation outcome; PRIMARY (a)/(b); SECONDARY; TERTIARY; V1.0 ship-gate state; 15 Class-15 observations; 21 v0.8+ candidates; v0_8-HANDOFF.md queued).
+
+#### Step 5.4 v0.7.0 annotated tag landing + cosmetic fix
+
+Initial tag landing surfaced cosmetic `~\$0.23` escape artifact in §2 SECONDARY bullet (single-quoted HEREDOC `'EOF'` preserved backslash literally — `\$` rendered as `\$` rather than intended `$`). Dev-empirical-cosmetic-blemish-detection-at-canonical-launch-artifact-surface surfaced honestly. Travis adjudication: LOCK β delete + recreate tag locally before push per atomic ship-gate discipline (Adjudication 3 substantively designed for this remediation case — local-only state allows clean fix without GitHub state divergence). `git tag -d v0.7.0` deleted pre-fix tag SHA `8ab6cc1`; `git tag -a v0.7.0 fe3ae7e -m "..."` recreated annotated tag against ship commit `fe3ae7e` with cosmetic fix `~$0.23` (no escape). Step 7.5 body integrity verification PASS post-recreate (all locked LOCK 8 substrate content preserved exactly).
+
+#### Step 5.5 close cadence (γ-1 absorption shape)
+
+Atlas refresh post-package-bump empirically realizes FO-15 cascade: contextatlas_version="0.7.0" populated at atlas.json generator block (vs "0.6.0" at pre-package-bump Step 5.1 baseline); extracted_at_sha advances to ship commit `fe3ae7e`. Refresh outcome substantively DIVERGED from Step 5.1 baseline ($0.1944 / 36.5s / 1 changed file vs $0.0000 / 0 API calls baseline) — Step 5.2 ship-prep edits modified README.md (+104 net LOC per Scope (b) full launch-narrative refresh) → Phase 4 SHA-diff incremental refresh correctly detected README.md SHA change → README.md re-extracted at refined Step 2.3.c.0 substrate (30 claims_written + 22 unresolved_candidates per canonical R11 retention pattern). ADR-12 incremental refresh substrate empirically validated at runtime ship-gate surface — when content changes, cost reflects work; when content unchanged, $0.0000. Cost substantively bounded ($0.1944) below $0.50-2 envelope from Step 5.1 LOCK 4. Cross-repo back-reference benchmarks-repo `c2a1592` at Phase-10 §12 revision history per LOCK 5 (42 LOC; matches v0.6 ship cross-repo back-ref body precedent; honest LOCK 5 framing v0.7 launch-bearing cycle main-repo only + benchmarks substrate generation deferred to v0.8+ post-launch). v0_8-HANDOFF.md generated per LOCK 6 §1-§4 framework (208 LOC; upper-edge bounded at ~150-200 LOC LOCK 6 estimate; launch-bearing substrate density justifies). Step 5 close commit absorbs atlas.json + v0_8-HANDOFF.md + STEP-PLAN-V0.7.md progress log atomically per γ-1 absorption shape.
+
+#### Class-15 disposition
+
+Option C LOCKED at Step 5.5 close commit body authoring time per Travis discretion — honest empirical pattern recognition at substep cluster maturity. Class-15 trajectory captures 2 cycle-close-emergent instances (final count: 17 instances at v0.7 cycle close):
+
+- **Instance 16: dev-empirical-correction-of-advisor-attribution-framing-at-destructive-action-boundary** (Step 5.2/5.3 atlas.json revert surface). Advisor framed `git checkout .contextatlas/atlas.json` as "TRAVIS-SIDE PRE-STEP-5.3 ACTION"; dev caught the attribution mismatch (git status showed atlas.json still modified post-action narrative) + flagged before executing destructive operation requiring explicit authorization beyond design lock. Substantive cycle-integrity preservation pattern.
+
+- **Instance 17: dev-empirical-cosmetic-blemish-detection-at-canonical-launch-artifact-surface + atomic-ship-gate-discipline-leveraging-for-remediation** (Step 5.4 surface). Dev caught `~\$0.23` HEREDOC escape artifact in v0.7.0 annotated tag body (single-quoted HEREDOC `'EOF'` preserved backslash literally rendering `\$` rather than intended `$`); leveraged locked Adjudication 3 atomic ship-gate discipline for bounded local-only remediation (delete + recreate tag pre-push). Substantive discipline-pattern empirical validation.
+
+Capstone composition at named-framework-target (15) substantively held through Step 3.2 close; v0.7 ship-gate substep cluster substantively surfaced 2 additional distinct empirical patterns worth honest capture. Travis-Claude-dev triangulation working at ship-gate substrate-quality surfaces substantively the discipline mechanism that produced both observations.
+
+#### Cycle close
+
+V0.7 cycle definitively closes at Step 5.5 final atomic push. V1.0 public launch substrate complete. V0.8 cycle pre-planning surface opens for next-cycle thesis adjudication. v0_8-HANDOFF.md is canonical bridge document for v0.8 cycle pre-planning inheritance from v0.7 cycle close (~150-200 LOC bounded per LOCK 6; §1-§4 framework structure mirrors v0_7-HANDOFF.md precedent).
+
+Cycle position post-Step-5: V0.7 cycle complete. Main-repo ship commit `fe3ae7e` + v0.7.0 annotated tag + Step 5.5 close commit (this commit). Benchmarks-repo cross-repo back-ref `c2a1592`. Within 4-5 day timeline framing per Travis Lock 2 no-wall-clock-ceiling preserved throughout cycle.
 
 ### Step 4 shipped — 2026-05-12 (v0.7 cycle-close evaluations — cycle thesis empirically delivered (3-of-4 tier MET + TERTIARY deferred to v0.8+); V1.0 ship-gate 2-of-3 MET + 2 carried-forward pattern preserved; 15 cycle-execution observations + 21 v0.8+ forward-pointer candidates consolidated at research/v0.8-candidates.md for handoff substrate inheritance + context-window-resilience)
 
