@@ -182,14 +182,20 @@ export class AnthropicAPIDirectGenerator implements Generator {
       // Lock 3 (32k budget; substantively similar to Skill
       // `effort: xhigh` adaptive reasoning per claude-code-guide
       // investigation). Closes API-parameter-equivalence with
-      // Skill substrate at the thinking layer. SDK 0.27.3 does
-      // NOT type the `thinking` parameter (added in ~0.32+);
-      // `as` cast bypasses excess-property check at the
-      // literal-passing boundary. Runtime API forwards the
+      // Skill substrate at the thinking layer.
+      //
+      // v0.8 Step 4.1 empirical finding: SDK ^0.32.0 (LOCK E
+      // target) does NOT type the `thinking` parameter — `grep
+      // thinking node_modules/@anthropic-ai/sdk/**/*.d.ts`
+      // returns zero matches at 0.32.x. The v0.7 assumption that
+      // "thinking added in ~0.32+" did not match empirical
+      // substrate state. Cast workaround retained at LOCK E
+      // ^0.32.0 version target; thinking-native-typing migration
+      // requires higher SDK version (TBD; v0.8+ candidate at
+      // separate adjudication). Runtime API forwards the
       // parameter; thinking blocks in response are naturally
       // skipped by extractTextFromResponse (consumes only
-      // type === "text" blocks). SDK upgrade to v0.32+ for
-      // canonical typed surface is v0.8+ candidate.
+      // type === "text" blocks).
       response = await anthropic.messages.create({
         model: GENERATION_MODEL,
         max_tokens: GENERATION_MAX_TOKENS,
