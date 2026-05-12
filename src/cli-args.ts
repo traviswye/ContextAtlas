@@ -103,7 +103,8 @@ export type Subcommand =
   | "init"
   | "generate-adrs"
   | "resolve-symbols"
-  | "validate-atlas";
+  | "validate-atlas"
+  | "validate-adrs";
 
 export interface ParsedArgs {
   /**
@@ -224,6 +225,7 @@ export const KNOWN_SUBCOMMANDS: readonly Subcommand[] = [
   "generate-adrs",
   "resolve-symbols",
   "validate-atlas",
+  "validate-adrs",
 ];
 
 /**
@@ -256,6 +258,7 @@ Subcommands:
   generate-adrs         Generate ADRs from codebase (requires ANTHROPIC_API_KEY; one-time-per-repo)
   resolve-symbols       Enrich Skill-produced atlas with LSP-resolved symbol IDs (no API key needed)
   validate-atlas        Validate atlas.json against canonical schema (no API key needed)
+  validate-adrs         Validate docs/adr/*.md against canonical depth-floor invariants (no API key needed)
 
 Global options:
   --version             Show version + exit

@@ -449,6 +449,50 @@ priors-based correction landed at v0.5 Step 10.1 (per
 aggregation strategy per Q4(ii) lock; rolling-N aggregation
 remains v0.6+ candidate if needed for ongoing cost forecasting.
 
+## Generation cost framing (v0.7 Step 2.3.c.0 deliberate-shift lock)
+
+`contextatlas generate-adrs` is the load-bearing first step of the
+atlas substrate pipeline — atlas quality is bounded by ADR quality
+per Travis foundational framing. Step 2.3.c.0 substantively raised
+the depth-quality bar: investigative-depth-per-decision-candidate
+workflow (Phase A); canonical depth-floor mechanical enforcement
+via `contextatlas validate-adrs` (Phase C); SKILL.md frontmatter
+pinning to `claude-opus-4-7` + `effort: xhigh` (extended adaptive
+reasoning included).
+
+**Deliberate cost trade-off:** the v0.6 generate-adrs framing
+("~$0.50 cold-start; ~$1-3 with reference-context") is superseded
+for v0.7 launch. Expect $5-15 per repo at v1.0 — one-time-per-repo
+investment in the foundational ADR substrate that downstream MCP
+query value depends on. Cost reflects deep investigation (~30-50
+file reads for substantial codebases; investigative-depth bound by
+decision-candidate scope not file-count floor) + adaptive
+reasoning at xhigh effort. This is a deliberate quality-cost
+trade-off explicitly chosen per Travis Lock 2 ("no wall-clock or
+cost ceiling I am not willing to take"; this is the single most
+important step; backbone of atlas quality).
+
+Skill `/generate-adrs` path: subscription-bounded (no API key
+cost); substantively higher subscription token consumption than
+v0.6 framing per extended thinking + Phase A investigation reads.
+Empirical post-Step-2.3.c.0 measurement at Step 2.4 calibration
+informs.
+
+**Substantive launch-narrative framing:** treat `generate-adrs`
+as the foundational substrate investment, NOT as a recurring cost.
+Cohort users at v1.0 should understand: this is a one-time-per-
+repo expense that determines atlas quality; subsequent
+`contextatlas index` runs reuse the ADRs and cost a fraction.
+
+**Substantive launch document substrate** for v1.0 cohort framing:
+- "Plan $5-15 for `generate-adrs` per repo (one-time)"
+- "Subsequent `index` runs cost a fraction of that"
+- "Skill path is subscription-bounded but consumes substantively
+  more session tokens than v0.6 cycle measurements suggested"
+- "The cost reflects deliberate quality investment in the ADR
+  substrate your atlas is built on — cheaper shallow ADRs would
+  undermine atlas quality at every downstream query"
+
 ## Cost-priors interpretation discipline (v0.6 Step 2 / E2 lock)
 
 V0.5 Step 10.1 shipped adaptive cost-priors aggregation

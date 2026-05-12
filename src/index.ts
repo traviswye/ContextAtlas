@@ -41,6 +41,7 @@ import { runResolveSymbolsSubcommand } from "./extraction/cli-resolve-symbols.js
 import { runIndexSubcommand } from "./extraction/cli-runner.js";
 import { runValidateAtlasSubcommand } from "./extraction/cli-validate-atlas.js";
 import { runGenerateAdrsSubcommand } from "./generation/cli-runner.js";
+import { runValidateAdrsSubcommand } from "./generation/cli-validate-adrs.js";
 import { runInitSubcommand } from "./init/runner.js";
 import { log } from "./mcp/logger.js";
 import { createServer } from "./mcp/server.js";
@@ -104,6 +105,23 @@ export async function main(): Promise<void> {
   // SKILL.md instructed Read tool; hard removal eliminates the
   // alternative path. R4 manifestation triage per Travis
   // foundational-substrate-consistency framing.
+
+  // v0.7 Step 2.3.c.0 — validate-adrs subcommand. β-bounded
+  // mechanical floor enforcement for ADR depth per Travis Lock 1 +
+  // refinement adjudications. Reads docs/adr/*.md; validates each
+  // ADR against canonical depth-floor invariants (frontmatter
+  // present + canonical sections + ≥2 symbol-with-line citations
+  // + ≥2 distinct named alternatives + ≥1 code block + ≥3
+  // Rationale items + ≥3 Consequences items + 600-line ceiling
+  // hard fail). Used as MANDATORY GATE (Phase C) in /generate-adrs
+  // Skill workflow.
+  if (subcommand === "validate-adrs") {
+    const result = await runValidateAdrsSubcommand({
+      configRoot,
+      configFile: configFileArg,
+    });
+    process.exit(result.exitCode);
+  }
 
   // v0.7 Step 2.3.b.0 — validate-atlas subcommand. β-bounded
   // mechanical schema validation at CLI boundary per Travis Lock 1.

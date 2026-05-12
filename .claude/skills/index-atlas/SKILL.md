@@ -1,6 +1,8 @@
 ---
 name: index-atlas
 description: Run ContextAtlas extraction inside Claude Code session (subscription-bounded; no Anthropic API key needed). Walks ADRs, docstrings, and commit messages from the configured repo and extracts architectural claims keyed to code symbols. Persists results to .contextatlas/index.db (SQLite) + atlas.json (committable artifact). This is the canonical Claude Code entry point per ADR-02 v0.7 amendment §Decision entry-point-determined cost model.
+model: claude-opus-4-7
+effort: xhigh
 ---
 
 # index-atlas — ContextAtlas extraction via Claude Code session

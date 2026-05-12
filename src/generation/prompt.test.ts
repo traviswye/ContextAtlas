@@ -51,14 +51,16 @@ describe("GENERATE_ADRS_PROMPT canonical content (v0.7 Step 2.2.a.2)", () => {
   });
 
   it("includes reference-context current-vs-superseded handling (Refinement 1)", () => {
-    expect(GENERATE_ADRS_PROMPT).toContain("REFERENCE CONTEXT");
+    // v0.7 Step 2.3.c.0 amended section header from "REFERENCE
+    // CONTEXT" caps to "Reference context handling" — semantic
+    // invariants below remain stable.
+    expect(GENERATE_ADRS_PROMPT).toContain("Reference context handling");
     expect(GENERATE_ADRS_PROMPT).toContain("CURRENT architectural decisions");
     expect(GENERATE_ADRS_PROMPT).toContain("superseded/withdrawn/rejected");
   });
 
   it("includes architectural-evolution observation framing (Refinement 3)", () => {
     expect(GENERATE_ADRS_PROMPT).toContain("architectural-evolution observation");
-    expect(GENERATE_ADRS_PROMPT).toContain("Earlier documentation described");
   });
 
   it("instructs JSON-only output (no prose, no markdown fencing)", () => {

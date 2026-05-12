@@ -595,3 +595,132 @@ historical record per v0.5 + v0.6 + v0.7 inheritance discipline.
   CLI boundary is the load-bearing substrate. Composes with
   11-class enumeration → 12-class for v0.7+ ship-gate working-
   content-gap-inventory inheritance.
+
+- **2026-05-12** — v0.7 Step 2.3.c.0 generation-side β-bounded
+  amendment per Travis Lock 1 + refinement adjudications.
+  Empirical Step 2.3 closure (commit `d9b6271`) confirmed
+  extraction-side β-bounded binds (Outcome A); but Travis
+  surfaced substantive product judgment that generated ADR
+  depth/quality at the rich-skill empirical surface
+  substantively under-shoots the canonical ContextAtlas/Hono
+  ADR depth ceiling. Generation has no β-bounded equivalent at
+  Step 2.3.b.0 close — text-only SKILL.md prompt-tightening
+  is the same hope-pattern β-bounded extraction was a response
+  to. Step 2.3.c.0 ships the generation-side mechanical-floor
+  substrate.
+
+  **Driver:** Travis foundational substrate-consistency framing
+  ("ADRs are the backbone — atlas quality is bounded by ADR
+  quality") + "single most important step" + "cost/wall-clock
+  irrelevant; best model possible." The depth gap between
+  hand-crafted (ContextAtlas ADR-12 ~600+ lines; Hono ADR-04
+  ~250 lines with alternatives-considered enumeration + code
+  snippets + named failure modes) and Skill-generated (~30-40
+  lines) substantively undermines launch-narrative claim
+  unless mechanically bounded.
+
+  **§permitted-modules invariant extension:**
+
+  Two changes:
+  - **GENERATE_ADRS_PROMPT substantively refined** in 4
+    dimensions: audience framing (senior-engineer-in-18-months
+    discipline), investigative discipline (load-bearing file
+    reads + line-number citations + code-pattern quoting +
+    alternatives-considered enumeration), failure-mode
+    discipline (named failure modes + review invariants in
+    Consequences), calibration examples (inline good-vs-
+    shallow contrast per section). Cold-codebase ceiling
+    honest framing acknowledged (cold investigation can't
+    recover original-author intent / cycle history /
+    production-incident-driven decisions; aim for what cold-
+    investigation CAN reach).
+  - **ADDED** `contextatlas validate-adrs` CLI subcommand
+    (`src/generation/cli-validate-adrs.ts`). Parses
+    `docs/adr/*.md`; validates each ADR against canonical
+    depth-floor invariants: frontmatter + canonical sections
+    + ≥2 symbol-with-line-number citations + ≥2 substantive
+    Context paragraphs + ≥2 distinct named alternatives with
+    text content beyond bullet label (tightened per Travis lock
+    — harder-to-game than keyword matching) + ≥1 fenced code
+    block + ≥3 Rationale items + ≥3 Consequences items +
+    600-line ceiling hard fail with split-suggestion
+    remediation (per Travis lock — bundled-decision flag).
+
+  **§Decision Skill workflow Phase A/B/C extension:**
+
+  `/generate-adrs/SKILL.md` workflow restructured to three
+  MANDATORY phases:
+  - **Phase A** — investigative-depth-per-decision-candidate
+    framing. Read load-bearing implementation files; note line
+    numbers; track cross-file patterns; identify alternatives
+    visible in code/commits. NO file-count floor (per Travis
+    lock: file-count floor was unenforceable proxy; investigative
+    discipline binds via Phase C output invariants instead).
+  - **Phase B** — ADR writing using canonical prompt + Phase A
+    investigation. Direct JSON response (no script
+    improvisation per FO-13 absorbed at Step 2.3.b.0); each
+    ADR follows canonical template with depth invariants.
+  - **Phase C** — MANDATORY `contextatlas validate-adrs` gate.
+    Non-zero exit triggers re-investigate + re-write + re-
+    validate loop. Workflow blocks until all ADRs pass.
+
+  **§Decision model+thinking enforcement:**
+
+  Both `/index-atlas` + `/generate-adrs` SKILL.md frontmatter
+  pinned to `model: claude-opus-4-7` + `effort: xhigh`.
+  Claude Code Skills support model + effort frontmatter
+  fields per https://code.claude.com/docs/en/skills.md;
+  override binds for the Skill invocation regardless of user
+  session model. `effort: xhigh` on Opus 4.7 activates
+  adaptive reasoning that includes extended thinking. This
+  mechanically eliminates cross-cohort variance from session-
+  model inheritance.
+
+  **§Consequences deliberate cost-narrative shift:**
+
+  V0.6 cost-narrative ("~$0.50 cold-start; ~$1-3 with
+  reference-context for generate-adrs") is superseded for v0.7
+  launch. Expected cost: $5-15 per repo at v1.0 for
+  `generate-adrs` (CLI path with extended thinking +
+  investigative file reads). Deliberate quality-cost trade-off
+  per Travis Lock 2 "no wall-clock or cost ceiling I am not
+  willing to take." Skill path: subscription-bounded but
+  substantively higher session-token consumption than v0.6
+  cycle framing.
+
+  Launch document substrate updated to frame generate-adrs as
+  "one-time-per-repo investment in foundational ADR substrate
+  that determines atlas quality" — NOT recurring cost.
+  Subsequent `contextatlas index` runs reuse ADRs at fractional
+  cost.
+
+  **Substantive cohort substrate-consistency claim at v1.0:**
+
+  Post-Step-2.3.c.0, CLI + Skill paths produce ADRs that pass
+  `contextatlas validate-adrs` mechanical floor invariants —
+  canonical depth substantively defended via mechanical
+  enforcement at CLI boundary, not text-instructional hope.
+  Text content varies (cold-investigation ceiling per honest-
+  scope framing) but depth substantively raised vs Step 2.3.b
+  baseline.
+
+  **Cross-references:**
+  - Step 2.3.c.0 commit (this amendment + GENERATE_ADRS_PROMPT
+    4-dimension refinement + SKILL.md model+effort frontmatter
+    pinning + validate-adrs CLI + SKILL.md Phase A/B/C
+    workflow + CLAUDE.md cost-narrative deliberate-shift)
+  - Step 2.4 calibration target (cold-investigation reachable
+    success bar; NOT hand-crafted ceiling per honest framing)
+  - claude-code-guide investigation outcome (frontmatter
+    model + effort pinning is canonical Skill model-
+    enforcement path; subprocess-spawn pattern is alternative
+    for multi-phase model variance; not needed for this case)
+
+  Cycle-execution observation 13 (NEW): Skill output depth is
+  bounded by both prompt + workflow structure + mechanical
+  enforcement layers — none alone is sufficient. Step 2.3.c.0
+  ships all three concurrently rather than iteratively because
+  empirical evidence at Step 2.3 + 2.3.b suggested each
+  layer's absence substantively undermines depth quality.
+  Composes with 12-class enumeration → 13-class for v0.7+
+  ship-gate working-content-gap-inventory inheritance.

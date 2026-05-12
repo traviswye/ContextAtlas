@@ -477,6 +477,32 @@ lock).
     evolution rationale. Escalation contingency to β-full (Skill-
     as-MCP-orchestrator) preserved if mandatory gates still
     substantively skipped per LOCK 3.
+  - [x] **Step 2.3.c.0** — generation-side β-bounded mechanical-
+    enforcement substrate per Travis Lock 1 + refinement
+    adjudications (Travis surfaced product judgment that
+    generated ADR depth/quality at rich-skill empirical surface
+    substantively under-shoots canonical hand-crafted depth
+    ceiling; generation has no β-bounded equivalent at Step
+    2.3.b.0 close — text-only SKILL.md prompt-tightening is the
+    same hope-pattern β-bounded extraction was a response to).
+    Shipped 2026-05-12; commit `[this commit]`. GENERATE_ADRS_PROMPT
+    substantively refined across 4 dimensions (audience framing +
+    investigative discipline + failure-mode discipline +
+    calibration examples) + cold-codebase ceiling honest framing;
+    both SKILL.md frontmatter pinned to model: claude-opus-4-7 +
+    effort: xhigh (Claude Code-native model+effort enforcement
+    per claude-code-guide investigation); new `contextatlas
+    validate-adrs` CLI subcommand (9-invariant canonical depth-
+    floor enforcement + 600-line ceiling hard fail with split-
+    suggestion remediation + ≥2 distinct named alternatives
+    tightened-check per Travis lock); `/generate-adrs/SKILL.md`
+    workflow restructured to Phase A (investigative-depth-per-
+    candidate; NO file-count floor per Travis lock) / Phase B
+    (canonical writing) / Phase C (MANDATORY validate-adrs gate);
+    CLAUDE.md + ADR-02 deliberate cost-narrative shift ($5-15
+    one-time per repo per Travis "single most important step"
+    framing). Step 2.4 re-verification ready against refined
+    substrate.
   - [x] **Step 2.3 closure** — re-verification at rich-skill/
     Claude Code session post-Step-2.3.b.0 (Checkpoint 2 + 3 per
     LOCK 5 4-checkpoint cadence) **PASS — Outcome A — β-bounded
@@ -653,6 +679,92 @@ timeline; not blocking).
 ## Progress log
 
 *Entries added in reverse-chronological order as steps ship.*
+
+### Step 2.3.c.0 shipped — 2026-05-12 (generation-side β-bounded mechanical-floor substrate per Travis Lock 1 + refinements: GENERATE_ADRS_PROMPT 4-dimension refinement + SKILL.md model+effort frontmatter pinning + contextatlas validate-adrs CLI subcommand + /generate-adrs Phase A/B/C workflow restructure + deliberate cost-narrative shift)
+
+V0.7 Step 2.3.c.0 ships the generation-side mechanical-floor substrate response to Travis's substantive product judgment that generated ADR depth/quality at the rich-skill empirical surface substantively under-shoots the canonical hand-crafted depth ceiling. Driver: Travis foundational framing — "ADRs are the backbone — atlas quality is bounded by ADR quality" + "single most important step" + "cost/wall-clock irrelevant; best model possible." Pattern recognition: generation has no β-bounded equivalent at Step 2.3.b.0 close; text-only SKILL.md prompt-tightening alone is the same hope-pattern β-bounded extraction was a response to (R4 cross-session-variance pattern). Step 2.3.c.0 ships the generation-side mechanical-floor substrate: refined prompt + frontmatter model+effort pinning + validate-adrs CLI gate + Phase A/B/C workflow restructure.
+
+| Substep | branch | commit | Notes |
+|---|---|---|---|
+| 2.3.c.0 generation-side β-bounded | main | [this commit] | GENERATE_ADRS_PROMPT 4-dimension refinement (audience framing + investigative discipline + failure-mode discipline + calibration examples) + cold-ceiling honest framing; both SKILL.md frontmatter pinned to model+effort per claude-code-guide investigation (Claude Code-native enforcement); new contextatlas validate-adrs CLI with 9-invariant depth-floor enforcement (including ≥2 distinct named alternatives tightened-check + 600-line ceiling hard fail with split-suggestion); /generate-adrs Phase A/B/C workflow restructure; deliberate cost-narrative shift ($5-15 one-time per repo at v1.0) |
+
+#### Engineering deliverables
+
+**New files (2):**
+- `src/generation/cli-validate-adrs.ts` (~340 LOC) — `runValidateAdrsSubcommand` orchestrator + `validateAdrShape` per-ADR checker covering 9 canonical depth-floor invariants per Travis refinement adjudications (frontmatter present with required fields + canonical section headers + ≥2 symbol-with-line-number citations + ≥2 substantive Context paragraphs + ≥2 distinct named alternatives with text content beyond label + ≥1 fenced code block + ≥3 Rationale items + ≥3 Consequences items + 600-line ceiling hard fail with split-suggestion remediation)
+- `src/generation/cli-validate-adrs.test.ts` (~330 LOC; 16 tests) — canonical ADR PASS path + each specific failure mode + ceiling boundary cases + orchestrator end-to-end against tmp ADR directory
+
+**Modified files (8):**
+- `src/generation/prompt.ts` — `GENERATE_ADRS_PROMPT` substantively refined from ~85 lines to ~265 lines: audience framing (senior engineer 18mo); investigative discipline (load-bearing file reads + line-number citations + code-pattern quoting + alternatives-considered enumeration); failure-mode discipline (named failure modes + review invariants); calibration examples inline (good vs shallow contrast per Context/Rationale/Consequences section); cold-codebase ceiling honest framing; expanded "what counts as architectural decision" + anti-hallucination discipline
+- `src/generation/prompt.test.ts` — updated 2 tests for refined section names (REFERENCE CONTEXT → Reference context handling)
+- `src/cli-args.ts` — `validate-adrs` added to Subcommand union + KNOWN_SUBCOMMANDS + HELP_TEXT
+- `src/index.ts` — dispatch wiring for `validate-adrs` subcommand
+- `.claude/skills/index-atlas/SKILL.md` — frontmatter `model: claude-opus-4-7` + `effort: xhigh` (mechanical Claude Code-native model+effort enforcement; cross-session variance eliminated for Skill invocation)
+- `.claude/skills/generate-adrs/SKILL.md` — frontmatter pinning AND Phase A/B/C workflow restructure (Phase A: investigative-depth-per-decision-candidate framing NO file-count floor; Phase B: canonical ADR writing using prompt + Phase A investigation; Phase C: MANDATORY validate-adrs gate with re-investigate + re-write + re-validate loop)
+- `CLAUDE.md` — new "Generation cost framing (v0.7 Step 2.3.c.0 deliberate-shift lock)" section: $5-15 one-time per repo at v1.0 per Travis "single most important step" framing; supersedes v0.6 generate-adrs cost narrative; launch document substrate updates
+- `docs/adr/ADR-02-extraction-sole-api-caller.md` — comprehensive Step 2.3.c.0 amendment (~120 LOC): empirical driver + §permitted-modules extension (refined GENERATE_ADRS_PROMPT + validate-adrs CLI) + §Decision Phase A/B/C workflow extension + §Decision model+thinking enforcement + §Consequences deliberate cost-narrative shift + cycle-execution observation 13
+
+**Substantively bounded scope:** ~700 LOC engineering + ~330 LOC tests + ~280 LOC documentation amendments across 10 files. Within Travis Lock 2 no-wall-clock-ceiling framing.
+
+#### Verification outcomes
+
+- `npm test` full suite: **1520 tests / 85 files / all PASS** (+16 net tests vs Step 2.3 closure baseline of 1504; 16 new validate-adrs tests)
+- `npm run build`: clean (prompt artifact regenerated; new size 12481 chars vs Step 2.3.b.0 baseline 5328 — 2.3× depth investment in refined prompt)
+- Production binary smoke test: `node dist/index.js --help` surfaces `validate-adrs` correctly
+- Typecheck: clean
+
+#### claude-code-guide investigation outcome (Skill model+effort pinning)
+
+Authoritative finding from claude-code-guide subagent: Claude Code Skills support `model:` + `effort:` fields in SKILL.md YAML frontmatter per https://code.claude.com/docs/en/skills.md#frontmatter-reference. Override binds for the Skill invocation regardless of user session model; resumes session model on next prompt. `effort: xhigh` on Opus 4.7 activates adaptive reasoning that INCLUDES extended thinking (no separate `thinking:` field; thinking is folded into `effort`). v2.1.111+ supports Opus 4.7 in `model:` field. This is the canonical Skill model-enforcement path — subprocess-spawn pattern (Travis's opt-career-ops fork pattern) is the alternative for multi-phase model variance within a single Skill workflow; not needed for ContextAtlas's case (single locked config per Skill).
+
+#### Substantive depth-gap analysis driving 4-dimension refinement
+
+Comparison anchor (canonical hand-crafted vs Skill-generated at Step 2.3 closure):
+
+| Dimension | Canonical (ContextAtlas/Hono) | Step 2.3 closure rich-skill | Gap |
+|---|---|---|---|
+| Context establishes stakes | 2-3 substantive paragraphs + alternatives + comparison tables | 1 brief paragraph stating "Rich must render..." | Substantive depth gap |
+| Decision detail | Enumerated MUST/MUST-NOT + symbol refs with line numbers + inline code snippets | 2-3 sentences + bare symbol names without lines | Substantive depth gap |
+| Rationale depth | 5-9 distinct angles each making case (counter-alternatives + principles + payoffs) | 3-4 bullets at topic level | Substantive depth gap |
+| Consequences concreteness | Named failure modes + review invariants + downstream impacts | 4-5 surface-level bullets | Substantive depth gap |
+| Voice | "Author investigated deeply" — line refs, code quotes, specific cross-ADR links | "Author generalized from architectural knowledge" — abstract patterns | Substantive depth gap |
+
+Refinement addresses each gap mechanically (validate-adrs floor) + structurally (Phase A/B/C workflow) + framingly (4-dimension prompt amendment).
+
+#### Cold-codebase ceiling honest framing
+
+Per Travis cold-investigation-ceiling lock: Skill-generated ADRs from cold investigation (no prior knowledge of codebase history) cannot recover original-author intent, cycle history, or production-incident-driven decisions. Aim for what cold investigation CAN reach: line-level grounding, code-pattern citation, alternatives inferred from code structure, failure modes visible in error-handling code. Step 2.4 calibration success bar set against cold-investigation-reachable depth, NOT hand-crafted ceiling.
+
+#### Step 2.4 calibration success bar (per Travis lock — line-count floor REMOVED)
+
+| Metric | Pre-Step-2.3.c.0 baseline | Step 2.4 success bar (cold-investigation reachable) | Hand-crafted ceiling (NOT target) |
+|---|---|---|---|
+| Symbol-with-line-number citations per ADR | 0-1 | ≥3 (validate-adrs invariant) | 5-15 |
+| Code snippets per ADR | 0 | ≥1 (validate-adrs invariant) | 2-5 |
+| Alternatives-considered enumeration | Absent | ≥2 distinct named alternatives with substantive text (validate-adrs invariant) | Multi-paragraph rejection rationale |
+| Failure-modes / review-invariants in Consequences | Absent | Present (mechanical floor via Consequences ≥3 distinct items + qualitative judgment) | 5-9 substantive bullets |
+| Line count | (~30-40 lines pre-refinement) | NO floor; NO target — only validate-adrs 600-line ceiling hard fail | n/a |
+
+#### R4 contingency framing for Step 2.4 re-verification
+
+Per Travis Lock 3 escalation contingency framework, Step 2.4 re-verification at rich-skill/ Claude Code session will determine:
+- **Outcome A** (β-bounded depth substrate binds): refined prompt + frontmatter pinning + Phase A/B/C + validate-adrs gate substantively raise depth past success-bar table; Step 2.4 closes; Step 2.5 next
+- **Outcome B** (partial bind): some invariants met; others fail; narrower Step 2.3.c.1 iteration
+- **Outcome C** (substantive failure): mechanical gates substantively skipped OR depth still substantively under-shoots — escalation to v0.8+ deeper substrate per honest-scope acknowledgment
+
+#### Class-15 framing composition (tenth instance at v0.7 cycle worth direct capture)
+
+Substantive Travis-product-judgment-overrides-Claude-advisor-framing 10-instance pattern at v0.7 cycle (composes with prior 9):
+
+10. Travis surfacing generation-side depth-quality concern at Step 2.3 closure brainstorming surface — extracts pattern from claude-code-guide investigation outcome (Skill frontmatter model+effort pinning IS supported; ~5 LOC fix) AND tightens validate-adrs invariants per substantive review (≥2 distinct named alternatives with substantive text content; 600-line ceiling hard fail with split-suggestion; NO file-count floor in Phase A); compose-surfaces-before-locking discipline AGAIN substantively shaping substrate-evolution at substep-cluster maturity. Class-15 pattern preserved.
+
+#### Step 2.4 substrate ready (post-push)
+
+Per locked Path 2 cadence:
+- Step 2.4 — reference-context Skill verification with refined substrate (Option B+C combo using rich-skill/ target + django/deps/final/ reference context — both already staged from prior cycle work)
+- Substantive expectation: Skill agent in fresh Claude Code session at rich-skill/ cwd invokes /generate-adrs with reference-context arg; Phase A investigation phase fires; Phase B writes canonical ADRs at refined-prompt depth; Phase C validate-adrs gate fires; outcome informs whether Step 2.5 close OR Step 2.3.c.1 iteration needed
+
+---
 
 ### Step 2.3 closure shipped — 2026-05-12 (β-bounded substrate empirical validation at rich-skill/ Claude Code session — Outcome A; all 3 mandatory gates fired in sequence first-try; full-fidelity atlas with LSP-resolved symbols; substantive launch-narrative claim defended across 3 cohort entry surfaces)
 
