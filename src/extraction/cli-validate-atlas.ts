@@ -22,8 +22,9 @@
  *       printed to stderr)
  */
 
-import { existsSync, readFileSync } from "node:fs";
-import { resolve as pathResolve } from "node:path";
+import { existsSync, readFileSync, statSync } from "node:fs";
+import { dirname, join, resolve as pathResolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { loadConfig } from "../config/parser.js";
 import {
@@ -40,13 +41,65 @@ export interface ValidateAtlasCliOptions {
   writeStdout?: (chunk: string) => void;
   /** Test seam: where validation errors go. Defaults to process.stderr.write. */
   writeStderr?: (chunk: string) => void;
+  /**
+   * Test seam: override installed package version for FO-15 semver +
+   * version-match validation. Defaults to canonical package.json read.
+   * Per v0.8 Step 4.2 Q4.0.2.a Option β substrate.
+   */
+  installedPackageVersionOverride?: string;
+  /**
+   * Test seam: override "now" for FO-16 6mo-staleness check. Defaults
+   * to Date.now() at invocation. Per v0.8 Step 4.2 Q4.0.2.b refined
+   * dual-invariant substrate.
+   */
+  nowOverride?: Date;
 }
 
 export interface ValidateAtlasCliResult {
   exitCode: ValidateAtlasExitCode;
   /** Validation findings (empty when atlas valid). */
   errors: readonly string[];
+  /**
+   * Validation warnings (informational; do not affect exit code).
+   * Per v0.8 Step 4.2 Q4.0.2.b refined dual-invariant: 6mo-staleness
+   * invariant surfaces as WARNING per locked disposition.
+   */
+  warnings: readonly string[];
 }
+
+// ---------------------------------------------------------------------------
+// V0.8 Step 4.2 — FO-15 + FO-16 mechanical enforcement helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Read installed contextatlas package version. Inline helper per
+ * src/index.ts:55 readPackageVersion pattern + src/init/mcp-
+ * registration.ts:35 inheritance precedent (no shared utility per
+ * CLAUDE.md dependency-minimization discipline).
+ */
+function readPackageVersion(): string {
+  const here = dirname(fileURLToPath(import.meta.url));
+  // Works whether running from src/extraction/ (tsx/vitest) or
+  // dist/extraction/ (built).
+  const pkgPath = join(here, "..", "..", "package.json");
+  const pkg = JSON.parse(readFileSync(pkgPath, "utf8")) as { version: string };
+  return pkg.version;
+}
+
+/**
+ * Semver parse check per Q4.0.2.a Option β (semver-parse +
+ * installed-version-match). Accepts canonical semver: X.Y.Z OR
+ * X.Y.Z-prerelease. Captures "agent invented version" surface per
+ * FO-15 origin observation (Step 2.3 Checkpoint 3).
+ */
+const SEMVER_REGEX = /^\d+\.\d+\.\d+(?:-[\w.-]+)?$/;
+
+export function isSemver(value: string): boolean {
+  return SEMVER_REGEX.test(value);
+}
+
+/** FO-16 6mo-staleness window in milliseconds. */
+const STALENESS_WINDOW_MS = 6 * 30 * 24 * 60 * 60 * 1000; // 6 months ~ 180 days
 
 const VALID_SEVERITIES = new Set(["hard", "soft", "context"]);
 
@@ -69,7 +122,7 @@ export async function runValidateAtlasSubcommand(
       : loadConfig(options.configRoot);
   } catch (err) {
     writeStderr(`validate-atlas: failed to load config: ${String(err)}\n`);
-    return { exitCode: 2, errors: [String(err)] };
+    return { exitCode: 2, errors: [String(err)], warnings: [] };
   }
 
   const atlasPath = pathResolve(options.configRoot, config.atlas.path);
@@ -79,7 +132,7 @@ export async function runValidateAtlasSubcommand(
         `Run \`/index-atlas\` (Skill) or \`contextatlas index\` (CLI) ` +
         `to produce the atlas first.\n`,
     );
-    return { exitCode: 2, errors: ["atlas not found"] };
+    return { exitCode: 2, errors: ["atlas not found"], warnings: [] };
   }
 
   let raw: unknown;
@@ -91,15 +144,34 @@ export async function runValidateAtlasSubcommand(
         `Parse error: ${String(err)}\n` +
         `Remediation: ensure the file contains a single valid JSON object.\n`,
     );
-    return { exitCode: 2, errors: ["json parse error"] };
+    return { exitCode: 2, errors: ["json parse error"], warnings: [] };
   }
 
-  const errors = validateAtlasShape(raw);
+  const installedPackageVersion =
+    options.installedPackageVersionOverride ?? readPackageVersion();
+  const shapeErrors = validateAtlasShape(raw, installedPackageVersion);
+
+  // v0.8 Step 4.2 FO-16 dual-invariant per Q4.0.2.b refined locks:
+  // Invariant 1 (file-mtime anchor; ERROR) + Invariant 2 (6mo-staleness;
+  // WARNING). Both run only when shape validation surfaces a parseable
+  // generated_at substrate; otherwise FO-15 / FO-16 type-presence
+  // errors are sufficient remediation guidance.
+  const tsResult = validateGeneratedAtInvariants(
+    raw,
+    atlasPath,
+    options.nowOverride ?? new Date(),
+  );
+  const errors = [...shapeErrors, ...tsResult.errors];
+  const warnings = tsResult.warnings;
+
   if (errors.length === 0) {
     writeStdout(
       `validate-atlas: ${config.atlas.path} conforms to canonical AtlasFileV1 schema v${ATLAS_VERSION}.\n`,
     );
-    return { exitCode: 0, errors: [] };
+    for (const w of warnings) {
+      writeStderr(`validate-atlas WARNING: ${w}\n`);
+    }
+    return { exitCode: 0, errors: [], warnings };
   }
 
   writeStderr(
@@ -111,6 +183,9 @@ export async function runValidateAtlasSubcommand(
   for (const err of errors) {
     writeStderr(`  - ${err}\n`);
   }
+  for (const w of warnings) {
+    writeStderr(`  WARNING: ${w}\n`);
+  }
   writeStderr(
     `\n` +
       `Refer to the canonical atlas example embedded in ` +
@@ -119,7 +194,78 @@ export async function runValidateAtlasSubcommand(
       `top-level fields; DO NOT nest claims inside a \`sources\` ` +
       `object; \`claims\` is a flat top-level array.\n`,
   );
-  return { exitCode: 2, errors };
+  return { exitCode: 2, errors, warnings };
+}
+
+/**
+ * v0.8 Step 4.2 FO-16 mechanical enforcement per Q4.0.2.b refined
+ * locks. Validates `generated_at` substrate via two orthogonal
+ * invariants:
+ *
+ * Invariant 1 — File-mtime anchor (ERROR on violation): generated_at
+ * MUST be ≤ atlas file mtime. Logically impossible to violate
+ * legitimately (atlas content cannot be generated AFTER the file was
+ * written). Directly closes FO-16 origin observation (agent populated
+ * representative timestamp ≠ actual generation time at Step 2.3
+ * Checkpoint 3).
+ *
+ * Invariant 2 — Validate-time bounded staleness (WARNING on violation):
+ * generated_at SHOULD be within 6 months of validate-atlas invocation
+ * time. Informational signal for cohort users running against stale
+ * substrate; 6mo matches realistic atlas regen cadence.
+ *
+ * Skips invariant checks when generated_at is absent / not a string /
+ * empty — type-presence error from validateAtlasShape is sufficient
+ * remediation guidance in those cases.
+ */
+function validateGeneratedAtInvariants(
+  raw: unknown,
+  atlasPath: string,
+  now: Date,
+): { errors: string[]; warnings: string[] } {
+  const errors: string[] = [];
+  const warnings: string[] = [];
+  if (raw === null || typeof raw !== "object" || Array.isArray(raw)) {
+    return { errors, warnings };
+  }
+  const atlas = raw as Record<string, unknown>;
+  const ga = atlas.generated_at;
+  if (typeof ga !== "string" || ga.length === 0) {
+    return { errors, warnings };
+  }
+
+  const parsed = new Date(ga);
+  if (Number.isNaN(parsed.getTime())) {
+    errors.push(
+      `\`generated_at\` is "${ga}" — not parseable as ISO 8601 timestamp. Expected format e.g., "2026-05-11T20:00:00.000Z".`,
+    );
+    return { errors, warnings };
+  }
+
+  // Invariant 1: file-mtime anchor (ERROR)
+  let mtime: Date | null = null;
+  try {
+    mtime = statSync(atlasPath).mtime;
+  } catch {
+    // If statSync fails, mtime anchor check skipped silently —
+    // shape-level errors already surfaced atlas-file remediation.
+  }
+  if (mtime !== null && parsed.getTime() > mtime.getTime()) {
+    errors.push(
+      `\`generated_at\` "${ga}" is AFTER atlas file mtime "${mtime.toISOString()}" — logically impossible per FO-16 file-mtime-anchor invariant (atlas content cannot be generated after the file was written). Common cause: agent populated representative timestamp instead of actual generation time. Re-run \`/index-atlas\` or \`contextatlas index\` to regenerate with canonical timestamp.`,
+    );
+  }
+
+  // Invariant 2: 6mo bounded staleness (WARNING)
+  const ageMs = now.getTime() - parsed.getTime();
+  if (ageMs > STALENESS_WINDOW_MS) {
+    const ageDays = Math.round(ageMs / (24 * 60 * 60 * 1000));
+    warnings.push(
+      `\`generated_at\` "${ga}" is ${ageDays} days old (> 6 months). Atlas substrate may be stale; consider regenerating via \`/index-atlas\` (Skill) or \`contextatlas index\` (CLI) for current ADR + code state.`,
+    );
+  }
+
+  return { errors, warnings };
 }
 
 /**
@@ -131,8 +277,17 @@ export async function runValidateAtlasSubcommand(
  * is empirically prone to violating (per Step 2.3 Checkpoint 3
  * findings); leaves deeper field-level correctness (e.g.,
  * SymbolId format, file_sha format) for downstream consumers.
+ *
+ * v0.8 Step 4.2 FO-15 expansion: when `installedPackageVersion` is
+ * non-null, enforces semver-parse + installed-version-match on
+ * generator.contextatlas_version per Q4.0.2.a Option β substrate.
+ * Pass null to disable (test seam OR contexts where version-match
+ * is intentionally relaxed).
  */
-function validateAtlasShape(raw: unknown): string[] {
+function validateAtlasShape(
+  raw: unknown,
+  installedPackageVersion: string | null = null,
+): string[] {
   const errors: string[] = [];
 
   if (raw === null || typeof raw !== "object" || Array.isArray(raw)) {
@@ -175,6 +330,23 @@ function validateAtlasShape(raw: unknown): string[] {
       errors.push(
         `\`generator.contextatlas_version\` missing or not a string. Expected the contextatlas package version (e.g., "0.7.0").`,
       );
+    } else {
+      // V0.8 Step 4.2 FO-15 mechanical enforcement per Q4.0.2.a Option β:
+      // semver-parse + installed-package-version match. Closes "agent
+      // invented version" surface per FO-15 origin observation (Step 2.3
+      // Checkpoint 3 self-absorption).
+      if (!isSemver(gen.contextatlas_version)) {
+        errors.push(
+          `\`generator.contextatlas_version\` is "${gen.contextatlas_version}" — not parseable as semver (expected X.Y.Z or X.Y.Z-prerelease).`,
+        );
+      } else if (
+        installedPackageVersion !== null &&
+        gen.contextatlas_version !== installedPackageVersion
+      ) {
+        errors.push(
+          `\`generator.contextatlas_version\` is "${gen.contextatlas_version}" — does not match installed contextatlas package version "${installedPackageVersion}". (Per FO-15 invariant: atlas must be regenerated by the installed binary version. Re-run \`/index-atlas\` or \`contextatlas index\` to regenerate.)`,
+        );
+      }
     }
     if (typeof gen.extraction_model !== "string") {
       errors.push(

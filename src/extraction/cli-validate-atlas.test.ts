@@ -308,6 +308,177 @@ describe("runValidateAtlasSubcommand (v0.7 Step 2.3.b.0)", () => {
     expect(r.joinedStderr()).toContain("symbol_ids");
   });
 
+  // ---------------------------------------------------------------------
+  // V0.8 Step 4.2 — FO-15 + FO-16 mechanical enforcement tests
+  // ---------------------------------------------------------------------
+
+  describe("FO-15 — semver-parse + installed-version-match (Q4.0.2.a Option β)", () => {
+    async function runWithVersion(installedVersion: string) {
+      const cap = captureStreams();
+      const result = await runValidateAtlasSubcommand({
+        configRoot: tmp,
+        configFile: null,
+        writeStdout: cap.writeStdout,
+        writeStderr: cap.writeStderr,
+        installedPackageVersionOverride: installedVersion,
+      });
+      return { ...result, ...cap };
+    }
+
+    it("PASS when contextatlas_version matches installed (canonical case)", async () => {
+      writeAtlas({
+        ...CANONICAL_ATLAS,
+        generator: {
+          ...CANONICAL_ATLAS.generator,
+          contextatlas_version: "0.8.0",
+        },
+      });
+      const r = await runWithVersion("0.8.0");
+      expect(r.exitCode).toBe(0);
+    });
+
+    it("PASS on semver with prerelease suffix (e.g., 1.0.0-rc.1)", async () => {
+      writeAtlas({
+        ...CANONICAL_ATLAS,
+        generator: {
+          ...CANONICAL_ATLAS.generator,
+          contextatlas_version: "1.0.0-rc.1",
+        },
+      });
+      const r = await runWithVersion("1.0.0-rc.1");
+      expect(r.exitCode).toBe(0);
+    });
+
+    it("FAIL on non-semver contextatlas_version (e.g., 'invented')", async () => {
+      writeAtlas({
+        ...CANONICAL_ATLAS,
+        generator: {
+          ...CANONICAL_ATLAS.generator,
+          contextatlas_version: "invented",
+        },
+      });
+      const r = await runWithVersion("0.8.0");
+      expect(r.exitCode).toBe(2);
+      expect(r.joinedStderr()).toContain("not parseable as semver");
+    });
+
+    it("FAIL on contextatlas_version mismatch with installed (FO-15 origin closure)", async () => {
+      // Atlas claims 0.7.0; installed is 0.8.0 (Step 2.3 Checkpoint 3
+      // empirical pattern: agent invented "0.7.0" despite installed
+      // binary at "0.6.0" at v0.7 cycle)
+      writeAtlas({
+        ...CANONICAL_ATLAS,
+        generator: {
+          ...CANONICAL_ATLAS.generator,
+          contextatlas_version: "0.7.0",
+        },
+      });
+      const r = await runWithVersion("0.8.0");
+      expect(r.exitCode).toBe(2);
+      expect(r.joinedStderr()).toContain("does not match installed");
+      expect(r.joinedStderr()).toContain("0.7.0");
+      expect(r.joinedStderr()).toContain("0.8.0");
+    });
+
+    it("FAIL on missing contextatlas_version (existing type-presence check preserved)", async () => {
+      writeAtlas({
+        ...CANONICAL_ATLAS,
+        generator: {
+          extraction_model: "claude-opus-4-7",
+        },
+      });
+      const r = await run();
+      expect(r.exitCode).toBe(2);
+      expect(r.joinedStderr()).toContain("contextatlas_version");
+    });
+  });
+
+  describe("FO-16 — dual-invariant generated_at validation (Q4.0.2.b refined)", () => {
+    async function runWithNow(now: Date) {
+      const cap = captureStreams();
+      const result = await runValidateAtlasSubcommand({
+        configRoot: tmp,
+        configFile: null,
+        writeStdout: cap.writeStdout,
+        writeStderr: cap.writeStderr,
+        nowOverride: now,
+      });
+      return { ...result, ...cap };
+    }
+
+    it("FAIL on non-parseable ISO 8601 generated_at", async () => {
+      writeAtlas({
+        ...CANONICAL_ATLAS,
+        generated_at: "not-a-timestamp",
+      });
+      const r = await run();
+      expect(r.exitCode).toBe(2);
+      expect(r.joinedStderr()).toContain("not parseable as ISO 8601");
+    });
+
+    it("FAIL on Invariant 1 (file-mtime anchor): generated_at AFTER mtime", async () => {
+      // generated_at far in the future; atlas mtime is now-ish
+      writeAtlas({
+        ...CANONICAL_ATLAS,
+        generated_at: "2099-01-01T00:00:00.000Z",
+      });
+      const r = await run();
+      expect(r.exitCode).toBe(2);
+      expect(r.joinedStderr()).toContain("file-mtime-anchor invariant");
+    });
+
+    it("PASS Invariant 1 when generated_at is before file mtime (canonical case)", async () => {
+      // generated_at = 1 hour ago; mtime = now (just written)
+      const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+      writeAtlas({
+        ...CANONICAL_ATLAS,
+        generated_at: oneHourAgo,
+      });
+      const r = await run();
+      expect(r.exitCode).toBe(0);
+    });
+
+    it("PASS WITH WARNING on Invariant 2 (6mo-staleness) violation", async () => {
+      // generated_at 1 year ago; "now" = today; file mtime preserved
+      // (we write the file now, so mtime is ~now; generated_at older
+      // → Invariant 1 passes; Invariant 2 fires WARNING)
+      const oneYearAgo = new Date(
+        Date.now() - 365 * 24 * 60 * 60 * 1000,
+      ).toISOString();
+      writeAtlas({
+        ...CANONICAL_ATLAS,
+        generated_at: oneYearAgo,
+      });
+      const r = await run();
+      expect(r.exitCode).toBe(0); // WARNING does not affect exit code
+      expect(r.warnings.length).toBeGreaterThan(0);
+      expect(r.warnings[0]).toMatch(/days old|6 months|stale/i);
+      expect(r.joinedStderr()).toContain("WARNING");
+    });
+
+    it("PASS within 6mo-staleness window (canonical case; no WARNING)", async () => {
+      const oneMonthAgo = new Date(
+        Date.now() - 30 * 24 * 60 * 60 * 1000,
+      ).toISOString();
+      writeAtlas({
+        ...CANONICAL_ATLAS,
+        generated_at: oneMonthAgo,
+      });
+      const r = await run();
+      expect(r.exitCode).toBe(0);
+      expect(r.warnings).toEqual([]);
+    });
+
+    it("nowOverride seam: simulates future validate-time for staleness test", async () => {
+      // generated_at = 2026-05-11; now-override = 2027-05-11 (>1yr later);
+      // expect WARNING but PASS exit
+      writeAtlas(CANONICAL_ATLAS);
+      const r = await runWithNow(new Date("2027-05-11T20:00:00.000Z"));
+      expect(r.exitCode).toBe(0);
+      expect(r.warnings.length).toBeGreaterThan(0);
+    });
+  });
+
   it("FAIL on raw atlas root that is an array (not an object)", async () => {
     writeAtlas([]);
     const r = await run();
