@@ -464,19 +464,57 @@ reasoning included).
 ("~$0.50 cold-start; ~$1-3 with reference-context") is superseded
 for v0.7 launch. Expect $5-15 per repo at v1.0 — one-time-per-repo
 investment in the foundational ADR substrate that downstream MCP
-query value depends on. Cost reflects deep investigation (~30-50
-file reads for substantial codebases; investigative-depth bound by
-decision-candidate scope not file-count floor) + adaptive
-reasoning at xhigh effort. This is a deliberate quality-cost
-trade-off explicitly chosen per Travis Lock 2 ("no wall-clock or
-cost ceiling I am not willing to take"; this is the single most
-important step; backbone of atlas quality).
+query value depends on. Cost reflects deep investigation
+(investigative-depth bound by decision-candidate scope, NOT a fixed
+file-count floor per Travis Step 2.3.c.0 refinement lock) +
+adaptive reasoning at xhigh effort. This is a deliberate quality-
+cost trade-off explicitly chosen per Travis Lock 2 ("no wall-clock
+or cost ceiling I am not willing to take"; this is the single most
+important step; backbone of atlas quality). Empirical cost lock
+at the refined Step 2.3.c.0 substrate is a v0.8+ post-launch
+candidate (Step 2.4.b Path B deferral per Travis lock); v1.0
+launch documents frame as "expected $5-15 per repo; empirical
+lock at v0.8+ post-launch."
 
 Skill `/generate-adrs` path: subscription-bounded (no API key
 cost); substantively higher subscription token consumption than
-v0.6 framing per extended thinking + Phase A investigation reads.
-Empirical post-Step-2.3.c.0 measurement at Step 2.4 calibration
-informs.
+v0.6 framing per extended thinking (frontmatter `effort: xhigh`)
++ Phase A investigation reads. Empirically validated at Step 2.4
+re-verification — 14m30s wall-clock + ~88k output tokens + ~370k
+input tokens via 6-parallel-Explore-subagent investigation pattern
+at rich-skill/.
+
+CLI `contextatlas generate-adrs` path post-Step-2.4.a: substrate-
+equivalent at API-parameter + mechanical-floor-enforcement layers
+(extended thinking enabled via `thinking: { type: "enabled",
+budget_tokens: 32_000 }`; auto-invoke `validate-adrs` post-
+generation with structured remediation; closes audit-surfaced
+substrate-equivalence gaps per Travis Lock 1 + Option β scope).
+
+**Architectural framing — Phase A multi-step vs single-shot
+(Travis Framing 1 honest-scope-acknowledgment):** CLI and Skill
+paths produce ADRs that pass the same canonical depth-floor
+invariants via mechanical `validate-adrs` enforcement at both
+surfaces. Their reasoning regimes differ architecturally:
+
+- CLI single-shot: one Anthropic API call with extended thinking
+  enabled (32k budget); model receives codebase inventory +
+  optional reference context + prompt in one input; produces ADRs
+  in one response. Investigation discipline bound by prompt text
+  + validate-adrs canonical-depth-floor mechanical enforcement.
+- Skill multi-step: Claude Code Skill session can dispatch
+  Phase A investigation via parallel Explore subagents before
+  Phase B writing; depth empirically substantively higher
+  (~370k input tokens of investigation observed at Step 2.4).
+  Investigation discipline bound by Skill workflow phases +
+  validate-adrs Phase C gate.
+
+Both paths produce canonical-depth-floor-compliant ADRs.
+Investigation-depth-variance between paths is acknowledged as
+v0.8+ refinement candidate — CLI multi-call investigation
+orchestrator pattern would close the architectural gap; not
+substrate-blocking at v1.0 per validate-adrs mechanical floor at
+both surfaces.
 
 **Substantive launch-narrative framing:** treat `generate-adrs`
 as the foundational substrate investment, NOT as a recurring cost.
@@ -485,10 +523,17 @@ repo expense that determines atlas quality; subsequent
 `contextatlas index` runs reuse the ADRs and cost a fraction.
 
 **Substantive launch document substrate** for v1.0 cohort framing:
-- "Plan $5-15 for `generate-adrs` per repo (one-time)"
+- "Plan $5-15 for `generate-adrs` per repo (one-time; CLI path
+  empirical lock at v0.8+ post-launch)"
 - "Subsequent `index` runs cost a fraction of that"
-- "Skill path is subscription-bounded but consumes substantively
-  more session tokens than v0.6 cycle measurements suggested"
+- "Skill path is subscription-bounded; consumes substantively
+  more session tokens than v0.6 cycle measurements suggested per
+  extended thinking + Phase A investigation"
+- "CLI and Skill paths produce canonical-depth-floor-compliant
+  ADRs via mechanical `validate-adrs` enforcement; Skill multi-
+  step Phase A investigation may produce substantively deeper
+  ADRs than CLI single-shot at the same canonical floor; both
+  paths suitable for v1.0 production use"
 - "The cost reflects deliberate quality investment in the ADR
   substrate your atlas is built on — cheaper shallow ADRs would
   undermine atlas quality at every downstream query"

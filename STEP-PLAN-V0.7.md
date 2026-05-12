@@ -550,15 +550,24 @@ lock).
     abort path preserved via `filesGenerated === 0` skip.
     `generatorOverride` test seam added for substantive
     isolated testing.
-  - [ ] **Step 2.4.b** — β-3 empirical CLI cost + depth
-    measurement at C:/CodeWork/rich/ (refined substrate;
-    Travis discretion Path A run OR Path B v0.8+ deferral).
-  - [ ] **Step 2.4.c** — Step 2.4 closure commit (β-4
-    honest-scope-acknowledgment of CLI single-shot vs
-    Skill multi-step architectural framing; β-3 outcome OR
-    deferral framing per Travis lean; CLAUDE.md residual
-    "30-50 file reads" language housekeeping per Travis
-    Step 2.3.c.0 push observation).
+  - [x] **Step 2.4.b** — β-3 empirical CLI cost + depth
+    measurement DEFERRED to v0.8+ per Travis Lock 1 Path B
+    disposition. Carry-forward to v0.8+ candidate substrate;
+    launch documents frame cost inferentially as "expected
+    $5-15 per repo; empirical lock at v0.8+ post-launch."
+    Honest-scope-acknowledgment preserves cycle integrity
+    without launch-narrative claim drift. Shipped 2026-05-12
+    as v0.8+ candidate inheritance.
+  - [x] **Step 2.4.c** — Step 2.4 closure commit. Shipped
+    2026-05-12; commit `[this commit]`. β-4 honest-scope-
+    acknowledgment of CLI single-shot vs Skill multi-step
+    architectural framing absorbed at CLAUDE.md
+    Generation cost framing section + ADR-02 Step 2.4.a
+    amendment per Framing 1 lean. CLAUDE.md residual
+    "30-50 file reads" language housekeeping absorbed per
+    Travis Step 2.3.c.0 push observation. 4-cohort-entry-
+    surface matrix empirically defended end-to-end at v0.7
+    cycle close.
 - [ ] **Step 2.5** — Step 2 close (cumulative outcome; v1.0
   ship-gate criterion #2 closure; launch-blocking issues
   triaged per Q2.0.3 protocol).
@@ -709,6 +718,74 @@ timeline; not blocking).
 ## Progress log
 
 *Entries added in reverse-chronological order as steps ship.*
+
+### Step 2.4 closure shipped — 2026-05-12 (Skill + CLI substrate-equivalence empirically defended at API-parameter + mechanical-enforcement layers per Step 2.3.c.0 + 2.4.a substrate-evolution; 4-cohort-entry-surface matrix empirically defended; Framing 1 honest-scope-acknowledgment for CLI single-shot vs Skill multi-step architectural difference; β-3 empirical CLI cost measurement v0.8+ carry-forward)
+
+V0.7 Step 2.4 closure substantively ships the substrate-equivalence defense across all 4 cohort entry surfaces at canonical depth-floor quality. Travis sidebar-surfaced CLI-vs-Skill audit at Step 2.4 close brainstorming surface caught bounded gaps that Step 2.4.a Option β absorption closed; Step 2.4.b β-3 empirical CLI measurement deferred to v0.8+ per Travis Lock 1 Path B; Step 2.4.c documentation absorbs Framing 1 honest-scope-acknowledgment + CLAUDE.md residual housekeeping.
+
+#### 4-cohort-entry-surface substrate matrix empirically defended at v0.7 cycle close
+
+| Cohort entry surface | Verified at | Substrate quality outcome |
+|---|---|---|
+| CLI cold-start | Step 2.2.b.i (commit `c1fa077`) | 15 ADRs / Phase 4 extraction / $0.47 platform-billed (v0.6 cycle prompt substrate baseline) |
+| CLI reference-context-aided | Step 2.2.b.ii (commit `dc4d841`) | 15 ADRs at $0.94 + Phase 4 incremental $0.66 / canonical file-path-symbol form bounded FO-10 |
+| Skill cold-start | Step 2.3 closure (commit `d9b6271`) | 12 ADRs / 57 claims / 2480 LSP-resolved symbols / canonical AtlasFileV1 v1.4 schema first-try; all 3 mandatory gates fire in sequence first-try |
+| Skill reference-context-aided | Step 2.4 Checkpoints 2-4 (commits `6125d44` + this commit) | 13 ADRs at canonical depth-floor (~82-line avg; 2-2.5× depth increase) / 73 claims with 100% LSP resolution / 6-parallel-Explore-subagent Phase A investigation pattern (~370k input tokens) |
+| **CLI substrate-equivalence (NEW at Step 2.4.a)** | Step 2.4.a (commit `9ba9a86`) | β-1 extended thinking enabled (32k budget) + β-2 auto-invoke validate-adrs gate; 1527 tests / 85 files / all PASS (+7 net tests via generatorOverride seam) |
+
+Substantive "1:1 feature list, not 1:1 text" bar empirically met across all 4 cohort entry surfaces at canonical depth-floor quality. β-1 + β-2 close the substantive substrate-equivalence gaps at API-parameter + mechanical-floor-enforcement layers. CLI substrate post-Step-2.4.a produces ADRs that pass the same canonical depth-floor invariants via mechanical `validate-adrs` enforcement.
+
+#### Observations A-E (Step 2.4 substrate captured at closure)
+
+**Observation A — Validator-error-message-as-specification-clarification (Class-15 instance 11 locked):** Step 2.4 Checkpoint 2 empirical evidence — agent's first validate-adrs failure didn't trigger format correction; second failure DID because remediation text contained canonical format verbatim ("Use bullet format with bold or code-style label per alternative: '- **Code generation**: adds a build step...'"). Substantively new β-bounded pattern: validator error messages double as in-loop agent specification training. Strong loop-closure pattern.
+
+**Observation B — Phase A discipline generalization across workflow phases (Class-15 instance 12 locked):** Step 2.4 Checkpoint 3 empirical evidence — agent's `contextatlas --version` pre-check BEFORE atlas write at `/index-atlas` surface wasn't explicitly instructed in `/index-atlas` SKILL.md. Emergent generalization of deeper Phase A pattern set at `/generate-adrs` surface in same session. Pattern: substrate-evolution at one workflow phase substantively conditions agent behavior at subsequent workflow phases in same session.
+
+**Observation C — FO-15 self-absorption empirical observation:** Agent populated `contextatlas_version: "0.6.0"` (ACTUAL installed binary version) at Step 2.4 vs `"0.7.0"` (invented) at Step 2.3 closure. Pre-check pattern at Step 2.4 demonstrates FO-15 can be substantively softened by deeper Phase A discipline — agent CAN derive correct provenance values when pre-investigation discipline binds. FO-15 status: softened (NOT removed; single-surface signal; v0.8+ candidate retained for additional empirical surfaces OR explicit instruction).
+
+**Observation D — Anti-script-improvisation discipline multi-surface consistency:** Step 2.3.b.0 substrate held at both `/generate-adrs` surface (granular distinction: script-for-mass-edit OK; script-for-atlas-generation DISALLOWED) AND `/index-atlas` surface (direct atlas write, no script intermediation). Multi-surface substrate-discipline consistency confirmed empirically.
+
+**Observation E — Reference-context substantive-contribution carry-forward to v0.8+:** Travis's Step 2.4 Checkpoint 2 observation about whether `django/deps` reference-context substantively contributed vs. functioned as no-op stylistic veneer remains an open empirical question. Step 2.4 doesn't directly answer it (would require controlled A/B with-vs-without reference at refined-prompt substrate). Captured as v0.8+ candidate so it doesn't get lost.
+
+#### Bonus Checkpoint 4 empirical signals
+
+- **Cross-ADR linkages emerged organically.** Sampled rich-skill/docs/adr/ADR-11 explicitly cites "Combined with the cell-width discipline (ADR-06) and Segment immutability (ADR-02)" — hand-crafted-pattern behavior emergent from substantive investigation depth; prompt didn't directly instruct cross-ADR-linkage.
+- **Rationale sub-structure (Alternatives + Supporting rationale split) emerged from validate-adrs loop.** Agent introduced sub-structure during validate-adrs self-correction at Checkpoint 2 (satisfying ≥2-distinct-named-alternatives invariant). Substantively cleaner enumeration than canonical hand-crafted ADRs; bonus structural clarity from β-bounded enforcement.
+- **Review-invariant Consequences pattern bound everywhere.** All sampled ADRs surface "review-time red flag", "reviewers should flag", "reviewer should sanity-check" — empirical evidence the 4-dimension prompt refinement substantively bound agent behavior.
+- **Code-block density substantively raised above floor.** ADR-08 has 4 code blocks; ADR-11 has 3; ADR-01 has 3 (including `__subclasshook__` and dispatch path). vs Step 2.3 closure baseline 0 per ADR. validate-adrs ≥1-code-block invariant pressured the floor; investigative discipline raised the practical density.
+
+#### Step 2.4.a substantive observations
+
+- **SDK type-cast workaround for `thinking` parameter** captured as v0.8+ candidate (Anthropic SDK 0.27.3 lacks native TypeScript types for thinking parameter; works at runtime; v0.8+ SDK upgrade to 0.32+ closes workaround). Non-blocking technical-debt observation.
+- **generatorOverride test seam pattern** at `GenerateAdrsCliOptions` — substantive engineering judgment keeping β-2 paths empirically isolated from real Anthropic API calls in unit tests. Discipline pattern for future CLI-runner test substrate.
+- **Graceful-abort UX preservation** via `filesGenerated === 0` short-circuit — prevents confusing "no ADRs found" error when user declines cost confirmation; substantive cohort UX positive worth launch document substrate capture.
+- **4 substantive substrate layers EQUIVALENT** at API-parameter + mechanical-enforcement layers post-Step-2.4.a (refined prompt + model pinning + extended thinking + validate-adrs gate).
+
+#### β-3 empirical CLI measurement deferral framing (Path B locked)
+
+Per Travis Lock 1 Path B disposition: Step 2.4.b β-3 empirical CLI cost+depth measurement deferred to v0.8+ post-launch. Substrate-equivalence claim at API-parameter + mechanical-enforcement layers is empirically defensible at v1.0 without running β-3 — β-1 + β-2 closed the substantive substrate gaps; remaining empirical measurement is launch-narrative cost-claim validation which ships inferentially with honest-scope-acknowledgment at CLAUDE.md ("expected $5-15 per repo; empirical lock at v0.8+ post-launch").
+
+#### β-4 architectural Framing 1 honest-scope-acknowledgment
+
+Per Travis Framing 1 lean: CLI single-shot vs Skill multi-step Phase A investigation pattern is an ARCHITECTURAL difference at the reasoning regime — not a substrate-equivalence gap. CLI receives codebase inventory + reference context + prompt in one API call with extended thinking; Skill can dispatch parallel Explore subagents at Phase A before Phase B writing. Both paths produce canonical-depth-floor-compliant ADRs via mechanical `validate-adrs` enforcement at both surfaces. Investigation-depth-variance acknowledged as v0.8+ refinement candidate (CLI multi-call investigation orchestrator pattern); NOT substrate-blocking at v1.0 per validate-adrs mechanical floor at both surfaces.
+
+CLAUDE.md "Generation cost framing" section + ADR-02 Step 2.4.a amendment substantively absorb this framing for launch document substrate inheritance.
+
+#### Class-15 enumeration preservation
+
+15-class enumeration preserved through entire Step 2.4 substep cluster:
+- Instance 11 (validator-error-as-specification-clarification): LOCKED at this entry
+- Instance 12 (Phase A discipline generalization across workflow phases): LOCKED at this entry
+- Instance 13 candidate (cross-ADR linkage emergence): DEFERS without β-3 empirical confirmation; v0.8+ candidate for instance promotion if reference-context A/B substantively distinguishes contribution
+- Instance 14 (substrate-evolution audit-before-closure discipline) at ADR-02 Step 2.4.a amendment captures Travis compare-surfaces-before-locking pattern at substrate-evolution maturity
+
+15-class substrate preserved through entire substep cluster. Future cycles (v0.8+) inherit working-content-gap-inventory.
+
+#### Cycle position post-Step-2.4 closure
+
+V0.7 cycle: 29 commits total post-Step-2.4 closure ship. Per Travis Lock 2 no-wall-clock-ceiling framework preserved. Step 2.5 substep cluster close opens per standard pattern (cycle-position observations + substep cluster summary + Step 3 forward-planning surface).
+
+---
 
 ### Step 2.4.a shipped — 2026-05-12 (CLI substrate-evolution per Option β closing CLI-vs-Skill audit-surfaced gaps at API-parameter + mechanical-floor-enforcement layers: extended thinking enabled at CLI generation API call (β-1; 32k budget) + auto-invoke validate-adrs post-generation in CLI runner (β-2; refined stderr remediation template); generatorOverride test seam added; 7 net new tests + 1527 baseline preserved)
 

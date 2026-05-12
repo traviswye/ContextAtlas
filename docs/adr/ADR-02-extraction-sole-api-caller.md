@@ -724,3 +724,130 @@ historical record per v0.5 + v0.6 + v0.7 inheritance discipline.
   layer's absence substantively undermines depth quality.
   Composes with 12-class enumeration → 13-class for v0.7+
   ship-gate working-content-gap-inventory inheritance.
+
+- **2026-05-12** — v0.7 Step 2.4.a CLI substrate-evolution
+  amendment per Travis Lock 1 + Option β scope. Driver:
+  Travis sidebar-surfaced CLI-vs-Skill substrate-equivalence
+  audit question before Step 2.4 closure lock. Audit
+  findings: refined `GENERATE_ADRS_PROMPT` (Step 2.3.c.0) +
+  model pinning were already equivalent across both
+  surfaces; extended thinking + auto-invoke validate-adrs
+  gates were Skill-side only at Step 2.3.c.0 close. Step
+  2.4.a brings CLI substrate to substrate-equivalent at the
+  API-parameter + mechanical-floor-enforcement layers.
+
+  **§Decision CLI substrate-equivalence extension:**
+
+  Two CLI substrate-evolution changes:
+  - **β-1 extended thinking enabled at CLI generation API
+    call.** `src/generation/generators/anthropic-api-direct.ts`
+    adds `thinking: { type: "enabled", budget_tokens:
+    32_000 }` parameter to the `anthropic.messages.create`
+    call. Closes API-parameter-equivalence with Skill
+    `effort: xhigh` frontmatter pinning (per claude-code-
+    guide investigation: xhigh on Opus 4.7 activates
+    adaptive reasoning that includes extended thinking).
+    SDK 0.27.3 type-cast workaround documented inline (cast
+    to `Anthropic.Messages.MessageCreateParamsNonStreaming`
+    bypasses excess-property check; runtime API forwards
+    parameter unmodified; thinking blocks in response are
+    naturally skipped by `extractTextFromResponse` consuming
+    only `type === "text"` blocks). v0.8+ SDK upgrade to
+    `^0.32.0` candidate retained for canonical typed surface.
+  - **β-2 auto-invoke validate-adrs post-generation at CLI.**
+    `src/generation/cli-runner.ts` imports
+    `runValidateAdrsSubcommand` from `./cli-validate-adrs.js`
+    and invokes post-`generator.generate()` with structured
+    remediation on non-zero exit. Closes Skill-side-only
+    MANDATORY Phase C gate gap. Refined stderr remediation
+    template covers canonical CLI cohort paths forward
+    (manually edit failing ADRs + re-validate OR remove
+    docs/adr/ for fresh attempt). FO-11 status honestly
+    acknowledged in template (no --overwrite flag at v0.7;
+    v0.8+ candidate). Graceful-abort path preserved via
+    `filesGenerated === 0` short-circuit to prevent
+    confusing "no ADRs found" error when user declines
+    cost confirmation.
+
+  **§Decision architectural Phase A framing (Framing 1
+  honest-scope-acknowledgment):**
+
+  CLI and Skill paths post-Step-2.4.a produce ADRs that pass
+  the same canonical depth-floor invariants via mechanical
+  `validate-adrs` enforcement at both surfaces. Their
+  reasoning regimes differ architecturally:
+
+  - CLI single-shot: one Anthropic API call with extended
+    thinking enabled (32k budget); model receives codebase
+    inventory + optional reference context + prompt in one
+    input. Investigation discipline bound by prompt text +
+    validate-adrs canonical-depth-floor mechanical
+    enforcement.
+  - Skill multi-step: Claude Code Skill session can dispatch
+    Phase A investigation via parallel Explore subagents
+    before Phase B writing; depth empirically substantively
+    higher (~370k input tokens of investigation observed at
+    Step 2.4 re-verification). Investigation discipline
+    bound by Skill workflow phases + validate-adrs Phase C
+    gate.
+
+  Both paths produce canonical-depth-floor-compliant ADRs.
+  Investigation-depth-variance between paths is acknowledged
+  as v0.8+ refinement candidate — CLI multi-call
+  investigation orchestrator pattern would close the
+  architectural gap; not substrate-blocking at v1.0 per
+  validate-adrs mechanical floor at both surfaces.
+
+  **§Consequences post-Step-2.4.a substrate-equivalence
+  matrix:**
+
+  | Substrate layer | Skill | CLI | Status |
+  |---|---|---|---|
+  | Refined `GENERATE_ADRS_PROMPT` | Via Read tool | Via direct import | EQUIVALENT |
+  | Model pinning | `model: claude-opus-4-7` frontmatter | `GENERATION_MODEL` constant | EQUIVALENT |
+  | Extended thinking | `effort: xhigh` frontmatter | `thinking: { type: "enabled", budget_tokens: 32_000 }` (β-1) | EQUIVALENT |
+  | validate-adrs gate | MANDATORY Phase C | Auto-invoked post-generation (β-2) | EQUIVALENT |
+  | Multi-step investigation workflow | Parallel Explore subagents possible | Single-shot API call | ARCHITECTURAL DIFFERENCE (acknowledged) |
+
+  **§Consequences β-3 empirical CLI cost measurement
+  deferral:**
+
+  Step 2.4.b β-3 empirical CLI cost+depth measurement at
+  refined Step 2.3.c.0 substrate deferred to v0.8+ post-
+  launch per Travis Lock 1 Path B disposition. Launch
+  documents at v1.0 frame cost inferentially as "expected
+  $5-15 per repo; empirical lock at v0.8+ post-launch."
+  Honest-scope-acknowledgment preserves cycle integrity
+  without launch-narrative claim drift; β-1 + β-2 closed
+  the substantive substrate-equivalence gaps at API-
+  parameter + mechanical-enforcement layers.
+
+  **§Consequences test substrate additions:**
+
+  `src/generation/cli-runner.ts` adds `generatorOverride?:
+  Generator` test seam (parallel pattern to extraction
+  cli-runner's `clientOverride`); enables substantive
+  isolated testing of β-2 paths without real Anthropic API
+  calls. 7 new tests cover β-1 source content assertions +
+  β-2 end-to-end paths (PASS / FAIL / setup-error) via
+  generatorOverride.
+
+  **Cross-references:**
+  - Step 2.4.a commit (this amendment + β-1 + β-2
+    engineering)
+  - Step 2.3.c.0 commit `6125d44` (refined prompt +
+    SKILL.md frontmatter pinning + validate-adrs CLI +
+    Phase A/B/C workflow)
+  - Step 2.4 closure commit (β-4 documentation +
+    architectural Framing 1 honest-scope-acknowledgment +
+    4-cohort-entry-surface matrix empirical defense)
+
+  Cycle-execution observation 14 (NEW): substrate-evolution
+  audit-before-closure discipline. Travis compare-surfaces-
+  before-locking pattern surfaced bounded CLI-vs-Skill gaps
+  before Step 2.4 closure lock; Option β absorption added
+  ~90 LOC + 7 tests within Step 2.4 substep cluster;
+  substantive substrate-equivalence claim defended without
+  launch-narrative claim drift. Composes with 13-class
+  enumeration → 14-class for v0.7+ ship-gate working-
+  content-gap-inventory inheritance.
