@@ -39,7 +39,7 @@ import {
   type NewClaim,
 } from "../storage/claims.js";
 import type { DatabaseInstance } from "../storage/db.js";
-import { upsertSymbols } from "../storage/symbols.js";
+import { deleteSymbolsByPath, upsertSymbols } from "../storage/symbols.js";
 import type {
   ContextAtlasConfig,
   LanguageAdapter,
@@ -339,8 +339,22 @@ export async function runExtractionPipeline(
   const gitChanged = gitResult.headSha !== priorHeadSha;
 
   // --- Stage 5: handle deletions --------------------------------------
+  // Per A3 v0.8 absorption (Step 2.2.b refined LOCK 2.a Stage 5 placement):
+  // file deletion sweep now substantively cleans symbols + cascades
+  // claim_symbols rows. Closes Stream C orphan claim_symbols gap per
+  // research/v0.5-candidates.md #3 framing (pre-A3 fix, commit claims
+  // at source_path "commit:<sha>" survived Stage 5 file-path-based
+  // claim delete + retained claim_symbols rows referencing symbols in
+  // deleted files; A3 fix cascades those orphan rows via
+  // deleteSymbolsByPath).
+  //
+  // LOCK 2.b retain discipline preserved: commit claims themselves
+  // survive with symbolIds = [] post-cascade (orphan-claim-shell);
+  // bears historical-narrative substrate weight (git-history context
+  // persists beyond symbol lifecycle).
   for (const deletedPath of diff.deleted) {
     deleteClaimsBySourcePath(db, deletedPath);
+    deleteSymbolsByPath(db, deletedPath);
     db.prepare("DELETE FROM source_shas WHERE source_path = ?").run(deletedPath);
   }
 
