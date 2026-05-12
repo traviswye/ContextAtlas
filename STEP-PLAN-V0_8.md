@@ -440,6 +440,58 @@ trigger per LOCK 1 cycle-discipline constraint.
 
 *Entries added in reverse-chronological order as substeps ship.*
 
+### Step 3.1 + Step 3.2 shipped — 2026-05-12 (/prime-atlas SKILL.md substrate + content unit tests; Cluster 3 substantive progression toward Step 3.X cluster close)
+
+V0.8 Cluster 3 substeps 3.1 + 3.2 substantively ship per LOCK B.1-B.5 + Q3.0.X locks at Step 3.0 design adjudication surface. /prime-atlas Skill substantively completes the v1.0 launch cohort onboarding pipeline at 4-Skill substrate (init + /generate-adrs + /index-atlas + /prime-atlas per cohort entry surfaces).
+
+| Substep | branch | commit | Notes |
+|---|---|---|---|
+| 3.1 | main | `6553f17` | /prime-atlas SKILL.md substrate at canonical path; 215 LOC within ~200-300 LOC envelope per LOCK B.4 + LOCK H; YAML frontmatter pinning model + effort per v0.7 Step 2.3.c.0 inheritance; npm test 1537/86 baseline preserved |
+| 3.2 | main | `78cbdcd` | SKILL.md content unit tests (Q3.0.7 Option γ dev-side component); 31 tests across 8 substantive areas; npm test 1568/87 all PASS (1537 + 31 = 1568 expected) |
+| 3.X-progress | main | (this commit) | STEP-PLAN-V0_8.md §3 batched Step 3.1+3.2 progress log entry per pragmatic LOCK 1 Option α adaptation (Cluster 2 strict per-substep .b-progress pattern → Cluster 3 batched dual-substep .b-progress per cycle-pacing discipline at Travis's relaxed-cadence signal "trigger all three now") |
+
+#### Cluster 3 substantive scope
+
+**/prime-atlas Skill substrate** (Step 3.1; 215 LOC at `.claude/skills/prime-atlas/SKILL.md`):
+- Frontmatter: name=prime-atlas + 5-sentence substantive description + model=claude-opus-4-7 + effort=xhigh per v0.7 Step 2.3.c.0 frontmatter pinning inheritance
+- §-section framework per Q3.0.1.b: When to use this skill + What this skill does (6 numbered procedural steps) + Failure modes (7-row outcome matrix) + Tools introduction (3 MCP tools enumeration + when-to-use patterns + cohort UX awareness + edge cases) + Tool usage + Cross-references
+- Tool-call probe MCP introspection per Q3.0.2 substrate (load atlas.json → validate substrate → pick sentinel symbol per Q3.0.2.a Option α first-entry → probe get_symbol_context → interpret outcome per 7-row matrix)
+- Checks-only .mcp.json verification per Q3.0.3 Option α (presence-only; init substrate inherits without modification)
+- Substantive when-to-use guidance per Q3.0.4 Option β (Skill self-contained ~80-150 LOC; README absorbs broader narrative at Cluster 5 / Step 5.2 per LOCK G)
+- 2nd person imperative voice per Q3.0.6 Option α v0.7 SKILL.md precedent inheritance
+- Manual invoke per-session entry per Q3.0.5 Option α + cohort UX documentation at Q3.0.5.a Option γ composite (README + CLAUDE.md absorbed at Cluster 5 / Step 5.2)
+
+**SKILL.md content unit tests** (Step 3.2; 253 LOC at `src/init/prime-atlas-skill-content.test.ts`):
+- 31 tests across 8 substantive areas (frontmatter + §-section framework + tool-call probe procedural steps + failure modes matrix + tools introduction + voice register + cross-references + tool usage discipline)
+- Q3.0.7 Option γ composite component (dev-side); manual empirical validation at contextatlas-on-itself dogfood is TRAVIS-SIDE forward-pointer at Cluster 3 close
+
+#### Test baseline preservation
+
+`npm test`: 1568 tests / 87 files / all PASS (v0.7+A1+A3 baseline 1537 + 31 new SKILL content tests = 1568 expected). Clean baseline preservation per CLAUDE.md src-changes-require-full-test canonical discipline.
+
+#### Cohort impact framing (substantively absorbed at Cluster 5 / Step 5.2)
+
+Cohort users at v1.0 launch get per-session entry point Skill that:
+- Verifies MCP connection via empirical tool-call probe (no Claude Code API surface dependency per CC2/CC3 framing)
+- Primes session with substantive when-to-use guidance for 3 ContextAtlas MCP tools (architectural prompts → ContextAtlas tools FIRST; primitive Grep patterns → existing tool sufficient)
+- Surfaces atlas-version awareness + SHA-diff refresh discipline + compact format trade-offs
+
+Cluster 5 / Step 5.2 README.md cohort entry paths section + CLAUDE.md Current Version block absorb /prime-atlas reference per Q3.0.5.a Option γ composite documentation discipline at cycle-doc updates substep.
+
+#### Manual empirical validation forward-pointer (TRAVIS-SIDE)
+
+Q3.0.7 Option γ composite second component (manual empirical validation at contextatlas-on-itself dogfood) is TRAVIS-SIDE execution per session-context boundary discipline. Travis-side scope: open new Claude Code session in contextatlas repo + invoke `/prime-atlas` + observe outcome + paste-back outcome for Step 3.X cluster close substrate. Partial absorption of research/v0.8-candidates.md item #5 (Skill cohort entry path empirical validation) substantively realized via this composite at Cluster 3 cluster close.
+
+#### Cycle-execution observations
+
+- **Class-18 5th observation candidate** (dev-empirical-engineering-judgment-surfacing-additional-design-adjudication-candidates pattern) substantively reproduced at Step 3.0 design adjudication surface (Q3.0.6 + Q3.0.7 + Q3.0.8 surfaced beyond advisor enumeration; matches Step 1.0 + Step 2.0 surfaces). Cross-substep-cluster reproducibility at 3 substep clusters now empirically validated.
+- **LOC envelope discipline**: SKILL.md 215 LOC within ~200-300 envelope per LOCK B.4 + LOCK H (substantively bounded; substantively under upper bound; substantively distinct from prior LOC overrun pattern at scope-doc + ship-prep edits).
+- **Travis relaxed-cadence signal** at "trigger all three now" + "Push when ready" at Cluster 3 trigger surface → dev pragmatic adaptation: batched Step 3.1+3.2 progress log per single .X-progress commit vs strict LOCK 1 Option α per-substep .b-progress pattern. Substantively preserves cycle-narrative documentation discipline at substantively reduced commit count.
+
+#### Next
+
+Step 3.X cluster close substantively triggers post-Travis-side manual empirical validation paste-back per Q3.0.7 Option γ composite. Cluster 4 mechanical absorption (SDK upgrade ^0.27.0 → ^0.32.0 + FO-15 + FO-16) triggers post-Cluster-3-close per Option γ main-repo sequential continuation.
+
 ### Step 2.2 shipped — 2026-05-12 (A2 + A3 paired absorption — A2 absorbed-at-earlier-cycle + A3 Stage 5 symbol cleanup; Cluster 2 partial scope per empirical-validation-driven scope-narrowing)
 
 V0.8 Cluster 2 Step 2.2 substantively closes per Cluster 2 partial scope confirmation. Substantive cycle-pacing margin realized: original LOCK F envelope ~3-5 cycle days (A1+A2+A3 paired) compressed to refined ~1-1.5 cycle days (A1 Step 2.1 + A3 Step 2.2.b) per empirical-validation-driven scope-narrowing discipline at Step 2.2.a investigation surface.
