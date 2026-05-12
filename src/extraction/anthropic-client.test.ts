@@ -14,6 +14,7 @@ import {
 import { describe, expect, it, vi } from "vitest";
 
 import {
+  ParseError,
   classifyError,
   createExtractionClient,
 } from "./anthropic-client.js";
@@ -69,6 +70,41 @@ describe("classifyError — structural (no SDK construction)", () => {
     expect(classifyError("string")).toBe("fail");
     expect(classifyError(null)).toBe("fail");
     expect(classifyError(undefined)).toBe("fail");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// A1 v0.8 absorption — ParseError class + classifier branch
+// ---------------------------------------------------------------------------
+
+describe("ParseError class (A1 v0.8 absorption)", () => {
+  it("instantiates with reason + preview + message; extends Error", () => {
+    const err = new ParseError("json-parse", "preview text", "msg");
+    expect(err).toBeInstanceOf(Error);
+    expect(err).toBeInstanceOf(ParseError);
+    expect(err.name).toBe("ParseError");
+    expect(err.reason).toBe("json-parse");
+    expect(err.preview).toBe("preview text");
+    expect(err.message).toBe("msg");
+  });
+  it("supports all canonical reason values", () => {
+    expect(new ParseError("json-parse", "", "").reason).toBe("json-parse");
+    expect(new ParseError("shape-invalid", "", "").reason).toBe("shape-invalid");
+    expect(new ParseError("claims-not-array", "", "").reason).toBe(
+      "claims-not-array",
+    );
+  });
+});
+
+describe("classifyError — ParseError branch (A1 v0.8 absorption)", () => {
+  it("ParseError → fail (deterministic; no retry path)", () => {
+    expect(classifyError(new ParseError("json-parse", "", "x"))).toBe("fail");
+    expect(classifyError(new ParseError("shape-invalid", "", "x"))).toBe(
+      "fail",
+    );
+    expect(classifyError(new ParseError("claims-not-array", "", "x"))).toBe(
+      "fail",
+    );
   });
 });
 
@@ -212,18 +248,61 @@ describe("createExtractionClient — retry loop", () => {
 // ---------------------------------------------------------------------------
 
 describe("createExtractionClient — response handling", () => {
-  it("returns null result on malformed JSON (skippable, not fatal)", async () => {
+  it("throws ParseError on malformed JSON (A1 v0.8 absorption; no retry)", async () => {
+    let calls = 0;
+    const anthropic = makeStubAnthropic(async () => {
+      calls++;
+      return {
+        stop_reason: "end_turn",
+        content: [{ type: "text", text: "this is not json" }],
+        usage: { input_tokens: 100, output_tokens: 10 },
+      };
+    });
+    const client = createExtractionClient({ anthropic, sleep: async () => {} });
+    await expect(client.extract("doc")).rejects.toBeInstanceOf(ParseError);
+    await expect(client.extract("doc")).rejects.toMatchObject({
+      reason: "json-parse",
+    });
+    // No retries on ParseError — deterministic failure.
+    // 2 invocations from the two awaits above; without retries each call
+    // produces exactly 1 messages.create call.
+    expect(calls).toBe(2);
+  });
+
+  it("throws ParseError when JSON root is not an object (shape-invalid)", async () => {
     const anthropic = makeStubAnthropic(async () => ({
       stop_reason: "end_turn",
-      content: [{ type: "text", text: "this is not json" }],
+      content: [{ type: "text", text: '["array","not","object"]' }],
       usage: { input_tokens: 100, output_tokens: 10 },
     }));
     const client = createExtractionClient({ anthropic, sleep: async () => {} });
-    const { result, usage } = await client.extract("doc");
-    expect(result).toBeNull();
-    // Usage is still captured — the API call consumed tokens even
-    // though the response body was unusable.
-    expect(usage).toEqual({ inputTokens: 100, outputTokens: 10 });
+    await expect(client.extract("doc")).rejects.toMatchObject({
+      reason: "shape-invalid",
+    });
+  });
+
+  it("throws ParseError when claims field missing (claims-not-array)", async () => {
+    const anthropic = makeStubAnthropic(async () => ({
+      stop_reason: "end_turn",
+      content: [{ type: "text", text: '{"other_field":"value"}' }],
+      usage: { input_tokens: 100, output_tokens: 10 },
+    }));
+    const client = createExtractionClient({ anthropic, sleep: async () => {} });
+    await expect(client.extract("doc")).rejects.toMatchObject({
+      reason: "claims-not-array",
+    });
+  });
+
+  it("throws ParseError when claims field is not an array (claims-not-array)", async () => {
+    const anthropic = makeStubAnthropic(async () => ({
+      stop_reason: "end_turn",
+      content: [{ type: "text", text: '{"claims":"string-not-array"}' }],
+      usage: { input_tokens: 100, output_tokens: 10 },
+    }));
+    const client = createExtractionClient({ anthropic, sleep: async () => {} });
+    await expect(client.extract("doc")).rejects.toMatchObject({
+      reason: "claims-not-array",
+    });
   });
 
   it("returns null result when stop_reason is max_tokens", async () => {

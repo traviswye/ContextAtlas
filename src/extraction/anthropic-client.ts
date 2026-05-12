@@ -42,11 +42,46 @@ import { ZERO_USAGE, type UsageInfo } from "./pricing.js";
 export type RetryClassification = "retry" | "fail";
 
 /**
+ * Canonical reasons a ParseError can surface. Each reason is
+ * deterministic per (LLM output, validation logic) — same input is
+ * expected to produce the same failure on retry, so the classifier
+ * routes ParseError to "fail" without retry per A1 v0.8 absorption.
+ */
+export type ParseErrorReason =
+  | "json-parse"
+  | "shape-invalid"
+  | "claims-not-array";
+
+/**
+ * Typed exception for LLM-output-shape failures distinct from
+ * Anthropic-API failures. Per A1 v0.8 absorption + research/v0.5-
+ * candidates.md #1: prior catch-all logging conflated parse-vs-API
+ * failures during v0.4 Step 5 httpx 24-error investigation; cohort
+ * users at v1.0 launch get substantively distinguishable error
+ * messages enabling self-diagnosis (parse failure → recheck LLM
+ * output shape; API failure → retry with backoff).
+ */
+export class ParseError extends Error {
+  readonly reason: ParseErrorReason;
+  readonly preview: string;
+
+  constructor(reason: ParseErrorReason, preview: string, message: string) {
+    super(message);
+    this.name = "ParseError";
+    this.reason = reason;
+    this.preview = preview;
+  }
+}
+
+/**
  * Classify an error as retryable or not. Exported for direct unit
  * testing — the retry-loop tests exercise the wrapper end-to-end with
  * stub clients, but this pure predicate carries the core logic.
  */
 export function classifyError(err: unknown): RetryClassification {
+  // ParseError → fail (deterministic; same input → same parse failure
+  // per A1 v0.8 absorption; no retry would substantively help).
+  if (err instanceof ParseError) return "fail";
   if (
     err instanceof AuthenticationError ||
     err instanceof PermissionDeniedError ||
@@ -243,30 +278,40 @@ function extractText(response: {
   return null;
 }
 
-function parseAndValidate(text: string): ExtractionResult | null {
+function parseAndValidate(text: string): ExtractionResult {
+  const preview = text.slice(0, 200);
+
   let parsed: unknown;
   try {
     parsed = JSON.parse(text);
   } catch {
-    log.warn("extraction: model returned malformed JSON; skipping document", {
-      preview: text.slice(0, 200),
-    });
-    return null;
+    log.warn("extraction: model returned malformed JSON", { preview });
+    throw new ParseError(
+      "json-parse",
+      preview,
+      "Model returned malformed JSON; same input is expected to produce the same parse failure deterministically (no retry).",
+    );
   }
 
   if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-    log.warn("extraction: JSON root is not an object", {
-      preview: text.slice(0, 200),
-    });
-    return null;
+    log.warn("extraction: JSON root is not an object", { preview });
+    throw new ParseError(
+      "shape-invalid",
+      preview,
+      "JSON root is not an object (expected { claims: [...] }).",
+    );
   }
 
   const claims = (parsed as { claims?: unknown }).claims;
   if (!Array.isArray(claims)) {
     log.warn("extraction: 'claims' field missing or not an array", {
-      preview: text.slice(0, 200),
+      preview,
     });
-    return null;
+    throw new ParseError(
+      "claims-not-array",
+      preview,
+      "'claims' field missing or not an array (expected an array of claim objects).",
+    );
   }
 
   const out: ExtractedClaim[] = [];
