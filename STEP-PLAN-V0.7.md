@@ -648,21 +648,20 @@ close per standard cycle pattern.
 pattern. Inheritance from v0.6 Step 8.0 Q8.0.1-Q8.0.8 design
 adjudications pattern.
 
-**Substeps** (firmed at Step 4.0 per Q4.0 design adjudications
-inheritance from v0.6 Step 8.0 pattern; expected: 3-substep
-compressed split per v0.6 Step 8.1 Q8.0.1 γ lock precedent OR
-adjusted per v0.7-specific cycle-close substrate volume):
+**Substeps** (firmed at Step 4.0 per Q4.0 design adjudications;
+α single-commit shape locked per Step 4.0 design surface +
+Travis Lock 1 scope-expansion for temporary-backlog-file
+generation absorption):
 
-- [ ] **Step 4.0** — Design adjudications (Q4.0.1+ locks per
-  v0.6 Q8.0 pattern inheritance; v0.7-specific cycle-close
-  evaluations selection).
-- [ ] **Step 4.1** — Cycle-close evaluations bundle (mechanical
-  recording of pre-registered evaluation outcomes if compressed
-  split locks).
-- [ ] **Step 4.2** — v0_8-HANDOFF.md amendment + Step 4 close
-  (v0.8+ post-launch substrate handoff per launch-bearing
-  reframe inheritance pattern; matches v0.6 Step 8.2 v0_7-
-  HANDOFF.md amendment precedent).
+- [x] **Step 4** — Cycle-close evaluations + research/v0.8-
+  candidates.md backlog substrate generation (LOCK 5).
+  Shipped 2026-05-12; commit `[this commit]`. α single-commit
+  shape per LOCK 1 absorbs cycle-close evaluations
+  (γ combination criteria verification per LOCK 2) + temporary
+  backlog file generation alongside (21 candidate substrate
+  inventory + honest scope-locking framing per LOCK 5). v0_8-
+  HANDOFF.md substrate generation cadence at Step 5 close per
+  LOCK 4 (β v0.5/v0.6 precedent).
 
 **Unblocks.** Step 5 ship gate (Step 4 entire arc is Step 5
 prerequisite per v0.6 Q8.0.6 lock inheritance).
@@ -748,6 +747,88 @@ timeline; not blocking).
 ## Progress log
 
 *Entries added in reverse-chronological order as steps ship.*
+
+### Step 4 shipped — 2026-05-12 (v0.7 cycle-close evaluations — cycle thesis empirically delivered (3-of-4 tier MET + TERTIARY deferred to v0.8+); V1.0 ship-gate 2-of-3 MET + 2 carried-forward pattern preserved; 15 cycle-execution observations + 21 v0.8+ forward-pointer candidates consolidated at research/v0.8-candidates.md for handoff substrate inheritance + context-window-resilience)
+
+V0.7 Step 4 closes the cycle-close evaluations substep cluster as α single-commit shape per LOCK 1, absorbing temporary-backlog-file generation per Travis mid-cycle directive (LOCK 5). Step 4 substantively delivers cycle thesis evaluation against v0.7-SCOPE.md framing + V1.0 ship-gate criteria evolution + cycle-emergent candidate consolidation by reference to research/v0.8-candidates.md.
+
+#### Cycle thesis evaluation against v0.7-SCOPE.md §1 framing
+
+V0.7 cycle thesis substantively delivered per launch-bearing reframe (Travis pivot at v0.6 Step 7.5):
+
+> "V0.7 ships ContextAtlas v1.0 public launch via 3-tier scope: PRIMARY claude-code-only extraction path (B13 functional implementation closing single-dependency architectural question); SECONDARY install + setup pipeline real-repo empirical verification (closes V1.0 ship-gate criterion #2 via 3-repo verification target); TERTIARY backlog-drain launch-blocking substrate gaps (3 items per Q-pre-3 lock)."
+
+Empirical evaluation: launch-bearing thesis substantively delivered. v0.7 cycle substep cluster (Steps 1-3) substantively shipped foundational-substrate-consistency work per Travis Decision-3-α framing at Step 2.3 Checkpoint 2 disposition surface (7-commit Step 2.3 substep cluster: Path-γ Read-tool refactor + Approach D Skill→LSP-symbol-resolution bridge + β-bounded Skill substrate enforcement + Step 2.3 closure empirical validation + generation-side β-bounded mechanical-floor substrate + CLI substrate-evolution + Skill + CLI substrate-equivalence empirical defense at canonical depth-floor quality).
+
+Substrate-generation thesis preserved via post-launch infrastructure inheritance per Q9.0.11 lock at v0.6 Step 9.0: recruitment + observability + ADR-20 consent contract + feedback template + onboarding documentation ship at v1.0 ready for v0.8+ post-launch real-world cohort exposure execution. v0.7 cycle does NOT generate cohort substrate; inherits v0.6-shipped infrastructure for v0.8+ consumption.
+
+#### V0.7-SCOPE.md success criteria verification table (per LOCK 2 γ combination)
+
+| Criterion | Status | Empirical evidence anchor |
+|---|---|---|
+| **PRIMARY (a)** claude-code-only extraction path | ✓ MET | Step 1.4b Path-3 entry-point-determined architecture (ADR-02 §1.4b amendment + §2.3.a/b/c/2.4.a amendments); `/index-atlas` SKILL.md subscription-bounded path empirically validated at rich-skill/ Step 2.3 closure (commit `d9b6271`) + Step 2.4 (commit `48181f8`) |
+| **PRIMARY (b)** Generate-adrs feature | ✓ MET | Step 2.2.a.1/a.2 CLI subcommand + Skills SKILL.md (commits across Step 2.2); Step 2.3.c.0 refined GENERATE_ADRS_PROMPT 4-dimension refinement (commit `6125d44`); reference-context empirically validated at Step 2.2.b.ii (commit `dc4d841`) + Step 2.4 Checkpoints 2-4 (rich-skill + reference-context); Scope γ' shipped at Step 2.1.a; β-1 + β-2 Step 2.4.a CLI substrate-equivalence (commit `9ba9a86`) |
+| **SECONDARY** Install + setup 2-repo verification | ✓ MET | ContextAtlas-on-itself: Step 3.1 atlas refresh PASS at refined Step 2.3.c.0 substrate (commit `1e11059`; v1.3 → v1.4 schema upgrade; $0.23; doctor 29 PASS / 1 WARN / 0 FAIL). Rich: Step 2.2.b.i (cold-start CLI baseline) + Step 2.2.b.ii (reference-context CLI) + Step 2.3 (Skill cold-start at refined substrate) + Step 2.4 (Skill reference-context at refined substrate) all empirically validated. Both repos complete Phase 1-4 without launch-blocking errors per Q2.0.2 closure criteria. |
+| **TERTIARY** A1+A2+A3 substrate-gap fixes | △ DEFERRED to v0.8+ | Travis Lock 2 cycle-pacing discipline at Step 2.5/3.0 forward-planning surface. v0.7 cycle substantively absorbed substrate-evolution at Step 2 substep cluster (Skill + CLI substrate-equivalence work; 7 commits); TERTIARY scope deferred per honest-scope-acknowledgment. Captured at research/v0.8-candidates.md per Lock 5 v0.8+ candidate substrate. |
+
+#### V1.0 ship-gate criteria evolution (per LOCK 2 γ combination)
+
+| V1.0 ship-gate criterion | Status post-v0.7 | Carry-forward |
+|---|---|---|
+| #1 parenthetical (quality-axis methodology) | ✓ MET (preserved) | CLOSED at v0.5; preserved through v0.6 + v0.7 unchanged |
+| #1 statistical wins | △ PARTIAL (carried forward to v0.8+) | v0.6 8-cell subset PARTIAL; carries forward to v0.8+ post-launch matrix-completion + F1-F9 methodology amendments |
+| #2 onboarding pipeline | ✓ MET — closes at v0.7 | v0.7 SECONDARY 2-repo install/setup empirical verification PASSED at Step 3.1 (ContextAtlas) + Step 2.2.b/2.3/2.4 (Rich); criterion #2 substantively CLOSES at v0.7 cycle close |
+| #3 external dogfood trial | ✗ NOT MET (carried forward to v0.8+) | v0.7 cycle does not generate cohort substrate; preserves v0.6 framing; carries forward to v0.8+ post-launch cohort exposure execution against carried-forward recruitment infrastructure |
+
+Honest 2-of-3 MET (#1 parenthetical preserved + #2 newly CLOSED at v0.7) + 2 carried-forward (#1 statistical + #3 external dogfood) pattern preserved per v0.7-SCOPE.md framing inherited from v0.6 Step 9.0 honest-scope-acknowledgment substrate. Substantively consistent with launch-bearing reframe (Travis pivot at v0.6 Step 7.5).
+
+#### Cycle-emergent candidate consolidation by reference (per LOCK 3 γ hybrid)
+
+15 cycle-execution observations preserved at Class-15 capstone composition (substrate-distributed progress-log entries per Option b lock from v0.6 Q8 precedent). Full enumeration captured at Step 3.2 close progress log (commit `74dbf9d`); referenced here for cycle-close audit-trail completeness:
+
+1. Travis catching 200k context window correction (Step 2.2.a.2)
+2. Empirical evidence refuting FO-6 thesis (Step 2.2.b.i Checkpoint 2)
+3. Dev catching 3-stage workflow oversight (Step 2.3 Checkpoint 1)
+4. Travis elevating Path-γ to v0.7 launch-blocking (Step 2.3 Checkpoint 2)
+5. Travis elevating Divergence 3 to v0.7 launch-blocking (Step 2.3 Checkpoint 2)
+6. Step 2.3.a substrate-evolution didn't bind agent behavior — R4 manifested (Step 2.3 Checkpoint 2/3)
+7. Dev surfacing D4' + cross-session variance pattern (Step 2.3.b disposition)
+8. Travis compare-surfaces-before-locking discipline at substrate-evolution maturity (Step 2.3.b disposition)
+9. β-bounded substrate empirically binds — Outcome A (Step 2.3 closure)
+10. Substrate-evolution co-essentiality of prompt + workflow + mechanical enforcement layers (Step 2.3.c.0)
+11. Validator-error-message-as-specification-clarification pattern (Step 2.4 Checkpoint 2)
+12. Phase A discipline generalization across workflow phases (Step 2.4 Checkpoint 3)
+13. Cross-ADR linkage emergence (candidate — defers without β-3 empirical confirmation; v0.8+) (Step 2.4 Checkpoint 4)
+14. Substrate-evolution audit-before-closure discipline (Step 2.4.a ADR-02 amendment)
+15. Travis-product-judgment-correcting-Claude-advisor-framing pattern at substep cluster maturity (Step 3.1 progress log)
+
+**Class-15 framework capstone composition substantively complete.** Future cycles (v0.8+) inherit this audit-trail substrate.
+
+V0.8+ forward-pointer candidate inventory consolidated at **`research/v0.8-candidates.md`** per Lock 5 directive — 21 candidates across 4 v0.7-cycle-surfaced categories (Substrate Evolution + Mechanical Absorption + Cohort UX Refinement + Test Substrate) + TERTIARY deferred substrate gaps + cross-cycle inheritance items. Per-candidate substrate includes empirical justification + bounded engineering estimate + cohort-impact framing + originating substep reference + honest scope-locking disclaimer per Travis Lock 5 framing. File is working substrate for v0.8 scope-doc drafting consumption — context-window-resilience substrate guarding against compaction loss across advisor + dev sessions; NOT v1.0-release-bearing on its own.
+
+#### V0.7 cycle integrity audit-trail substrate handoff readiness
+
+Cycle integrity audit-trail substantively preserved through v0.7 cycle:
+- ADR-02 amendments at every substep cluster milestone (Step 1.4b + Step 2.3.a + Step 2.3.b.0 + Step 2.3.c.0 + Step 2.4.a) — substantive substrate-evolution architectural decisions canonically captured
+- 15 Class-15 cycle-execution observations progress-log-distributed across substep close entries (cycle integrity audit-trail at substep-close-granularity)
+- 21 v0.8+ candidate substrate at research/v0.8-candidates.md (working substrate for v0.8 scope-doc drafting consumption)
+- CLAUDE.md substrate-evolution amendments: frozen-prompt invariant scope clarification + Generation cost framing + Atlas refresh cohort UX framing
+
+Steps 4-5 ship-gate work opens for Step 5.0 design adjudication surface post-push. v0_8-HANDOFF.md substrate generation at Step 5 close per LOCK 4 (β v0.5/v0.6 precedent — full cycle-completion substrate available: ship SHA; tag SHA; package bump 0.6.0 → 0.7.0; CLAUDE.md Current Version block; README header refresh; tag landing).
+
+#### Engineering deliverables at Step 4
+
+**New files (1):**
+- `research/v0.8-candidates.md` (~720 LOC) — v0.8+ forward-pointer candidate substrate per Travis Lock 5 directive. Honest scope-locking framing + 4-category candidates inventory + TERTIARY A1+A2+A3 deferred substrate gaps + cross-cycle inheritance items. Per-candidate substrate covers empirical justification + bounded engineering estimate + cohort-impact framing + originating substep reference + honest scope-locking disclaimer.
+
+**Modified files (1):**
+- `STEP-PLAN-V0.7.md` — Step 4 substep ladder shape + Step 4 progress log entry (this entry).
+
+#### Cycle position post-Step-4
+
+V0.7 cycle: **33 commits total** post-Step-4 close. Step 5 ship-gate work estimated commits 34-39 (5-6 substeps per v0.5/v0.6 precedent). Within 4-5 day timeline framing. Travis Lock 2 no-wall-clock-ceiling preserved throughout cycle. Step 5.0 design adjudication surface opens for dev preview + Travis lock post-push.
+
+---
 
 ### Step 3.2 shipped — 2026-05-12 (Step 3 substep cluster close — atlas refresh + α Skill cohort UX substrate-evolution empirically validated at contextatlas-on-itself dogfood; 15 cycle-execution observations preserved at Class-15 capstone composition; Steps 4-5 ship-gate forward-planning surface ready)
 
