@@ -568,9 +568,13 @@ lock).
     Travis Step 2.3.c.0 push observation. 4-cohort-entry-
     surface matrix empirically defended end-to-end at v0.7
     cycle close.
-- [ ] **Step 2.5** — Step 2 close (cumulative outcome; v1.0
-  ship-gate criterion #2 closure; launch-blocking issues
-  triaged per Q2.0.3 protocol).
+- [x] **Step 2.5** — Step 2 substep cluster close. Shipped
+  2026-05-12; commit `[this commit]`. Substep cluster spans
+  7 commits (Step 2.3.a.0 → Step 2.4 closure); cumulative
+  cluster-level deliverables + cycle-execution observations
+  (14 instances) + class-15 enumeration preservation captured;
+  Step 3 forward-planning surface ready for dev Step 3.0
+  design adjudication.
 
 **Unblocks.** Step 4 cycle-close evaluations (Step 2 outcome
 surfaces v1.0 ship-gate criterion #2 closure status; Tier 3
@@ -718,6 +722,133 @@ timeline; not blocking).
 ## Progress log
 
 *Entries added in reverse-chronological order as steps ship.*
+
+### Step 2.5 shipped — 2026-05-12 (Step 2 substep cluster close — Skill + CLI substrate-equivalence empirically defended across 7-commit cluster; 14 cycle-execution observations preserved; Step 3 forward-planning surface ready)
+
+V0.7 Step 2.5 closes the Step 2 substep cluster as a documentation-bearing close per Travis Lock 1. The cluster spans 7 commits (b6b4a90 → 48181f8) substantively absorbing the v0.7 cycle's foundational-substrate-consistency work per Travis Decision-3-α framing at Step 2.3 Checkpoint 2 disposition surface. Step 2.5 captures cluster-level deliverables, cumulative observations, and forward-planning framing for Step 3.
+
+#### Step 2 substep cluster — 7-commit substrate-evolution chain
+
+| Step | Commit | Engineering | Lines | Tests |
+|---|---|---|---|---|
+| 2.3.a.0 — Path-γ Read-tool refactor | `b6b4a90` | Build script + init copy + doctor freshness check + SKILL.md Read-tool amendments + CLAUDE.md frozen-prompt scope clarification | +1067 / −45 | +17 |
+| 2.3.a.1 — Approach D Skill→LSP-symbol-resolution bridge | `b96ebf2` | New `contextatlas resolve-symbols` CLI subcommand + R8 name-form normalization + atlas schema v1.4 bump + SKILL.md end-of-Skill invocation | +1195 / −22 | +32 |
+| 2.3.b.0 — β-bounded Skill substrate enforcement | `d822060` | Hard removal of `show-prompt` + `show-generate-prompt` CLI subcommands; new `contextatlas validate-atlas` CLI with mechanical schema validation; canonical AtlasFileV1 v1.4 schema embed + MANDATORY workflow gates in `/index-atlas` SKILL.md | +1103 / −353 | +13 |
+| 2.3 closure — Step 2.3 empirical validation | `d9b6271` | β-bounded substrate empirically binds at rich-skill/ Claude Code session re-verification (Outcome A); all 3 mandatory gates fire first-try; 12 Skill ADRs / 57 claims / 2480 LSP-resolved symbols | +132 / −5 | 0 |
+| 2.3.c.0 — Generation-side β-bounded mechanical-floor substrate | `6125d44` | GENERATE_ADRS_PROMPT 4-dimension refinement (~85→~265 lines; 2.3× depth) + SKILL.md model+effort frontmatter pinning + new `contextatlas validate-adrs` CLI subcommand (9-invariant depth-floor enforcement + 600-line ceiling) + /generate-adrs Phase A/B/C workflow restructure + CLAUDE.md/ADR-02 deliberate cost-narrative shift | +1441 / −76 | +16 |
+| 2.4.a — CLI substrate-evolution (β-1 + β-2) | `9ba9a86` | β-1 extended thinking enabled at CLI generation API call (32k budget; SDK 0.27.3 type-cast workaround); β-2 auto-invoke `validate-adrs` post-generation in CLI runner with refined remediation; `generatorOverride` test seam | +423 / −4 | +7 |
+| 2.4 closure — Skill + CLI substrate-equivalence empirical defense | `48181f8` | 4-cohort-entry-surface matrix empirically defended at canonical depth-floor quality; β-3 empirical CLI cost measurement Path B v0.8+ deferral; β-4 Framing 1 honest-scope-acknowledgment for CLI single-shot vs Skill multi-step architectural difference; CLAUDE.md residual housekeeping absorbed | +271 / −22 | 0 |
+| **Cumulative cluster** | **7 commits** | **Substrate-evolution at foundational-substrate-consistency layer** | **+5632 / −527** | **+85 net** |
+
+#### Cumulative cluster-level deliverables
+
+**New substrate (artifacts cohort users + downstream tools depend on):**
+- `contextatlas validate-atlas` CLI subcommand (mechanical AtlasFileV1 v1.4 schema validation)
+- `contextatlas resolve-symbols` CLI subcommand (Skill→LSP bridge for full-fidelity atlas)
+- `contextatlas validate-adrs` CLI subcommand (canonical depth-floor invariants enforcement)
+- Atlas schema v1.4 (optional `claims[].symbol_candidates` field; backward-compat per SUPPORTED_ATLAS_VERSIONS extension)
+- Build-time prompt artifact pipeline (`scripts/generate-prompt-artifacts.mjs` → `dist/extraction/prompt.md` + `dist/generation/prompt.md`)
+- Init-time prompt-artifacts copy (`src/init/prompt-artifact-copy.ts` populates `.contextatlas/prompts/`)
+- Doctor freshness check (`extraction.prompts_artifact_exists` + `extraction.prompts_artifact_fresh`)
+- R8 name-form normalization (`expandCandidateForms` + `resolveCandidatesWithNormalization`)
+
+**Substrate evolution at existing surfaces:**
+- `GENERATE_ADRS_PROMPT` refined across 4 dimensions (audience framing + investigative discipline + failure-mode discipline + calibration examples); 2.3× depth investment
+- Both SKILL.md files: frontmatter `model: claude-opus-4-7` + `effort: xhigh` pinning (mechanical Claude Code-native model+effort enforcement)
+- `/generate-adrs` SKILL.md workflow: Phase A investigative-depth-per-decision-candidate → Phase B canonical writing → Phase C MANDATORY validate-adrs gate
+- `/index-atlas` SKILL.md workflow: canonical atlas schema example embed + MANDATORY validate-atlas → resolve-symbols → doctor gates
+- CLI generation API call: extended thinking enabled (32k budget); auto-invoke validate-adrs post-generation
+- Hard removal of deprecated `contextatlas show-prompt` + `contextatlas show-generate-prompt` (Read-tool-only path for Skills)
+
+**Foundational documentation:**
+- ADR-02: substantive substrate-evolution amendments at Step 2.3.a (Path-γ + Approach D) + Step 2.3.b.0 (β-bounded) + Step 2.3.c.0 (generation-side β-bounded) + Step 2.4.a (CLI substrate-equivalence); 4 cumulative cycle-execution observations (10/11/12/13/14)
+- CLAUDE.md: frozen-prompt invariant scope clarification (substrate value canonical; load mechanism evolves) + Generation cost framing deliberate-shift lock ($5-15 per repo at v1.0; honest-scope-acknowledgment for architectural Phase A difference)
+
+#### 4-cohort-entry-surface substrate matrix at v0.7 cycle close
+
+| Surface | Status | Evidence anchor |
+|---|---|---|
+| CLI cold-start | ✓ empirically defended (v0.6 cycle substrate baseline; refined Step 2.3.c.0 substrate inferentially-projected) | Step 2.2.b.i (commit `c1fa077`); β-3 v0.8+ empirical lock candidate |
+| CLI reference-context-aided | ✓ empirically defended (same framing as cold-start) | Step 2.2.b.ii (commit `dc4d841`); β-3 v0.8+ empirical lock candidate |
+| Skill cold-start | ✓ empirically validated at refined substrate | Step 2.3 closure (commit `d9b6271`): 12 ADRs / 57 claims / 2480 LSP-resolved / canonical AtlasFileV1 v1.4 first-try / 3 mandatory gates |
+| Skill reference-context-aided | ✓ empirically validated at refined substrate | Step 2.4 Checkpoints 2-4 (commits `6125d44` + `48181f8`): 13 ADRs at canonical depth-floor (~82 line avg; 2-2.5× depth) / 73 claims / 100% LSP resolution / 6-parallel-Explore-subagent Phase A |
+| CLI substrate-equivalence | ✓ empirically validated via test substrate | Step 2.4.a (commit `9ba9a86`): β-1 extended thinking + β-2 auto-invoke validate-adrs; 1527 tests / 85 files / all PASS |
+
+#### 14 cycle-execution observations preserved (Class-15 enumeration substrate)
+
+Cumulative cycle-execution observation list at v0.7 cycle Step 2 close (captured across ADR-02 amendments + substep progress logs):
+
+1. Travis catching 200k context window correction at Step 2.2.a.2 (substantive corrected dev framing on Opus 4.7 context window)
+2. Empirical evidence refuting FO-6 thesis at Step 2.2.b.i Checkpoint 2 (substantive evidence-first override on hypothesis-driven dev framing)
+3. Dev catching 3-stage workflow oversight at Step 2.3 Checkpoint 1 (substantive substantive Claude advisor correction by Claude advisor)
+4. Travis elevating Path-γ Read-tool refactor from v0.8+ to v0.7 launch-blocking scope at Step 2.3 Checkpoint 2 disposition surface
+5. Travis elevating Divergence 3 (symbol resolution) from v0.8+ to v0.7 launch-blocking scope at Step 2.3 Checkpoint 2 disposition
+6. Step 2.3.a substrate-evolution didn't bind agent behavior — R4 manifested at Step 2.3 Checkpoint 2/3 re-verification
+7. Dev surfacing D4' atlas schema fidelity divergence + cross-session variance pattern (Claude advisor under-weighted)
+8. Travis compare-surfaces-before-locking discipline at Step 2.3.b disposition (triangulated dev + Claude advisor + Travis judgment to β-bounded mechanical-enforcement path)
+9. β-bounded substrate empirically binds at first re-verification — Outcome A confirmed without escalation to β-full
+10. Substrate-evolution observation: prompt + workflow structure + mechanical enforcement layers are co-essential (Step 2.3.c.0)
+11. **Validator-error-message-as-specification-clarification (Step 2.4 Checkpoint 2)**: validator remediation text doubles as in-loop agent specification training; agent self-corrects from format mismatch via remediation message content
+12. **Phase A discipline generalization across workflow phases (Step 2.4 Checkpoint 3)**: substrate-evolution at one workflow phase conditions agent behavior at subsequent workflow phases in same session (agent's `contextatlas --version` pre-check emergent from Phase A pattern set at `/generate-adrs` surface)
+13. Cross-ADR linkage emergence candidate (defers without β-3 empirical confirmation per Step 2.4.c framing; v0.8+ candidate for instance promotion if reference-context A/B substantively distinguishes contribution)
+14. **Substrate-evolution audit-before-closure discipline (Step 2.4.a ADR-02 amendment)**: Travis compare-surfaces-before-locking pattern at substrate-evolution maturity; surfaced bounded CLI-vs-Skill gaps before Step 2.4 closure lock; Option β absorption added ~90 LOC + 7 tests within Step 2.4 substep cluster; substrate-equivalence claim defended without launch-narrative claim drift
+
+15-class enumeration substrate preserved; future cycles (v0.8+) inherit working-content-gap-inventory for ship-gate evaluation.
+
+#### V0.7 cycle position assessment
+
+**Commits 1-29** at Step 2.5 substep cluster close. Cycle has shipped:
+- Step 1: Path-3 entry-point-determined architecture (ADR-02 amendments)
+- Step 2.0: design adjudications + Q-pre locks
+- Step 2.1.a: Scope γ' multi-format ADR enumeration substrate
+- Step 2.2.a.1-a.2: generate-adrs CLI substrate + Skills SKILL.md content
+- Step 2.2.b.0-e: CLI cold-start verification cluster + 5 friction observations absorbed (FO-4/5/7/8 fixed; FO-6 thesis refuted)
+- Step 2.2.b.i + 2.2.b.ii: CLI cold-start + reference-context-aided empirical verification (2 cohort entry surfaces)
+- **Step 2.3 substep cluster (7 commits per table above)**: Skill + CLI substrate-equivalence empirically defended across all 4 cohort entry surfaces at canonical depth-floor quality
+
+**Commits 30-33** estimated remaining for Steps 3-5 ship-gate work. Within 4-5 day timeline framing. Travis Lock 2 no-wall-clock-ceiling preserved throughout cycle.
+
+#### Step 3 forward-planning surface (dev consumption for Step 3.0 substep design)
+
+Step 3 substep ladder shape adjudication candidates for dev preview at Step 3.0 design surface:
+
+**3.0 ATLAS REFRESH ON CONTEXTATLAS-ON-ITSELF**
+
+Substrate refresh per dogfood discipline. ContextAtlas-on-itself atlas incorporates Step 2.3.c.0 + 2.4.a substrate-evolution (refined GENERATE_ADRS_PROMPT + validate-adrs + Phase A/B/C workflow + β-1 extended thinking + β-2 auto-invoke validate-adrs).
+
+**Open question for Step 3.0 design surface — path choice:**
+- **Skill path** (subscription-bounded; matches cohort entry experience). Validates end-to-end cohort UX on ContextAtlas-on-itself dogfood at refined Step 2.3.c.0 substrate. Empirically tests Phase A multi-step investigation against ContextAtlas's own codebase.
+- **CLI path** (platform-billed; matches programmatic invocation pattern). β-1 + β-2 substrate empirically validated via test substrate at Step 2.4.a; CLI dogfood on self provides β-3-equivalent empirical lock at refined substrate. Validates the deliberate cost-narrative shift framing ($5-15 per repo at v1.0) with empirical numbers.
+
+**Dev lean per Step 2.5 forward-planning framing:** Skill path. Substantive reasoning:
+- Validates end-to-end cohort UX (substantive launch-narrative substrate for v1.0)
+- Empirically tests Phase A multi-step investigation against substantial codebase (ContextAtlas itself ~10k+ LOC)
+- Subscription-bounded cost model matches cohort entry surface most users will use
+- CLI dogfood + empirical cost lock can be Step 3.x sub-substep OR v0.8+ candidate per Travis discretion
+
+Travis discretion at Step 3.0 design surface adjudicates.
+
+**3.x CYCLE-EXECUTION OBSERVATIONS AGGREGATION**
+
+V0.7 cycle's 14 cycle-execution observations + 9 friction observations (FO-4 through FO-16) + bounded technical-debt candidates (SDK upgrade; CLI investigation orchestrator; etc.) consolidated into Phase-10 ref-doc OR distributed across deliverables per cycle-close-synthesis lock from v0.6 precedent. Worth dev preview at Step 3.0 design surface — substantive scope adjudication on aggregation pattern.
+
+**3 WALL-CLOCK ESTIMATE**
+
+~15-30 min Travis-side run (Step 3.0 atlas refresh) + ~30 min dev paste-back analysis + ~30 min commit cadence. Bounded; Steps 4-5 ship-gate work follows per standard v0.6+ cycle-close pattern.
+
+**Don't lock Step 3 details at Step 2.5** — surface for dev's Step 3.0 substep design adjudication. Step 2.5 captures forward-planning framing; Step 3.0 adjudicates substep ladder shape.
+
+#### Class-15 framing composition (no new instance at Step 2.5)
+
+Step 2.5 is documentation-bearing substep cluster close; no new substantive empirical signal warrants class-15 instance landing. 15-class enumeration substrate preserved at 14 captured instances + 1 candidate instance (13 cross-ADR linkage emergence) deferring without β-3 empirical confirmation.
+
+#### Step 2 substep cluster close — substantive cycle integrity audit trail preserved
+
+Step 2 substep cluster substantively shipped foundational-substrate-consistency work per Travis Decision-3-α framing. The substantive empirical defense across 4 cohort entry surfaces + bounded CLI substrate-equivalence closure at Step 2.4.a + cumulative documentation amendments substantively defend the v1.0 launch-narrative claim: "ContextAtlas produces canonical-depth-floor-compliant atlas substrate at canonical schema across CLI and Skill cohort entry paths."
+
+Step 3 substep cluster opens for atlas refresh on contextatlas-on-itself + cycle-execution observations aggregation per locked forward-planning framing.
+
+---
 
 ### Step 2.4 closure shipped — 2026-05-12 (Skill + CLI substrate-equivalence empirically defended at API-parameter + mechanical-enforcement layers per Step 2.3.c.0 + 2.4.a substrate-evolution; 4-cohort-entry-surface matrix empirically defended; Framing 1 honest-scope-acknowledgment for CLI single-shot vs Skill multi-step architectural difference; β-3 empirical CLI cost measurement v0.8+ carry-forward)
 
