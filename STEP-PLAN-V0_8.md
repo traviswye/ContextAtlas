@@ -440,7 +440,46 @@ trigger per LOCK 1 cycle-discipline constraint.
 
 *Entries added in reverse-chronological order as substeps ship.*
 
-*v0.8 cycle execution starts at Cluster 1 / Step 1.0 (benchmarks-
+### Step 2.1 shipped — 2026-05-12 (A1 absorption — ParseError + classifier branch; carries-since-v0.4 user-trust pre-launch gate per LOCK 1 launch-readiness discipline)
+
+V0.8 Cluster 2 TERTIARY A1 absorption shipped per LOCK F substep ordering (A1 first → A2+A3 paired) + Q2.0.3.a Option α per-substep atomic ship discipline. Substantively the canonical A1 fix per research/v0.5-candidates.md #1 framing (v0.4 Step 5 httpx 24-error investigation root cause masked via classifyError catch-all conflating parse-vs-API failures; cohort users at v1.0 launch get substantively distinguishable error messages enabling self-diagnosis).
+
+| Substep | branch | commit | Notes |
+|---|---|---|---|
+| 2.1 | main | `7ef1c45` | A1 absorption ship commit — ParseError class + classifier branch + parseAndValidate throw refactor + 6 new tests; 142 insertions / 18 deletions; npm test 1533 / 85 all PASS |
+| 2.1.b | main | (this commit) | STEP-PLAN-V0_8.md §3 Step 2.1 progress log entry per LOCK 1 Option α separate progress-log commit discipline |
+
+#### A1 substantive scope
+
+- **ParseError class** at `src/extraction/anthropic-client.ts` (co-located alongside classifyError per Q2.0.1.a Option α); 3 canonical reasons: `json-parse` + `shape-invalid` + `claims-not-array`
+- **Classifier branch** at `classifyError`: ParseError → "fail" (deterministic; no retry) as first check; existing SDK error classification (RateLimitError + InternalServerError + APIConnectionError → retry; AuthenticationError + others → fail) preserved
+- **parseAndValidate refactor**: throws ParseError instead of returning null on JSON.parse / shape / claims-not-array failures; existing per-claim malformed-entry drop semantics preserved (partial salvage at claim level)
+- **Type tightening**: `parseAndValidate` return type `ExtractionResult | null` → `ExtractionResult` (parse failures throw; non-parse-failure paths still return null at extract() boundary for max_tokens / no-text-content)
+
+#### Zero-blast-radius validation
+
+All 3 `anthropicClient.extract()` callers (`pipeline.ts:362+` ADR extraction + `pipeline.ts:842+` docstring extraction + `commit-message-extractor.ts:366+`) already wrap in try/catch with errors-array accumulation — ParseError naturally surfaces in errors arrays without caller-side changes.
+
+#### Cohort impact framing (substantively absorbed at Cluster 5 / Step 5.2 per Q2.0.7 lock)
+
+Cohort users at v1.0 launch encountering extraction failures get substantively distinguishable error messages enabling self-diagnosis (parse failure → "Model returned malformed JSON; same input expected to produce same parse failure deterministically" with reason taxonomy; API failure → existing retry-with-backoff log preserved). Substantively documentation-scope at Cluster 5 / Step 5.2 README.md launch-narrative refresh (not Cluster 2 engineering scope per Q2.0.7 lock).
+
+#### Test baseline preservation
+
+`npm test`: 1533 tests / 85 files / all PASS (v0.7 baseline 1527 + 6 new A1 tests = 1533 expected). Clean baseline preservation per CLAUDE.md src-changes-require-full-test canonical discipline.
+
+#### Cycle-execution observations
+
+- **LOC envelope slightly over** (~30-50 LOC envelope per LOCK F; actual +47 LOC net at `anthropic-client.ts`) substantively defensible per substrate-fidelity-preservation-vs-LOC-budget discipline (substantive ParseError class JSDoc + reason taxonomy). Class-18 2nd observation candidate empirically reproducible at engineering-substrate-surface (substantively distinct from documentation-substrate-surface pattern at v0.7 Step 5.2 + v0.8 scope-doc LOC overruns).
+- **STEP-PLAN-V0_8.md progress log entry gap surfacing at Step 2.1 close** (this Step 2.1.b commit substantively absorbs per LOCK 1 Option α separate progress-log commit discipline). Class-18 7th observation candidate per dev-empirical-engineering-judgment-surfacing-procedural-discipline-gap-at-substep-close pattern; substantively meaningful empirical pattern recognition by dev at substep close surface (substantively reproducible procedural-discipline-gap-recognition pattern).
+
+#### Next
+
+Step 2.2 A2+A3 paired absorption substep triggers per LOCK F Option α sequential cadence + Q2.0.3.a Option α per-substep atomic ship discipline (main-repo continuation). Parallel Step 1.1 dev-side engineering at benchmarks-repo continues per Option γ ordering (pre-flight + `scripts/v0.8-cell-screen.mjs` + unit tests).
+
+---
+
+*v0.8 cycle execution started at Cluster 1 / Step 1.0 (benchmarks-
 repo parallel cadence) + Cluster 2 / Step 2.0 (main-repo
 sequential start) per Option γ ordering. Progress log entries
 populate as substeps ship.*
