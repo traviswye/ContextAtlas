@@ -1,10 +1,10 @@
 {
-  "version": "1.3",
-  "generated_at": "2026-05-11T15:16:47.361Z",
-  "extracted_at_sha": "40d8b77f77d1ce6034a66f299df3607f3030a665",
+  "version": "1.4",
+  "generated_at": "2026-05-12T16:28:38.128Z",
+  "extracted_at_sha": "b7ce010b0d31d8c569d29b036b5ee9820a73eea6",
   "generator": {
     "contextatlas_version": "0.6.0",
-    "contextatlas_commit_sha": "40d8b77f77d1ce6034a66f299df3607f3030a665",
+    "contextatlas_commit_sha": "b7ce010b0d31d8c569d29b036b5ee9820a73eea6",
     "extraction_model": "claude-opus-4-7"
   },
   "source_shas": {
@@ -12,7 +12,7 @@
     "README.md": "90c15b27402b6e4dbecae371016b39887e17dc6bb1b2c69ce5f44328570a37f1",
     "RUBRIC.md": "e91e0684bbadc0ca458312d85545e17ed883a58bacef2d18e39427b2045dbe85",
     "docs/adr/ADR-01-symbol-id-format.md": "02ca6af32eb69b0b78e843aa21da947682941fd7fbf4780f444c0836fe1b4aba",
-    "docs/adr/ADR-02-extraction-sole-api-caller.md": "5694a01c0851be09edd7d0668fec7fd7d7c5dd36b9573190ff501b82ced275b2",
+    "docs/adr/ADR-02-extraction-sole-api-caller.md": "93d3794638d9819e8cda85d9a44d3505745998e0a8c93e277f1899c96b5695d3",
     "docs/adr/ADR-03-language-adapter-plugin.md": "6820fb079176d3f13f97affb3fdb2dc44efcd72b33a704b777235641537609c4",
     "docs/adr/ADR-04-compact-output-default.md": "ecd4ed17add81c6ba825019f4ef26eba2dc5605cf1c44b7f671aa2d7f821ab37",
     "docs/adr/ADR-05-single-flat-yaml-config.md": "1e53e3170de502abc47ac22e0edf3f45e23fa39d557d163e3b4516264dc144ea",
@@ -781,7 +781,7 @@
       "path": "src/adapters/lsp-client.ts",
       "line": 21,
       "signature": "interface JsonRpcMessage",
-      "file_sha": "1a8145b49ade088eacff5033074f692b1d6d2101dddbaa6ea1de8af3f9638fb5"
+      "file_sha": "875a4e0bdd1f1bfe4de0e74d4310b424e0d0bd574aae867cbd8e20a568f7ed66"
     },
     {
       "id": "sym:ts:src/adapters/lsp-client.ts:JsonValue",
@@ -790,7 +790,7 @@
       "path": "src/adapters/lsp-client.ts",
       "line": 19,
       "signature": "type JsonValue = unknown",
-      "file_sha": "1a8145b49ade088eacff5033074f692b1d6d2101dddbaa6ea1de8af3f9638fb5"
+      "file_sha": "875a4e0bdd1f1bfe4de0e74d4310b424e0d0bd574aae867cbd8e20a568f7ed66"
     },
     {
       "id": "sym:ts:src/adapters/lsp-client.ts:LspClient",
@@ -799,7 +799,7 @@
       "path": "src/adapters/lsp-client.ts",
       "line": 37,
       "signature": "class LspClient",
-      "file_sha": "1a8145b49ade088eacff5033074f692b1d6d2101dddbaa6ea1de8af3f9638fb5"
+      "file_sha": "875a4e0bdd1f1bfe4de0e74d4310b424e0d0bd574aae867cbd8e20a568f7ed66"
     },
     {
       "id": "sym:ts:src/adapters/lsp-client.ts:PendingRequest",
@@ -808,88 +808,106 @@
       "path": "src/adapters/lsp-client.ts",
       "line": 30,
       "signature": "interface PendingRequest",
-      "file_sha": "1a8145b49ade088eacff5033074f692b1d6d2101dddbaa6ea1de8af3f9638fb5"
+      "file_sha": "875a4e0bdd1f1bfe4de0e74d4310b424e0d0bd574aae867cbd8e20a568f7ed66"
     },
     {
       "id": "sym:ts:src/adapters/lsp-client.ts:dispatch",
       "name": "dispatch",
       "kind": "method",
       "path": "src/adapters/lsp-client.ts",
-      "line": 187,
+      "line": 294,
       "signature": "private dispatch(payload: string): void",
-      "file_sha": "1a8145b49ade088eacff5033074f692b1d6d2101dddbaa6ea1de8af3f9638fb5"
+      "file_sha": "875a4e0bdd1f1bfe4de0e74d4310b424e0d0bd574aae867cbd8e20a568f7ed66"
+    },
+    {
+      "id": "sym:ts:src/adapters/lsp-client.ts:getFirstResponseLatencyMs",
+      "name": "getFirstResponseLatencyMs",
+      "kind": "method",
+      "path": "src/adapters/lsp-client.ts",
+      "line": 101,
+      "signature": "getFirstResponseLatencyMs(): number | null",
+      "file_sha": "875a4e0bdd1f1bfe4de0e74d4310b424e0d0bd574aae867cbd8e20a568f7ed66"
+    },
+    {
+      "id": "sym:ts:src/adapters/lsp-client.ts:getUptimeMs",
+      "name": "getUptimeMs",
+      "kind": "method",
+      "path": "src/adapters/lsp-client.ts",
+      "line": 112,
+      "signature": "getUptimeMs(): number | null",
+      "file_sha": "875a4e0bdd1f1bfe4de0e74d4310b424e0d0bd574aae867cbd8e20a568f7ed66"
     },
     {
       "id": "sym:ts:src/adapters/lsp-client.ts:handleData",
       "name": "handleData",
       "kind": "method",
       "path": "src/adapters/lsp-client.ts",
-      "line": 162,
+      "line": 269,
       "signature": "private handleData(chunk: Buffer): void",
-      "file_sha": "1a8145b49ade088eacff5033074f692b1d6d2101dddbaa6ea1de8af3f9638fb5"
+      "file_sha": "875a4e0bdd1f1bfe4de0e74d4310b424e0d0bd574aae867cbd8e20a568f7ed66"
     },
     {
       "id": "sym:ts:src/adapters/lsp-client.ts:notify",
       "name": "notify",
       "kind": "method",
       "path": "src/adapters/lsp-client.ts",
-      "line": 118,
+      "line": 224,
       "signature": "notify(method: string, params?: JsonValue): void",
-      "file_sha": "1a8145b49ade088eacff5033074f692b1d6d2101dddbaa6ea1de8af3f9638fb5"
+      "file_sha": "875a4e0bdd1f1bfe4de0e74d4310b424e0d0bd574aae867cbd8e20a568f7ed66"
     },
     {
       "id": "sym:ts:src/adapters/lsp-client.ts:onNotification",
       "name": "onNotification",
       "kind": "method",
       "path": "src/adapters/lsp-client.ts",
-      "line": 122,
+      "line": 228,
       "signature": "onNotification(method: string, handler: (params: JsonValue) => void): void",
-      "file_sha": "1a8145b49ade088eacff5033074f692b1d6d2101dddbaa6ea1de8af3f9638fb5"
+      "file_sha": "875a4e0bdd1f1bfe4de0e74d4310b424e0d0bd574aae867cbd8e20a568f7ed66"
     },
     {
       "id": "sym:ts:src/adapters/lsp-client.ts:onRequest",
       "name": "onRequest",
       "kind": "method",
       "path": "src/adapters/lsp-client.ts",
-      "line": 126,
+      "line": 232,
       "signature": "onRequest( method: string, handler: (params: JsonValue) => JsonValue | Promise<JsonValue>, ): void",
-      "file_sha": "1a8145b49ade088eacff5033074f692b1d6d2101dddbaa6ea1de8af3f9638fb5"
+      "file_sha": "875a4e0bdd1f1bfe4de0e74d4310b424e0d0bd574aae867cbd8e20a568f7ed66"
     },
     {
       "id": "sym:ts:src/adapters/lsp-client.ts:request",
       "name": "request",
       "kind": "method",
       "path": "src/adapters/lsp-client.ts",
-      "line": 87,
+      "line": 189,
       "signature": "request<T = JsonValue>( method: string, params?: JsonValue, timeoutMs = 30_000, ): Promise<T>",
-      "file_sha": "1a8145b49ade088eacff5033074f692b1d6d2101dddbaa6ea1de8af3f9638fb5"
+      "file_sha": "875a4e0bdd1f1bfe4de0e74d4310b424e0d0bd574aae867cbd8e20a568f7ed66"
     },
     {
       "id": "sym:ts:src/adapters/lsp-client.ts:sendRaw",
       "name": "sendRaw",
       "kind": "method",
       "path": "src/adapters/lsp-client.ts",
-      "line": 256,
+      "line": 377,
       "signature": "private sendRaw(msg: JsonRpcMessage): void",
-      "file_sha": "1a8145b49ade088eacff5033074f692b1d6d2101dddbaa6ea1de8af3f9638fb5"
+      "file_sha": "875a4e0bdd1f1bfe4de0e74d4310b424e0d0bd574aae867cbd8e20a568f7ed66"
     },
     {
       "id": "sym:ts:src/adapters/lsp-client.ts:start",
       "name": "start",
       "kind": "method",
       "path": "src/adapters/lsp-client.ts",
-      "line": 53,
+      "line": 117,
       "signature": "start(command: string, args: string[], cwd: string): void",
-      "file_sha": "1a8145b49ade088eacff5033074f692b1d6d2101dddbaa6ea1de8af3f9638fb5"
+      "file_sha": "875a4e0bdd1f1bfe4de0e74d4310b424e0d0bd574aae867cbd8e20a568f7ed66"
     },
     {
       "id": "sym:ts:src/adapters/lsp-client.ts:stop",
       "name": "stop",
       "kind": "method",
       "path": "src/adapters/lsp-client.ts",
-      "line": 133,
+      "line": 239,
       "signature": "async stop(): Promise<void>",
-      "file_sha": "1a8145b49ade088eacff5033074f692b1d6d2101dddbaa6ea1de8af3f9638fb5"
+      "file_sha": "875a4e0bdd1f1bfe4de0e74d4310b424e0d0bd574aae867cbd8e20a568f7ed66"
     },
     {
       "id": "sym:ts:src/adapters/pyright.conformance.test.ts:files",
@@ -1521,13 +1539,21 @@
       "file_sha": "63f9b02cbd74a900f84b3761e4890dcc80f43d77e7639c0595d054ce83ac7eec"
     },
     {
+      "id": "sym:ts:src/adapters/registry.ts:CreateAdapterOptions",
+      "name": "CreateAdapterOptions",
+      "kind": "interface",
+      "path": "src/adapters/registry.ts",
+      "line": 16,
+      "signature": "interface CreateAdapterOptions",
+      "file_sha": "1c1f3d60a578d062b0d8313fab22dd9a9cd65588ed69f45340e575b54c77b6cc"
+    },
+    {
       "id": "sym:ts:src/adapters/registry.ts:createAdapter",
       "name": "createAdapter",
       "kind": "function",
       "path": "src/adapters/registry.ts",
-      "line": 16,
-      "signature": "function createAdapter(language: LanguageCode): LanguageAdapter",
-      "file_sha": "78dffe005749ec664e3a89d6b422c1c2c259d97947556071499f26da7b6e6ca5"
+      "line": 28,
+      "file_sha": "1c1f3d60a578d062b0d8313fab22dd9a9cd65588ed69f45340e575b54c77b6cc"
     },
     {
       "id": "sym:ts:src/adapters/typescript.conformance.test.ts:files",
@@ -2176,29 +2202,37 @@
       "file_sha": "13694323bcd80f7c4ff5ac607f35dcc0700ddff25c34ae1fa3601a4ed9b8f72e"
     },
     {
+      "id": "sym:ts:src/cli-args.ts:HELP_TEXT",
+      "name": "HELP_TEXT",
+      "kind": "variable",
+      "path": "src/cli-args.ts",
+      "line": 250,
+      "file_sha": "5bff18168f8dd80fe1afc71720278ff724a51015a3a7426ddba86f4484594045"
+    },
+    {
       "id": "sym:ts:src/cli-args.ts:KNOWN_SUBCOMMANDS",
       "name": "KNOWN_SUBCOMMANDS",
       "kind": "variable",
       "path": "src/cli-args.ts",
-      "line": 182,
-      "file_sha": "62b7cf4fbe1d85ce2e5ceb95b00baa0162ebad5a5ba3a041432e2bae7bbd2de3"
+      "line": 221,
+      "file_sha": "5bff18168f8dd80fe1afc71720278ff724a51015a3a7426ddba86f4484594045"
     },
     {
       "id": "sym:ts:src/cli-args.ts:ParsedArgs",
       "name": "ParsedArgs",
       "kind": "interface",
       "path": "src/cli-args.ts",
-      "line": 101,
+      "line": 109,
       "signature": "interface ParsedArgs",
-      "file_sha": "62b7cf4fbe1d85ce2e5ceb95b00baa0162ebad5a5ba3a041432e2bae7bbd2de3"
+      "file_sha": "5bff18168f8dd80fe1afc71720278ff724a51015a3a7426ddba86f4484594045"
     },
     {
       "id": "sym:ts:src/cli-args.ts:SUBCOMMAND_SUGGESTIONS",
       "name": "SUBCOMMAND_SUGGESTIONS",
       "kind": "variable",
       "path": "src/cli-args.ts",
-      "line": 207,
-      "file_sha": "62b7cf4fbe1d85ce2e5ceb95b00baa0162ebad5a5ba3a041432e2bae7bbd2de3"
+      "line": 296,
+      "file_sha": "5bff18168f8dd80fe1afc71720278ff724a51015a3a7426ddba86f4484594045"
     },
     {
       "id": "sym:ts:src/cli-args.ts:Subcommand",
@@ -2206,43 +2240,43 @@
       "kind": "type",
       "path": "src/cli-args.ts",
       "line": 99,
-      "signature": "type Subcommand = \"mcp\" | \"index\" | \"doctor\" | \"init\" | \"show-prompt\"",
-      "file_sha": "62b7cf4fbe1d85ce2e5ceb95b00baa0162ebad5a5ba3a041432e2bae7bbd2de3"
+      "signature": "type Subcommand = | \"mcp\" | \"index\" | \"doctor\" | \"init\" | \"generate-adrs\"",
+      "file_sha": "5bff18168f8dd80fe1afc71720278ff724a51015a3a7426ddba86f4484594045"
     },
     {
       "id": "sym:ts:src/cli-args.ts:USAGE",
       "name": "USAGE",
       "kind": "variable",
       "path": "src/cli-args.ts",
-      "line": 194,
-      "file_sha": "62b7cf4fbe1d85ce2e5ceb95b00baa0162ebad5a5ba3a041432e2bae7bbd2de3"
+      "line": 236,
+      "file_sha": "5bff18168f8dd80fe1afc71720278ff724a51015a3a7426ddba86f4484594045"
     },
     {
       "id": "sym:ts:src/cli-args.ts:parseArgs",
       "name": "parseArgs",
       "kind": "function",
       "path": "src/cli-args.ts",
-      "line": 214,
+      "line": 303,
       "signature": "function parseArgs(argv: readonly string[]): ParsedArgs",
-      "file_sha": "62b7cf4fbe1d85ce2e5ceb95b00baa0162ebad5a5ba3a041432e2bae7bbd2de3"
+      "file_sha": "5bff18168f8dd80fe1afc71720278ff724a51015a3a7426ddba86f4484594045"
     },
     {
       "id": "sym:ts:src/cli-args.ts:parseBudgetWarn",
       "name": "parseBudgetWarn",
       "kind": "function",
       "path": "src/cli-args.ts",
-      "line": 521,
+      "line": 704,
       "signature": "function parseBudgetWarn(raw: string): number",
-      "file_sha": "62b7cf4fbe1d85ce2e5ceb95b00baa0162ebad5a5ba3a041432e2bae7bbd2de3"
+      "file_sha": "5bff18168f8dd80fe1afc71720278ff724a51015a3a7426ddba86f4484594045"
     },
     {
       "id": "sym:ts:src/cli-args.ts:parseNarrowAttribution",
       "name": "parseNarrowAttribution",
       "kind": "function",
       "path": "src/cli-args.ts",
-      "line": 531,
+      "line": 714,
       "signature": "function parseNarrowAttribution(raw: string): \"drop\" | \"drop-with-fallback\"",
-      "file_sha": "62b7cf4fbe1d85ce2e5ceb95b00baa0162ebad5a5ba3a041432e2bae7bbd2de3"
+      "file_sha": "5bff18168f8dd80fe1afc71720278ff724a51015a3a7426ddba86f4484594045"
     },
     {
       "id": "sym:ts:src/config/defaults.ts:DEFAULT_ADRS_FORMAT",
@@ -2383,9 +2417,9 @@
       "name": "LoadConfigOptions",
       "kind": "interface",
       "path": "src/config/parser.ts",
-      "line": 78,
+      "line": 79,
       "signature": "interface LoadConfigOptions",
-      "file_sha": "e291a2f84a784c7d374dc8664e8d5943f3343f0f8ba5611259468b5abf9a1422"
+      "file_sha": "98831470098612898dbb8f34f596b8e808accf8325505c36f45ea68e453b208b"
     },
     {
       "id": "sym:ts:src/config/parser.ts:TOP_LEVEL_KEYS",
@@ -2393,15 +2427,15 @@
       "kind": "variable",
       "path": "src/config/parser.ts",
       "line": 53,
-      "file_sha": "e291a2f84a784c7d374dc8664e8d5943f3343f0f8ba5611259468b5abf9a1422"
+      "file_sha": "98831470098612898dbb8f34f596b8e808accf8325505c36f45ea68e453b208b"
     },
     {
       "id": "sym:ts:src/config/parser.ts:TOP_LEVEL_KEY_SET",
       "name": "TOP_LEVEL_KEY_SET",
       "kind": "variable",
       "path": "src/config/parser.ts",
-      "line": 67,
-      "file_sha": "e291a2f84a784c7d374dc8664e8d5943f3343f0f8ba5611259468b5abf9a1422"
+      "line": 68,
+      "file_sha": "98831470098612898dbb8f34f596b8e808accf8325505c36f45ea68e453b208b"
     },
     {
       "id": "sym:ts:src/config/parser.ts:VALID_ADR_FORMATS",
@@ -2409,7 +2443,7 @@
       "kind": "variable",
       "path": "src/config/parser.ts",
       "line": 35,
-      "file_sha": "e291a2f84a784c7d374dc8664e8d5943f3343f0f8ba5611259468b5abf9a1422"
+      "file_sha": "98831470098612898dbb8f34f596b8e808accf8325505c36f45ea68e453b208b"
     },
     {
       "id": "sym:ts:src/config/parser.ts:VALID_ARCHITECTURES",
@@ -2417,7 +2451,7 @@
       "kind": "variable",
       "path": "src/config/parser.ts",
       "line": 38,
-      "file_sha": "e291a2f84a784c7d374dc8664e8d5943f3343f0f8ba5611259468b5abf9a1422"
+      "file_sha": "98831470098612898dbb8f34f596b8e808accf8325505c36f45ea68e453b208b"
     },
     {
       "id": "sym:ts:src/config/parser.ts:VALID_LANGUAGES",
@@ -2425,7 +2459,7 @@
       "kind": "variable",
       "path": "src/config/parser.ts",
       "line": 30,
-      "file_sha": "e291a2f84a784c7d374dc8664e8d5943f3343f0f8ba5611259468b5abf9a1422"
+      "file_sha": "98831470098612898dbb8f34f596b8e808accf8325505c36f45ea68e453b208b"
     },
     {
       "id": "sym:ts:src/config/parser.ts:ValidAdrFormat",
@@ -2434,7 +2468,7 @@
       "path": "src/config/parser.ts",
       "line": 36,
       "signature": "type ValidAdrFormat = (typeof VALID_ADR_FORMATS)[number]",
-      "file_sha": "e291a2f84a784c7d374dc8664e8d5943f3343f0f8ba5611259468b5abf9a1422"
+      "file_sha": "98831470098612898dbb8f34f596b8e808accf8325505c36f45ea68e453b208b"
     },
     {
       "id": "sym:ts:src/config/parser.ts:ValidArchitecture",
@@ -2443,168 +2477,177 @@
       "path": "src/config/parser.ts",
       "line": 43,
       "signature": "type ValidArchitecture = (typeof VALID_ARCHITECTURES)[number]",
-      "file_sha": "e291a2f84a784c7d374dc8664e8d5943f3343f0f8ba5611259468b5abf9a1422"
+      "file_sha": "98831470098612898dbb8f34f596b8e808accf8325505c36f45ea68e453b208b"
     },
     {
       "id": "sym:ts:src/config/parser.ts:architectureDeprecationWarning",
       "name": "architectureDeprecationWarning",
       "kind": "function",
       "path": "src/config/parser.ts",
-      "line": 245,
+      "line": 292,
       "signature": "function architectureDeprecationWarning( value: \"claude-code-only\" | \"anthropic-api-direct\" | \"anthropic-api-claude-code\", ): string",
-      "file_sha": "e291a2f84a784c7d374dc8664e8d5943f3343f0f8ba5611259468b5abf9a1422"
+      "file_sha": "98831470098612898dbb8f34f596b8e808accf8325505c36f45ea68e453b208b"
     },
     {
       "id": "sym:ts:src/config/parser.ts:cfgError",
       "name": "cfgError",
       "kind": "function",
       "path": "src/config/parser.ts",
-      "line": 777,
+      "line": 824,
       "signature": "function cfgError(configPath: string, message: string): Error",
-      "file_sha": "e291a2f84a784c7d374dc8664e8d5943f3343f0f8ba5611259468b5abf9a1422"
+      "file_sha": "98831470098612898dbb8f34f596b8e808accf8325505c36f45ea68e453b208b"
     },
     {
       "id": "sym:ts:src/config/parser.ts:describeType",
       "name": "describeType",
       "kind": "function",
       "path": "src/config/parser.ts",
-      "line": 787,
+      "line": 834,
       "signature": "function describeType(v: unknown): string",
-      "file_sha": "e291a2f84a784c7d374dc8664e8d5943f3343f0f8ba5611259468b5abf9a1422"
+      "file_sha": "98831470098612898dbb8f34f596b8e808accf8325505c36f45ea68e453b208b"
     },
     {
       "id": "sym:ts:src/config/parser.ts:isObject",
       "name": "isObject",
       "kind": "function",
       "path": "src/config/parser.ts",
-      "line": 783,
+      "line": 830,
       "signature": "function isObject(v: unknown): v is Record<string, unknown>",
-      "file_sha": "e291a2f84a784c7d374dc8664e8d5943f3343f0f8ba5611259468b5abf9a1422"
+      "file_sha": "98831470098612898dbb8f34f596b8e808accf8325505c36f45ea68e453b208b"
     },
     {
       "id": "sym:ts:src/config/parser.ts:loadConfig",
       "name": "loadConfig",
       "kind": "function",
       "path": "src/config/parser.ts",
-      "line": 89,
-      "file_sha": "e291a2f84a784c7d374dc8664e8d5943f3343f0f8ba5611259468b5abf9a1422"
+      "line": 90,
+      "file_sha": "98831470098612898dbb8f34f596b8e808accf8325505c36f45ea68e453b208b"
     },
     {
       "id": "sym:ts:src/config/parser.ts:rejectUnknownKeys",
       "name": "rejectUnknownKeys",
       "kind": "function",
       "path": "src/config/parser.ts",
-      "line": 760,
+      "line": 807,
       "signature": "function rejectUnknownKeys( obj: Record<string, unknown>, allowed: Set<string>, pathPrefix: string, configPath: string, ): void",
-      "file_sha": "e291a2f84a784c7d374dc8664e8d5943f3343f0f8ba5611259468b5abf9a1422"
+      "file_sha": "98831470098612898dbb8f34f596b8e808accf8325505c36f45ea68e453b208b"
     },
     {
       "id": "sym:ts:src/config/parser.ts:validate",
       "name": "validate",
       "kind": "function",
       "path": "src/config/parser.ts",
-      "line": 134,
+      "line": 135,
       "signature": "function validate( parsed: unknown, configPath: string, writeStderr: (chunk: string) => void, ): ContextAtlasConfig",
-      "file_sha": "e291a2f84a784c7d374dc8664e8d5943f3343f0f8ba5611259468b5abf9a1422"
+      "file_sha": "98831470098612898dbb8f34f596b8e808accf8325505c36f45ea68e453b208b"
     },
     {
       "id": "sym:ts:src/config/parser.ts:validateAdrs",
       "name": "validateAdrs",
       "kind": "function",
       "path": "src/config/parser.ts",
-      "line": 322,
+      "line": 369,
       "signature": "function validateAdrs( raw: unknown, configPath: string, ): ContextAtlasConfig[\"adrs\"]",
-      "file_sha": "e291a2f84a784c7d374dc8664e8d5943f3343f0f8ba5611259468b5abf9a1422"
+      "file_sha": "98831470098612898dbb8f34f596b8e808accf8325505c36f45ea68e453b208b"
     },
     {
       "id": "sym:ts:src/config/parser.ts:validateArchitecture",
       "name": "validateArchitecture",
       "kind": "function",
       "path": "src/config/parser.ts",
-      "line": 215,
+      "line": 262,
       "signature": "function validateArchitecture( raw: unknown, configPath: string, writeStderr: (chunk: string) => void = (s) => process.stderr.write(s), ): ValidArchitecture | undefined",
-      "file_sha": "e291a2f84a784c7d374dc8664e8d5943f3343f0f8ba5611259468b5abf9a1422"
+      "file_sha": "98831470098612898dbb8f34f596b8e808accf8325505c36f45ea68e453b208b"
     },
     {
       "id": "sym:ts:src/config/parser.ts:validateAtlas",
       "name": "validateAtlas",
       "kind": "function",
       "path": "src/config/parser.ts",
-      "line": 470,
+      "line": 517,
       "signature": "function validateAtlas( raw: unknown, configPath: string, ): ContextAtlasConfig[\"atlas\"]",
-      "file_sha": "e291a2f84a784c7d374dc8664e8d5943f3343f0f8ba5611259468b5abf9a1422"
+      "file_sha": "98831470098612898dbb8f34f596b8e808accf8325505c36f45ea68e453b208b"
     },
     {
       "id": "sym:ts:src/config/parser.ts:validateDocs",
       "name": "validateDocs",
       "kind": "function",
       "path": "src/config/parser.ts",
-      "line": 384,
+      "line": 431,
       "signature": "function validateDocs( raw: unknown, configPath: string, ): ContextAtlasConfig[\"docs\"]",
-      "file_sha": "e291a2f84a784c7d374dc8664e8d5943f3343f0f8ba5611259468b5abf9a1422"
+      "file_sha": "98831470098612898dbb8f34f596b8e808accf8325505c36f45ea68e453b208b"
     },
     {
       "id": "sym:ts:src/config/parser.ts:validateExtraction",
       "name": "validateExtraction",
       "kind": "function",
       "path": "src/config/parser.ts",
-      "line": 560,
+      "line": 607,
       "signature": "function validateExtraction( raw: unknown, configPath: string, ): ContextAtlasConfig[\"extraction\"] | undefined",
-      "file_sha": "e291a2f84a784c7d374dc8664e8d5943f3343f0f8ba5611259468b5abf9a1422"
+      "file_sha": "98831470098612898dbb8f34f596b8e808accf8325505c36f45ea68e453b208b"
     },
     {
       "id": "sym:ts:src/config/parser.ts:validateGit",
       "name": "validateGit",
       "kind": "function",
       "path": "src/config/parser.ts",
-      "line": 418,
+      "line": 465,
       "signature": "function validateGit( raw: unknown, configPath: string, ): ContextAtlasConfig[\"git\"]",
-      "file_sha": "e291a2f84a784c7d374dc8664e8d5943f3343f0f8ba5611259468b5abf9a1422"
+      "file_sha": "98831470098612898dbb8f34f596b8e808accf8325505c36f45ea68e453b208b"
     },
     {
       "id": "sym:ts:src/config/parser.ts:validateIndex",
       "name": "validateIndex",
       "kind": "function",
       "path": "src/config/parser.ts",
-      "line": 446,
+      "line": 493,
       "signature": "function validateIndex( raw: unknown, configPath: string, ): ContextAtlasConfig[\"index\"]",
-      "file_sha": "e291a2f84a784c7d374dc8664e8d5943f3343f0f8ba5611259468b5abf9a1422"
+      "file_sha": "98831470098612898dbb8f34f596b8e808accf8325505c36f45ea68e453b208b"
     },
     {
       "id": "sym:ts:src/config/parser.ts:validateLanguages",
       "name": "validateLanguages",
       "kind": "function",
       "path": "src/config/parser.ts",
-      "line": 277,
+      "line": 324,
       "signature": "function validateLanguages( raw: unknown, configPath: string, ): LanguageCode[]",
-      "file_sha": "e291a2f84a784c7d374dc8664e8d5943f3343f0f8ba5611259468b5abf9a1422"
+      "file_sha": "98831470098612898dbb8f34f596b8e808accf8325505c36f45ea68e453b208b"
+    },
+    {
+      "id": "sym:ts:src/config/parser.ts:validateLsp",
+      "name": "validateLsp",
+      "kind": "function",
+      "path": "src/config/parser.ts",
+      "line": 211,
+      "signature": "function validateLsp( raw: unknown, configPath: string, ): ContextAtlasConfig[\"lsp\"] | undefined",
+      "file_sha": "98831470098612898dbb8f34f596b8e808accf8325505c36f45ea68e453b208b"
     },
     {
       "id": "sym:ts:src/config/parser.ts:validateMcp",
       "name": "validateMcp",
       "kind": "function",
       "path": "src/config/parser.ts",
-      "line": 666,
+      "line": 713,
       "signature": "function validateMcp( raw: unknown, configPath: string, ): ContextAtlasConfig[\"mcp\"] | undefined",
-      "file_sha": "e291a2f84a784c7d374dc8664e8d5943f3343f0f8ba5611259468b5abf9a1422"
+      "file_sha": "98831470098612898dbb8f34f596b8e808accf8325505c36f45ea68e453b208b"
     },
     {
       "id": "sym:ts:src/config/parser.ts:validateObservability",
       "name": "validateObservability",
       "kind": "function",
       "path": "src/config/parser.ts",
-      "line": 713,
+      "line": 760,
       "signature": "function validateObservability( raw: unknown, configPath: string, ): ContextAtlasConfig[\"observability\"] | undefined",
-      "file_sha": "e291a2f84a784c7d374dc8664e8d5943f3343f0f8ba5611259468b5abf9a1422"
+      "file_sha": "98831470098612898dbb8f34f596b8e808accf8325505c36f45ea68e453b208b"
     },
     {
       "id": "sym:ts:src/config/parser.ts:validateSource",
       "name": "validateSource",
       "kind": "function",
       "path": "src/config/parser.ts",
-      "line": 537,
+      "line": 584,
       "signature": "function validateSource( raw: unknown, configPath: string, ): ContextAtlasConfig[\"source\"] | undefined",
-      "file_sha": "e291a2f84a784c7d374dc8664e8d5943f3343f0f8ba5611259468b5abf9a1422"
+      "file_sha": "98831470098612898dbb8f34f596b8e808accf8325505c36f45ea68e453b208b"
     },
     {
       "id": "sym:ts:src/doctor/checks/atlas.ts:atlasChecks",
@@ -2613,7 +2656,7 @@
       "path": "src/doctor/checks/atlas.ts",
       "line": 16,
       "signature": "function atlasChecks(ctx: CheckContext): DoctorCheck[]",
-      "file_sha": "0b0819ce44dcca35814901cda88b3a8c2f847f72d18f1cbd10adcab786d219e2"
+      "file_sha": "56f5e1a34bed4291fc2f95e72c18766b8a806d9cdb8d8f0b421e865801165a15"
     },
     {
       "id": "sym:ts:src/doctor/checks/config.ts:configChecks",
@@ -2646,8 +2689,24 @@
       "name": "DEEP_HEALTH_TIMEOUT_MS",
       "kind": "variable",
       "path": "src/doctor/checks/lsp.ts",
-      "line": 32,
-      "file_sha": "e840343243757db58c5ba0431fc10f3ab7640b0e09d04d8059c4e1a91993fedc"
+      "line": 41,
+      "file_sha": "27b0a19bccb4a6186dda56a35c468a7fc49f33fadf273fd5722c7cdeda180426"
+    },
+    {
+      "id": "sym:ts:src/doctor/checks/lsp.ts:PEER_DEP_INSTALL_GUIDANCE",
+      "name": "PEER_DEP_INSTALL_GUIDANCE",
+      "kind": "variable",
+      "path": "src/doctor/checks/lsp.ts",
+      "line": 78,
+      "file_sha": "27b0a19bccb4a6186dda56a35c468a7fc49f33fadf273fd5722c7cdeda180426"
+    },
+    {
+      "id": "sym:ts:src/doctor/checks/lsp.ts:SPAWN_HEALTH_WARN_THRESHOLD_MS",
+      "name": "SPAWN_HEALTH_WARN_THRESHOLD_MS",
+      "kind": "variable",
+      "path": "src/doctor/checks/lsp.ts",
+      "line": 34,
+      "file_sha": "27b0a19bccb4a6186dda56a35c468a7fc49f33fadf273fd5722c7cdeda180426"
     },
     {
       "id": "sym:ts:src/doctor/checks/lsp.ts:SPAWN_TIMEOUT_MS",
@@ -2655,61 +2714,79 @@
       "kind": "variable",
       "path": "src/doctor/checks/lsp.ts",
       "line": 25,
-      "file_sha": "e840343243757db58c5ba0431fc10f3ab7640b0e09d04d8059c4e1a91993fedc"
+      "file_sha": "27b0a19bccb4a6186dda56a35c468a7fc49f33fadf273fd5722c7cdeda180426"
     },
     {
       "id": "sym:ts:src/doctor/checks/lsp.ts:checkDeepHealth",
       "name": "checkDeepHealth",
       "kind": "function",
       "path": "src/doctor/checks/lsp.ts",
-      "line": 192,
+      "line": 245,
       "signature": "async function checkDeepHealth( lang: LanguageCode, repoRoot: string, ): Promise<DoctorCheck>",
-      "file_sha": "e840343243757db58c5ba0431fc10f3ab7640b0e09d04d8059c4e1a91993fedc"
+      "file_sha": "27b0a19bccb4a6186dda56a35c468a7fc49f33fadf273fd5722c7cdeda180426"
     },
     {
       "id": "sym:ts:src/doctor/checks/lsp.ts:checkExecutable",
       "name": "checkExecutable",
       "kind": "function",
       "path": "src/doctor/checks/lsp.ts",
-      "line": 47,
+      "line": 56,
       "signature": "function checkExecutable(lang: LanguageCode): DoctorCheck[]",
-      "file_sha": "e840343243757db58c5ba0431fc10f3ab7640b0e09d04d8059c4e1a91993fedc"
+      "file_sha": "27b0a19bccb4a6186dda56a35c468a7fc49f33fadf273fd5722c7cdeda180426"
     },
     {
       "id": "sym:ts:src/doctor/checks/lsp.ts:checkSpawn",
       "name": "checkSpawn",
       "kind": "function",
       "path": "src/doctor/checks/lsp.ts",
-      "line": 114,
+      "line": 145,
       "signature": "async function checkSpawn( lang: LanguageCode, repoRoot: string, ): Promise<DoctorCheck>",
-      "file_sha": "e840343243757db58c5ba0431fc10f3ab7640b0e09d04d8059c4e1a91993fedc"
+      "file_sha": "27b0a19bccb4a6186dda56a35c468a7fc49f33fadf273fd5722c7cdeda180426"
     },
     {
       "id": "sym:ts:src/doctor/checks/lsp.ts:lspChecks",
       "name": "lspChecks",
       "kind": "function",
       "path": "src/doctor/checks/lsp.ts",
-      "line": 34,
+      "line": 43,
       "signature": "async function lspChecks(ctx: CheckContext): Promise<DoctorCheck[]>",
-      "file_sha": "e840343243757db58c5ba0431fc10f3ab7640b0e09d04d8059c4e1a91993fedc"
+      "file_sha": "27b0a19bccb4a6186dda56a35c468a7fc49f33fadf273fd5722c7cdeda180426"
     },
     {
       "id": "sym:ts:src/doctor/checks/lsp.ts:resolveNodeBin",
       "name": "resolveNodeBin",
       "kind": "function",
       "path": "src/doctor/checks/lsp.ts",
-      "line": 62,
+      "line": 90,
       "signature": "function resolveNodeBin(lang: LanguageCode, modulePath: string): DoctorCheck",
-      "file_sha": "e840343243757db58c5ba0431fc10f3ab7640b0e09d04d8059c4e1a91993fedc"
+      "file_sha": "27b0a19bccb4a6186dda56a35c468a7fc49f33fadf273fd5722c7cdeda180426"
     },
     {
       "id": "sym:ts:src/doctor/checks/lsp.ts:resolvePathBin",
       "name": "resolvePathBin",
       "kind": "function",
       "path": "src/doctor/checks/lsp.ts",
-      "line": 87,
+      "line": 118,
       "signature": "function resolvePathBin(lang: LanguageCode): DoctorCheck",
-      "file_sha": "e840343243757db58c5ba0431fc10f3ab7640b0e09d04d8059c4e1a91993fedc"
+      "file_sha": "27b0a19bccb4a6186dda56a35c468a7fc49f33fadf273fd5722c7cdeda180426"
+    },
+    {
+      "id": "sym:ts:src/doctor/checks/prompts.ts:promptArtifactChecks",
+      "name": "promptArtifactChecks",
+      "kind": "function",
+      "path": "src/doctor/checks/prompts.ts",
+      "line": 41,
+      "signature": "function promptArtifactChecks( ctx: CheckContext, packageDistRootOverride?: string, ): DoctorCheck[]",
+      "file_sha": "4b533809704a25b979ccfeae577c3b5d25e1bf7f9634a014f503fe7b1266723a"
+    },
+    {
+      "id": "sym:ts:src/doctor/checks/prompts.ts:resolvePackageDistRoot",
+      "name": "resolvePackageDistRoot",
+      "kind": "function",
+      "path": "src/doctor/checks/prompts.ts",
+      "line": 35,
+      "signature": "function resolvePackageDistRoot(): string",
+      "file_sha": "4b533809704a25b979ccfeae577c3b5d25e1bf7f9634a014f503fe7b1266723a"
     },
     {
       "id": "sym:ts:src/doctor/checks/sample-symbol.ts:MAX_WALK_DEPTH",
@@ -2778,7 +2855,7 @@
       "kind": "variable",
       "path": "src/doctor/checks/state-detection.ts",
       "line": 79,
-      "file_sha": "09a870c3799548110261c8c321b781ec796544b22cfc4bccf5419471a1488cee"
+      "file_sha": "334e62048543bb545d0cf61c0809c55403b08ca283de9d946b71d615426d520a"
     },
     {
       "id": "sym:ts:src/doctor/checks/state-detection.ts:CODE_SUBSTANTIVE_FILE_THRESHOLD",
@@ -2786,7 +2863,7 @@
       "kind": "variable",
       "path": "src/doctor/checks/state-detection.ts",
       "line": 51,
-      "file_sha": "09a870c3799548110261c8c321b781ec796544b22cfc4bccf5419471a1488cee"
+      "file_sha": "334e62048543bb545d0cf61c0809c55403b08ca283de9d946b71d615426d520a"
     },
     {
       "id": "sym:ts:src/doctor/checks/state-detection.ts:DESIGN_SUBSTANTIVE_WORD_THRESHOLD",
@@ -2794,7 +2871,7 @@
       "kind": "variable",
       "path": "src/doctor/checks/state-detection.ts",
       "line": 50,
-      "file_sha": "09a870c3799548110261c8c321b781ec796544b22cfc4bccf5419471a1488cee"
+      "file_sha": "334e62048543bb545d0cf61c0809c55403b08ca283de9d946b71d615426d520a"
     },
     {
       "id": "sym:ts:src/doctor/checks/state-detection.ts:LANGUAGE_EXTENSIONS",
@@ -2802,7 +2879,7 @@
       "kind": "variable",
       "path": "src/doctor/checks/state-detection.ts",
       "line": 62,
-      "file_sha": "09a870c3799548110261c8c321b781ec796544b22cfc4bccf5419471a1488cee"
+      "file_sha": "334e62048543bb545d0cf61c0809c55403b08ca283de9d946b71d615426d520a"
     },
     {
       "id": "sym:ts:src/doctor/checks/state-detection.ts:README_SUBSTANTIVE_WORD_THRESHOLD",
@@ -2810,7 +2887,7 @@
       "kind": "variable",
       "path": "src/doctor/checks/state-detection.ts",
       "line": 49,
-      "file_sha": "09a870c3799548110261c8c321b781ec796544b22cfc4bccf5419471a1488cee"
+      "file_sha": "334e62048543bb545d0cf61c0809c55403b08ca283de9d946b71d615426d520a"
     },
     {
       "id": "sym:ts:src/doctor/checks/state-detection.ts:STATE_DETECTION_WALK_DEPTH",
@@ -2818,25 +2895,25 @@
       "kind": "variable",
       "path": "src/doctor/checks/state-detection.ts",
       "line": 53,
-      "file_sha": "09a870c3799548110261c8c321b781ec796544b22cfc4bccf5419471a1488cee"
+      "file_sha": "334e62048543bb545d0cf61c0809c55403b08ca283de9d946b71d615426d520a"
     },
     {
       "id": "sym:ts:src/doctor/checks/state-detection.ts:collectLanguageExtensions",
       "name": "collectLanguageExtensions",
       "kind": "function",
       "path": "src/doctor/checks/state-detection.ts",
-      "line": 468,
+      "line": 474,
       "signature": "function collectLanguageExtensions(ctx: CheckContext): Set<string>",
-      "file_sha": "09a870c3799548110261c8c321b781ec796544b22cfc4bccf5419471a1488cee"
+      "file_sha": "334e62048543bb545d0cf61c0809c55403b08ca283de9d946b71d615426d520a"
     },
     {
       "id": "sym:ts:src/doctor/checks/state-detection.ts:countWords",
       "name": "countWords",
       "kind": "function",
       "path": "src/doctor/checks/state-detection.ts",
-      "line": 496,
+      "line": 502,
       "signature": "function countWords(content: string): number",
-      "file_sha": "09a870c3799548110261c8c321b781ec796544b22cfc4bccf5419471a1488cee"
+      "file_sha": "334e62048543bb545d0cf61c0809c55403b08ca283de9d946b71d615426d520a"
     },
     {
       "id": "sym:ts:src/doctor/checks/state-detection.ts:detectAdrs",
@@ -2845,79 +2922,79 @@
       "path": "src/doctor/checks/state-detection.ts",
       "line": 100,
       "signature": "function detectAdrs(ctx: CheckContext): DoctorCheck[]",
-      "file_sha": "09a870c3799548110261c8c321b781ec796544b22cfc4bccf5419471a1488cee"
+      "file_sha": "334e62048543bb545d0cf61c0809c55403b08ca283de9d946b71d615426d520a"
     },
     {
       "id": "sym:ts:src/doctor/checks/state-detection.ts:detectCode",
       "name": "detectCode",
       "kind": "function",
       "path": "src/doctor/checks/state-detection.ts",
-      "line": 183,
+      "line": 187,
       "signature": "function detectCode(ctx: CheckContext): DoctorCheck[]",
-      "file_sha": "09a870c3799548110261c8c321b781ec796544b22cfc4bccf5419471a1488cee"
+      "file_sha": "334e62048543bb545d0cf61c0809c55403b08ca283de9d946b71d615426d520a"
     },
     {
       "id": "sym:ts:src/doctor/checks/state-detection.ts:detectDesignMd",
       "name": "detectDesignMd",
       "kind": "function",
       "path": "src/doctor/checks/state-detection.ts",
-      "line": 256,
+      "line": 260,
       "signature": "function detectDesignMd(ctx: CheckContext): DoctorCheck[]",
-      "file_sha": "09a870c3799548110261c8c321b781ec796544b22cfc4bccf5419471a1488cee"
+      "file_sha": "334e62048543bb545d0cf61c0809c55403b08ca283de9d946b71d615426d520a"
     },
     {
       "id": "sym:ts:src/doctor/checks/state-detection.ts:detectGit",
       "name": "detectGit",
       "kind": "function",
       "path": "src/doctor/checks/state-detection.ts",
-      "line": 400,
+      "line": 406,
       "signature": "async function detectGit(ctx: CheckContext): Promise<DoctorCheck[]>",
-      "file_sha": "09a870c3799548110261c8c321b781ec796544b22cfc4bccf5419471a1488cee"
+      "file_sha": "334e62048543bb545d0cf61c0809c55403b08ca283de9d946b71d615426d520a"
     },
     {
       "id": "sym:ts:src/doctor/checks/state-detection.ts:detectLanguages",
       "name": "detectLanguages",
       "kind": "function",
       "path": "src/doctor/checks/state-detection.ts",
-      "line": 341,
+      "line": 347,
       "signature": "function detectLanguages(ctx: CheckContext): DoctorCheck[]",
-      "file_sha": "09a870c3799548110261c8c321b781ec796544b22cfc4bccf5419471a1488cee"
+      "file_sha": "334e62048543bb545d0cf61c0809c55403b08ca283de9d946b71d615426d520a"
     },
     {
       "id": "sym:ts:src/doctor/checks/state-detection.ts:detectLanguagesFromFilesystem",
       "name": "detectLanguagesFromFilesystem",
       "kind": "function",
       "path": "src/doctor/checks/state-detection.ts",
-      "line": 523,
+      "line": 529,
       "signature": "function detectLanguagesFromFilesystem( repoRoot: string, ): readonly LanguageCode[]",
-      "file_sha": "09a870c3799548110261c8c321b781ec796544b22cfc4bccf5419471a1488cee"
+      "file_sha": "334e62048543bb545d0cf61c0809c55403b08ca283de9d946b71d615426d520a"
     },
     {
       "id": "sym:ts:src/doctor/checks/state-detection.ts:detectMarkdownFile",
       "name": "detectMarkdownFile",
       "kind": "function",
       "path": "src/doctor/checks/state-detection.ts",
-      "line": 269,
+      "line": 273,
       "signature": "function detectMarkdownFile( ctx: CheckContext, filename: string, dimensionId: string, wordThreshold: number, ): DoctorCheck[]",
-      "file_sha": "09a870c3799548110261c8c321b781ec796544b22cfc4bccf5419471a1488cee"
+      "file_sha": "334e62048543bb545d0cf61c0809c55403b08ca283de9d946b71d615426d520a"
     },
     {
       "id": "sym:ts:src/doctor/checks/state-detection.ts:detectReadme",
       "name": "detectReadme",
       "kind": "function",
       "path": "src/doctor/checks/state-detection.ts",
-      "line": 243,
+      "line": 247,
       "signature": "function detectReadme(ctx: CheckContext): DoctorCheck[]",
-      "file_sha": "09a870c3799548110261c8c321b781ec796544b22cfc4bccf5419471a1488cee"
+      "file_sha": "334e62048543bb545d0cf61c0809c55403b08ca283de9d946b71d615426d520a"
     },
     {
       "id": "sym:ts:src/doctor/checks/state-detection.ts:stateDetectionChecks",
       "name": "stateDetectionChecks",
       "kind": "function",
       "path": "src/doctor/checks/state-detection.ts",
-      "line": 541,
+      "line": 547,
       "signature": "async function stateDetectionChecks( ctx: CheckContext, ): Promise<DoctorCheck[]>",
-      "file_sha": "09a870c3799548110261c8c321b781ec796544b22cfc4bccf5419471a1488cee"
+      "file_sha": "334e62048543bb545d0cf61c0809c55403b08ca283de9d946b71d615426d520a"
     },
     {
       "id": "sym:ts:src/doctor/output/json.ts:formatJson",
@@ -2954,47 +3031,55 @@
       "file_sha": "e1434743a6af2c1f3b9d0b5b45b27ad3809b3299105f3ec6e74910719329f5de"
     },
     {
+      "id": "sym:ts:src/doctor/runner.ts:CollectChecksOptions",
+      "name": "CollectChecksOptions",
+      "kind": "interface",
+      "path": "src/doctor/runner.ts",
+      "line": 76,
+      "signature": "interface CollectChecksOptions",
+      "file_sha": "900c1797f6c9f1335ec70679b1f66a233b87a8e41a39a6ce338ecd57e582ca9c"
+    },
+    {
       "id": "sym:ts:src/doctor/runner.ts:DOCTOR_VERSION",
       "name": "DOCTOR_VERSION",
       "kind": "variable",
       "path": "src/doctor/runner.ts",
-      "line": 38,
-      "file_sha": "09e27b21db8719cecb41afa41f6af7c9c04dec5e00b468f61c338800077988c6"
+      "line": 39,
+      "file_sha": "900c1797f6c9f1335ec70679b1f66a233b87a8e41a39a6ce338ecd57e582ca9c"
     },
     {
       "id": "sym:ts:src/doctor/runner.ts:DoctorRunOptions",
       "name": "DoctorRunOptions",
       "kind": "interface",
       "path": "src/doctor/runner.ts",
-      "line": 40,
+      "line": 41,
       "signature": "interface DoctorRunOptions",
-      "file_sha": "09e27b21db8719cecb41afa41f6af7c9c04dec5e00b468f61c338800077988c6"
+      "file_sha": "900c1797f6c9f1335ec70679b1f66a233b87a8e41a39a6ce338ecd57e582ca9c"
     },
     {
       "id": "sym:ts:src/doctor/runner.ts:DoctorRunResult",
       "name": "DoctorRunResult",
       "kind": "interface",
       "path": "src/doctor/runner.ts",
-      "line": 49,
+      "line": 50,
       "signature": "interface DoctorRunResult",
-      "file_sha": "09e27b21db8719cecb41afa41f6af7c9c04dec5e00b468f61c338800077988c6"
+      "file_sha": "900c1797f6c9f1335ec70679b1f66a233b87a8e41a39a6ce338ecd57e582ca9c"
     },
     {
       "id": "sym:ts:src/doctor/runner.ts:collectChecks",
       "name": "collectChecks",
       "kind": "function",
       "path": "src/doctor/runner.ts",
-      "line": 80,
-      "signature": "async function collectChecks(repoRoot: string): Promise<DoctorResult>",
-      "file_sha": "09e27b21db8719cecb41afa41f6af7c9c04dec5e00b468f61c338800077988c6"
+      "line": 104,
+      "file_sha": "900c1797f6c9f1335ec70679b1f66a233b87a8e41a39a6ce338ecd57e582ca9c"
     },
     {
       "id": "sym:ts:src/doctor/runner.ts:runDoctorSubcommand",
       "name": "runDoctorSubcommand",
       "kind": "function",
       "path": "src/doctor/runner.ts",
-      "line": 61,
-      "file_sha": "09e27b21db8719cecb41afa41f6af7c9c04dec5e00b468f61c338800077988c6"
+      "line": 62,
+      "file_sha": "900c1797f6c9f1335ec70679b1f66a233b87a8e41a39a6ce338ecd57e582ca9c"
     },
     {
       "id": "sym:ts:src/doctor/types.ts:CheckCategory",
@@ -3003,7 +3088,7 @@
       "path": "src/doctor/types.ts",
       "line": 15,
       "signature": "type CheckCategory = | \"config\" | \"atlas\" | \"sha\" | \"lsp\" | \"extraction\"",
-      "file_sha": "b21148f02de4c9f5e44d0c277f2a6a5f754b204b16fe6301b61b3f0132045cda"
+      "file_sha": "8d5a7ffd4c7a84b14e6ed3b3d24ef406bb17da3388862d9f3b65e161bbcffb55"
     },
     {
       "id": "sym:ts:src/doctor/types.ts:CheckContext",
@@ -3012,7 +3097,7 @@
       "path": "src/doctor/types.ts",
       "line": 59,
       "signature": "interface CheckContext",
-      "file_sha": "b21148f02de4c9f5e44d0c277f2a6a5f754b204b16fe6301b61b3f0132045cda"
+      "file_sha": "8d5a7ffd4c7a84b14e6ed3b3d24ef406bb17da3388862d9f3b65e161bbcffb55"
     },
     {
       "id": "sym:ts:src/doctor/types.ts:CheckStatus",
@@ -3021,7 +3106,7 @@
       "path": "src/doctor/types.ts",
       "line": 13,
       "signature": "type CheckStatus = \"pass\" | \"warn\" | \"fail\"",
-      "file_sha": "b21148f02de4c9f5e44d0c277f2a6a5f754b204b16fe6301b61b3f0132045cda"
+      "file_sha": "8d5a7ffd4c7a84b14e6ed3b3d24ef406bb17da3388862d9f3b65e161bbcffb55"
     },
     {
       "id": "sym:ts:src/doctor/types.ts:DoctorCheck",
@@ -3030,7 +3115,7 @@
       "path": "src/doctor/types.ts",
       "line": 23,
       "signature": "interface DoctorCheck",
-      "file_sha": "b21148f02de4c9f5e44d0c277f2a6a5f754b204b16fe6301b61b3f0132045cda"
+      "file_sha": "8d5a7ffd4c7a84b14e6ed3b3d24ef406bb17da3388862d9f3b65e161bbcffb55"
     },
     {
       "id": "sym:ts:src/doctor/types.ts:DoctorResult",
@@ -3039,7 +3124,7 @@
       "path": "src/doctor/types.ts",
       "line": 41,
       "signature": "interface DoctorResult",
-      "file_sha": "b21148f02de4c9f5e44d0c277f2a6a5f754b204b16fe6301b61b3f0132045cda"
+      "file_sha": "8d5a7ffd4c7a84b14e6ed3b3d24ef406bb17da3388862d9f3b65e161bbcffb55"
     },
     {
       "id": "sym:ts:src/dogfood-git.test.ts:<function>",
@@ -3256,6 +3341,51 @@
       "file_sha": "a75fec80759996863987a665c5c6b304900d8292a97e6f8eb053d88ca78213b6"
     },
     {
+      "id": "sym:ts:src/extraction/cli-resolve-symbols.ts:ResolveSymbolsCliOptions",
+      "name": "ResolveSymbolsCliOptions",
+      "kind": "interface",
+      "path": "src/extraction/cli-resolve-symbols.ts",
+      "line": 50,
+      "signature": "interface ResolveSymbolsCliOptions",
+      "file_sha": "e3d6a55aff0dc78a4c99a15d42756ecd189f73f4ce8371fe1836dbfbf914fa3a"
+    },
+    {
+      "id": "sym:ts:src/extraction/cli-resolve-symbols.ts:ResolveSymbolsCliResult",
+      "name": "ResolveSymbolsCliResult",
+      "kind": "interface",
+      "path": "src/extraction/cli-resolve-symbols.ts",
+      "line": 59,
+      "signature": "interface ResolveSymbolsCliResult",
+      "file_sha": "e3d6a55aff0dc78a4c99a15d42756ecd189f73f4ce8371fe1836dbfbf914fa3a"
+    },
+    {
+      "id": "sym:ts:src/extraction/cli-resolve-symbols.ts:ResolveSymbolsExitCode",
+      "name": "ResolveSymbolsExitCode",
+      "kind": "type",
+      "path": "src/extraction/cli-resolve-symbols.ts",
+      "line": 48,
+      "signature": "type ResolveSymbolsExitCode = 0 | 1 | 2",
+      "file_sha": "e3d6a55aff0dc78a4c99a15d42756ecd189f73f4ce8371fe1836dbfbf914fa3a"
+    },
+    {
+      "id": "sym:ts:src/extraction/cli-resolve-symbols.ts:runResolveSymbolsSubcommand",
+      "name": "runResolveSymbolsSubcommand",
+      "kind": "function",
+      "path": "src/extraction/cli-resolve-symbols.ts",
+      "line": 88,
+      "signature": "async function runResolveSymbolsSubcommand( options: ResolveSymbolsCliOptions, ): Promise<ResolveSymbolsCliResult>",
+      "file_sha": "e3d6a55aff0dc78a4c99a15d42756ecd189f73f4ce8371fe1836dbfbf914fa3a"
+    },
+    {
+      "id": "sym:ts:src/extraction/cli-resolve-symbols.ts:shutdownAll",
+      "name": "shutdownAll",
+      "kind": "function",
+      "path": "src/extraction/cli-resolve-symbols.ts",
+      "line": 69,
+      "signature": "async function shutdownAll( adapters: ReadonlyMap<LanguageCode, LanguageAdapter>, ): Promise<void>",
+      "file_sha": "e3d6a55aff0dc78a4c99a15d42756ecd189f73f4ce8371fe1836dbfbf914fa3a"
+    },
+    {
       "id": "sym:ts:src/extraction/cli-runner.test.ts:captureStdout",
       "name": "captureStdout",
       "kind": "function",
@@ -3289,7 +3419,7 @@
       "path": "src/extraction/cli-runner.ts",
       "line": 39,
       "signature": "interface IndexCliOptions",
-      "file_sha": "b72eeaa20f8a427b7e2eb7a6ea7f140c22ddc0fadd74f7d6c9b63c9766104bbe"
+      "file_sha": "655508dbe248028bab2a7fc6d23167427fccb03ef541b127133380536a8a77fa"
     },
     {
       "id": "sym:ts:src/extraction/cli-runner.ts:IndexCliResult",
@@ -3298,7 +3428,7 @@
       "path": "src/extraction/cli-runner.ts",
       "line": 107,
       "signature": "interface IndexCliResult",
-      "file_sha": "b72eeaa20f8a427b7e2eb7a6ea7f140c22ddc0fadd74f7d6c9b63c9766104bbe"
+      "file_sha": "655508dbe248028bab2a7fc6d23167427fccb03ef541b127133380536a8a77fa"
     },
     {
       "id": "sym:ts:src/extraction/cli-runner.ts:IndexExitCode",
@@ -3307,51 +3437,51 @@
       "path": "src/extraction/cli-runner.ts",
       "line": 105,
       "signature": "type IndexExitCode = 0 | 1 | 2",
-      "file_sha": "b72eeaa20f8a427b7e2eb7a6ea7f140c22ddc0fadd74f7d6c9b63c9766104bbe"
+      "file_sha": "655508dbe248028bab2a7fc6d23167427fccb03ef541b127133380536a8a77fa"
     },
     {
       "id": "sym:ts:src/extraction/cli-runner.ts:VERBOSE_CLAIM_TRUNCATE",
       "name": "VERBOSE_CLAIM_TRUNCATE",
       "kind": "variable",
       "path": "src/extraction/cli-runner.ts",
-      "line": 326,
-      "file_sha": "b72eeaa20f8a427b7e2eb7a6ea7f140c22ddc0fadd74f7d6c9b63c9766104bbe"
+      "line": 332,
+      "file_sha": "655508dbe248028bab2a7fc6d23167427fccb03ef541b127133380536a8a77fa"
     },
     {
       "id": "sym:ts:src/extraction/cli-runner.ts:printFrontmatterWarnings",
       "name": "printFrontmatterWarnings",
       "kind": "function",
       "path": "src/extraction/cli-runner.ts",
-      "line": 379,
+      "line": 385,
       "signature": "function printFrontmatterWarnings( details: readonly FileUnresolvedDetail[], writeStderr: (chunk: string) => void, ): void",
-      "file_sha": "b72eeaa20f8a427b7e2eb7a6ea7f140c22ddc0fadd74f7d6c9b63c9766104bbe"
+      "file_sha": "655508dbe248028bab2a7fc6d23167427fccb03ef541b127133380536a8a77fa"
     },
     {
       "id": "sym:ts:src/extraction/cli-runner.ts:printSummary",
       "name": "printSummary",
       "kind": "function",
       "path": "src/extraction/cli-runner.ts",
-      "line": 404,
+      "line": 410,
       "signature": "function printSummary( result: ExtractionPipelineResult, asJson: boolean, writeStdout: (chunk: string) => void, ): void",
-      "file_sha": "b72eeaa20f8a427b7e2eb7a6ea7f140c22ddc0fadd74f7d6c9b63c9766104bbe"
+      "file_sha": "655508dbe248028bab2a7fc6d23167427fccb03ef541b127133380536a8a77fa"
     },
     {
       "id": "sym:ts:src/extraction/cli-runner.ts:printVerboseUnresolved",
       "name": "printVerboseUnresolved",
       "kind": "function",
       "path": "src/extraction/cli-runner.ts",
-      "line": 338,
+      "line": 344,
       "signature": "function printVerboseUnresolved( details: readonly FileUnresolvedDetail[], writeStderr: (chunk: string) => void, ): void",
-      "file_sha": "b72eeaa20f8a427b7e2eb7a6ea7f140c22ddc0fadd74f7d6c9b63c9766104bbe"
+      "file_sha": "655508dbe248028bab2a7fc6d23167427fccb03ef541b127133380536a8a77fa"
     },
     {
       "id": "sym:ts:src/extraction/cli-runner.ts:resolveContextatlasCommitSha",
       "name": "resolveContextatlasCommitSha",
       "kind": "function",
       "path": "src/extraction/cli-runner.ts",
-      "line": 285,
+      "line": 291,
       "signature": "function resolveContextatlasCommitSha(): string | null",
-      "file_sha": "b72eeaa20f8a427b7e2eb7a6ea7f140c22ddc0fadd74f7d6c9b63c9766104bbe"
+      "file_sha": "655508dbe248028bab2a7fc6d23167427fccb03ef541b127133380536a8a77fa"
     },
     {
       "id": "sym:ts:src/extraction/cli-runner.ts:runIndexSubcommand",
@@ -3360,25 +3490,25 @@
       "path": "src/extraction/cli-runner.ts",
       "line": 117,
       "signature": "async function runIndexSubcommand( options: IndexCliOptions, ): Promise<IndexCliResult>",
-      "file_sha": "b72eeaa20f8a427b7e2eb7a6ea7f140c22ddc0fadd74f7d6c9b63c9766104bbe"
+      "file_sha": "655508dbe248028bab2a7fc6d23167427fccb03ef541b127133380536a8a77fa"
     },
     {
       "id": "sym:ts:src/extraction/cli-runner.ts:shutdownAll",
       "name": "shutdownAll",
       "kind": "function",
       "path": "src/extraction/cli-runner.ts",
-      "line": 259,
+      "line": 265,
       "signature": "async function shutdownAll( adapters: ReadonlyMap<LanguageCode, LanguageAdapter>, ): Promise<void>",
-      "file_sha": "b72eeaa20f8a427b7e2eb7a6ea7f140c22ddc0fadd74f7d6c9b63c9766104bbe"
+      "file_sha": "655508dbe248028bab2a7fc6d23167427fccb03ef541b127133380536a8a77fa"
     },
     {
       "id": "sym:ts:src/extraction/cli-runner.ts:truncateClaim",
       "name": "truncateClaim",
       "kind": "function",
       "path": "src/extraction/cli-runner.ts",
-      "line": 328,
+      "line": 334,
       "signature": "function truncateClaim(text: string): string",
-      "file_sha": "b72eeaa20f8a427b7e2eb7a6ea7f140c22ddc0fadd74f7d6c9b63c9766104bbe"
+      "file_sha": "655508dbe248028bab2a7fc6d23167427fccb03ef541b127133380536a8a77fa"
     },
     {
       "id": "sym:ts:src/extraction/cli-show-prompt.ts:ShowPromptCliOptions",
@@ -3414,6 +3544,68 @@
       "path": "src/extraction/cli-show-prompt.ts",
       "line": 52,
       "file_sha": "d1599fa09b88b093e0542d854259b8ce71f1b70406d0f83bffaabb2a733e0d6f"
+    },
+    {
+      "id": "sym:ts:src/extraction/cli-validate-atlas.ts:VALID_SEVERITIES",
+      "name": "VALID_SEVERITIES",
+      "kind": "variable",
+      "path": "src/extraction/cli-validate-atlas.ts",
+      "line": 51,
+      "file_sha": "f7245a056205ca6308527407f9efc1c56ec0c423746a36cf949b63accafb96f0"
+    },
+    {
+      "id": "sym:ts:src/extraction/cli-validate-atlas.ts:ValidateAtlasCliOptions",
+      "name": "ValidateAtlasCliOptions",
+      "kind": "interface",
+      "path": "src/extraction/cli-validate-atlas.ts",
+      "line": 36,
+      "signature": "interface ValidateAtlasCliOptions",
+      "file_sha": "f7245a056205ca6308527407f9efc1c56ec0c423746a36cf949b63accafb96f0"
+    },
+    {
+      "id": "sym:ts:src/extraction/cli-validate-atlas.ts:ValidateAtlasCliResult",
+      "name": "ValidateAtlasCliResult",
+      "kind": "interface",
+      "path": "src/extraction/cli-validate-atlas.ts",
+      "line": 45,
+      "signature": "interface ValidateAtlasCliResult",
+      "file_sha": "f7245a056205ca6308527407f9efc1c56ec0c423746a36cf949b63accafb96f0"
+    },
+    {
+      "id": "sym:ts:src/extraction/cli-validate-atlas.ts:ValidateAtlasExitCode",
+      "name": "ValidateAtlasExitCode",
+      "kind": "type",
+      "path": "src/extraction/cli-validate-atlas.ts",
+      "line": 34,
+      "signature": "type ValidateAtlasExitCode = 0 | 2",
+      "file_sha": "f7245a056205ca6308527407f9efc1c56ec0c423746a36cf949b63accafb96f0"
+    },
+    {
+      "id": "sym:ts:src/extraction/cli-validate-atlas.ts:describe",
+      "name": "describe",
+      "kind": "function",
+      "path": "src/extraction/cli-validate-atlas.ts",
+      "line": 280,
+      "signature": "function describe(value: unknown): string",
+      "file_sha": "f7245a056205ca6308527407f9efc1c56ec0c423746a36cf949b63accafb96f0"
+    },
+    {
+      "id": "sym:ts:src/extraction/cli-validate-atlas.ts:runValidateAtlasSubcommand",
+      "name": "runValidateAtlasSubcommand",
+      "kind": "function",
+      "path": "src/extraction/cli-validate-atlas.ts",
+      "line": 57,
+      "signature": "async function runValidateAtlasSubcommand( options: ValidateAtlasCliOptions, ): Promise<ValidateAtlasCliResult>",
+      "file_sha": "f7245a056205ca6308527407f9efc1c56ec0c423746a36cf949b63accafb96f0"
+    },
+    {
+      "id": "sym:ts:src/extraction/cli-validate-atlas.ts:validateAtlasShape",
+      "name": "validateAtlasShape",
+      "kind": "function",
+      "path": "src/extraction/cli-validate-atlas.ts",
+      "line": 135,
+      "signature": "function validateAtlasShape(raw: unknown): string[]",
+      "file_sha": "f7245a056205ca6308527407f9efc1c56ec0c423746a36cf949b63accafb96f0"
     },
     {
       "id": "sym:ts:src/extraction/commit-message-extractor.ts:CommitExtractionResult",
@@ -4289,7 +4481,7 @@
       "path": "src/extraction/resolver.ts",
       "line": 32,
       "signature": "interface ResolverStats",
-      "file_sha": "536f3515926b1b71564e55d4741363ba134cc6077d0eed4394f8ea6dacc2f452"
+      "file_sha": "4d9bcefc3c48100e4266d53e1c0cbe3f997d74d299f34a6ad57fb174e7fe7fa8"
     },
     {
       "id": "sym:ts:src/extraction/resolver.ts:SymbolInventory",
@@ -4298,7 +4490,7 @@
       "path": "src/extraction/resolver.ts",
       "line": 27,
       "signature": "interface SymbolInventory",
-      "file_sha": "536f3515926b1b71564e55d4741363ba134cc6077d0eed4394f8ea6dacc2f452"
+      "file_sha": "4d9bcefc3c48100e4266d53e1c0cbe3f997d74d299f34a6ad57fb174e7fe7fa8"
     },
     {
       "id": "sym:ts:src/extraction/resolver.ts:buildSymbolInventory",
@@ -4307,7 +4499,16 @@
       "path": "src/extraction/resolver.ts",
       "line": 44,
       "signature": "async function buildSymbolInventory( adapters: ReadonlyMap<LanguageCode, LanguageAdapter>, files: readonly SourceFile[], ): Promise<SymbolInventory>",
-      "file_sha": "536f3515926b1b71564e55d4741363ba134cc6077d0eed4394f8ea6dacc2f452"
+      "file_sha": "4d9bcefc3c48100e4266d53e1c0cbe3f997d74d299f34a6ad57fb174e7fe7fa8"
+    },
+    {
+      "id": "sym:ts:src/extraction/resolver.ts:expandCandidateForms",
+      "name": "expandCandidateForms",
+      "kind": "function",
+      "path": "src/extraction/resolver.ts",
+      "line": 158,
+      "signature": "function expandCandidateForms(raw: string): string[]",
+      "file_sha": "4d9bcefc3c48100e4266d53e1c0cbe3f997d74d299f34a6ad57fb174e7fe7fa8"
     },
     {
       "id": "sym:ts:src/extraction/resolver.ts:pickAdapter",
@@ -4316,7 +4517,7 @@
       "path": "src/extraction/resolver.ts",
       "line": 76,
       "signature": "function pickAdapter( adapters: ReadonlyMap<LanguageCode, LanguageAdapter>, absPath: string, ): LanguageAdapter | null",
-      "file_sha": "536f3515926b1b71564e55d4741363ba134cc6077d0eed4394f8ea6dacc2f452"
+      "file_sha": "4d9bcefc3c48100e4266d53e1c0cbe3f997d74d299f34a6ad57fb174e7fe7fa8"
     },
     {
       "id": "sym:ts:src/extraction/resolver.ts:resolveCandidate",
@@ -4325,7 +4526,7 @@
       "path": "src/extraction/resolver.ts",
       "line": 93,
       "signature": "function resolveCandidate( inventory: SymbolInventory, candidate: string, ): SymbolId[]",
-      "file_sha": "536f3515926b1b71564e55d4741363ba134cc6077d0eed4394f8ea6dacc2f452"
+      "file_sha": "4d9bcefc3c48100e4266d53e1c0cbe3f997d74d299f34a6ad57fb174e7fe7fa8"
     },
     {
       "id": "sym:ts:src/extraction/resolver.ts:resolveCandidates",
@@ -4334,7 +4535,16 @@
       "path": "src/extraction/resolver.ts",
       "line": 116,
       "signature": "function resolveCandidates( inventory: SymbolInventory, candidates: readonly string[], ):",
-      "file_sha": "536f3515926b1b71564e55d4741363ba134cc6077d0eed4394f8ea6dacc2f452"
+      "file_sha": "4d9bcefc3c48100e4266d53e1c0cbe3f997d74d299f34a6ad57fb174e7fe7fa8"
+    },
+    {
+      "id": "sym:ts:src/extraction/resolver.ts:resolveCandidatesWithNormalization",
+      "name": "resolveCandidatesWithNormalization",
+      "kind": "function",
+      "path": "src/extraction/resolver.ts",
+      "line": 218,
+      "signature": "function resolveCandidatesWithNormalization( inventory: SymbolInventory, candidates: readonly string[], ):",
+      "file_sha": "4d9bcefc3c48100e4266d53e1c0cbe3f997d74d299f34a6ad57fb174e7fe7fa8"
     },
     {
       "id": "sym:ts:src/formatters/compact.test.ts:CLAIMS",
@@ -4543,6 +4753,517 @@
       "line": 150,
       "signature": "function renderTypes( lines: string[], types: NonNullable<SymbolContextBundle[\"types\"]>, ): void",
       "file_sha": "03ea00bc9d546cac1f1da89cdb05efd951f180b6fb07178f9e67b4b87f839e4c"
+    },
+    {
+      "id": "sym:ts:src/generation/cli-runner.ts:GenerateAdrsCliOptions",
+      "name": "GenerateAdrsCliOptions",
+      "kind": "interface",
+      "path": "src/generation/cli-runner.ts",
+      "line": 39,
+      "signature": "interface GenerateAdrsCliOptions",
+      "file_sha": "3cff794ce528ef4b2531cdf0bb89dd64a4ad7b11613ee93c22b71c7593d4b005"
+    },
+    {
+      "id": "sym:ts:src/generation/cli-runner.ts:GenerateAdrsCliResult",
+      "name": "GenerateAdrsCliResult",
+      "kind": "interface",
+      "path": "src/generation/cli-runner.ts",
+      "line": 99,
+      "signature": "interface GenerateAdrsCliResult",
+      "file_sha": "3cff794ce528ef4b2531cdf0bb89dd64a4ad7b11613ee93c22b71c7593d4b005"
+    },
+    {
+      "id": "sym:ts:src/generation/cli-runner.ts:GenerateAdrsExitCode",
+      "name": "GenerateAdrsExitCode",
+      "kind": "type",
+      "path": "src/generation/cli-runner.ts",
+      "line": 97,
+      "signature": "type GenerateAdrsExitCode = 0 | 1 | 2",
+      "file_sha": "3cff794ce528ef4b2531cdf0bb89dd64a4ad7b11613ee93c22b71c7593d4b005"
+    },
+    {
+      "id": "sym:ts:src/generation/cli-runner.ts:runGenerateAdrsSubcommand",
+      "name": "runGenerateAdrsSubcommand",
+      "kind": "function",
+      "path": "src/generation/cli-runner.ts",
+      "line": 111,
+      "signature": "async function runGenerateAdrsSubcommand( options: GenerateAdrsCliOptions, ): Promise<GenerateAdrsCliResult>",
+      "file_sha": "3cff794ce528ef4b2531cdf0bb89dd64a4ad7b11613ee93c22b71c7593d4b005"
+    },
+    {
+      "id": "sym:ts:src/generation/cli-runner.ts:shutdownAll",
+      "name": "shutdownAll",
+      "kind": "function",
+      "path": "src/generation/cli-runner.ts",
+      "line": 268,
+      "signature": "async function shutdownAll( adapters: Map<LanguageCode, LanguageAdapter>, ): Promise<void>",
+      "file_sha": "3cff794ce528ef4b2531cdf0bb89dd64a4ad7b11613ee93c22b71c7593d4b005"
+    },
+    {
+      "id": "sym:ts:src/generation/cli-validate-adrs.ts:LINE_COUNT_CEILING",
+      "name": "LINE_COUNT_CEILING",
+      "kind": "variable",
+      "path": "src/generation/cli-validate-adrs.ts",
+      "line": 60,
+      "file_sha": "403c409796981165dc1621de138bf757a8dc4a2207b48f35be43e3ee96395df8"
+    },
+    {
+      "id": "sym:ts:src/generation/cli-validate-adrs.ts:MIN_ALTERNATIVE_BODY_CHARS",
+      "name": "MIN_ALTERNATIVE_BODY_CHARS",
+      "kind": "variable",
+      "path": "src/generation/cli-validate-adrs.ts",
+      "line": 63,
+      "file_sha": "403c409796981165dc1621de138bf757a8dc4a2207b48f35be43e3ee96395df8"
+    },
+    {
+      "id": "sym:ts:src/generation/cli-validate-adrs.ts:ParsedFrontmatter",
+      "name": "ParsedFrontmatter",
+      "kind": "interface",
+      "path": "src/generation/cli-validate-adrs.ts",
+      "line": 263,
+      "signature": "interface ParsedFrontmatter",
+      "file_sha": "403c409796981165dc1621de138bf757a8dc4a2207b48f35be43e3ee96395df8"
+    },
+    {
+      "id": "sym:ts:src/generation/cli-validate-adrs.ts:ValidateAdrsCliOptions",
+      "name": "ValidateAdrsCliOptions",
+      "kind": "interface",
+      "path": "src/generation/cli-validate-adrs.ts",
+      "line": 44,
+      "signature": "interface ValidateAdrsCliOptions",
+      "file_sha": "403c409796981165dc1621de138bf757a8dc4a2207b48f35be43e3ee96395df8"
+    },
+    {
+      "id": "sym:ts:src/generation/cli-validate-adrs.ts:ValidateAdrsCliResult",
+      "name": "ValidateAdrsCliResult",
+      "kind": "interface",
+      "path": "src/generation/cli-validate-adrs.ts",
+      "line": 53,
+      "signature": "interface ValidateAdrsCliResult",
+      "file_sha": "403c409796981165dc1621de138bf757a8dc4a2207b48f35be43e3ee96395df8"
+    },
+    {
+      "id": "sym:ts:src/generation/cli-validate-adrs.ts:ValidateAdrsExitCode",
+      "name": "ValidateAdrsExitCode",
+      "kind": "type",
+      "path": "src/generation/cli-validate-adrs.ts",
+      "line": 42,
+      "signature": "type ValidateAdrsExitCode = 0 | 2",
+      "file_sha": "403c409796981165dc1621de138bf757a8dc4a2207b48f35be43e3ee96395df8"
+    },
+    {
+      "id": "sym:ts:src/generation/cli-validate-adrs.ts:checkAlternativesConsidered",
+      "name": "checkAlternativesConsidered",
+      "kind": "function",
+      "path": "src/generation/cli-validate-adrs.ts",
+      "line": 378,
+      "signature": "function checkAlternativesConsidered(content: string):",
+      "file_sha": "403c409796981165dc1621de138bf757a8dc4a2207b48f35be43e3ee96395df8"
+    },
+    {
+      "id": "sym:ts:src/generation/cli-validate-adrs.ts:countDistinctItems",
+      "name": "countDistinctItems",
+      "kind": "function",
+      "path": "src/generation/cli-validate-adrs.ts",
+      "line": 457,
+      "signature": "function countDistinctItems(sectionBody: string): number",
+      "file_sha": "403c409796981165dc1621de138bf757a8dc4a2207b48f35be43e3ee96395df8"
+    },
+    {
+      "id": "sym:ts:src/generation/cli-validate-adrs.ts:countFencedCodeBlocks",
+      "name": "countFencedCodeBlocks",
+      "kind": "function",
+      "path": "src/generation/cli-validate-adrs.ts",
+      "line": 445,
+      "signature": "function countFencedCodeBlocks(content: string): number",
+      "file_sha": "403c409796981165dc1621de138bf757a8dc4a2207b48f35be43e3ee96395df8"
+    },
+    {
+      "id": "sym:ts:src/generation/cli-validate-adrs.ts:countSubstantiveParagraphs",
+      "name": "countSubstantiveParagraphs",
+      "kind": "function",
+      "path": "src/generation/cli-validate-adrs.ts",
+      "line": 344,
+      "signature": "function countSubstantiveParagraphs(sectionBody: string): number",
+      "file_sha": "403c409796981165dc1621de138bf757a8dc4a2207b48f35be43e3ee96395df8"
+    },
+    {
+      "id": "sym:ts:src/generation/cli-validate-adrs.ts:countSymbolCitations",
+      "name": "countSymbolCitations",
+      "kind": "function",
+      "path": "src/generation/cli-validate-adrs.ts",
+      "line": 330,
+      "signature": "function countSymbolCitations(content: string): number",
+      "file_sha": "403c409796981165dc1621de138bf757a8dc4a2207b48f35be43e3ee96395df8"
+    },
+    {
+      "id": "sym:ts:src/generation/cli-validate-adrs.ts:extractSections",
+      "name": "extractSections",
+      "kind": "function",
+      "path": "src/generation/cli-validate-adrs.ts",
+      "line": 287,
+      "signature": "function extractSections(content: string): Record<string, string>",
+      "file_sha": "403c409796981165dc1621de138bf757a8dc4a2207b48f35be43e3ee96395df8"
+    },
+    {
+      "id": "sym:ts:src/generation/cli-validate-adrs.ts:parseFrontmatter",
+      "name": "parseFrontmatter",
+      "kind": "function",
+      "path": "src/generation/cli-validate-adrs.ts",
+      "line": 268,
+      "signature": "function parseFrontmatter(content: string): ParsedFrontmatter",
+      "file_sha": "403c409796981165dc1621de138bf757a8dc4a2207b48f35be43e3ee96395df8"
+    },
+    {
+      "id": "sym:ts:src/generation/cli-validate-adrs.ts:runValidateAdrsSubcommand",
+      "name": "runValidateAdrsSubcommand",
+      "kind": "function",
+      "path": "src/generation/cli-validate-adrs.ts",
+      "line": 68,
+      "signature": "async function runValidateAdrsSubcommand( options: ValidateAdrsCliOptions, ): Promise<ValidateAdrsCliResult>",
+      "file_sha": "403c409796981165dc1621de138bf757a8dc4a2207b48f35be43e3ee96395df8"
+    },
+    {
+      "id": "sym:ts:src/generation/cli-validate-adrs.ts:validateAdrShape",
+      "name": "validateAdrShape",
+      "kind": "function",
+      "path": "src/generation/cli-validate-adrs.ts",
+      "line": 156,
+      "signature": "function validateAdrShape(content: string): string[]",
+      "file_sha": "403c409796981165dc1621de138bf757a8dc4a2207b48f35be43e3ee96395df8"
+    },
+    {
+      "id": "sym:ts:src/generation/codebase-walker.ts:ARCHITECTURAL_NARRATIVE_ROOT_FILES",
+      "name": "ARCHITECTURAL_NARRATIVE_ROOT_FILES",
+      "kind": "variable",
+      "path": "src/generation/codebase-walker.ts",
+      "line": 27,
+      "file_sha": "7d2d474dbb4bace1a2d04154656f809219cfbaf7a6b221afe949c88d36454e05"
+    },
+    {
+      "id": "sym:ts:src/generation/codebase-walker.ts:CodebaseInventoryOptions",
+      "name": "CodebaseInventoryOptions",
+      "kind": "interface",
+      "path": "src/generation/codebase-walker.ts",
+      "line": 33,
+      "signature": "interface CodebaseInventoryOptions",
+      "file_sha": "7d2d474dbb4bace1a2d04154656f809219cfbaf7a6b221afe949c88d36454e05"
+    },
+    {
+      "id": "sym:ts:src/generation/codebase-walker.ts:buildCodebaseInventory",
+      "name": "buildCodebaseInventory",
+      "kind": "function",
+      "path": "src/generation/codebase-walker.ts",
+      "line": 70,
+      "signature": "async function buildCodebaseInventory( options: CodebaseInventoryOptions, ): Promise<string>",
+      "file_sha": "7d2d474dbb4bace1a2d04154656f809219cfbaf7a6b221afe949c88d36454e05"
+    },
+    {
+      "id": "sym:ts:src/generation/codebase-walker.ts:resolveNarrativeDocPath",
+      "name": "resolveNarrativeDocPath",
+      "kind": "function",
+      "path": "src/generation/codebase-walker.ts",
+      "line": 119,
+      "signature": "function resolveNarrativeDocPath( sourceRoot: string, filename: string, ): string",
+      "file_sha": "7d2d474dbb4bace1a2d04154656f809219cfbaf7a6b221afe949c88d36454e05"
+    },
+    {
+      "id": "sym:ts:src/generation/cost-estimator.ts:CostEstimate",
+      "name": "CostEstimate",
+      "kind": "interface",
+      "path": "src/generation/cost-estimator.ts",
+      "line": 42,
+      "signature": "interface CostEstimate",
+      "file_sha": "98ef8f7e78331a73bd1c29e61a541b78d49ff141baba859f6655f3a4a0eeaf94"
+    },
+    {
+      "id": "sym:ts:src/generation/cost-estimator.ts:CostEstimateInputs",
+      "name": "CostEstimateInputs",
+      "kind": "interface",
+      "path": "src/generation/cost-estimator.ts",
+      "line": 36,
+      "signature": "interface CostEstimateInputs",
+      "file_sha": "98ef8f7e78331a73bd1c29e61a541b78d49ff141baba859f6655f3a4a0eeaf94"
+    },
+    {
+      "id": "sym:ts:src/generation/cost-estimator.ts:OUTPUT_TOKEN_ESTIMATE_HIGH",
+      "name": "OUTPUT_TOKEN_ESTIMATE_HIGH",
+      "kind": "variable",
+      "path": "src/generation/cost-estimator.ts",
+      "line": 25,
+      "file_sha": "98ef8f7e78331a73bd1c29e61a541b78d49ff141baba859f6655f3a4a0eeaf94"
+    },
+    {
+      "id": "sym:ts:src/generation/cost-estimator.ts:OUTPUT_TOKEN_ESTIMATE_LOW",
+      "name": "OUTPUT_TOKEN_ESTIMATE_LOW",
+      "kind": "variable",
+      "path": "src/generation/cost-estimator.ts",
+      "line": 22,
+      "file_sha": "98ef8f7e78331a73bd1c29e61a541b78d49ff141baba859f6655f3a4a0eeaf94"
+    },
+    {
+      "id": "sym:ts:src/generation/cost-estimator.ts:buildCostEstimate",
+      "name": "buildCostEstimate",
+      "kind": "function",
+      "path": "src/generation/cost-estimator.ts",
+      "line": 56,
+      "signature": "function buildCostEstimate( inputs: CostEstimateInputs, ): CostEstimate",
+      "file_sha": "98ef8f7e78331a73bd1c29e61a541b78d49ff141baba859f6655f3a4a0eeaf94"
+    },
+    {
+      "id": "sym:ts:src/generation/cost-estimator.ts:estimateTokens",
+      "name": "estimateTokens",
+      "kind": "function",
+      "path": "src/generation/cost-estimator.ts",
+      "line": 32,
+      "signature": "function estimateTokens(text: string): number",
+      "file_sha": "98ef8f7e78331a73bd1c29e61a541b78d49ff141baba859f6655f3a4a0eeaf94"
+    },
+    {
+      "id": "sym:ts:src/generation/cost-estimator.ts:formatCostEstimateMessage",
+      "name": "formatCostEstimateMessage",
+      "kind": "function",
+      "path": "src/generation/cost-estimator.ts",
+      "line": 86,
+      "signature": "function formatCostEstimateMessage( estimate: CostEstimate, inputs: CostEstimateInputs, referenceContextPath?: string, ): string",
+      "file_sha": "98ef8f7e78331a73bd1c29e61a541b78d49ff141baba859f6655f3a4a0eeaf94"
+    },
+    {
+      "id": "sym:ts:src/generation/factory.ts:getGenerator",
+      "name": "getGenerator",
+      "kind": "function",
+      "path": "src/generation/factory.ts",
+      "line": 31,
+      "signature": "function getGenerator(config: ContextAtlasConfig): Generator",
+      "file_sha": "b47a07e90ef26759a864d8acf0059e3410a4ed69ff27ff1956f4b13939e4dd6b"
+    },
+    {
+      "id": "sym:ts:src/generation/generator.ts:GenerationResult",
+      "name": "GenerationResult",
+      "kind": "interface",
+      "path": "src/generation/generator.ts",
+      "line": 45,
+      "signature": "interface GenerationResult",
+      "file_sha": "8aab4acf0ea5df37acf35e1c8060529a0bf52ee932b404aa319a6e35c6314070"
+    },
+    {
+      "id": "sym:ts:src/generation/generator.ts:GenerationSetupError",
+      "name": "GenerationSetupError",
+      "kind": "class",
+      "path": "src/generation/generator.ts",
+      "line": 174,
+      "signature": "class GenerationSetupError extends Error",
+      "file_sha": "8aab4acf0ea5df37acf35e1c8060529a0bf52ee932b404aa319a6e35c6314070"
+    },
+    {
+      "id": "sym:ts:src/generation/generator.ts:Generator",
+      "name": "Generator",
+      "kind": "interface",
+      "path": "src/generation/generator.ts",
+      "line": 152,
+      "signature": "interface Generator",
+      "file_sha": "8aab4acf0ea5df37acf35e1c8060529a0bf52ee932b404aa319a6e35c6314070"
+    },
+    {
+      "id": "sym:ts:src/generation/generator.ts:GeneratorContext",
+      "name": "GeneratorContext",
+      "kind": "interface",
+      "path": "src/generation/generator.ts",
+      "line": 72,
+      "signature": "interface GeneratorContext",
+      "file_sha": "8aab4acf0ea5df37acf35e1c8060529a0bf52ee932b404aa319a6e35c6314070"
+    },
+    {
+      "id": "sym:ts:src/generation/generator.ts:generate",
+      "name": "generate",
+      "kind": "method",
+      "path": "src/generation/generator.ts",
+      "line": 161,
+      "signature": "generate(context: GeneratorContext): Promise<GenerationResult>",
+      "file_sha": "8aab4acf0ea5df37acf35e1c8060529a0bf52ee932b404aa319a6e35c6314070"
+    },
+    {
+      "id": "sym:ts:src/generation/generators/anthropic-api-direct.ts:AnthropicAPIDirectGenerator",
+      "name": "AnthropicAPIDirectGenerator",
+      "kind": "class",
+      "path": "src/generation/generators/anthropic-api-direct.ts",
+      "line": 81,
+      "signature": "class AnthropicAPIDirectGenerator implements Generator",
+      "file_sha": "f113f19930bb2f1ec411998b4f4e2883078766ee288abe723243207d02bb2cca"
+    },
+    {
+      "id": "sym:ts:src/generation/generators/anthropic-api-direct.ts:RawAdrEntry",
+      "name": "RawAdrEntry",
+      "kind": "interface",
+      "path": "src/generation/generators/anthropic-api-direct.ts",
+      "line": 69,
+      "signature": "interface RawAdrEntry",
+      "file_sha": "f113f19930bb2f1ec411998b4f4e2883078766ee288abe723243207d02bb2cca"
+    },
+    {
+      "id": "sym:ts:src/generation/generators/anthropic-api-direct.ts:RawAdrResponse",
+      "name": "RawAdrResponse",
+      "kind": "interface",
+      "path": "src/generation/generators/anthropic-api-direct.ts",
+      "line": 77,
+      "signature": "interface RawAdrResponse",
+      "file_sha": "f113f19930bb2f1ec411998b4f4e2883078766ee288abe723243207d02bb2cca"
+    },
+    {
+      "id": "sym:ts:src/generation/generators/anthropic-api-direct.ts:defaultConfirmProceed",
+      "name": "defaultConfirmProceed",
+      "kind": "function",
+      "path": "src/generation/generators/anthropic-api-direct.ts",
+      "line": 299,
+      "signature": "async function defaultConfirmProceed(): Promise<boolean>",
+      "file_sha": "f113f19930bb2f1ec411998b4f4e2883078766ee288abe723243207d02bb2cca"
+    },
+    {
+      "id": "sym:ts:src/generation/generators/anthropic-api-direct.ts:extractTextFromResponse",
+      "name": "extractTextFromResponse",
+      "kind": "function",
+      "path": "src/generation/generators/anthropic-api-direct.ts",
+      "line": 317,
+      "signature": "function extractTextFromResponse( response: Anthropic.Messages.Message, ): string",
+      "file_sha": "f113f19930bb2f1ec411998b4f4e2883078766ee288abe723243207d02bb2cca"
+    },
+    {
+      "id": "sym:ts:src/generation/generators/anthropic-api-direct.ts:generate",
+      "name": "generate",
+      "kind": "method",
+      "path": "src/generation/generators/anthropic-api-direct.ts",
+      "line": 84,
+      "signature": "async generate(context: GeneratorContext): Promise<GenerationResult>",
+      "file_sha": "f113f19930bb2f1ec411998b4f4e2883078766ee288abe723243207d02bb2cca"
+    },
+    {
+      "id": "sym:ts:src/generation/generators/anthropic-api-direct.ts:isValidAdrEntry",
+      "name": "isValidAdrEntry",
+      "kind": "function",
+      "path": "src/generation/generators/anthropic-api-direct.ts",
+      "line": 327,
+      "signature": "function isValidAdrEntry(entry: unknown): entry is RawAdrEntry",
+      "file_sha": "f113f19930bb2f1ec411998b4f4e2883078766ee288abe723243207d02bb2cca"
+    },
+    {
+      "id": "sym:ts:src/generation/generators/anthropic-api-direct.ts:mapAnthropicError",
+      "name": "mapAnthropicError",
+      "kind": "function",
+      "path": "src/generation/generators/anthropic-api-direct.ts",
+      "line": 372,
+      "signature": "function mapAnthropicError(err: unknown): Error",
+      "file_sha": "f113f19930bb2f1ec411998b4f4e2883078766ee288abe723243207d02bb2cca"
+    },
+    {
+      "id": "sym:ts:src/generation/generators/anthropic-api-direct.ts:renderFrontmatter",
+      "name": "renderFrontmatter",
+      "kind": "function",
+      "path": "src/generation/generators/anthropic-api-direct.ts",
+      "line": 360,
+      "signature": "function renderFrontmatter(entry: RawAdrEntry): string",
+      "file_sha": "f113f19930bb2f1ec411998b4f4e2883078766ee288abe723243207d02bb2cca"
+    },
+    {
+      "id": "sym:ts:src/generation/generators/anthropic-api-direct.ts:slugify",
+      "name": "slugify",
+      "kind": "function",
+      "path": "src/generation/generators/anthropic-api-direct.ts",
+      "line": 352,
+      "signature": "function slugify(title: string): string",
+      "file_sha": "f113f19930bb2f1ec411998b4f4e2883078766ee288abe723243207d02bb2cca"
+    },
+    {
+      "id": "sym:ts:src/generation/generators/anthropic-api-direct.ts:zeroResult",
+      "name": "zeroResult",
+      "kind": "function",
+      "path": "src/generation/generators/anthropic-api-direct.ts",
+      "line": 285,
+      "signature": "function zeroResult( costModel: \"api\" | \"subscription-bounded\", ): GenerationResult",
+      "file_sha": "f113f19930bb2f1ec411998b4f4e2883078766ee288abe723243207d02bb2cca"
+    },
+    {
+      "id": "sym:ts:src/generation/generators/claude-code-only.ts:ClaudeCodeOnlyGenerator",
+      "name": "ClaudeCodeOnlyGenerator",
+      "kind": "class",
+      "path": "src/generation/generators/claude-code-only.ts",
+      "line": 26,
+      "signature": "class ClaudeCodeOnlyGenerator implements Generator",
+      "file_sha": "ff7658af8211557b042f849dd49d237f500c51da2f0f30217e13e688d64c25ba"
+    },
+    {
+      "id": "sym:ts:src/generation/generators/claude-code-only.ts:generate",
+      "name": "generate",
+      "kind": "method",
+      "path": "src/generation/generators/claude-code-only.ts",
+      "line": 29,
+      "signature": "async generate(_context: GeneratorContext): Promise<GenerationResult>",
+      "file_sha": "ff7658af8211557b042f849dd49d237f500c51da2f0f30217e13e688d64c25ba"
+    },
+    {
+      "id": "sym:ts:src/generation/prompt.ts:GENERATE_ADRS_PROMPT",
+      "name": "GENERATE_ADRS_PROMPT",
+      "kind": "variable",
+      "path": "src/generation/prompt.ts",
+      "line": 29,
+      "file_sha": "5f45149ef7220384d2c11888ea6df0da0151afd1777353a83ae7ff3de10b06c5"
+    },
+    {
+      "id": "sym:ts:src/generation/prompt.ts:GENERATION_MAX_TOKENS",
+      "name": "GENERATION_MAX_TOKENS",
+      "kind": "variable",
+      "path": "src/generation/prompt.ts",
+      "line": 284,
+      "file_sha": "5f45149ef7220384d2c11888ea6df0da0151afd1777353a83ae7ff3de10b06c5"
+    },
+    {
+      "id": "sym:ts:src/generation/prompt.ts:GENERATION_MODEL",
+      "name": "GENERATION_MODEL",
+      "kind": "variable",
+      "path": "src/generation/prompt.ts",
+      "line": 277,
+      "file_sha": "5f45149ef7220384d2c11888ea6df0da0151afd1777353a83ae7ff3de10b06c5"
+    },
+    {
+      "id": "sym:ts:src/generation/prompt.ts:OPUS_INPUT_PRICE_PER_MILLION_USD",
+      "name": "OPUS_INPUT_PRICE_PER_MILLION_USD",
+      "kind": "variable",
+      "path": "src/generation/prompt.ts",
+      "line": 304,
+      "file_sha": "5f45149ef7220384d2c11888ea6df0da0151afd1777353a83ae7ff3de10b06c5"
+    },
+    {
+      "id": "sym:ts:src/generation/prompt.ts:OPUS_OUTPUT_PRICE_PER_MILLION_USD",
+      "name": "OPUS_OUTPUT_PRICE_PER_MILLION_USD",
+      "kind": "variable",
+      "path": "src/generation/prompt.ts",
+      "line": 305,
+      "file_sha": "5f45149ef7220384d2c11888ea6df0da0151afd1777353a83ae7ff3de10b06c5"
+    },
+    {
+      "id": "sym:ts:src/generation/prompt.ts:REFERENCE_CONTEXT_TOKEN_WARNING_THRESHOLD",
+      "name": "REFERENCE_CONTEXT_TOKEN_WARNING_THRESHOLD",
+      "kind": "variable",
+      "path": "src/generation/prompt.ts",
+      "line": 296,
+      "file_sha": "5f45149ef7220384d2c11888ea6df0da0151afd1777353a83ae7ff3de10b06c5"
+    },
+    {
+      "id": "sym:ts:src/generation/reference-context-walker.ts:ReferenceContextOptions",
+      "name": "ReferenceContextOptions",
+      "kind": "interface",
+      "path": "src/generation/reference-context-walker.ts",
+      "line": 27,
+      "signature": "interface ReferenceContextOptions",
+      "file_sha": "261a6652ae45f85b1d77d6f8f951992ea9f969c05156778f5153328a2dd4e78b"
+    },
+    {
+      "id": "sym:ts:src/generation/reference-context-walker.ts:buildReferenceContext",
+      "name": "buildReferenceContext",
+      "kind": "function",
+      "path": "src/generation/reference-context-walker.ts",
+      "line": 44,
+      "signature": "function buildReferenceContext( options: ReferenceContextOptions, ): string",
+      "file_sha": "261a6652ae45f85b1d77d6f8f951992ea9f969c05156778f5153328a2dd4e78b"
     },
     {
       "id": "sym:ts:src/grading/agreement-stats.ts:AXIS_NAMES",
@@ -5742,27 +6463,27 @@
       "name": "catch() callback",
       "kind": "function",
       "path": "src/index.ts",
-      "line": 313,
+      "line": 393,
       "signature": "main().catch((err: unknown) =>",
-      "file_sha": "a244d496aa8aed411062e6ba896aa75d4e5eda8d61a73c34673c4ca72aaebcae"
+      "file_sha": "cb4e7185863621a6b62af3ed83ff58a740eaefd7b470591b6fc67cc15429fd92"
     },
     {
       "id": "sym:ts:src/index.ts:main",
       "name": "main",
       "kind": "function",
       "path": "src/index.ts",
-      "line": 60,
+      "line": 63,
       "signature": "async function main(): Promise<void>",
-      "file_sha": "a244d496aa8aed411062e6ba896aa75d4e5eda8d61a73c34673c4ca72aaebcae"
+      "file_sha": "cb4e7185863621a6b62af3ed83ff58a740eaefd7b470591b6fc67cc15429fd92"
     },
     {
       "id": "sym:ts:src/index.ts:readPackageVersion",
       "name": "readPackageVersion",
       "kind": "function",
       "path": "src/index.ts",
-      "line": 52,
+      "line": 55,
       "signature": "function readPackageVersion(): string",
-      "file_sha": "a244d496aa8aed411062e6ba896aa75d4e5eda8d61a73c34673c4ca72aaebcae"
+      "file_sha": "cb4e7185863621a6b62af3ed83ff58a740eaefd7b470591b6fc67cc15429fd92"
     },
     {
       "id": "sym:ts:src/init/config-scaffold.ts:ConfigScaffoldOptions",
@@ -5837,6 +6558,42 @@
       "file_sha": "2a5a6bc19581e7dcca485648449dc6c3d81f2bb367d907086d8e5fa872fc5a18"
     },
     {
+      "id": "sym:ts:src/init/prompt-artifact-copy.ts:PromptArtifactCopyResult",
+      "name": "PromptArtifactCopyResult",
+      "kind": "interface",
+      "path": "src/init/prompt-artifact-copy.ts",
+      "line": 39,
+      "signature": "interface PromptArtifactCopyResult",
+      "file_sha": "43acca2aedf96b43e47364ee7d3f92ff1c5229ec39bf35c8fe49932cc61b69d9"
+    },
+    {
+      "id": "sym:ts:src/init/prompt-artifact-copy.ts:copyPromptArtifacts",
+      "name": "copyPromptArtifacts",
+      "kind": "function",
+      "path": "src/init/prompt-artifact-copy.ts",
+      "line": 74,
+      "signature": "function copyPromptArtifacts(opts:",
+      "file_sha": "43acca2aedf96b43e47364ee7d3f92ff1c5229ec39bf35c8fe49932cc61b69d9"
+    },
+    {
+      "id": "sym:ts:src/init/prompt-artifact-copy.ts:resolvePackageDistRoot",
+      "name": "resolvePackageDistRoot",
+      "kind": "function",
+      "path": "src/init/prompt-artifact-copy.ts",
+      "line": 59,
+      "signature": "function resolvePackageDistRoot(): string",
+      "file_sha": "43acca2aedf96b43e47364ee7d3f92ff1c5229ec39bf35c8fe49932cc61b69d9"
+    },
+    {
+      "id": "sym:ts:src/init/prompt-artifact-copy.ts:stampGitignore",
+      "name": "stampGitignore",
+      "kind": "function",
+      "path": "src/init/prompt-artifact-copy.ts",
+      "line": 124,
+      "signature": "function stampGitignore(configRoot: string):",
+      "file_sha": "43acca2aedf96b43e47364ee7d3f92ff1c5229ec39bf35c8fe49932cc61b69d9"
+    },
+    {
       "id": "sym:ts:src/init/routing.ts:Route",
       "name": "Route",
       "kind": "type",
@@ -5867,45 +6624,45 @@
       "name": "InitRunOptions",
       "kind": "interface",
       "path": "src/init/runner.ts",
-      "line": 56,
+      "line": 61,
       "signature": "interface InitRunOptions",
-      "file_sha": "6ddd6341f8d2357dd14b6f34a8b23e1e6dd2f11765df3605e8710fdd694cda07"
+      "file_sha": "93173e4a84f08d42047d224d9d76037951fc7c3755a02439a498ceef4ced3cb8"
     },
     {
       "id": "sym:ts:src/init/runner.ts:InitRunResult",
       "name": "InitRunResult",
       "kind": "interface",
       "path": "src/init/runner.ts",
-      "line": 111,
+      "line": 123,
       "signature": "interface InitRunResult",
-      "file_sha": "6ddd6341f8d2357dd14b6f34a8b23e1e6dd2f11765df3605e8710fdd694cda07"
+      "file_sha": "93173e4a84f08d42047d224d9d76037951fc7c3755a02439a498ceef4ced3cb8"
     },
     {
       "id": "sym:ts:src/init/runner.ts:readContextAtlasVersion",
       "name": "readContextAtlasVersion",
       "kind": "function",
       "path": "src/init/runner.ts",
-      "line": 128,
+      "line": 140,
       "signature": "function readContextAtlasVersion(): string",
-      "file_sha": "6ddd6341f8d2357dd14b6f34a8b23e1e6dd2f11765df3605e8710fdd694cda07"
+      "file_sha": "93173e4a84f08d42047d224d9d76037951fc7c3755a02439a498ceef4ced3cb8"
     },
     {
       "id": "sym:ts:src/init/runner.ts:renderRouteMessage",
       "name": "renderRouteMessage",
       "kind": "function",
       "path": "src/init/runner.ts",
-      "line": 344,
+      "line": 412,
       "signature": "function renderRouteMessage(route: Route): string",
-      "file_sha": "6ddd6341f8d2357dd14b6f34a8b23e1e6dd2f11765df3605e8710fdd694cda07"
+      "file_sha": "93173e4a84f08d42047d224d9d76037951fc7c3755a02439a498ceef4ced3cb8"
     },
     {
       "id": "sym:ts:src/init/runner.ts:runInitSubcommand",
       "name": "runInitSubcommand",
       "kind": "function",
       "path": "src/init/runner.ts",
-      "line": 166,
+      "line": 178,
       "signature": "async function runInitSubcommand( options: InitRunOptions, ): Promise<InitRunResult>",
-      "file_sha": "6ddd6341f8d2357dd14b6f34a8b23e1e6dd2f11765df3605e8710fdd694cda07"
+      "file_sha": "93173e4a84f08d42047d224d9d76037951fc7c3755a02439a498ceef4ced3cb8"
     },
     {
       "id": "sym:ts:src/init/smoke-test.ts:NEVER_CALLED_ADAPTER",
@@ -8057,70 +8814,70 @@
       "name": "ATLAS_VERSION",
       "kind": "variable",
       "path": "src/storage/types.ts",
-      "line": 35,
-      "file_sha": "7c62ebce0bd5e2e14bcd1f00c91073d575aaa3e4d01c1ae839e250c0e9cf616b"
+      "line": 47,
+      "file_sha": "407bb4c76e12aeb503688afd096a3f4e2fe2edb86f6c8fe04294d0f35b59cbaf"
     },
     {
       "id": "sym:ts:src/storage/types.ts:AtlasClaimEntry",
       "name": "AtlasClaimEntry",
       "kind": "interface",
       "path": "src/storage/types.ts",
-      "line": 58,
+      "line": 76,
       "signature": "interface AtlasClaimEntry",
-      "file_sha": "7c62ebce0bd5e2e14bcd1f00c91073d575aaa3e4d01c1ae839e250c0e9cf616b"
+      "file_sha": "407bb4c76e12aeb503688afd096a3f4e2fe2edb86f6c8fe04294d0f35b59cbaf"
     },
     {
       "id": "sym:ts:src/storage/types.ts:AtlasFileV1",
       "name": "AtlasFileV1",
       "kind": "interface",
       "path": "src/storage/types.ts",
-      "line": 97,
+      "line": 127,
       "signature": "interface AtlasFileV1",
-      "file_sha": "7c62ebce0bd5e2e14bcd1f00c91073d575aaa3e4d01c1ae839e250c0e9cf616b"
+      "file_sha": "407bb4c76e12aeb503688afd096a3f4e2fe2edb86f6c8fe04294d0f35b59cbaf"
     },
     {
       "id": "sym:ts:src/storage/types.ts:AtlasGeneratorInfo",
       "name": "AtlasGeneratorInfo",
       "kind": "interface",
       "path": "src/storage/types.ts",
-      "line": 82,
+      "line": 112,
       "signature": "interface AtlasGeneratorInfo",
-      "file_sha": "7c62ebce0bd5e2e14bcd1f00c91073d575aaa3e4d01c1ae839e250c0e9cf616b"
+      "file_sha": "407bb4c76e12aeb503688afd096a3f4e2fe2edb86f6c8fe04294d0f35b59cbaf"
     },
     {
       "id": "sym:ts:src/storage/types.ts:AtlasGitCommit",
       "name": "AtlasGitCommit",
       "kind": "interface",
       "path": "src/storage/types.ts",
-      "line": 74,
+      "line": 104,
       "signature": "interface AtlasGitCommit",
-      "file_sha": "7c62ebce0bd5e2e14bcd1f00c91073d575aaa3e4d01c1ae839e250c0e9cf616b"
+      "file_sha": "407bb4c76e12aeb503688afd096a3f4e2fe2edb86f6c8fe04294d0f35b59cbaf"
     },
     {
       "id": "sym:ts:src/storage/types.ts:AtlasSymbolEntry",
       "name": "AtlasSymbolEntry",
       "kind": "interface",
       "path": "src/storage/types.ts",
-      "line": 41,
+      "line": 59,
       "signature": "interface AtlasSymbolEntry",
-      "file_sha": "7c62ebce0bd5e2e14bcd1f00c91073d575aaa3e4d01c1ae839e250c0e9cf616b"
+      "file_sha": "407bb4c76e12aeb503688afd096a3f4e2fe2edb86f6c8fe04294d0f35b59cbaf"
     },
     {
       "id": "sym:ts:src/storage/types.ts:AtlasVersion",
       "name": "AtlasVersion",
       "kind": "type",
       "path": "src/storage/types.ts",
-      "line": 39,
+      "line": 57,
       "signature": "type AtlasVersion = (typeof SUPPORTED_ATLAS_VERSIONS)[number]",
-      "file_sha": "7c62ebce0bd5e2e14bcd1f00c91073d575aaa3e4d01c1ae839e250c0e9cf616b"
+      "file_sha": "407bb4c76e12aeb503688afd096a3f4e2fe2edb86f6c8fe04294d0f35b59cbaf"
     },
     {
       "id": "sym:ts:src/storage/types.ts:SUPPORTED_ATLAS_VERSIONS",
       "name": "SUPPORTED_ATLAS_VERSIONS",
       "kind": "variable",
       "path": "src/storage/types.ts",
-      "line": 38,
-      "file_sha": "7c62ebce0bd5e2e14bcd1f00c91073d575aaa3e4d01c1ae839e250c0e9cf616b"
+      "line": 50,
+      "file_sha": "407bb4c76e12aeb503688afd096a3f4e2fe2edb86f6c8fe04294d0f35b59cbaf"
     },
     {
       "id": "sym:ts:src/types.ts:BundleDepth",
@@ -8129,7 +8886,7 @@
       "path": "src/types.ts",
       "line": 127,
       "signature": "type BundleDepth = \"summary\" | \"standard\" | \"deep\"",
-      "file_sha": "f7d54c61af5d1c5d6ceb27273374e8bbd56cc976079d6d74d75ecca93e35a1da"
+      "file_sha": "0467c61047b94d06cb0b20978e1a88661b827294e2e369f1af7247b4393cc547"
     },
     {
       "id": "sym:ts:src/types.ts:BundleSignal",
@@ -8138,7 +8895,7 @@
       "path": "src/types.ts",
       "line": 129,
       "signature": "type BundleSignal = \"refs\" | \"intent\" | \"git\" | \"types\" | \"tests\"",
-      "file_sha": "f7d54c61af5d1c5d6ceb27273374e8bbd56cc976079d6d74d75ecca93e35a1da"
+      "file_sha": "0467c61047b94d06cb0b20978e1a88661b827294e2e369f1af7247b4393cc547"
     },
     {
       "id": "sym:ts:src/types.ts:Claim",
@@ -8147,7 +8904,7 @@
       "path": "src/types.ts",
       "line": 110,
       "signature": "interface Claim",
-      "file_sha": "f7d54c61af5d1c5d6ceb27273374e8bbd56cc976079d6d74d75ecca93e35a1da"
+      "file_sha": "0467c61047b94d06cb0b20978e1a88661b827294e2e369f1af7247b4393cc547"
     },
     {
       "id": "sym:ts:src/types.ts:ContextAtlasConfig",
@@ -8156,7 +8913,7 @@
       "path": "src/types.ts",
       "line": 252,
       "signature": "interface ContextAtlasConfig",
-      "file_sha": "f7d54c61af5d1c5d6ceb27273374e8bbd56cc976079d6d74d75ecca93e35a1da"
+      "file_sha": "0467c61047b94d06cb0b20978e1a88661b827294e2e369f1af7247b4393cc547"
     },
     {
       "id": "sym:ts:src/types.ts:Diagnostic",
@@ -8165,7 +8922,7 @@
       "path": "src/types.ts",
       "line": 177,
       "signature": "interface Diagnostic",
-      "file_sha": "f7d54c61af5d1c5d6ceb27273374e8bbd56cc976079d6d74d75ecca93e35a1da"
+      "file_sha": "0467c61047b94d06cb0b20978e1a88661b827294e2e369f1af7247b4393cc547"
     },
     {
       "id": "sym:ts:src/types.ts:LANG_CODES",
@@ -8173,7 +8930,7 @@
       "kind": "variable",
       "path": "src/types.ts",
       "line": 46,
-      "file_sha": "f7d54c61af5d1c5d6ceb27273374e8bbd56cc976079d6d74d75ecca93e35a1da"
+      "file_sha": "0467c61047b94d06cb0b20978e1a88661b827294e2e369f1af7247b4393cc547"
     },
     {
       "id": "sym:ts:src/types.ts:LANG_CODES_INVERSE",
@@ -8181,7 +8938,7 @@
       "kind": "variable",
       "path": "src/types.ts",
       "line": 53,
-      "file_sha": "f7d54c61af5d1c5d6ceb27273374e8bbd56cc976079d6d74d75ecca93e35a1da"
+      "file_sha": "0467c61047b94d06cb0b20978e1a88661b827294e2e369f1af7247b4393cc547"
     },
     {
       "id": "sym:ts:src/types.ts:LanguageAdapter",
@@ -8190,7 +8947,7 @@
       "path": "src/types.ts",
       "line": 189,
       "signature": "interface LanguageAdapter",
-      "file_sha": "f7d54c61af5d1c5d6ceb27273374e8bbd56cc976079d6d74d75ecca93e35a1da"
+      "file_sha": "0467c61047b94d06cb0b20978e1a88661b827294e2e369f1af7247b4393cc547"
     },
     {
       "id": "sym:ts:src/types.ts:LanguageCode",
@@ -8199,7 +8956,7 @@
       "path": "src/types.ts",
       "line": 36,
       "signature": "type LanguageCode = \"typescript\" | \"python\" | \"go\"",
-      "file_sha": "f7d54c61af5d1c5d6ceb27273374e8bbd56cc976079d6d74d75ecca93e35a1da"
+      "file_sha": "0467c61047b94d06cb0b20978e1a88661b827294e2e369f1af7247b4393cc547"
     },
     {
       "id": "sym:ts:src/types.ts:Reference",
@@ -8208,7 +8965,7 @@
       "path": "src/types.ts",
       "line": 96,
       "signature": "interface Reference",
-      "file_sha": "f7d54c61af5d1c5d6ceb27273374e8bbd56cc976079d6d74d75ecca93e35a1da"
+      "file_sha": "0467c61047b94d06cb0b20978e1a88661b827294e2e369f1af7247b4393cc547"
     },
     {
       "id": "sym:ts:src/types.ts:ReferenceId",
@@ -8217,7 +8974,7 @@
       "path": "src/types.ts",
       "line": 34,
       "signature": "type ReferenceId = string",
-      "file_sha": "f7d54c61af5d1c5d6ceb27273374e8bbd56cc976079d6d74d75ecca93e35a1da"
+      "file_sha": "0467c61047b94d06cb0b20978e1a88661b827294e2e369f1af7247b4393cc547"
     },
     {
       "id": "sym:ts:src/types.ts:Severity",
@@ -8226,7 +8983,7 @@
       "path": "src/types.ts",
       "line": 108,
       "signature": "type Severity = \"hard\" | \"soft\" | \"context\"",
-      "file_sha": "f7d54c61af5d1c5d6ceb27273374e8bbd56cc976079d6d74d75ecca93e35a1da"
+      "file_sha": "0467c61047b94d06cb0b20978e1a88661b827294e2e369f1af7247b4393cc547"
     },
     {
       "id": "sym:ts:src/types.ts:Symbol",
@@ -8235,7 +8992,7 @@
       "path": "src/types.ts",
       "line": 70,
       "signature": "interface Symbol",
-      "file_sha": "f7d54c61af5d1c5d6ceb27273374e8bbd56cc976079d6d74d75ecca93e35a1da"
+      "file_sha": "0467c61047b94d06cb0b20978e1a88661b827294e2e369f1af7247b4393cc547"
     },
     {
       "id": "sym:ts:src/types.ts:SymbolContextBundle",
@@ -8244,7 +9001,7 @@
       "path": "src/types.ts",
       "line": 131,
       "signature": "interface SymbolContextBundle",
-      "file_sha": "f7d54c61af5d1c5d6ceb27273374e8bbd56cc976079d6d74d75ecca93e35a1da"
+      "file_sha": "0467c61047b94d06cb0b20978e1a88661b827294e2e369f1af7247b4393cc547"
     },
     {
       "id": "sym:ts:src/types.ts:SymbolId",
@@ -8253,7 +9010,7 @@
       "path": "src/types.ts",
       "line": 25,
       "signature": "type SymbolId = string",
-      "file_sha": "f7d54c61af5d1c5d6ceb27273374e8bbd56cc976079d6d74d75ecca93e35a1da"
+      "file_sha": "0467c61047b94d06cb0b20978e1a88661b827294e2e369f1af7247b4393cc547"
     },
     {
       "id": "sym:ts:src/types.ts:SymbolKind",
@@ -8262,7 +9019,7 @@
       "path": "src/types.ts",
       "line": 59,
       "signature": "type SymbolKind = | \"class\" | \"interface\" | \"function\" | \"method\" | \"type\"",
-      "file_sha": "f7d54c61af5d1c5d6ceb27273374e8bbd56cc976079d6d74d75ecca93e35a1da"
+      "file_sha": "0467c61047b94d06cb0b20978e1a88661b827294e2e369f1af7247b4393cc547"
     },
     {
       "id": "sym:ts:src/types.ts:TypeInfo",
@@ -8271,7 +9028,7 @@
       "path": "src/types.ts",
       "line": 241,
       "signature": "interface TypeInfo",
-      "file_sha": "f7d54c61af5d1c5d6ceb27273374e8bbd56cc976079d6d74d75ecca93e35a1da"
+      "file_sha": "0467c61047b94d06cb0b20978e1a88661b827294e2e369f1af7247b4393cc547"
     },
     {
       "id": "sym:ts:src/types.ts:findReferences",
@@ -8280,7 +9037,7 @@
       "path": "src/types.ts",
       "line": 195,
       "signature": "findReferences(id: SymbolId): Promise<Reference[]>",
-      "file_sha": "f7d54c61af5d1c5d6ceb27273374e8bbd56cc976079d6d74d75ecca93e35a1da"
+      "file_sha": "0467c61047b94d06cb0b20978e1a88661b827294e2e369f1af7247b4393cc547"
     },
     {
       "id": "sym:ts:src/types.ts:getDiagnostics",
@@ -8289,7 +9046,7 @@
       "path": "src/types.ts",
       "line": 196,
       "signature": "getDiagnostics(filePath: string): Promise<Diagnostic[]>",
-      "file_sha": "f7d54c61af5d1c5d6ceb27273374e8bbd56cc976079d6d74d75ecca93e35a1da"
+      "file_sha": "0467c61047b94d06cb0b20978e1a88661b827294e2e369f1af7247b4393cc547"
     },
     {
       "id": "sym:ts:src/types.ts:getDocstring",
@@ -8298,7 +9055,7 @@
       "path": "src/types.ts",
       "line": 224,
       "signature": "getDocstring(id: SymbolId): Promise<string | null>",
-      "file_sha": "f7d54c61af5d1c5d6ceb27273374e8bbd56cc976079d6d74d75ecca93e35a1da"
+      "file_sha": "0467c61047b94d06cb0b20978e1a88661b827294e2e369f1af7247b4393cc547"
     },
     {
       "id": "sym:ts:src/types.ts:getSymbolDetails",
@@ -8307,7 +9064,7 @@
       "path": "src/types.ts",
       "line": 194,
       "signature": "getSymbolDetails(id: SymbolId): Promise<Symbol | null>",
-      "file_sha": "f7d54c61af5d1c5d6ceb27273374e8bbd56cc976079d6d74d75ecca93e35a1da"
+      "file_sha": "0467c61047b94d06cb0b20978e1a88661b827294e2e369f1af7247b4393cc547"
     },
     {
       "id": "sym:ts:src/types.ts:getTypeInfo",
@@ -8316,7 +9073,7 @@
       "path": "src/types.ts",
       "line": 202,
       "signature": "getTypeInfo(id: SymbolId): Promise<TypeInfo>",
-      "file_sha": "f7d54c61af5d1c5d6ceb27273374e8bbd56cc976079d6d74d75ecca93e35a1da"
+      "file_sha": "0467c61047b94d06cb0b20978e1a88661b827294e2e369f1af7247b4393cc547"
     },
     {
       "id": "sym:ts:src/types.ts:initialize",
@@ -8325,7 +9082,7 @@
       "path": "src/types.ts",
       "line": 226,
       "signature": "initialize(rootPath: string): Promise<void>",
-      "file_sha": "f7d54c61af5d1c5d6ceb27273374e8bbd56cc976079d6d74d75ecca93e35a1da"
+      "file_sha": "0467c61047b94d06cb0b20978e1a88661b827294e2e369f1af7247b4393cc547"
     },
     {
       "id": "sym:ts:src/types.ts:listSymbols",
@@ -8334,7 +9091,7 @@
       "path": "src/types.ts",
       "line": 193,
       "signature": "listSymbols(filePath: string): Promise<Symbol[]>",
-      "file_sha": "f7d54c61af5d1c5d6ceb27273374e8bbd56cc976079d6d74d75ecca93e35a1da"
+      "file_sha": "0467c61047b94d06cb0b20978e1a88661b827294e2e369f1af7247b4393cc547"
     },
     {
       "id": "sym:ts:src/types.ts:shutdown",
@@ -8343,7 +9100,7 @@
       "path": "src/types.ts",
       "line": 227,
       "signature": "shutdown(): Promise<void>",
-      "file_sha": "f7d54c61af5d1c5d6ceb27273374e8bbd56cc976079d6d74d75ecca93e35a1da"
+      "file_sha": "0467c61047b94d06cb0b20978e1a88661b827294e2e369f1af7247b4393cc547"
     },
     {
       "id": "sym:ts:src/utils/adr-enumeration.ts:ADR_NAMING_PATTERNS",
@@ -9056,47 +9813,119 @@
     {
       "source": "ADR-02",
       "source_path": "docs/adr/ADR-02-extraction-sole-api-caller.md",
-      "source_sha": "5694a01c0851be09edd7d0668fec7fd7d7c5dd36b9573190ff501b82ced275b2",
+      "source_sha": "93d3794638d9819e8cda85d9a44d3505745998e0a8c93e277f1899c96b5695d3",
       "severity": "context",
-      "claim": "Single CLI-invoked extractor is AnthropicAPIDirectExtractor; ClaudeCodeOnlyExtractor preserved as informational-stub for legacy config-field-value scenarios, emitting redirect message and zero-counts result.",
-      "rationale": "Q1.0.10 lock simplification reflecting Path-3 entry-point-determined architecture.",
-      "excerpt": "single CLI-invoked extractor `AnthropicAPIDirectExtractor`; `ClaudeCodeOnlyExtractor` preserved as informational-stub",
+      "claim": "contextatlas resolve-symbols is a Skill→LSP bridge: reads claims-only atlas, spawns LSP adapters, resolves raw symbol candidates via R8 name-form normalization, writes enriched atlas atomically. Zero API cost (local LSP subprocess only).",
+      "rationale": "Enables Skill-path atlases to reach feature-equivalence with CLI-path atlases at the symbol resolution layer.",
+      "excerpt": "Skill→LSP bridge. Reads claims-only atlas; spawns LSP adapters; resolves raw symbol candidates via R8 name-form normalization",
       "symbol_ids": [
-        "sym:ts:src/extraction/extractors/anthropic-api-direct.ts:AnthropicAPIDirectExtractor",
-        "sym:ts:src/extraction/extractors/claude-code-only.ts:ClaudeCodeOnlyExtractor"
+        "sym:ts:src/extraction/resolver.ts:expandCandidateForms",
+        "sym:ts:src/extraction/resolver.ts:resolveCandidatesWithNormalization"
       ]
     },
     {
       "source": "ADR-02",
       "source_path": "docs/adr/ADR-02-extraction-sole-api-caller.md",
-      "source_sha": "5694a01c0851be09edd7d0668fec7fd7d7c5dd36b9573190ff501b82ced275b2",
-      "severity": "soft",
-      "claim": "CI may mechanically enforce the permitted-modules invariant via a grep for @anthropic-ai/sdk imports outside src/extraction/ and src/grading/ (expected: zero matches).",
-      "rationale": "Mechanical enforcement strategy for the SOLE-CALLER invariant.",
-      "excerpt": "A grep for imports of `@anthropic-ai/sdk` outside `src/extraction/` and `src/grading/` should return zero matches. CI may enforce this.",
-      "symbol_ids": [
-        "sym:ts:src/types.ts:LanguageAdapter"
-      ]
-    },
-    {
-      "source": "ADR-02",
-      "source_path": "docs/adr/ADR-02-extraction-sole-api-caller.md",
-      "source_sha": "5694a01c0851be09edd7d0668fec7fd7d7c5dd36b9573190ff501b82ced275b2",
+      "source_sha": "93d3794638d9819e8cda85d9a44d3505745998e0a8c93e277f1899c96b5695d3",
       "severity": "context",
-      "claim": "Extraction has two coexisting entry points: `contextatlas index` (Anthropic API direct, pay-per-use) and `/index-atlas` slash command (Claude Code Skills, subscription-bounded); entry point determines cost model with no runtime user-choice config field.",
-      "rationale": "Defines the v0.7+ entry-point-determined extraction architecture.",
-      "excerpt": "User chooses surface; surface determines cost model; no config-field user-choice on a binary.",
+      "claim": "The CLI generation runner auto-invokes runValidateAdrsSubcommand post-generation with structured remediation on non-zero exit, closing the Skill-side-only MANDATORY Phase C gate gap.",
+      "rationale": "Substrate-equivalence between CLI and Skill paths at the mechanical-enforcement layer.",
+      "excerpt": "β-2 auto-invoke validate-adrs post-generation at CLI",
       "symbol_ids": [
-        "sym:ts:src/types.ts:LanguageAdapter"
+        "sym:ts:src/generation/cli-validate-adrs.ts:runValidateAdrsSubcommand"
       ]
     },
     {
       "source": "ADR-02",
       "source_path": "docs/adr/ADR-02-extraction-sole-api-caller.md",
-      "source_sha": "5694a01c0851be09edd7d0668fec7fd7d7c5dd36b9573190ff501b82ced275b2",
+      "source_sha": "93d3794638d9819e8cda85d9a44d3505745998e0a8c93e277f1899c96b5695d3",
       "severity": "hard",
-      "claim": "Features that would naturally want a query-time model call must instead move work to index time, fall back to deterministic heuristics, or expose ambiguity to the caller.",
-      "rationale": "Operationalizes the query-time invariant for feature design decisions.",
+      "claim": "The /generate-adrs Skill workflow has three MANDATORY phases: Phase A (investigative-depth file reads + line-number tracking), Phase B (ADR writing with direct JSON response, no script improvisation), Phase C (MANDATORY contextatlas validate-adrs gate blocking on non-zero exit).",
+      "rationale": "Phase C mechanical enforcement at CLI exit codes; Phase B direct JSON response absorbs FO-13 lesson against script-based atlas encoding.",
+      "excerpt": "workflow restructured to three MANDATORY phases",
+      "symbol_ids": [
+        "sym:ts:src/generation/prompt.ts:GENERATE_ADRS_PROMPT"
+      ]
+    },
+    {
+      "source": "ADR-02",
+      "source_path": "docs/adr/ADR-02-extraction-sole-api-caller.md",
+      "source_sha": "93d3794638d9819e8cda85d9a44d3505745998e0a8c93e277f1899c96b5695d3",
+      "severity": "context",
+      "claim": "contextatlas validate-atlas parses .contextatlas/atlas.json, validates against the canonical AtlasFileV1 schema (currently v1.4), emits structured remediation guidance to stderr on failure (exit 2), and exits 0 on success.",
+      "rationale": "Mechanical enforcement of canonical schema at CLI exit codes; binds agent behavior where text-only SKILL.md instructions did not.",
+      "excerpt": "ADDED `contextatlas validate-atlas` CLI subcommand ... validates against canonical AtlasFileV1 schema",
+      "symbol_ids": [
+        "sym:ts:src/storage/types.ts:AtlasFileV1"
+      ]
+    },
+    {
+      "source": "ADR-02",
+      "source_path": "docs/adr/ADR-02-extraction-sole-api-caller.md",
+      "source_sha": "93d3794638d9819e8cda85d9a44d3505745998e0a8c93e277f1899c96b5695d3",
+      "severity": "context",
+      "claim": "A parity test guards against silent drift between canonical .ts prompt sources and derived .md artifacts.",
+      "rationale": "Mechanical safeguard for the single-source-of-truth invariant.",
+      "excerpt": "Parity test (`src/extraction/prompt-artifact-parity.test.ts`) guards against silent build-script drift.",
+      "symbol_ids": [
+        "sym:ts:src/types.ts:LanguageAdapter"
+      ]
+    },
+    {
+      "source": "ADR-02",
+      "source_path": "docs/adr/ADR-02-extraction-sole-api-caller.md",
+      "source_sha": "93d3794638d9819e8cda85d9a44d3505745998e0a8c93e277f1899c96b5695d3",
+      "severity": "context",
+      "claim": "Atlas schema v1.4 adds optional claims[].symbol_candidates?: string[] field, populated by Skill-path extraction and consumed by resolve-symbols; absent on CLI-path atlases. Backward-compatible: earlier-version atlases import cleanly with the field absent.",
+      "rationale": "Records what LLM extracted vs what LSP could resolve, as honest-scope-acknowledgment substrate for unresolved candidates.",
+      "excerpt": "Optional `claims[].symbol_candidates?: string[]` field added (atlas schema v1.4 per `src/storage/types.ts`)",
+      "symbol_ids": [
+        "sym:ts:src/types.ts:LanguageAdapter"
+      ]
+    },
+    {
+      "source": "ADR-02",
+      "source_path": "docs/adr/ADR-02-extraction-sole-api-caller.md",
+      "source_sha": "93d3794638d9819e8cda85d9a44d3505745998e0a8c93e277f1899c96b5695d3",
+      "severity": "context",
+      "claim": "Both /index-atlas and /generate-adrs SKILL.md frontmatter pin model: claude-opus-4-7 and effort: xhigh, mechanically eliminating cross-cohort variance from session-model inheritance.",
+      "rationale": "Skill model+effort frontmatter overrides user session model for the Skill invocation; effort: xhigh on Opus 4.7 activates adaptive reasoning including extended thinking.",
+      "excerpt": "Both `/index-atlas` + `/generate-adrs` SKILL.md frontmatter pinned to `model: claude-opus-4-7` + `effort: xhigh`.",
+      "symbol_ids": [
+        "sym:ts:src/types.ts:LanguageAdapter"
+      ]
+    },
+    {
+      "source": "ADR-02",
+      "source_path": "docs/adr/ADR-02-extraction-sole-api-caller.md",
+      "source_sha": "93d3794638d9819e8cda85d9a44d3505745998e0a8c93e277f1899c96b5695d3",
+      "severity": "context",
+      "claim": "Expected cost for generate-adrs at v1.0 is $5-15 per repo on the CLI path (with extended thinking + investigative file reads); this supersedes the v0.6 cost-narrative of ~$0.50 cold-start / ~$1-3 with reference-context.",
+      "rationale": "Deliberate quality-cost trade-off framed as one-time-per-repo investment in foundational ADR substrate.",
+      "excerpt": "Expected cost: $5-15 per repo at v1.0 for `generate-adrs`",
+      "symbol_ids": [
+        "sym:ts:src/types.ts:LanguageAdapter"
+      ]
+    },
+    {
+      "source": "ADR-02",
+      "source_path": "docs/adr/ADR-02-extraction-sole-api-caller.md",
+      "source_sha": "93d3794638d9819e8cda85d9a44d3505745998e0a8c93e277f1899c96b5695d3",
+      "severity": "context",
+      "claim": "Extraction has two coexisting entry points: CLI (contextatlas index) using Anthropic API direct billing, and Claude Code slash command (/index-atlas) using subscription-bounded session tokens.",
+      "rationale": "The entry point determines the cost model; user chooses the surface, not a config field.",
+      "excerpt": "Two extraction entry points coexist",
+      "symbol_ids": [
+        "sym:ts:src/types.ts:LanguageAdapter"
+      ]
+    },
+    {
+      "source": "ADR-02",
+      "source_path": "docs/adr/ADR-02-extraction-sole-api-caller.md",
+      "source_sha": "93d3794638d9819e8cda85d9a44d3505745998e0a8c93e277f1899c96b5695d3",
+      "severity": "hard",
+      "claim": "Features that would want a model call at query time must be handled by pre-computing at index time, deterministic heuristics, or exposing ambiguity to the caller.",
+      "rationale": "Required alternative strategies to preserve the query-time invariant.",
       "excerpt": "Features that would naturally want a model call at query time ... must be handled differently",
       "symbol_ids": [
         "sym:ts:src/types.ts:LanguageAdapter"
@@ -9105,11 +9934,11 @@
     {
       "source": "ADR-02",
       "source_path": "docs/adr/ADR-02-extraction-sole-api-caller.md",
-      "source_sha": "5694a01c0851be09edd7d0668fec7fd7d7c5dd36b9573190ff501b82ced275b2",
+      "source_sha": "93d3794638d9819e8cda85d9a44d3505745998e0a8c93e277f1899c96b5695d3",
       "severity": "hard",
-      "claim": "Language adapters (e.g., tsserver, Pyright wrappers) must not call the Anthropic API.",
-      "rationale": "Introducing model calls into the adapter layer would violate the query-time invariant; adapters are local tooling wrappers.",
-      "excerpt": "Language adapters MUST NOT call the Anthropic API.",
+      "claim": "Language adapters (tsserver, Pyright wrappers) MUST NOT call the Anthropic API; they are local tooling wrappers only.",
+      "rationale": "Introducing model calls into the adapter layer would violate the query-time invariant.",
+      "excerpt": "Language adapters MUST NOT call the Anthropic API. They are local tooling wrappers",
       "symbol_ids": [
         "sym:ts:src/types.ts:LanguageAdapter"
       ]
@@ -9117,10 +9946,10 @@
     {
       "source": "ADR-02",
       "source_path": "docs/adr/ADR-02-extraction-sole-api-caller.md",
-      "source_sha": "5694a01c0851be09edd7d0668fec7fd7d7c5dd36b9573190ff501b82ced275b2",
-      "severity": "context",
-      "claim": "Legacy `--cc-only` CLI flag is accepted at v0.7+ as an informational no-op with redirect message to `/index-atlas` skill; flag removed at v0.8+.",
-      "rationale": "Honest deprecation cycle for the prior flag-based mode selection.",
+      "source_sha": "93d3794638d9819e8cda85d9a44d3505745998e0a8c93e277f1899c96b5695d3",
+      "severity": "soft",
+      "claim": "Legacy --cc-only CLI flag is accepted at v0.7+ as an informational no-op emitting a redirect message to /index-atlas; the flag will be removed at v0.8+.",
+      "rationale": "Honest deprecation cycle; --api-direct flag dropped entirely at v0.7+.",
       "excerpt": "Legacy `--cc-only` CLI flag accepted at v0.7+ as informational no-op with redirect message to `/index-atlas` skill; flag removed at v0.8+",
       "symbol_ids": [
         "sym:ts:src/types.ts:LanguageAdapter"
@@ -9129,10 +9958,10 @@
     {
       "source": "ADR-02",
       "source_path": "docs/adr/ADR-02-extraction-sole-api-caller.md",
-      "source_sha": "5694a01c0851be09edd7d0668fec7fd7d7c5dd36b9573190ff501b82ced275b2",
+      "source_sha": "93d3794638d9819e8cda85d9a44d3505745998e0a8c93e277f1899c96b5695d3",
       "severity": "hard",
-      "claim": "Only src/extraction/ and src/grading/ modules are permitted to import from @anthropic-ai/sdk or call the Anthropic API directly.",
-      "rationale": "Enforces the SOLE-CALLER invariant for research-time/index-time extraction; preserves cost-attribution and query-time separation.",
+      "claim": "Only src/extraction/ and src/grading/ modules are permitted to import from @anthropic-ai/sdk or otherwise call the Anthropic API directly.",
+      "rationale": "Enforces the SOLE-CALLER invariant for research-time/index-time extraction; CI can mechanically enforce via grep.",
       "excerpt": "are the only modules in the codebase permitted to import from `@anthropic-ai/sdk` or otherwise call the Anthropic API directly",
       "symbol_ids": [
         "sym:ts:src/types.ts:LanguageAdapter"
@@ -9141,10 +9970,10 @@
     {
       "source": "ADR-02",
       "source_path": "docs/adr/ADR-02-extraction-sole-api-caller.md",
-      "source_sha": "5694a01c0851be09edd7d0668fec7fd7d7c5dd36b9573190ff501b82ced275b2",
+      "source_sha": "93d3794638d9819e8cda85d9a44d3505745998e0a8c93e277f1899c96b5695d3",
       "severity": "hard",
-      "claim": "Query-time code paths (MCP tool handlers, language adapters, storage layer, git integration, config parsing) must not call the Anthropic API under any circumstances.",
-      "rationale": "Load-bearing invariant to preserve sub-100ms latency, predictable cost, and the 'pay once at index time' architectural promise.",
+      "claim": "Query-time code paths (MCP tool handlers, language adapters, storage layer, git integration, config parsing) MUST NOT call the Anthropic API under any circumstances.",
+      "rationale": "Load-bearing invariant preserving sub-100ms latency, zero query cost, and the 'pay once at index time' architectural promise.",
       "excerpt": "Query-time code paths — MCP tool handlers, language adapters, storage layer, git integration, config parsing — MUST NOT call the Anthropic API under any circumstances.",
       "symbol_ids": [
         "sym:ts:src/types.ts:LanguageAdapter"
@@ -9153,10 +9982,10 @@
     {
       "source": "ADR-02",
       "source_path": "docs/adr/ADR-02-extraction-sole-api-caller.md",
-      "source_sha": "5694a01c0851be09edd7d0668fec7fd7d7c5dd36b9573190ff501b82ced275b2",
+      "source_sha": "93d3794638d9819e8cda85d9a44d3505745998e0a8c93e277f1899c96b5695d3",
       "severity": "hard",
-      "claim": "Query-time code paths must not invoke Claude Code Skills, slash commands, or any other model-execution mechanism; query-time stays local-only (SQLite + LSP + filesystem).",
-      "rationale": "Extends the query-time invariant to cover Skills/slash-command mechanisms so the local-only guarantee holds regardless of execution surface.",
+      "claim": "Query-time code paths MUST NOT invoke Claude Code Skills, slash commands, or any other model-execution mechanism.",
+      "rationale": "Extended at v0.7+: query-time stays local-only (SQLite + LSP + filesystem); Skills path is index-time only.",
       "excerpt": "Query-time code paths MUST NOT invoke Claude Code Skills, slash commands, or any other model-execution mechanism either.",
       "symbol_ids": [
         "sym:ts:src/types.ts:LanguageAdapter"
@@ -9165,11 +9994,11 @@
     {
       "source": "ADR-02",
       "source_path": "docs/adr/ADR-02-extraction-sole-api-caller.md",
-      "source_sha": "5694a01c0851be09edd7d0668fec7fd7d7c5dd36b9573190ff501b82ced275b2",
+      "source_sha": "93d3794638d9819e8cda85d9a44d3505745998e0a8c93e277f1899c96b5695d3",
       "severity": "hard",
-      "claim": "The Claude Code Skills extraction path must not import from @anthropic-ai/sdk; it executes within Claude Code session context via Bash/Edit/Read/Write tools.",
-      "rationale": "Preserves the permitted-modules invariant by keeping Skills path off the SDK import surface.",
-      "excerpt": "The Skills extraction path does NOT import from `@anthropic-ai/sdk` (executes within Claude Code session context via Bash + Edit + Read + Write tools)",
+      "claim": "Single-source-of-truth for prompts lives in .ts files (EXTRACTION_PROMPT, GENERATE_ADRS_PROMPT); .md artifacts under dist/ are derived at build time via scripts/generate-prompt-artifacts.mjs and copied into .contextatlas/prompts/ at init.",
+      "rationale": "Skills consume canonical prompts via Read tool against static artifacts; parity test guards against silent build-script drift.",
+      "excerpt": "Single-source-of-truth at .ts preserved; .md artifacts derived; init-time copy into user repo's `.contextatlas/prompts/`",
       "symbol_ids": [
         "sym:ts:src/types.ts:LanguageAdapter"
       ]
@@ -9177,10 +10006,10 @@
     {
       "source": "ADR-02",
       "source_path": "docs/adr/ADR-02-extraction-sole-api-caller.md",
-      "source_sha": "5694a01c0851be09edd7d0668fec7fd7d7c5dd36b9573190ff501b82ced275b2",
-      "severity": "context",
-      "claim": "The `architecture` config field in .contextatlas.yml is deprecated at v0.7+ and scheduled for removal at v0.8+; legacy configs parse cleanly with a stderr deprecation warning.",
-      "rationale": "Entry-point-determined cost model replaces config-field user-choice; backward-compat preserved via warning emission.",
+      "source_sha": "93d3794638d9819e8cda85d9a44d3505745998e0a8c93e277f1899c96b5695d3",
+      "severity": "soft",
+      "claim": "The 'architecture' config field at .contextatlas.yml is deprecated at v0.7+; field will be removed at v0.8+. Legacy v0.6 configs continue parsing with stderr deprecation warnings.",
+      "rationale": "Honest deprecation cycle replacing config-field user-choice with entry-point-determined model.",
       "excerpt": "The `architecture` config field at `.contextatlas.yml` deprecated at v0.7+; field removed at v0.8+.",
       "symbol_ids": [
         "sym:ts:src/types.ts:LanguageAdapter"
@@ -9189,11 +10018,83 @@
     {
       "source": "ADR-02",
       "source_path": "docs/adr/ADR-02-extraction-sole-api-caller.md",
-      "source_sha": "5694a01c0851be09edd7d0668fec7fd7d7c5dd36b9573190ff501b82ced275b2",
+      "source_sha": "93d3794638d9819e8cda85d9a44d3505745998e0a8c93e277f1899c96b5695d3",
+      "severity": "hard",
+      "claim": "The /index-atlas Skill workflow has three MANDATORY CLI gates: Step 5b validate-atlas (block on non-zero exit), Step 6 resolve-symbols (atlas is incomplete without it), and Step 7 doctor verifying atlas.has_symbols PASS before reporting workflow success.",
+      "rationale": "Mechanical enforcement of canonical schema and workflow ordering; substrate-consistency claim defended via CLI exit codes, not text-instructional hope.",
+      "excerpt": "MANDATORY GATES",
+      "symbol_ids": [
+        "sym:ts:src/types.ts:LanguageAdapter"
+      ]
+    },
+    {
+      "source": "ADR-02",
+      "source_path": "docs/adr/ADR-02-extraction-sole-api-caller.md",
+      "source_sha": "93d3794638d9819e8cda85d9a44d3505745998e0a8c93e277f1899c96b5695d3",
       "severity": "context",
-      "claim": "atlas.json metadata records cost_usd (numeric API cost; $0 for Skills) and cost_model (`\"api\"` | `\"subscription-bounded\"`) to capture which entry point generated each extraction artifact.",
-      "rationale": "Provenance metadata for extraction artifacts per Q1.0.5 lock preservation.",
+      "claim": "The CLI generation path enables extended thinking by passing thinking: { type: 'enabled', budget_tokens: 32_000 } to anthropic.messages.create, closing API-parameter-equivalence with the Skill effort: xhigh frontmatter pinning.",
+      "rationale": "SDK 0.27.3 requires a type-cast workaround; runtime API forwards the parameter unmodified; thinking blocks are skipped naturally by extractTextFromResponse consuming only type === 'text' blocks.",
+      "excerpt": "β-1 extended thinking enabled at CLI generation API call",
+      "symbol_ids": [
+        "sym:ts:src/types.ts:LanguageAdapter"
+      ]
+    },
+    {
+      "source": "ADR-02",
+      "source_path": "docs/adr/ADR-02-extraction-sole-api-caller.md",
+      "source_sha": "93d3794638d9819e8cda85d9a44d3505745998e0a8c93e277f1899c96b5695d3",
+      "severity": "hard",
+      "claim": "The Claude Code Skills extraction path executes within Claude Code session context via Bash/Edit/Read/Write tools and does NOT import from @anthropic-ai/sdk.",
+      "rationale": "Preserves the permitted-modules invariant for @anthropic-ai/sdk imports while enabling the subscription-bounded path.",
+      "excerpt": "The Skills extraction path does NOT import from `@anthropic-ai/sdk` (executes within Claude Code session context via Bash + Edit + Read + Write tools)",
+      "symbol_ids": [
+        "sym:ts:src/types.ts:LanguageAdapter"
+      ]
+    },
+    {
+      "source": "ADR-02",
+      "source_path": "docs/adr/ADR-02-extraction-sole-api-caller.md",
+      "source_sha": "93d3794638d9819e8cda85d9a44d3505745998e0a8c93e277f1899c96b5695d3",
+      "severity": "hard",
+      "claim": "The contextatlas show-prompt and contextatlas show-generate-prompt CLI subcommands were removed entirely with no backward-compat path; Skills load canonical prompts only via Read tool against .contextatlas/prompts/*.md.",
+      "rationale": "Empirical evidence showed agents chose the deprecated subcommand because Bash was a familiar pattern; removal eliminates the alternative and enforces canonical prompt loading.",
+      "excerpt": "REMOVED the deprecated `contextatlas show-prompt` + `contextatlas show-generate-prompt` CLI subcommands entirely. No backward-compat path.",
+      "symbol_ids": [
+        "sym:ts:src/types.ts:LanguageAdapter"
+      ]
+    },
+    {
+      "source": "ADR-02",
+      "source_path": "docs/adr/ADR-02-extraction-sole-api-caller.md",
+      "source_sha": "93d3794638d9819e8cda85d9a44d3505745998e0a8c93e277f1899c96b5695d3",
+      "severity": "context",
+      "claim": "atlas.json cost metadata fields: cost_usd reports numeric Anthropic API cost ($0 for Skills entry point) and cost_model captures path semantics ('api' or 'subscription-bounded').",
+      "rationale": "Cost-accounting reflects which entry point generated the extraction artifacts.",
       "excerpt": "`cost_usd` field reports numeric Anthropic API cost ($0 for Skills entry point); `cost_model` field captures path semantics",
+      "symbol_ids": [
+        "sym:ts:src/types.ts:LanguageAdapter"
+      ]
+    },
+    {
+      "source": "ADR-02",
+      "source_path": "docs/adr/ADR-02-extraction-sole-api-caller.md",
+      "source_sha": "93d3794638d9819e8cda85d9a44d3505745998e0a8c93e277f1899c96b5695d3",
+      "severity": "context",
+      "claim": "contextatlas validate-adrs validates each docs/adr/*.md ADR against canonical depth-floor invariants: frontmatter, canonical sections, ≥2 symbol-with-line-number citations, ≥2 substantive Context paragraphs, ≥2 distinct named alternatives with text beyond bullet label, ≥1 fenced code block, ≥3 Rationale items, ≥3 Consequences items, 600-line ceiling hard fail.",
+      "rationale": "Mechanical enforcement of ADR depth-floor at the CLI boundary; agents are bound by exit codes rather than prose instructions.",
+      "excerpt": "ADDED `contextatlas validate-adrs` CLI subcommand",
+      "symbol_ids": [
+        "sym:ts:src/types.ts:LanguageAdapter"
+      ]
+    },
+    {
+      "source": "ADR-02",
+      "source_path": "docs/adr/ADR-02-extraction-sole-api-caller.md",
+      "source_sha": "93d3794638d9819e8cda85d9a44d3505745998e0a8c93e277f1899c96b5695d3",
+      "severity": "context",
+      "claim": "src/generation/cli-runner.ts adds a generatorOverride?: Generator test seam (parallel to extraction cli-runner's clientOverride) to enable isolated testing of β-2 paths without real Anthropic API calls.",
+      "rationale": "Test infrastructure for substrate-equivalence claim verification.",
+      "excerpt": "adds `generatorOverride?: Generator` test seam (parallel pattern to extraction cli-runner's `clientOverride`)",
       "symbol_ids": [
         "sym:ts:src/types.ts:LanguageAdapter"
       ]
@@ -15952,6 +16853,274 @@
     }
   ],
   "git_commits": [
+    {
+      "sha": "b7ce010b0d31d8c569d29b036b5ee9820a73eea6",
+      "date": "2026-05-12T11:33:40-04:00",
+      "message": "Step 2.5: substep cluster close — Skill + CLI substrate-equivalence empirically defended across 7-commit cluster (2.3.a.0 → 2.4 closure); 14 cycle-execution observations preserved; Step 3 forward-planning surface ready for atlas refresh + cycle-close ship gate",
+      "author_email": "traviswye@gmail.com",
+      "files": [
+        "STEP-PLAN-V0.7.md"
+      ]
+    },
+    {
+      "sha": "48181f83d490755962dcdadda5aaacd2294e0740",
+      "date": "2026-05-12T11:28:10-04:00",
+      "message": "Step 2.4 closure: Skill + CLI substrate-equivalence empirically defended at API-parameter + mechanical-enforcement layers per Step 2.3.c.0 + 2.4.a substrate-evolution; 4-cohort-entry-surface matrix defended; Framing 1 honest-scope-acknowledgment for CLI single-shot vs Skill multi-step architectural difference; β-3 empirical CLI cost measurement v0.8+ carry-forward",
+      "author_email": "traviswye@gmail.com",
+      "files": [
+        "CLAUDE.md",
+        "STEP-PLAN-V0.7.md",
+        "docs/adr/ADR-02-extraction-sole-api-caller.md"
+      ]
+    },
+    {
+      "sha": "9ba9a86ed460eb7a437c017990e4f0cdfeba664f",
+      "date": "2026-05-12T11:21:07-04:00",
+      "message": "Step 2.4.a: CLI substrate-evolution per Option β (extended thinking + auto-invoke validate-adrs); closes CLI-vs-Skill substrate-equivalence gaps at API-parameter + mechanical-enforcement layers",
+      "author_email": "traviswye@gmail.com",
+      "files": [
+        "STEP-PLAN-V0.7.md",
+        "src/generation/cli-runner.test.ts",
+        "src/generation/cli-runner.ts",
+        "src/generation/generators/anthropic-api-direct.ts"
+      ]
+    },
+    {
+      "sha": "6125d44ab8e07278b413b76b08c0ddb7e28b956f",
+      "date": "2026-05-12T10:03:40-04:00",
+      "message": "Step 2.3.c.0: Generation-side β-bounded mechanical-floor substrate per Travis Lock 1",
+      "author_email": "traviswye@gmail.com",
+      "files": [
+        ".claude/skills/generate-adrs/SKILL.md",
+        ".claude/skills/index-atlas/SKILL.md",
+        "CLAUDE.md",
+        "STEP-PLAN-V0.7.md",
+        "docs/adr/ADR-02-extraction-sole-api-caller.md",
+        "src/cli-args.ts",
+        "src/generation/cli-validate-adrs.test.ts",
+        "src/generation/cli-validate-adrs.ts",
+        "src/generation/prompt.test.ts",
+        "src/generation/prompt.ts",
+        "src/index.ts"
+      ]
+    },
+    {
+      "sha": "d9b6271f490d7845f36a2bf86f8ad69a9f553c4e",
+      "date": "2026-05-12T09:10:30-04:00",
+      "message": "Step 2.3: CLI-vs-Skill equivalence verification PASS post-β-bounded substrate empirical validation",
+      "author_email": "traviswye@gmail.com",
+      "files": [
+        "STEP-PLAN-V0.7.md"
+      ]
+    },
+    {
+      "sha": "d822060d250e7c11d10628b0a2379665fb34e60a",
+      "date": "2026-05-11T23:05:20-04:00",
+      "message": "Step 2.3.b.0: β-bounded Skill substrate enforcement per Travis Lock 1",
+      "author_email": "traviswye@gmail.com",
+      "files": [
+        ".claude/skills/generate-adrs/SKILL.md",
+        ".claude/skills/index-atlas/SKILL.md",
+        "CLAUDE.md",
+        "STEP-PLAN-V0.7.md",
+        "docs/adr/ADR-02-extraction-sole-api-caller.md",
+        "src/cli-args.test.ts",
+        "src/cli-args.ts",
+        "src/extraction/cli-show-prompt.test.ts",
+        "src/extraction/cli-show-prompt.ts",
+        "src/extraction/cli-validate-atlas.test.ts",
+        "src/extraction/cli-validate-atlas.ts",
+        "src/generation/cli-show-generate-prompt.test.ts",
+        "src/generation/cli-show-generate-prompt.ts",
+        "src/index.ts"
+      ]
+    },
+    {
+      "sha": "b96ebf2f4181db825bfd6d5cebf445e0557124b8",
+      "date": "2026-05-11T17:46:30-04:00",
+      "message": "Step 2.3.a.1: Approach D Skill→LSP-symbol-resolution bridge",
+      "author_email": "traviswye@gmail.com",
+      "files": [
+        ".claude/skills/index-atlas/SKILL.md",
+        "STEP-PLAN-V0.7.md",
+        "docs/adr/ADR-02-extraction-sole-api-caller.md",
+        "src/cli-args.ts",
+        "src/extraction/cli-resolve-symbols.test.ts",
+        "src/extraction/cli-resolve-symbols.ts",
+        "src/extraction/cli-runner.test.ts",
+        "src/extraction/pipeline.test.ts",
+        "src/extraction/resolver.test.ts",
+        "src/extraction/resolver.ts",
+        "src/index.ts",
+        "src/storage/types.ts"
+      ]
+    },
+    {
+      "sha": "b6b4a90497b049d4673c5b640bfd8ce6a7029f58",
+      "date": "2026-05-11T17:30:48-04:00",
+      "message": "Step 2.3.a.0: Path-γ Read-tool refactor — prompt artifact substrate evolution",
+      "author_email": "traviswye@gmail.com",
+      "files": [
+        ".claude/skills/generate-adrs/SKILL.md",
+        ".claude/skills/index-atlas/SKILL.md",
+        "CLAUDE.md",
+        "STEP-PLAN-V0.7.md",
+        "package.json",
+        "scripts/generate-prompt-artifacts.mjs",
+        "src/doctor/checks/prompts.test.ts",
+        "src/doctor/checks/prompts.ts",
+        "src/doctor/runner.ts",
+        "src/extraction/prompt-artifact-parity.test.ts",
+        "src/init/prompt-artifact-copy.test.ts",
+        "src/init/prompt-artifact-copy.ts",
+        "src/init/runner.ts"
+      ]
+    },
+    {
+      "sha": "dc4d84191e77b633a114caadfe88084f6a4b0cb8",
+      "date": "2026-05-11T15:06:15-04:00",
+      "message": "Step 2.2.b.ii: Rich + django/deps reference-context-aided verification PASS-with-substantively-positive-A/B",
+      "author_email": "traviswye@gmail.com",
+      "files": [
+        "STEP-PLAN-V0.7.md"
+      ]
+    },
+    {
+      "sha": "c1fa07730e044dc42a57bfa3c0fc807d06780923",
+      "date": "2026-05-11T14:37:54-04:00",
+      "message": "Step 2.2.b.i: Rich pure cold-start verification PASS-with-bounded-observations — generate-adrs against Textualize/rich (Python; 16 ADRs in 2:13; $0.47 platform-billed) + Phase 4 extraction closes generate-adrs → extraction → atlas → query loop empirically (126 claims; errors=0; $0.72; cumulative $1.19); v0.7 launch-readiness verified at external-repo dogfood surface; substep cluster 2.2.b.0 + 2.2.c + 2.2.d + 2.2.e absorbed 5 FO observations (FO-4/5/7/8 fixed; FO-6 thesis empirically refuted); 3 bounded observations forward-carry (FO-9 PS-wrapper cosmetic v0.8+; FO-10 symbol-resolution-gap v0.8+ with honest-scope; ADR depth honest-scope + iterative refinement v0.8+ candidate); 15-class enumeration preserved",
+      "author_email": "traviswye@gmail.com",
+      "files": [
+        "STEP-PLAN-V0.7.md"
+      ]
+    },
+    {
+      "sha": "cf6684b7bfbd365e0cd2da439ad377a8446e2a12",
+      "date": "2026-05-11T14:14:40-04:00",
+      "message": "Step 2.2.e: FO-8 cold-start UX consistency fix (contextatlas generate-adrs surfaced as canonical cold-start path; Scope γ' multi-format naming conventions shown user-friendly; v0.6/v0.7-H2 stale framing removed at init renderRouteMessage + state-detection.design_md.present WARN); Step 2.2.e scope pivot per Checkpoint 2 empirical evidence (FO-6 thesis refuted: pyright works against Rich; threshold refinement dropped; warmup-refactor v0.8+ candidate preserved); \"hypothesis refuted by empirical evidence; revise\" pattern (class 15 substantive refinement composition: evidence-first vs hypothesis-driven)",
+      "author_email": "traviswye@gmail.com",
+      "files": [
+        "STEP-PLAN-V0.7.md",
+        "src/doctor/checks/state-detection.ts",
+        "src/init/runner.test.ts",
+        "src/init/runner.ts"
+      ]
+    },
+    {
+      "sha": "84fde50738c62a9fb6fcbf9208ddde277d16be9d",
+      "date": "2026-05-11T13:40:37-04:00",
+      "message": "Step 2.2.d: FO-7 cold-start init fix (Option iii hybrid: init creates docs/adr/ + doctor atlas.exists informational at first-run) + FO-6 (β) diagnostic substrate as launch-worthy observability (verbose LSP message logging + configurable lsp.initialize_timeout_ms + adapter health diagnostic in doctor); Step 2.2.d.0 code-review pre-investigation surfaced warmup-pattern hypothesis as v0.8+ candidate; case (b) routing per Travis Lock 1 + v0.8+ deferral per Lock 2; class 15 substantive refinement composition",
+      "author_email": "traviswye@gmail.com",
+      "files": [
+        "STEP-PLAN-V0.7.md",
+        "src/adapters/lsp-client.ts",
+        "src/adapters/registry.ts",
+        "src/config/parser-lsp.test.ts",
+        "src/config/parser.ts",
+        "src/doctor/checks/atlas-first-run.test.ts",
+        "src/doctor/checks/atlas.ts",
+        "src/doctor/checks/lsp.ts",
+        "src/doctor/runner.ts",
+        "src/doctor/types.ts",
+        "src/extraction/cli-runner.ts",
+        "src/generation/cli-runner.ts",
+        "src/init/runner.ts",
+        "src/types.ts"
+      ]
+    },
+    {
+      "sha": "b536487191b96fd439bd8703aba68f97e9f1fa11",
+      "date": "2026-05-11T13:02:34-04:00",
+      "message": "Step 2.2.c: FO-5 launch-blocking Python adapter LSP client stream-state-management fix — defensive write guards in LspClient.sendRaw + subprocess exit listener + remediation guidance to stderr on subprocess unexpected exit (γ hybrid per Travis Lock 1); +5 tests (1428 baseline → 1433); pre-Step-2.2.b.i resume substantive empirical verification baseline against external Python codebase (Rich)",
+      "author_email": "traviswye@gmail.com",
+      "files": [
+        "STEP-PLAN-V0.7.md",
+        "src/adapters/lsp-client.test.ts",
+        "src/adapters/lsp-client.ts"
+      ]
+    },
+    {
+      "sha": "aa97406df86bb6a2a47f0fc6a2e927da434f27cb",
+      "date": "2026-05-11T12:37:18-04:00",
+      "message": "Step 2.2.b.0: FO-4 launch-readiness first-impression UX fixes — --version + --help flag handling (Path-γ-adjacent simple flags; bypass subcommand dispatch; exit 0) + doctor peer-dependency install guidance refinement (substantive remediation messaging for pyright + typescript-language-server missing-binary surfaces); pre-Step-2.2.b.i empirical verification baseline",
+      "author_email": "traviswye@gmail.com",
+      "files": [
+        "STEP-PLAN-V0.7.md",
+        "src/cli-args.test.ts",
+        "src/cli-args.ts",
+        "src/doctor/checks/lsp.ts",
+        "src/index.ts"
+      ]
+    },
+    {
+      "sha": "6813eb5fa187779bdb238263d941fd53283190d5",
+      "date": "2026-05-11T12:21:36-04:00",
+      "message": "Step 2.2.a.2: GENERATE_ADRS_PROMPT canonical prompt + AnthropicAPIDirectGenerator full implementation + reference-context feature (token budget management γ + soft-warning + attempt-anyway at 500k per Lock 1) + .claude/skills/generate-adrs/SKILL.md Skills surface; substep split (B) substantive interpretive content cluster + 15th cycle-execution observation class captured",
+      "author_email": "traviswye@gmail.com",
+      "files": [
+        ".claude/skills/generate-adrs/SKILL.md",
+        "STEP-PLAN-V0.7.md",
+        "src/cli-args.test.ts",
+        "src/cli-args.ts",
+        "src/generation/cli-runner.test.ts",
+        "src/generation/cli-runner.ts",
+        "src/generation/cli-show-generate-prompt.test.ts",
+        "src/generation/codebase-walker.test.ts",
+        "src/generation/codebase-walker.ts",
+        "src/generation/cost-estimator.test.ts",
+        "src/generation/cost-estimator.ts",
+        "src/generation/generator.ts",
+        "src/generation/generators/anthropic-api-direct.test.ts",
+        "src/generation/generators/anthropic-api-direct.ts",
+        "src/generation/prompt.test.ts",
+        "src/generation/prompt.ts",
+        "src/generation/reference-context-walker.test.ts",
+        "src/generation/reference-context-walker.ts",
+        "src/index.ts"
+      ]
+    },
+    {
+      "sha": "26ba5cbf52054169d09f971b8116b6d018701e42",
+      "date": "2026-05-11T11:43:19-04:00",
+      "message": "Step 2.2.a.1: Generator infrastructure (parallel to Extractor per Q2.2.a.3 β + Q2.2.a.1 α NEW src/generation/) + Path-γ contextatlas show-generate-prompt CLI subcommand + generate-adrs CLI dispatch wiring + 2 skeleton concrete generators (AnthropicAPIDirectGenerator pending Step-2.2.a.2; ClaudeCodeOnlyGenerator informational-stub per Path-3 inheritance); substep split (B) mechanical infrastructure cluster",
+      "author_email": "traviswye@gmail.com",
+      "files": [
+        "STEP-PLAN-V0.7.md",
+        "src/cli-args.test.ts",
+        "src/cli-args.ts",
+        "src/generation/cli-runner.test.ts",
+        "src/generation/cli-runner.ts",
+        "src/generation/cli-show-generate-prompt.test.ts",
+        "src/generation/cli-show-generate-prompt.ts",
+        "src/generation/factory.test.ts",
+        "src/generation/factory.ts",
+        "src/generation/generator.ts",
+        "src/generation/generators/anthropic-api-direct.test.ts",
+        "src/generation/generators/anthropic-api-direct.ts",
+        "src/generation/generators/claude-code-only.test.ts",
+        "src/generation/generators/claude-code-only.ts",
+        "src/generation/prompt.ts",
+        "src/index.ts"
+      ]
+    },
+    {
+      "sha": "4e9161cdbf3b24fc31381fa905720c68ada243b7",
+      "date": "2026-05-11T11:29:10-04:00",
+      "message": "Re-extract atlas at HEAD 40d8b77 for v0.7 Step 2.1 substrate (130 new claims + substrate-consistency empirically verified post-Step-2.1.a; matches v0.4 454fcc8 substantive-milestone-re-extract precedent)",
+      "author_email": "traviswye@gmail.com",
+      "files": [
+        ".contextatlas/atlas.json"
+      ]
+    },
+    {
+      "sha": "6e6a66cd93501ae14e07ef8b4a000749b76069ab",
+      "date": "2026-05-11T11:24:46-04:00",
+      "message": "Step 2.1: ContextAtlas-on-itself dogfood operational baseline 4-phase verification PASS (Phase 1 install + Phase 2 doctor improved 25/4/0 → 26/3/0 post-Step-2.1.a + Phase 3 fresh extraction Mode B + Phase 4 smoke test query); regression-test gate passed; substrate-consistency between state-detection + extraction verified empirically; 14th cycle-execution observation class captured; Step 2.2 cluster unblocked",
+      "author_email": "traviswye@gmail.com",
+      "files": [
+        "STEP-PLAN-V0.7.md"
+      ]
+    },
     {
       "sha": "40d8b77f77d1ce6034a66f299df3607f3030a665",
       "date": "2026-05-11T11:06:21-04:00",

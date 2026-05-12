@@ -138,7 +138,59 @@ modules invariant; this skill consumes the prompt via Read tool
 against the `.contextatlas/prompts/extraction.md` artifact (Path-γ
 Read-tool refactor per v0.7 Step 2.3.a.0).
 
-For each source document:
+### Refresh-aware workflow (cold-start vs incremental refresh)
+
+`/index-atlas` is the canonical Skill entry point for BOTH first-
+time atlas construction AND atlas refresh after code/ADR changes.
+The workflow dispatches based on whether `.contextatlas/atlas.json`
+already exists:
+
+**Cold-start case (no existing `.contextatlas/atlas.json`):**
+Full extraction. Walk every source document; compute SHA per
+document; extract claims from every document; populate `source_shas`
+with full registry; write atlas with all claims. No SHA-diff gating
+applies because there is no baseline to compare against.
+
+**Refresh case (existing `.contextatlas/atlas.json`):**
+Phase 4 SHA-diff incremental extraction per ADR-12 substrate.
+Before extracting any document:
+
+1. **Read** the existing atlas.json via Read tool.
+2. **Capture** the existing `source_shas` field as the baseline
+   SHA registry — this maps each previously-extracted source path
+   to its SHA at last extraction.
+3. **Capture** the existing `claims` array as the preserved-claims
+   substrate — claims keyed to unchanged sources should survive the
+   refresh without re-extraction.
+4. For each source document the user wants indexed (ADRs at
+   `<repoRoot>/<config.adrs.path>`; optionally docstrings via the
+   adapter walker; optionally commit messages from git history):
+   - Compute the current SHA-256 of the document body.
+   - Look up the baseline SHA in the captured `source_shas`
+     registry from step 2.
+   - **If the current SHA matches the baseline SHA** (UNCHANGED
+     source): SKIP extraction for this document. Its claims from
+     the preserved-claims substrate (step 3) carry forward
+     unchanged into the refreshed atlas.
+   - **If the current SHA differs from the baseline OR the source
+     path is absent from the baseline registry** (CHANGED or NEW
+     source): EXTRACT claims via the canonical workflow below
+     (step 5+).
+   - **If a source path was in the baseline but no longer on disk**
+     (DELETED source): drop its preserved claims from the refresh;
+     remove its entry from `source_shas`.
+
+This mirrors the CLI's `contextatlas index` Phase 4 SHA-diff
+extraction pattern (per ADR-12 substrate) and substantively bounds
+refresh cost — cohort users re-running `/index-atlas` after a single
+ADR edit pay only the extraction cost for the one changed document,
+not the full corpus.
+
+### Per-source-document extraction workflow
+
+For each source document FLAGGED FOR EXTRACTION per the refresh-
+aware workflow above (cold-start: all sources; refresh: only
+changed/new sources):
 
 1. Read the document body (ADR/docstring/commit message text) using
    the Read tool.
@@ -155,9 +207,23 @@ For each source document:
    Drop malformed claims (log warning); don't fail the whole run.
 5. Persist the full atlas to `.contextatlas/atlas.json` using the
    Write tool, conforming exactly to the canonical schema above.
-   Compute SHA-256 hashes of each source document and populate
-   `source_shas`. Each claim's `source_sha` field must match the
-   corresponding hash in `source_shas` for that source file. Leave
+
+   **Refresh-case merge discipline:** if running an incremental
+   refresh (existing atlas.json captured at refresh-aware
+   workflow step 1), the final `claims` array is the union of:
+   (a) preserved baseline claims for UNCHANGED sources (carried
+   forward from the captured substrate; do NOT re-extract these),
+   (b) newly-extracted claims for CHANGED + NEW sources (from
+   step 3-4 above), with (c) baseline claims for DELETED sources
+   dropped. The `source_shas` field is the union of preserved
+   baseline entries (unchanged sources) + newly-computed SHAs
+   (changed + new sources), with deleted-source entries removed.
+
+   **Cold-start case:** no merge; all claims come from this run;
+   `source_shas` contains the full registry from this run.
+
+   Each claim's `source_sha` field must match the corresponding
+   hash in `source_shas` for that source file. Leave
    `symbols: []` and each `claims[].symbol_ids: []` empty.
 
 ### MANDATORY GATES (workflow steps 5b-7)

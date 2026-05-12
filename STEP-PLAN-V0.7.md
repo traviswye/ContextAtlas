@@ -583,36 +583,57 @@ triggers).
 
 ---
 
-### Step 3 — TERTIARY A1+A2+A3 substrate gap fixes
+### Step 3 — Atlas refresh on contextatlas-on-itself + cycle-execution observations aggregation
 
-**Scope.** Per Q-pre-3 lock + v0.7-SCOPE.md §2 TERTIARY scope:
-A1 `classifyError` catch-all + A2 `extractDocstringsForFile`
-non-idempotent + A3 `pipeline.ts` Stage 5 deletion handling
-(paired substrate gaps from `research/v0.5-candidates.md` #1
-+ #2 + #3; ~90-300 LOC total scope estimate; user-trust impact
-at v1.0 launch).
+**Scope rescope per Step 2.5 forward-planning lock.** Original
+Step 3 TERTIARY A1+A2+A3 substrate gap fixes (`classifyError`
+catch-all + `extractDocstringsForFile` non-idempotent + `pipeline.ts`
+Stage 5 deletion handling) DEFERRED to v0.8+ per Travis Step 2.5
+forward-planning framework. v0.7 cycle's substantive
+substrate-evolution scope substantively absorbed by Step 2 substep
+cluster (Skill + CLI substrate-equivalence at API-parameter +
+mechanical-floor-enforcement layers; 7 commits at Step 2 close);
+TERTIARY scope absorption postponed to v0.8+ cycle for cycle-
+pacing discipline.
 
-**Substeps** (firmed at Step 3.0 per Step N.0 cadence convention):
+**Substantive v0.7 Step 3 scope** per Travis Step 2.5 forward-
+planning surface + Step 3.0 design adjudications locked at
+Step 3.0 surface (commit-pending; Step 3.0 absorbed inline at
+Step 2.5 / Step 3.0 design surface):
 
-- [ ] **Step 3.0** — Design adjudications (Q3.0.1-Q3.0.3+ locks;
-  A1 classifyError split design; A2 idempotency model; A3
-  deletion sweep design).
-- [ ] **Step 3.1** — A1 classifyError split implementation
-  (specific classification taxonomy; user-facing error reporting;
-  unit tests).
-- [ ] **Step 3.2** — A2 extractDocstringsForFile idempotency
-  implementation (symbol-id-keyed idempotency model; integration
-  tests against fixture).
-- [ ] **Step 3.3** — A3 pipeline.ts Stage 5 deletion handling
-  implementation (claim-source-aware deletion sweep; file-
-  deletion idempotency; integration tests against fixture).
-- [ ] **Step 3.4** — Step 3 close (progress log batching for
-  Steps 3.1-3.3; A1+A2+A3 cumulative LOC + test coverage
-  verification).
+Atlas refresh on contextatlas-on-itself per dogfood discipline
+(CLI path per LOCK 1; ADR-12 incremental refresh substrate at
+refined Step 2.3.c.0 substrate); SKILL.md /index-atlas α
+refresh-aware workflow amendment (cohort UX symmetry between
+cold-start vs incremental refresh dispatch); CLAUDE.md cohort UX
+framing (canonical refresh entry point per cohort path); cycle-
+execution observations aggregation per Option b progress-log-
+distributed (per v0.6 Q8 lock precedent); v0.8+ forward-pointer
+scope capture; Steps 4-5 ship-gate forward-planning surface.
 
-**Unblocks.** Step 4 cycle-close evaluations (Step 3 outcome
-surfaces TERTIARY closure status; rescope condition #3 triggers
-if scope creep beyond ~90-300 LOC envelope).
+**Substeps** (compressed split per LOCK 6):
+
+- [x] **Step 3.0** — Design adjudications. Absorbed inline at
+  Step 2.5/3.0 surface (Travis locks 1-6 captured at Step 2.5
+  forward-planning + dev design proposal surface). Interpretation
+  B (single-command atlas refresh; β-3 v0.8+ deferral) + α
+  Skill-mode refresh discoverability + critical pre-API-spend
+  checkpoint cadence + compressed substep split shape (3.0 + 3.1
+  + 3.2) locked.
+- [x] **Step 3.1** — Atlas refresh execution + α substrate-
+  evolution. Shipped 2026-05-12; commit `[this commit]`.
+  contextatlas-on-itself atlas refresh per ADR-12 incremental
+  substrate (v1.3 → v1.4 schema upgrade; extracted_at_sha advance
+  40d8b77 → b7ce010; 1 changed file re-extracted at $0.23 / 47s /
+  18k input + 5.7k output tokens). SKILL.md /index-atlas α
+  refresh-aware workflow amendment + CLAUDE.md atlas refresh
+  cohort UX framing.
+- [ ] **Step 3.2** — Step 3 substep cluster close (cycle position
+  + observations aggregation + v0.8+ forward-pointers + Steps 4-5
+  ship-gate forward-planning surface).
+
+**Unblocks.** Steps 4-5 cycle-close ship-gate work post-Step-3.2
+close per standard cycle pattern.
 
 ---
 
@@ -722,6 +743,98 @@ timeline; not blocking).
 ## Progress log
 
 *Entries added in reverse-chronological order as steps ship.*
+
+### Step 3.1 shipped — 2026-05-12 (contextatlas-on-itself atlas refresh per ADR-12 incremental refresh substrate at refined Step 2.3.c.0 substrate; v1.3 → v1.4 schema upgrade; extracted_at_sha advance; SKILL.md /index-atlas α refresh-aware workflow amendment + CLAUDE.md cohort UX framing)
+
+V0.7 Step 3.1 substantively ships the atlas refresh on contextatlas-on-itself per dogfood discipline + Skill cohort UX α substrate-evolution. Step 3.1 demonstrated `contextatlas index` works against pre-existing atlas state without `contextatlas init` prerequisite (substantively important Class-15 instance 15 — Travis empirical correction of dev framing). Atlas refresh empirical signals substantively positive at refined substrate; α substrate-evolution closes Skill cohort refresh discoverability gap surfaced at Step 3.0 design surface.
+
+| Substep | branch | commit | Notes |
+|---|---|---|---|
+| 3.1 atlas refresh + α substrate-evolution | main | [this commit] | contextatlas index against pre-existing v1.3 atlas; Phase 4 incremental (25 unchanged + 1 changed + 0 added + 0 deleted) → v1.4 schema upgrade; extracted_at_sha 40d8b77 → b7ce010 advance; $0.23 / 47s wall-clock; SKILL.md /index-atlas α refresh-aware workflow amendment binding cohort UX symmetry with CLI Phase 4 substrate; CLAUDE.md "Atlas refresh cohort UX" section new framing |
+
+#### Empirical signals at refined Step 2.3.c.0 substrate
+
+- **Phase 4 incremental refresh per ADR-12 substrate working as designed:** 25 unchanged + 1 changed + 0 added + 0 deleted out of 26 prose files. Substantively bounded re-extraction despite 30 v0.7 commits ahead of 40d8b77 baseline (most commits code-only; ADRs preserved at SHA; docstring extraction SHA-gated per ADR-12).
+- **Cost: $0.23 / wall-clock 47s / 1 API call / 18k input + 5.7k output tokens.** Substantively BELOW $0.50-2 envelope LOCK 4 estimated. Refined substrate at index surface substantively cheap for incremental refresh — extended thinking (β-1 Step 2.4.a) doesn't substantively inflate index cost for single-document-changed refresh case.
+- **Schema upgrade: v1.3 → v1.4 confirmed.** validate-atlas exits 0; doctor `schema_version_compatible` PASS at 1.4.
+- **`extracted_at_sha` advance: 40d8b77 → b7ce010 confirmed.** Atlas substantively aligned with current HEAD.
+- **Atlas substantively richer post-refresh:** 1088 symbols (TS adapter inventory); 524 claims (524 ADR + 0 docstring + 0 commit; per default config); doctor 29 PASS / 1 WARN / 0 FAIL.
+
+#### Observation 1 — Commit-message extraction filter shape (524 ADR + 0 docstring + 0 commit with 247 commits indexed)
+
+Substantively EXPECTED behavior per v0.4 cycle close VALIDATED finding (per CLAUDE.md Extraction cost framing section): "filter-shape vs content-richness distinction VALIDATED (commit-message filter is conventional-commits-flavored; under-captures non-conventional corpora)". Run output substantively confirms commit-message extraction fired (git phase complete; 247 commits collected) — but 0 commit claims extracted because:
+
+- Default `commit_message_filter` is conventional-commits-flavored
+- ContextAtlas commit style is `"Step N.M.X: <substantive substep close framing>"` — NOT Conventional Commits
+- Default filter under-captures non-conventional corpora
+
+**Substantive disposition:** config-level customization opportunity for contextatlas-on-itself dogfood — `.contextatlas.yml` could add custom `commit_message_filter` pattern matching `^Step \d+\.` prefix to capture v0.7 cycle substep-close substantive content. v0.8+ candidate substrate-customization for contextatlas-on-itself dogfood enhancement; NOT v0.7 launch-blocking.
+
+#### Observation 2 — Doctor WARN `extraction.prompts_artifact_exists` at CLI-only dogfood substrate
+
+Per Travis empirical correction (Class-15 instance 15 — substantively important capture):
+
+Step 3.1 demonstrated `contextatlas index` substantively works against pre-existing `.contextatlas/atlas.json` + `.contextatlas.yml` + `docs/adr/` substrate WITHOUT `contextatlas init` being a prerequisite. ADR-12 incremental refresh substrate handles existing atlas state correctly; init is for fresh-state scaffolding, NOT a prerequisite for index against existing atlas.
+
+Doctor WARN on `extraction.prompts_artifact_exists` is informational for CLI-only dogfood substrate:
+- CLI cohort: imports `GENERATE_ADRS_PROMPT` constant directly per Step 2.4.a substrate-equivalence audit; prompt artifacts at `.contextatlas/prompts/` not required
+- Skill cohort: loads prompt artifacts via Read tool; would require `init` to scaffold artifacts BEFORE Skill cohort entry path works at this substrate
+
+**Revised disposition: Option α — Accept doctor WARN as expected behavior at CLI-only dogfood substrate.** Init wasn't a prerequisite for Step 3.1 atlas refresh; doesn't need to be Step 3 absorption. Skill cohort entry path at contextatlas-on-itself is separate dogfood surface; v0.8+ candidate if cohort-path dogfood symmetry desired. v0.7 ship dogfood story stays CLI-side per established v0.1-v0.6 pattern.
+
+#### Observation 3 — 38 unresolved_candidates + 1 unresolved frontmatter hint (ADR-02 ExtractionPipeline)
+
+Bounded; substantively similar to v0.6 baseline (canonical R11 retention pattern). ADR-02 ExtractionPipeline unresolved frontmatter hint substantively expected since ADR-02 references substrate evolution surfaces (ExtractionPipeline is class name in src/extraction/pipeline.ts; symbol exists but frontmatter substantively references its conceptual identity not its current renamed-form). Non-blocking; canonical R11 retention preserves diagnostic visibility.
+
+#### Observation 4 — FO-15 + FO-16 CLI substrate canonical values confirmed
+
+Post-refresh atlas.json metadata empirically validates canonical CLI extraction pipeline produces:
+- `"contextatlas_version": "0.6.0"` — actual installed binary version (package.json hasn't bumped to 0.7.0 yet; package.json bump is v0.7.0 ship-gate work at Step 4-5)
+- `"contextatlas_commit_sha": "b7ce010b0d31..."` — current HEAD SHA per `resolveContextatlasCommitSha()` substrate
+- `"generated_at": "2026-05-12T..."` — actual ISO timestamp at extraction time
+
+FO-15 + FO-16 canonical values empirically positive at CLI substrate per Step 2.4 closure framing — substantively distinct from Skill-side agent-improvisation surface that surfaced FO-15 + FO-16 at Step 2.3 closure.
+
+#### α substrate-evolution rationale (SKILL.md /index-atlas amendment)
+
+**Substantive cohort UX gap pre-α:** `/index-atlas` SKILL.md described workflow as cold-start-only ("walks source documents... extracts architectural claims... writes atlas.json"). NO refresh-aware semantics. NO SHA-diff gating. Empirically confirmed at Step 2.3 closure + Step 2.4 Checkpoint 3 — agent did FULL re-extraction of all ADRs both times despite identical SHAs. This is asymmetric vs CLI cohort path which does ADR-12 Phase 4 SHA-diff incremental refresh.
+
+**α amendment substrate (~80 LOC SKILL.md addition):** new "Refresh-aware workflow (cold-start vs incremental refresh)" section in /index-atlas SKILL.md. Workflow dispatches based on whether `.contextatlas/atlas.json` already exists:
+
+- **Cold-start case (no existing atlas):** full extraction; walk every source; compute SHA per document; populate `source_shas` fully; write atlas with all claims.
+- **Refresh case (existing atlas):** Phase 4 SHA-diff incremental per ADR-12 substrate parallel — read existing atlas; capture `source_shas` as baseline + `claims` as preserved-substrate; for each source: skip if SHA matches baseline; extract if SHA differs OR source absent from baseline; drop preserved-claims for sources no longer on disk. Final atlas = union of preserved-baseline-claims (unchanged) + newly-extracted-claims (changed/new); `source_shas` refreshed accordingly.
+
+Mirrors CLI's `contextatlas index` Phase 4 SHA-diff pattern at Skill surface. Substantively bounds refresh cost — cohort users re-running `/index-atlas` after a single ADR edit pay only the extraction cost for the one changed document.
+
+#### CLAUDE.md cohort UX framing rationale
+
+New "Atlas refresh cohort UX (v0.7 Step 3.1 α framing)" section establishes ONE canonical refresh entry point per cohort path:
+- CLI cohort: `contextatlas index` — first run scaffolds; subsequent runs refresh incrementally per Phase 4 SHA-diff
+- Skill cohort: `/index-atlas` — workflow adapts based on substrate state (cold-start vs refresh per α amendment)
+
+Substantively closes the launch-document cohort UX framing gap surfaced at Step 3.0 design surface — cohort users at v1.0 have explicit canonical refresh entry point per their chosen cohort path.
+
+#### Class-15 instance 15 capture — Travis empirical correction worth direct framing
+
+Per Travis substantive sidebar at Step 3.1 post-execution surface:
+
+Travis-product-judgment-correcting-Claude-advisor-framing pattern — advisor (dev) conflated "init substantively required for fresh-state scaffolding" with "init substantively required for index to work against existing atlas." Empirically wrong per Step 3.1 signal; substep cluster integrity preserved by Travis reading empirical signal correctly. Class-15 framework composition continues at v0.7 cycle maturity (instance 15 = empirical-correction-pattern-at-substep-cluster-maturity).
+
+#### Verification outcomes
+
+- `npm test` full suite: **1527 tests / 85 files / all PASS** (preserved baseline; no new tests at Step 3.1 — α amendment is SKILL.md content; no code substrate changed)
+- `npm run build`: clean (prompt artifact regeneration unchanged at 3421 + 12481 chars)
+- Substrate scope: SKILL.md + CLAUDE.md amendments (~80 + ~30 LOC respectively) + STEP-PLAN-V0.7.md progress log
+
+#### Flaky test observation (worth v0.8+ flaky-tests-inventory capture)
+
+First test-suite run at Step 3.1 verification surfaced a transient failure (1527 / 85 files / 1 failed); re-run produced 1527 / 85 / all PASS. Pattern matches prior cli-resolve-symbols flaky LSP-interaction observation at Step 2.3.a.1. Worth v0.8+ candidate substrate inventory: flaky-LSP-interaction-tests inventory + race-condition triage at parallel test runner surface.
+
+#### Cycle position post-Step-3.1
+
+V0.7 cycle: 31 commits total. Step 3.2 substep cluster close opens per standard pattern (cycle position + observations aggregation per Option b progress-log-distributed + v0.8+ forward-pointers + Steps 4-5 ship-gate forward-planning surface). Travis Lock 2 no-wall-clock-ceiling preserved throughout cycle.
+
+---
 
 ### Step 2.5 shipped — 2026-05-12 (Step 2 substep cluster close — Skill + CLI substrate-equivalence empirically defended across 7-commit cluster; 14 cycle-execution observations preserved; Step 3 forward-planning surface ready)
 

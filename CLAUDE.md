@@ -637,6 +637,41 @@ ADRs (`docs/adr/`) and documentation. Use it during subsequent development.
 This is the dogfooding story — if the tool is not good enough to help
 build itself, it is not good enough to ship.
 
+## Atlas refresh cohort UX (v0.7 Step 3.1 α framing)
+
+ContextAtlas atlas is a substrate users build once and refresh after
+code/ADR changes. Refresh discoverability: ONE canonical entry point
+per cohort path, behavior adapts based on substrate state (cold-start
+vs incremental refresh per ADR-12 substrate).
+
+**Cohort UX framing for v1.0 launch documents:**
+
+- **CLI cohort path**: `contextatlas index` is the canonical refresh
+  entry point. First run scaffolds the atlas; subsequent runs refresh
+  incrementally via Phase 4 SHA-diff gating (unchanged ADR/docstring
+  sources skip; only changed sources re-extracted). Cost-bounded by
+  ADR-12 substrate; substantively cheap for typical incremental
+  refresh (~$0.20-1 per run at refined Step 2.3.c.0 substrate per
+  Step 3.1 empirical signal at contextatlas-on-itself dogfood).
+
+- **Skill cohort path**: `/index-atlas` is the canonical refresh
+  entry point. Skill workflow adapts based on whether
+  `.contextatlas/atlas.json` already exists:
+  - Cold-start case (no existing atlas): full extraction per SKILL.md
+    workflow.
+  - Refresh case (existing atlas): SHA-diff incremental refresh per
+    SKILL.md "Refresh-aware workflow" section (v0.7 Step 3.1 α
+    amendment) — agent reads existing atlas's `source_shas` baseline;
+    skips unchanged sources; extracts changed/new sources; merges
+    new claims with preserved baseline claims. Mirrors CLI's
+    `contextatlas index` Phase 4 SHA-diff pattern at Skill surface.
+
+Substantive launch document framing: "Re-run `/index-atlas` (Skills)
+or `contextatlas index` (CLI) after code or ADR changes. SHA-diff
+incremental refresh per ADR-12 substrate — unchanged sources skip;
+only changed sources re-extracted. Refresh is substantively cheaper
+than first-time scaffolding."
+
 ## Common Pitfalls to Avoid
 
 - **Don't reinvent LSP.** Resist the urge to write custom parsers or
