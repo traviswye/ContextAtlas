@@ -851,3 +851,287 @@ historical record per v0.5 + v0.6 + v0.7 inheritance discipline.
   launch-narrative claim drift. Composes with 13-class
   enumeration → 14-class for v0.7+ ship-gate working-
   content-gap-inventory inheritance.
+
+- **2026-05-13** — v0.7.1 Step 1.1.b.0 substantive amendment per
+  Q1.1.F lock chain (LOCKs 1-7) + Q1.1.G.α architectural framing.
+  /index-atlas Skill substrate-equivalence closure per Path D
+  architecture; structural blueprint mirrors v0.7 Step 2.3.c.0
+  generate-adrs closure pattern (cycle-execution observation 13
+  reproducibility) applied at /index-atlas surface.
+
+  **Driver:** v0.8 Step 1.1.b factorial three-repo empirical
+  falsified the v0.7 Step 2.3.b.0 substrate-equivalence claim
+  ("two-tier substrate-equivalent paths") at /index-atlas
+  surface. Empirical evidence:
+  - hono CLI 317 claims (154 ADR + 134 docstring + 29 commit) vs
+    Skill 52 claims (ADR-only): Skill at ~17% of CLI claim volume
+  - httpx CLI 275 vs Skill 49: ~18%
+  - cobra CLI 253 vs Skill 74: ~29%
+
+  Two-axis divergence empirically established:
+  (1) Source-stream coverage gap: Skill /index-atlas at v0.7
+      Step 2.3.b.0 ran ADR stream only; CLI's runStreamBPass +
+      extractCommitMessagesForRepo absent from SKILL.md
+      scaffolding. Streams B (docstring) + C (commit-message)
+      entirely missing from Skill output.
+  (2) ADR-pass depth gap: even within Stream A, Skill extracted
+      ~2.65-2.96x fewer claims per ADR than CLI on same canonical
+      ADR substrate (hono 12.83 CLI vs 4.33 Skill claims/ADR).
+
+  Pattern matches v0.6 F9 methodology-design-gap (tag-AND-control
+  vs tag-only): v0.7 Step 2.3.b.0 tagged substrate-equivalence at
+  text-instruction level (SKILL.md mentions docstrings + commits
+  optionally) without mechanical-floor enforcement; cross-session
+  variance under Skill agent reasoning-economy heuristics
+  defaulted to ADR-only execution.
+
+  Travis launch-bearing framing per LOCK 4: v1.0 launch substrate-
+  currency requires substrate-equivalence at /index-atlas surface
+  beyond text-instructional hope. β disposition locked per LOCK 5
+  (v0.7.1 patch first; audit-trail cleanness + substrate-version
+  cleanness + substep-boundary discipline).
+
+  **§permitted-modules invariant extension:**
+
+  Two new CLI subcommands added at the zero-API-cost subprocess
+  boundary established by Step 2.3.a.1 (validate-atlas /
+  resolve-symbols / doctor) and Step 2.3.c.0 (validate-adrs):
+
+  - **ADDED** `contextatlas list-extraction-sources` CLI
+    subcommand (`src/extraction/cli-list-extraction-sources.ts`).
+    Walks all three extraction streams via existing main-repo
+    substrate (walkProseFiles for ADRs; walkSourceFiles +
+    buildSymbolInventory + getDocstring for source-symbol
+    docstrings filtered by isExportedSymbol; parseCommitLog +
+    makeDefaultCommitFilter for commit messages). Emits unified
+    JSON manifest with per-source content/sha/path/symbol-
+    metadata for Skill consumption via Read tool. Manifest
+    includes docstring TEXT pre-extracted per-symbol (matches
+    CLI's extractDocstringsForFile per-call discipline at
+    pipeline.ts:846 exactly; ~340KB total for hono-scale repos
+    per Q1.1.G.α manifest-content clarification). Zero Anthropic
+    API cost — file walking + LSP enumeration + git log filter
+    only.
+
+  - **ADDED** `contextatlas validate-extraction` CLI subcommand
+    (`src/extraction/cli-validate-extraction.ts`). Parallel
+    pattern to cli-validate-adrs.ts. Three invariants:
+    - `adr_claims_present`: atlas has ≥1 claim with
+      source.startsWith("adr:"). Catches v0.7 Step 2.3.b.0
+      ADR-stream-skip regression at structural level.
+    - `adr_depth_floor`: per-ADR claim count ≥ 8. Calibration
+      substrate from v0.8 Stage 2.a CLI empirical at three
+      reference repos (hono 154/12=12.83, httpx 130/10=13.00,
+      cobra 132/11=12.00 → mean 12.6 → conservative floor at
+      ~64% threshold). Catches the ~3x depth gap empirically
+      observed at v0.8 Step 1.1.b Skill extraction while
+      leaving headroom for genuinely sparse ADRs.
+    - `source_coverage`: every entry in source_shas has ≥1
+      claim with matching source_path. Catches silent
+      extraction failure per source (Phase B per-stream
+      iteration skipped sources mid-loop).
+
+  - **isExportedSymbol** exported from `src/extraction/
+    pipeline.ts` (was private). Shared Stream B filter logic
+    between CLI's extractDocstringsForFile and
+    list-extraction-sources prevents future filter divergence
+    at the source-discovery layer.
+
+  **§Decision /index-atlas Phase A/B/C workflow:**
+
+  `.claude/skills/index-atlas/SKILL.md` substantively re-
+  architected (347 → 661 LOC) with three MANDATORY phases
+  mirroring v0.7 Step 2.3.c.0 generate-adrs Phase A/B/C closure
+  pattern:
+
+  - **Phase A** — Source-document walk (MANDATORY before
+    Phase B). Skill invokes `contextatlas list-extraction-
+    sources --output .contextatlas/extraction-sources.json`
+    via Bash gate; consumes manifest via Read tool; enumerates
+    full source registry across all 3 streams BEFORE any
+    extraction call. Substrate-equivalence-by-construction at
+    source-discovery layer (manifest is identical to what CLI
+    pipeline walks internally; only model-invocation-backend
+    differs).
+
+  - **Phase B** — Per-source extraction loop (MANDATORY). One
+    canonical EXTRACTION_PROMPT invocation per source-document
+    across Stream A (ADRs) → Stream B (symbol-with-docstring
+    entries) → Stream C (filtered commits). Per-source
+    iteration IS the substrate-equivalence floor — CLI's per-
+    call API loop is its mechanical floor by construction;
+    Phase B per-source reasoning loop is the subscription-
+    bounded equivalent. Aggregate per-source claims into
+    atlas.json via Write tool at end of phase.
+
+  - **Phase C** — Mandatory mechanical-floor CLI gates in order
+    (extended from v0.7 Step 2.3.b.0 3-gate to v0.7.1 4-gate):
+    1. `contextatlas validate-atlas` (existing; canonical
+       schema)
+    2. `contextatlas validate-extraction` (NEW v0.7.1; depth-
+       floor + coverage)
+    3. `contextatlas resolve-symbols` (existing; LSP bridge)
+    4. `contextatlas doctor` (existing; final verification)
+    Each gate must exit 0 before advancing.
+
+  CLI substrate-equivalent change: `src/extraction/cli-runner.ts`
+  auto-invokes `validate-extraction` post-pipeline (parallel
+  pattern to Step 2.4.a β-2 validate-adrs auto-invoke at
+  generation cli-runner). Closes CLI-vs-Skill mechanical-floor-
+  enforcement substrate equivalence at /index-atlas surface.
+  atlasExported guard prevents re-validation on SHA-diff
+  incremental skips; clientOverride guard skips under test mode
+  (stub clients produce minimal atlas content that cannot
+  satisfy realistic per-ADR depth invariants).
+
+  Refresh-aware workflow extended to 3 streams (was ADR-only at
+  v0.7 Step 2.3.b.0): per-stream SHA-diff dispatch in Phase B
+  (Stream A per-ADR sha; Stream B per-source-file sha at file
+  granularity; Stream C per-commit-sha presence check). Mirrors
+  CLI's Phase 4 SHA-diff incremental extraction pattern per
+  ADR-12 substrate.
+
+  **§Consequences post-v0.7.1 substrate-equivalence matrix:**
+
+  | Substrate layer | CLI (`contextatlas index`) | Skill (`/index-atlas`) | Status |
+  |---|---|---|---|
+  | Source-stream coverage (ADR + docstring + commit) | walkProseFiles + runStreamBPass + extractCommitMessagesForRepo | Phase A list-extraction-sources manifest enumeration | EQUIVALENT (same underlying walker substrate) |
+  | Per-source extraction iteration | extractDocstringsForFile per-call loop | Phase B per-source reasoning loop | EQUIVALENT (mechanical floor by construction) |
+  | Canonical EXTRACTION_PROMPT | Direct import from prompt.ts | Read tool against .contextatlas/prompts/extraction.md | EQUIVALENT (substrate-currency via build artifact parity test) |
+  | Schema validation gate | atlas-exporter shape check at write time | Phase C step 1 validate-atlas mandatory gate | EQUIVALENT |
+  | Depth-floor enforcement | Phase C step 2 validate-extraction auto-invoke | Phase C step 2 validate-extraction mandatory gate | EQUIVALENT (β-2 pattern applied both surfaces) |
+  | LSP symbol resolution | Inline at pipeline.ts | Phase C step 3 resolve-symbols mandatory gate | EQUIVALENT |
+  | Cost model | Anthropic API direct (pay-per-use) | Claude Code session tokens (subscription-bounded) | INTENTIONAL DIFFERENCE per §Decision Path-3 entry-point-determined cost model |
+
+  Single ARCHITECTURAL DIFFERENCE row (acknowledged honestly per
+  v0.7 Framing 1 substrate-equivalence vs cost-model-distinction
+  pattern) — substrate is equivalent; cost model differs by
+  design.
+
+  **§Consequences cohort UX framing:**
+
+  v0.7.1 cohort install path unchanged structurally (4 steps:
+  npm install + Skills copy + `Bash(contextatlas:*)` allowlist +
+  init); the existing allowlist substantively covers all 5
+  Bash invocations under v0.7.1 (1 Phase A + 4 Phase C gates).
+  No new allowlist additions needed.
+
+  Wall-clock expectation: subscription-bounded extraction takes
+  comparable wall-clock to CLI extraction at subscription budget
+  cost (no API bill). Empirical anchors from v0.8 Stage 2.a CLI
+  baseline at three reference repos: hono ~24min / httpx ~12min
+  / cobra ~12min. Per-source iteration scales linearly with
+  corpus size; session token consumption proportional.
+
+  Cohort users running `/index-atlas` at v0.7.1+ get substrate-
+  equivalent output to CLI users. Atlas quality (claims volume +
+  per-source coverage) bounded by mechanical floor at Phase C
+  validate-extraction gate; not text-instructional hope.
+
+  **§Consequences atlas substrate evolution at /index-atlas:**
+
+  Atlases produced under v0.7.1 /index-atlas Skill workflow
+  contain all three streams (Stream A adr: + Stream B docstring:
+  + Stream C commit: source prefixes in claims array). Atlases
+  produced under v0.7 Step 2.3.b.0 /index-atlas were ADR-only;
+  substrate-version-tag discipline (per F1 atlas-substrate-
+  version confound framing) requires cohort UX surface to
+  acknowledge atlas substrate-version distinction across cycle
+  boundary. v1.0 launch documents document v0.7.1+ as the
+  substrate-equivalent baseline; pre-v0.7.1 atlases substantively
+  qualify as legacy ADR-only artifacts.
+
+  **Substantive substrate-equivalence claim defended via
+  mechanical enforcement (not text-instructional hope):**
+
+  Post-v0.7.1 ship, the /index-atlas Skill path produces
+  atlases that:
+  - Walk all 3 streams via list-extraction-sources (Phase A
+    iteration discipline; substrate-equivalent to CLI walker
+    machinery by construction)
+  - Iterate per-source via canonical EXTRACTION_PROMPT (Phase B
+    per-source discipline; substrate-equivalent to CLI per-call
+    API loop)
+  - Pass validate-atlas + validate-extraction + resolve-symbols
+    + doctor (canonical schema + depth-floor + coverage + LSP +
+    final verification)
+
+  Equivalent substrate to CLI extraction path at the feature
+  layer; text content may vary (model-output variance) but
+  iteration discipline + schema + symbol resolution + depth-
+  floor + coverage are mechanically guaranteed at both surfaces.
+
+  **Cross-references:**
+  - v0.7.1 Turn 1 commit `a5b3edb` (CLI engineering:
+    cli-list-extraction-sources + cli-validate-extraction +
+    cli-runner auto-invoke + dispatcher + cli-args + isExported
+    Symbol export + 20 new tests)
+  - v0.7.1 Turn 2 commit `a1f7bc3` (SKILL.md Phase A/B/C re-
+    architecture: 661 LOC, +91% growth over v0.7 Step 2.3.b.0
+    347 LOC baseline)
+  - v0.7.1 Turn 3 commit (this amendment + version bump 0.7.0 →
+    0.7.1 + dist rebuild + git tag v0.7.1)
+  - v0.7 Step 2.3.b.0 amendment 2026-05-11 (β-bounded
+    mechanical-enforcement substrate at /index-atlas; precedent
+    pattern partially closing substrate-equivalence)
+  - v0.7 Step 2.3.c.0 amendment 2026-05-12 (generate-adrs Phase
+    A/B/C closure; structural blueprint for v0.7.1 /index-atlas
+    closure)
+  - v0.7 Step 2.4.a amendment 2026-05-12 (CLI auto-invoke
+    validate-adrs β-2 pattern; precedent for v0.7.1 CLI auto-
+    invoke validate-extraction)
+  - `.claude/skills/index-atlas/SKILL.md` Phase A/B/C workflow
+    canonical substrate (v0.7.1 ship)
+
+  **Cycle-execution observation 15 (NEW; canonical capture at
+  v0.7.1 substrate boundary):**
+
+  Skill-vs-CLI substrate-equivalence requires per-feature
+  mechanical floor enforcement at Skill workflow boundary.
+  Shape-only validation (validate-atlas / validate-adrs schema
+  check) is necessary but not sufficient for substrate-
+  equivalence claims. Per-feature mechanical floor enforcement
+  parallels the validate-adrs pattern at generate-adrs surface
+  (cycle-observation 13 reproducibility).
+
+  Why: Skill agent at runtime defaults to reasoning-economy
+  heuristics absent explicit floor; CLI's per-file iteration
+  loop is its own mechanical floor by construction (every file
+  gets an API call; no decision-skipping).
+
+  How to apply: When tagging a Skill path as substrate-equivalent
+  to a CLI path, identify what mechanical floor the CLI has by
+  construction (iteration loop, exhaustive walk, etc.) and
+  engineer an explicit equivalent at the Skill workflow boundary
+  (mandatory Bash gate; depth-floor validator; required
+  investigation phase pattern via Phase A scaffolding).
+
+  Empirical evidence: v0.8 Step 1.1.b factorial three-repo scale
+  produced ~17-29% of CLI claim volume at Skill /index-atlas
+  surface (substrate-equivalence claim at v0.7 Step 2.3.b.0
+  falsified empirically; two-axis divergence: source-stream
+  coverage + ADR-pass depth).
+
+  Closure pattern: Step 2.3.c.0 generate-adrs (Phase A
+  investigation + Phase B per-decision writing + Phase C
+  MANDATORY validate-adrs gate). Identical structural pattern
+  applies at /index-atlas surface; v0.7.1 ships Phase A
+  iteration (list-extraction-sources manifest walk) + Phase B
+  per-source extraction + Phase C extended gates including
+  validate-extraction depth-floor + coverage invariants.
+
+  Generalizes to any future Skill substrate work. v0.8+ Skill
+  features that surface as substrate-equivalent to CLI features
+  inherit this discipline: identify CLI mechanical floor; ship
+  Skill mechanical-floor equivalent at SKILL.md workflow
+  boundary; validate-* CLI subcommand enforces mechanical floor
+  at CLI boundary regardless of which entry point produced the
+  artifact.
+
+  Composes with 14-class enumeration → 15-class for v0.7+ ship-
+  gate working-content-gap-inventory inheritance. Substrate-
+  record reference location: this amendment. v0.8 Step 1.1.c
+  progress log captures cycle-discipline observation 15 at
+  Step 1.1.b empirical reference; `research/v0.8-candidates.md`
+  retroactive entry marks "absorbed at v0.7.1 substrate" for
+  audit-trail completeness.

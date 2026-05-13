@@ -43,7 +43,7 @@ const CANONICAL_ATLAS = {
   version: "1.4",
   generated_at: "2026-05-11T20:00:00.000Z",
   generator: {
-    contextatlas_version: "0.7.0",
+    contextatlas_version: "0.7.1",
     extraction_model: "claude-opus-4-7",
   },
   source_shas: {
@@ -179,7 +179,7 @@ describe("runValidateAtlasSubcommand (v0.7 Step 2.3.b.0)", () => {
   it("FAIL when generator object missing required fields", async () => {
     writeAtlas({
       ...CANONICAL_ATLAS,
-      generator: { contextatlas_version: "0.7.0" }, // missing extraction_model
+      generator: { contextatlas_version: "0.7.1" }, // missing extraction_model
     });
     const r = await run();
     expect(r.exitCode).toBe(2);
