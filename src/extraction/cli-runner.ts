@@ -35,6 +35,7 @@ import type {
   ExtractionPipelineResult,
   FileUnresolvedDetail,
 } from "./pipeline.js";
+import { runValidateExtractionSubcommand } from "./cli-validate-extraction.js";
 
 export interface IndexCliOptions {
   configRoot: string;
@@ -75,7 +76,11 @@ export interface IndexCliOptions {
   /**
    * Test seam — inject a fake ExtractionClient instead of constructing
    * a real one backed by the Anthropic SDK. When provided, API-key
-   * discovery is skipped.
+   * discovery is skipped AND the post-pipeline `validate-extraction`
+   * auto-invoke (v0.7.1 Step 1.1.b.0 + Q1.1.G.α) is skipped, because
+   * stub clients deliberately produce minimal atlas content that
+   * cannot satisfy realistic per-ADR depth invariants (≥8 claims/ADR).
+   * Production callers always omit; only tests supply.
    */
   clientOverride?: ExtractionClient;
   /**
@@ -255,6 +260,60 @@ export async function runIndexSubcommand(
       printVerboseUnresolved(pipelineResult.unresolvedDetails, writeStderr);
     }
     printSummary(pipelineResult, options.json, writeStdout);
+
+    // v0.7.1 Step 1.1.b.0 + Q1.1.G.α: auto-invoke validate-extraction
+    // post-pipeline per Path D substrate-equivalence closure pattern
+    // (parallel to Step 2.4.a β-2 validate-adrs auto-invoke at
+    // generation cli-runner). Closes v0.8 Step 1.1.b empirical
+    // falsification of v0.7 Step 2.3.b.0 substrate-equivalence claim
+    // by enforcing per-ADR depth-floor + source-coverage at CLI
+    // boundary. Skill /index-atlas has MANDATORY Phase C extended
+    // gate; CLI now auto-invokes the same canonical extraction-
+    // quality verification. Non-zero exit surfaces structured
+    // remediation and maps to exit code 1 (per ADR-12 pipeline-
+    // failure semantics — extraction succeeded but downstream
+    // extraction-quality verification failed).
+    //
+    // Atlas-export gating: validate-extraction is meaningful only
+    // when the pipeline modified the atlas. If atlasExported is
+    // false (no changes detected per Phase 4 SHA-diff incremental;
+    // unchanged source_shas), the existing atlas already passed
+    // validate-extraction at a prior run; re-validating doesn't
+    // add signal. Test-mode gate: clientOverride is the documented
+    // test-seam signal; stub clients produce minimal atlas content
+    // that cannot satisfy realistic per-ADR depth invariants, so
+    // skip the validator under test mode.
+    if (pipelineResult.atlasExported && options.clientOverride === undefined) {
+      const validateResult = await runValidateExtractionSubcommand({
+        configRoot: options.configRoot,
+        configFile: options.configFile,
+        ...(options.writeStdout !== undefined
+          ? { writeStdout: options.writeStdout }
+          : {}),
+        writeStderr,
+      });
+      if (validateResult.exitCode !== 0) {
+        writeStderr(
+          [
+            "",
+            "contextatlas index: extraction completed but `validate-extraction` canonical extraction-quality verification failed.",
+            "",
+            "Per-invariant remediation written to stderr above.",
+            "",
+            "Re-run extraction after addressing the failing invariants:",
+            "  contextatlas index --full",
+            "",
+            "If you believe the failure is a false positive (e.g., genuinely sparse",
+            "ADR with <8 claims), report at the contextatlas issue tracker — the",
+            "depth-floor is calibrated against v0.8 Stage 2.a CLI empirical data",
+            "and may need refinement for edge cases.",
+            "",
+          ].join("\n"),
+        );
+        return { exitCode: 1, pipelineResult };
+      }
+    }
+
     return { exitCode: 0, pipelineResult };
   } finally {
     await shutdownAll(adapters);

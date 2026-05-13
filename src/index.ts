@@ -37,9 +37,11 @@ import { createAdapter } from "./adapters/registry.js";
 import { HELP_TEXT, parseArgs } from "./cli-args.js";
 import { loadConfig } from "./config/parser.js";
 import { runDoctorSubcommand } from "./doctor/runner.js";
+import { runListExtractionSourcesSubcommand } from "./extraction/cli-list-extraction-sources.js";
 import { runResolveSymbolsSubcommand } from "./extraction/cli-resolve-symbols.js";
 import { runIndexSubcommand } from "./extraction/cli-runner.js";
 import { runValidateAtlasSubcommand } from "./extraction/cli-validate-atlas.js";
+import { runValidateExtractionSubcommand } from "./extraction/cli-validate-extraction.js";
 import { runGenerateAdrsSubcommand } from "./generation/cli-runner.js";
 import { runValidateAdrsSubcommand } from "./generation/cli-validate-adrs.js";
 import { runInitSubcommand } from "./init/runner.js";
@@ -144,6 +146,41 @@ export async function main(): Promise<void> {
   // atomic write on atlas.json.
   if (subcommand === "resolve-symbols") {
     const result = await runResolveSymbolsSubcommand({
+      configRoot,
+      configFile: configFileArg,
+    });
+    process.exit(result.exitCode);
+  }
+
+  // v0.7.1 Step 1.1.b.0 + Q1.1.G.α — list-extraction-sources
+  // subcommand. Walks all three extraction streams (ADRs +
+  // source-symbols-with-docstrings + filtered commits) and emits a
+  // unified JSON manifest the /index-atlas Skill consumes via Bash +
+  // Read at Phase A iteration discipline. Substrate-equivalence-by-
+  // construction at source-discovery layer; mechanical floor for
+  // Path D closure of v0.7 Step 2.3.b.0 substrate-equivalence claim
+  // falsified empirically at v0.8 Step 1.1.b factorial. Zero
+  // Anthropic API cost.
+  if (subcommand === "list-extraction-sources") {
+    const result = await runListExtractionSourcesSubcommand({
+      configRoot,
+      configFile: configFileArg,
+      outputPath: parsed.output,
+    });
+    process.exit(result.exitCode);
+  }
+
+  // v0.7.1 Step 1.1.b.0 + Q1.1.G.α — validate-extraction subcommand.
+  // β-bounded mechanical floor enforcement for atlas extraction
+  // quality at the CLI boundary (parallel to Step 2.3.c.0
+  // validate-adrs for ADR depth). Reads atlas.json; validates
+  // per-ADR claims-count depth-floor (≥8; calibrated against v0.8
+  // Stage 2.a CLI three-repo empirical mean of ~12.6) + per-source
+  // coverage (every source_shas entry has ≥1 matching claim).
+  // Used as MANDATORY GATE (Phase C extended) in /index-atlas Skill
+  // workflow after validate-atlas + before resolve-symbols.
+  if (subcommand === "validate-extraction") {
+    const result = await runValidateExtractionSubcommand({
       configRoot,
       configFile: configFileArg,
     });

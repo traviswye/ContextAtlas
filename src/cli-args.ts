@@ -104,7 +104,9 @@ export type Subcommand =
   | "generate-adrs"
   | "resolve-symbols"
   | "validate-atlas"
-  | "validate-adrs";
+  | "validate-adrs"
+  | "list-extraction-sources"
+  | "validate-extraction";
 
 export interface ParsedArgs {
   /**
@@ -195,6 +197,14 @@ export interface ParsedArgs {
    */
   referenceContext: string | null;
   /**
+   * `--output <path>` CLI flag for the `list-extraction-sources`
+   * subcommand. When provided, the manifest is written to the given
+   * file path (resolved against configRoot); when null, manifest
+   * goes to stdout. v0.7.1 Step 1.1.b.0 + Q1.1.G.α — substrate-
+   * equivalence closure at /index-atlas Skill surface.
+   */
+  output: string | null;
+  /**
    * True when `--yes` (or alias `--no-confirm`) was passed alongside
    * `generate-adrs`. Bypasses the pre-flight cost-estimate
    * confirmation prompt — required for CI/CD / non-interactive
@@ -226,6 +236,8 @@ export const KNOWN_SUBCOMMANDS: readonly Subcommand[] = [
   "resolve-symbols",
   "validate-atlas",
   "validate-adrs",
+  "list-extraction-sources",
+  "validate-extraction",
 ];
 
 /**
@@ -259,6 +271,9 @@ Subcommands:
   resolve-symbols       Enrich Skill-produced atlas with LSP-resolved symbol IDs (no API key needed)
   validate-atlas        Validate atlas.json against canonical schema (no API key needed)
   validate-adrs         Validate docs/adr/*.md against canonical depth-floor invariants (no API key needed)
+  list-extraction-sources
+                        Walk ADRs + source-symbols + filtered commits; emit JSON manifest for Skill consumption (no API key needed)
+  validate-extraction   Validate atlas.json against extraction-quality invariants (per-ADR depth + source coverage; no API key needed)
 
 Global options:
   --version             Show version + exit
@@ -278,6 +293,8 @@ Subcommand options (selected; see individual subcommand for full set):
     --reference-context <path>
                           Walk reference documentation as prompt input
     --yes / --no-confirm  Bypass pre-flight cost-estimate confirmation prompt
+  list-extraction-sources:
+    --output <path>       Write manifest to file instead of stdout
   init:
     --observe             Enable observability (per ADR-20)
   mcp (default; no subcommand):
@@ -312,6 +329,7 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
   let ccOnly = false;
   let observe = false;
   let referenceContext: string | null = null;
+  let output: string | null = null;
   let yes = false;
   let version = false;
   let help = false;
@@ -571,6 +589,32 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
       referenceContext = value;
       continue;
     }
+    if (arg === "--output" || arg.startsWith("--output=")) {
+      if (output !== null) {
+        throw new Error(`Flag --output specified more than once. ${USAGE}`);
+      }
+      let value: string;
+      if (arg.startsWith("--output=")) {
+        value = arg.slice("--output=".length);
+        i += 1;
+      } else {
+        const next = argv[i + 1];
+        if (next === undefined || next.startsWith("-")) {
+          throw new Error(
+            `Flag --output requires a path argument. ${USAGE}`,
+          );
+        }
+        value = next;
+        i += 2;
+      }
+      if (value.length === 0) {
+        throw new Error(
+          `Flag --output requires a non-empty path argument. ${USAGE}`,
+        );
+      }
+      output = value;
+      continue;
+    }
     if (arg === "--yes" || arg === "--no-confirm") {
       if (yes) {
         throw new Error(
@@ -612,6 +656,7 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
       ccOnly,
       observe,
       referenceContext,
+      output,
       yes,
       version,
       help,
@@ -676,6 +721,11 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
       `Flag --reference-context is only accepted with the 'generate-adrs' subcommand. ${USAGE}`,
     );
   }
+  if (output !== null && subcommand !== "list-extraction-sources") {
+    throw new Error(
+      `Flag --output is only accepted with the 'list-extraction-sources' subcommand. ${USAGE}`,
+    );
+  }
   if (yes && subcommand !== "generate-adrs") {
     throw new Error(
       `Flag --yes / --no-confirm is only accepted with the 'generate-adrs' subcommand. ${USAGE}`,
@@ -695,6 +745,7 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
     ccOnly,
     observe,
     referenceContext,
+    output,
     yes,
     version,
     help,

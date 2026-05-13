@@ -896,7 +896,7 @@ export async function extractDocstringsForFile(
  * implementation, so no docstring claims are produced for those
  * languages regardless of this check).
  */
-function isExportedSymbol(name: string, language: LanguageCode): boolean {
+export function isExportedSymbol(name: string, language: LanguageCode): boolean {
   if (language === "go") {
     const trailing = name.includes(".") ? name.split(".").pop() ?? name : name;
     return /^[A-Z]/.test(trailing);

@@ -21,6 +21,7 @@ const EMPTY: ParsedArgs = {
   ccOnly: false,
   observe: false,
   referenceContext: null,
+  output: null,
   yes: false,
   version: false,
   help: false,
@@ -793,6 +794,50 @@ describe("--reference-context flag (v0.7 Step 2.2.a.1 generate-adrs)", () => {
         "--reference-context=/b",
       ]),
     ).toThrow(/specified more than once/);
+  });
+});
+
+describe("--output flag (v0.7.1 Step 1.1.b.0 list-extraction-sources)", () => {
+  it("--output space form → extracts path", () => {
+    expect(parseArgs(["list-extraction-sources", "--output", "out.json"])).toEqual({
+      ...EMPTY,
+      subcommand: "list-extraction-sources",
+      output: "out.json",
+    });
+  });
+
+  it("--output equal form → extracts path", () => {
+    expect(parseArgs(["list-extraction-sources", "--output=out.json"])).toEqual({
+      ...EMPTY,
+      subcommand: "list-extraction-sources",
+      output: "out.json",
+    });
+  });
+
+  it("throws when --output value missing", () => {
+    expect(() => parseArgs(["list-extraction-sources", "--output"])).toThrow(
+      /requires a path argument/,
+    );
+  });
+
+  it("throws when --output combined with non-list-extraction-sources subcommand", () => {
+    expect(() => parseArgs(["index", "--output=out.json"])).toThrow(
+      /only accepted with the 'list-extraction-sources' subcommand/,
+    );
+  });
+
+  it("recognises 'list-extraction-sources' as a subcommand", () => {
+    expect(parseArgs(["list-extraction-sources"])).toEqual({
+      ...EMPTY,
+      subcommand: "list-extraction-sources",
+    });
+  });
+
+  it("recognises 'validate-extraction' as a subcommand", () => {
+    expect(parseArgs(["validate-extraction"])).toEqual({
+      ...EMPTY,
+      subcommand: "validate-extraction",
+    });
   });
 });
 
