@@ -43,7 +43,7 @@ const CANONICAL_ATLAS = {
   version: "1.4",
   generated_at: "2026-05-11T20:00:00.000Z",
   generator: {
-    contextatlas_version: "0.7.1",
+    contextatlas_version: "0.7.2",
     extraction_model: "claude-opus-4-7",
   },
   source_shas: {

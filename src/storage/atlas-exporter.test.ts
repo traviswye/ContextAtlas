@@ -65,7 +65,7 @@ describe("exportAtlas", () => {
     ]);
     insertClaims(db, [
       {
-        source: "ADR-02",
+        source: "adr:ADR-02.md",
         sourcePath: "docs/adr/ADR-02.md",
         sourceSha: "s2",
         severity: "hard",
@@ -73,7 +73,7 @@ describe("exportAtlas", () => {
         symbolIds: ["sym:ts:src/z.ts:Z"],
       },
       {
-        source: "ADR-01",
+        source: "adr:ADR-01.md",
         sourcePath: "docs/adr/ADR-01.md",
         sourceSha: "s1",
         severity: "hard",
@@ -91,7 +91,10 @@ describe("exportAtlas", () => {
       "sym:ts:src/a.ts:A",
       "sym:ts:src/z.ts:Z",
     ]);
-    expect(atlas.claims.map((c) => c.source)).toEqual(["ADR-01", "ADR-02"]);
+    expect(atlas.claims.map((c) => c.source)).toEqual([
+      "adr:ADR-01.md",
+      "adr:ADR-02.md",
+    ]);
     // symbol_ids within each claim must be sorted alphabetically.
     expect(atlas.claims[0]?.symbol_ids).toEqual([
       "sym:ts:src/a.ts:A",
@@ -114,7 +117,7 @@ describe("exportAtlas", () => {
     ]);
     insertClaims(db, [
       {
-        source: "ADR-01",
+        source: "adr:ADR-01.md",
         sourcePath: "docs/adr/ADR-01.md",
         sourceSha: "s",
         severity: "hard",
@@ -456,7 +459,7 @@ describe("atlas.json round-trip", () => {
       ]);
       insertClaims(db1, [
         {
-          source: "ADR-01",
+          source: "adr:ADR-01.md",
           sourcePath: "docs/adr/ADR-01.md",
           sourceSha: "sha1",
           severity: "hard",

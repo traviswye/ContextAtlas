@@ -570,28 +570,24 @@ export async function runExtractionPipeline(
  *   2. Filename regex `ADR-\d+` (case-insensitive, to catch `adr-01.md`).
  *   3. Basename without extension.
  */
-export function deriveSourceName(
-  absPath: string,
-  rawContents: string,
-): string {
-  const frontmatter = parseFrontmatterId(rawContents);
-  if (frontmatter) return frontmatter;
-
-  const base = basename(absPath);
-  const adrMatch = /\bADR-\d+\b/i.exec(base);
-  if (adrMatch) return adrMatch[0].toUpperCase().replace(/adr/i, "ADR");
-
-  const dotIdx = base.lastIndexOf(".");
-  return dotIdx > 0 ? base.slice(0, dotIdx) : base;
-}
-
-function parseFrontmatterId(raw: string): string | null {
-  if (!raw.startsWith("---\n")) return null;
-  const end = raw.indexOf("\n---\n", 4);
-  if (end === -1) return null;
-  const block = raw.slice(4, end);
-  const match = /^id:\s*(\S.*?)\s*$/m.exec(block);
-  return match ? match[1] ?? null : null;
+/**
+ * v0.7.2 substrate-currency migration: emit modern `adr:<basename>`
+ * convention matching Skill `/index-atlas` SKILL.md spec +
+ * `validate-extraction` canonical source-field format invariant.
+ *
+ * Pre-v0.7.2 emitted frontmatter `id` field (ADR-NN) which was the
+ * substrate-currency outlier — Skill substrate at v0.7 Step 2.3.b.0
+ * adopted prefix convention but CLI `deriveSourceName` preserved
+ * pre-v0.5 era identifier-only format unchanged through cycle
+ * boundaries. Empirically surfaced at v0.7.1 first-run mechanical-
+ * floor verification (validate-extraction `adr_claims_present`
+ * invariant failure on CLI atlases despite legitimate ADR claims).
+ *
+ * Post-v0.7.2 substrate-convention alignment: CLI + Skill + validator
+ * all emit/expect `adr:<basename>` for ADR-source claims.
+ */
+export function deriveSourceName(absPath: string): string {
+  return `adr:${basename(absPath)}`;
 }
 
 function writeClaimsForFile(
@@ -622,7 +618,7 @@ function writeClaimsForFile(
   deleteClaimsBySourcePath(db, file.relPath);
 
   const rawContents = readFileSync(file.absPath, "utf8");
-  const source = deriveSourceName(file.absPath, rawContents);
+  const source = deriveSourceName(file.absPath);
 
   // Author-declared frontmatter symbols are merged into every claim's
   // candidates as the authoritative leading entries (author intent ranks

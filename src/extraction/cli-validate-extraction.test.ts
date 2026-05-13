@@ -99,20 +99,22 @@ describe("validateExtractionShape — pure function", () => {
     expect(errors.find((e) => /adr_depth_floor/.test(e))).toMatch(/ADR-02-bar/);
   });
 
-  it("fails source_coverage when source_shas entry has zero matching claims", () => {
-    const adrPath = "docs/adr/ADR-01-foo.md";
-    const orphanedPath = "src/foo.ts";
-    const claims = Array.from({ length: 10 }, () => makeAdrClaim(adrPath));
+  it("fails source_coverage when ADR source_shas entry has zero matching claims (v0.7.2 ADR-shaped scoping)", () => {
+    const adrWithClaims = "docs/adr/ADR-01-foo.md";
+    const orphanedAdr = "docs/adr/ADR-02-bar.md";
+    const claims = Array.from({ length: 10 }, () => makeAdrClaim(adrWithClaims));
     const atlas = makeAtlas({
-      source_shas: { [adrPath]: "a", [orphanedPath]: "b" },
+      source_shas: { [adrWithClaims]: "a", [orphanedAdr]: "b" },
       claims,
     });
     const errors = validateExtractionShape(atlas);
     expect(errors.some((e) => /source_coverage/.test(e))).toBe(true);
-    expect(errors.find((e) => /source_coverage/.test(e))).toMatch(/src\/foo\.ts/);
+    expect(errors.find((e) => /source_coverage/.test(e))).toMatch(
+      /ADR-02-bar/,
+    );
   });
 
-  it("passes source_coverage when all source_shas entries have matching claims (multi-stream)", () => {
+  it("passes source_coverage when ADR source_shas entries have matching claims (Stream B + Stream C coverage requirements relaxed per v0.7.2)", () => {
     const adrPath = "docs/adr/ADR-01-foo.md";
     const docPath = "src/foo.ts";
     const commitSha = "abc123def456abc123def456abc123def456abcd";
@@ -125,6 +127,33 @@ describe("validateExtractionShape — pure function", () => {
       source_shas: { [adrPath]: "a", [docPath]: "b", [commitSha]: commitSha },
       claims,
     });
+    expect(validateExtractionShape(atlas)).toEqual([]);
+  });
+
+  it("ignores Stream B source_shas entries without claims (v0.7.2 calibration — most source files have 0 docstrings)", () => {
+    const adrPath = "docs/adr/ADR-01-foo.md";
+    const claims = Array.from({ length: 10 }, () => makeAdrClaim(adrPath));
+    // 100 Stream B source files with zero docstring claims — empirical
+    // pattern from v0.7.1 first-run hono extraction (most files lack
+    // exported-with-docstring symbols). source_coverage MUST NOT flag
+    // these per Issue 2 invariant scoping calibration.
+    const sourceShas: Record<string, string> = { [adrPath]: "a" };
+    for (let i = 0; i < 100; i++) {
+      sourceShas[`src/file${i}.ts`] = `sha${i}`;
+    }
+    const atlas = makeAtlas({ source_shas: sourceShas, claims });
+    expect(validateExtractionShape(atlas)).toEqual([]);
+  });
+
+  it("ignores Stream C commit-SHA source_shas entries without claims (v0.7.2 calibration — most commits lack architectural intent body)", () => {
+    const adrPath = "docs/adr/ADR-01-foo.md";
+    const claims = Array.from({ length: 10 }, () => makeAdrClaim(adrPath));
+    const sourceShas: Record<string, string> = { [adrPath]: "a" };
+    for (let i = 0; i < 50; i++) {
+      const sha = String(i).padStart(40, "0");
+      sourceShas[sha] = sha;
+    }
+    const atlas = makeAtlas({ source_shas: sourceShas, claims });
     expect(validateExtractionShape(atlas)).toEqual([]);
   });
 });

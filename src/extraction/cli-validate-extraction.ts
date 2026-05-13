@@ -28,15 +28,24 @@
  *      at any single ADR, mirroring the per-cell pattern Phase-9
  *      methodology surfaced.
  *
- *   3. source_coverage — for each entry in source_shas, ≥ 1 claim
- *      has matching source_path. A source in source_shas with 0
- *      claims indicates silent extraction failure at that source
- *      (the Skill walked the source registry but produced no
- *      claims). Catches the v0.8 Step 1.1.b Stream B + Stream C
- *      regression pattern under Phase A iteration discipline (if
- *      SKILL.md Phase A correctly populates source_shas via
- *      list-extraction-sources, Phase B is mechanically obligated
- *      to produce claims per source).
+ *   3. source_coverage — for each ADR-shaped entry in source_shas
+ *      (path ending in .md or .rst), ≥ 1 claim has matching
+ *      source_path. An ADR source in source_shas with 0 claims
+ *      indicates silent extraction failure at that ADR (extraction
+ *      call skipped or returned empty claims array). Catches the
+ *      v0.8 Step 1.1.b Stream A regression pattern (Skill walked
+ *      ADRs but failed to produce claims per ADR).
+ *
+ *      Scoped to ADR-shaped keys per v0.7.2 substrate-currency
+ *      calibration: empirical evidence at first v0.7.1 run showed
+ *      Stream B + Stream C populate source_shas for every walked
+ *      source regardless of claim production (Stream B walks all
+ *      source files; most lack exported-with-docstring symbols and
+ *      produce 0 claims. Stream C walks all filtered commits; most
+ *      lack architectural-intent body and produce 0 claims). The
+ *      empirical claim-producing rate varies by stream; only Stream
+ *      A reliably produces claims per source by design (extraction
+ *      prompt against substantive ADR prose).
  *
  * Per-stream coverage at Phase B iteration is the SKILL.md substrate
  * concern (not validator domain) — if Phase A skips a stream
@@ -233,34 +242,53 @@ export function validateExtractionShape(
     }
   }
 
-  // Invariant 3: source_coverage (every source_shas entry has ≥ 1 claim)
+  // Invariant 3: source_coverage (every ADR-shaped source_shas entry
+  // has ≥ 1 claim). Scoped to ADR keys per v0.7.2 substrate-currency
+  // calibration — Stream B + Stream C source_shas entries frequently
+  // have 0 claims by design (most source files lack exported-with-
+  // docstring symbols; most filtered commits lack architectural-
+  // intent body). Only Stream A reliably produces claims per source.
   const sourcePathsInClaims = new Set<string>();
   for (const claim of claims) {
     if (typeof claim.source_path === "string") {
       sourcePathsInClaims.add(claim.source_path);
     }
   }
-  const sourcesWithoutClaims: string[] = [];
+  const adrSourcesWithoutClaims: string[] = [];
   for (const sourcePath of Object.keys(sourceShas)) {
+    if (!isAdrSourcePath(sourcePath)) continue;
     if (!sourcePathsInClaims.has(sourcePath)) {
-      sourcesWithoutClaims.push(sourcePath);
+      adrSourcesWithoutClaims.push(sourcePath);
     }
   }
-  if (sourcesWithoutClaims.length > 0) {
-    const preview = sourcesWithoutClaims
+  if (adrSourcesWithoutClaims.length > 0) {
+    const preview = adrSourcesWithoutClaims
       .slice(0, 5)
       .map((p) => `      ${p}`)
       .join("\n");
     const overflow =
-      sourcesWithoutClaims.length > 5
-        ? `\n      ... and ${sourcesWithoutClaims.length - 5} more`
+      adrSourcesWithoutClaims.length > 5
+        ? `\n      ... and ${adrSourcesWithoutClaims.length - 5} more`
         : "";
     errors.push(
-      `source_coverage: ${sourcesWithoutClaims.length} source${sourcesWithoutClaims.length === 1 ? "" : "s"} in source_shas have zero claims with matching source_path.\n` +
-        `    Sources without claims:\n${preview}${overflow}\n` +
-        `    Each source in source_shas should produce ≥ 1 claim via the canonical extraction call. Zero-claim sources indicate silent extraction failure (extraction call skipped or returned empty claims array). Re-run extraction; confirm Phase B iterated all manifest sources from list-extraction-sources.`,
+      `source_coverage: ${adrSourcesWithoutClaims.length} ADR source${adrSourcesWithoutClaims.length === 1 ? "" : "s"} in source_shas have zero claims with matching source_path.\n` +
+        `    ADRs without claims:\n${preview}${overflow}\n` +
+        `    Each ADR in source_shas should produce ≥ 1 claim via the canonical extraction call. Zero-claim ADRs indicate silent extraction failure (extraction call skipped or returned empty claims array). Re-run extraction; confirm Phase B Stream A iterated all manifest ADRs from list-extraction-sources.`,
     );
   }
 
   return errors;
+}
+
+/**
+ * Identify ADR-shaped source_shas keys for the source_coverage
+ * invariant. ADR substrate emits `.md` or `.rst` paths per Scope γ'
+ * walker convention; Stream B emits source-file paths (`.ts`, `.py`,
+ * `.go`, etc.); Stream C emits commit-SHA-prefixed keys
+ * (`commit:<40-char-hex>`). Only ADR-shaped keys reliably produce
+ * claims by design.
+ */
+function isAdrSourcePath(sourcePath: string): boolean {
+  const lower = sourcePath.toLowerCase();
+  return lower.endsWith(".md") || lower.endsWith(".rst");
 }

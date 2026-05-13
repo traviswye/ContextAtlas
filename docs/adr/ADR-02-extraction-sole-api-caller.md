@@ -1135,3 +1135,232 @@ historical record per v0.5 + v0.6 + v0.7 inheritance discipline.
   Step 1.1.b empirical reference; `research/v0.8-candidates.md`
   retroactive entry marks "absorbed at v0.7.1 substrate" for
   audit-trail completeness.
+
+- **2026-05-13** — v0.7.2 substrate-currency hotfix amendment per
+  Q1.1.H lock chain (LOCKs 9-11) + Travis Q1.1.H.β diagnosis +
+  dev Issue 2 surface. Two substantive substrate-currency closures
+  surfaced at v0.7.1 first-run empirical mechanical-floor
+  verification at v0.8 Step 1.1.b.5 Stage 2.a hono CLI re-extract:
+
+  **Driver:** v0.7.1 just-shipped validate-extraction CLI gate
+  auto-invoked at Stage 2.a hono CLI run failed two invariants
+  against the produced atlas:
+
+  - `adr_claims_present`: atlas claims used `source: "ADR-01"`
+    (frontmatter id) format; validator expected `source:
+    "adr:<basename>"` per Skill substrate convention. CLI
+    `deriveSourceName` at `src/extraction/pipeline.ts:573-586`
+    preserved pre-v0.5 era identifier-only format unchanged
+    through cycle boundaries; Skill substrate at v0.7 Step
+    2.3.b.0 adopted modern prefix convention but CLI was not
+    migrated. Substrate-currency outlier carried forward 4
+    cycles (v0.3/v0.4/v0.5/v0.6/v0.7) until v0.7.1 mechanical
+    floor at validate-extraction surfaced it.
+
+  - `source_coverage`: validator's invariant required every
+    source_shas entry to have ≥1 matching claim; CLI's empirical
+    `setSourceSha` semantics at `pipeline.ts:881` populate
+    source_shas for every walked Stream B source file regardless
+    of claim production (most files lack exported-with-docstring
+    symbols → 0 claims). Empirical observation: 348 false-
+    positive coverage failures at hono CLI substrate (223 Stream
+    B files + 113 Stream C commits + 12 Stream A ADRs = 348
+    walked sources; most Stream B + C lack claim-producing
+    content). Validator-invariant mis-modeled the source_shas
+    semantics at v0.7.1 Turn 1 engineering.
+
+  Travis launch-bearing framing per LOCK 4 inherited: v1.0 launch
+  substrate-currency requires both issues closed before broader
+  cohort exposure; Q1.1.H.scope.γ (validator-tolerant) ruled out
+  per substrate-equivalence-by-mechanical-enforcement framing.
+
+  **§permitted-modules invariant extension:**
+
+  Source-convention substrate-currency migration at canonical
+  CLI source-name derivation:
+
+  - **MIGRATED** `deriveSourceName` at `src/extraction/
+    pipeline.ts:573-586` to emit `adr:${basename(absPath)}`
+    canonical convention matching Skill `/index-atlas` SKILL.md
+    spec + validate-extraction canonical source-field format.
+    Pre-v0.7.2 behavior (frontmatter `id` field; ADR-NN pattern
+    fallback; basename-without-extension fallback) substantively
+    replaced with single-rule basename-with-extension + prefix.
+
+  - **REMOVED** dead helper `parseFrontmatterId` at pipeline.ts
+    (private; only caller was deriveSourceName).
+
+  - Function signature change: `deriveSourceName(absPath: string,
+    rawContents: string)` → `deriveSourceName(absPath: string)`.
+    Single caller updated at pipeline.ts:625 (`writeClaimsForFile`).
+
+  - `readFileSync(file.absPath, "utf8")` at pipeline.ts:624
+    preserved for frontmatter symbol merging at downstream code
+    paths (unaffected by source-convention migration).
+
+  **§Decision validate-extraction invariant calibration:**
+
+  Source_coverage invariant scoped to ADR-shaped source_shas keys
+  (paths ending in `.md` or `.rst`):
+
+  - `src/extraction/cli-validate-extraction.ts` — new helper
+    `isAdrSourcePath` filters source_shas keys to ADR-shaped
+    paths before coverage check. Stream B keys (source-file
+    extensions: `.ts`, `.tsx`, `.py`, `.go`, etc.) + Stream C
+    keys (40-char-hex commit SHAs prefixed `commit:`) excluded
+    from coverage requirement.
+
+  - Rationale: ADR stream extraction-prompt against substantive
+    prose reliably produces claims per source by design (>=8
+    claims/ADR empirical mean per v0.8 Stage 2.a CLI three-repo
+    calibration). Stream B walks all source files; only files
+    with exported-with-docstring symbols produce claims
+    (empirical hono Stream B: 282 API calls across 223 walked
+    files → 141 claims; 100+ files produce 0 claims by design).
+    Stream C walks all filtered commits; only commits with
+    architectural-intent body produce claims (empirical hono
+    Stream C: 194 filtered commits → 37 claims; 157 commits
+    produce 0 claims by design).
+
+  - Per-stream coverage at Phase B iteration remains the
+    SKILL.md substrate concern (not validator domain). Phase A
+    iteration discipline enforced at SKILL.md scaffolding level;
+    Phase B per-source iteration produces 0 claims for legitimate
+    Stream B/C sources without violating substrate-equivalence.
+
+  - v0.8+ candidate: per-stream coverage validator extension if
+    empirical evidence surfaces Phase A bypass under Path D
+    substrate (cohort users running /index-atlas at v0.7.2+).
+    Not v0.7.2 hotfix scope; v0.8+ post-launch refinement.
+
+  **§Consequences atlas substrate evolution at v0.7.2:**
+
+  Atlases produced under v0.7.2 CLI extraction emit modern
+  `adr:<basename>` source convention. Pre-v0.7.2 CLI atlases
+  (ADR-NN convention) become substrate-version-legacy artifacts;
+  v0.8 Stage 2.a re-extract under v0.7.2 substrate captures the
+  migration. Skill /index-atlas atlases (pre-v0.7.1 archived;
+  pre-Path-D Skill-only stream coverage) already used modern
+  prefix convention — three-substrate alignment (CLI + Skill +
+  validator) achieved at v0.7.2.
+
+  Atlas v1.4 schema unchanged. Source field is convention, not
+  schema-bound format; SUPPORTED_ATLAS_VERSIONS unchanged.
+
+  **§Consequences cohort UX framing:**
+
+  MCP query downstream impact verified at Fix 4: `claim.source`
+  used at 5 sites across query layer (find-by-intent SQL
+  projection + passthrough + lexicographic sort × 2;
+  compact-formatter display string). All format-agnostic; no
+  pattern-match, startsWith, exact-match on legacy convention.
+  Cohort UX surface: compact-format `INTENT ADR-01 hard "..."` →
+  `INTENT adr:ADR-01-name.md hard "..."` (filename more
+  informative than ADR-NN identifier for cohort users).
+
+  validate-extraction false-positive coverage failures at v0.7.1
+  Stage 2.a closed; Stage 2.a + Stage 2.b re-execution under
+  v0.7.2 substrate cleared per Travis-side cycle resumption at
+  Step 1.1.b.5 boundary.
+
+  **§Consequences test substrate updates:**
+
+  Test fixtures migrated to v0.7.2 convention:
+  - `src/extraction/pipeline.test.ts` — deriveSourceName tests
+    rewrite + ADR-201/ADR-EXT fixture migration
+  - `src/storage/atlas-exporter.test.ts` — 4 fixture
+    occurrences updated to `adr:<basename>` round-trip
+  - `src/extraction/cli-validate-extraction.test.ts` —
+    source_coverage test cases updated: existing failure case
+    uses ADR-shaped orphaned key (Stream B/C keys no longer
+    flagged); NEW tests for Stream B/C source_shas-without-
+    claims pattern (asserts validator passes per v0.7.2
+    invariant scoping)
+
+  Tests passing pre-existing convention NOT requiring update:
+  - `cli-validate-atlas.test.ts:55-56` — already used modern
+    convention (test fixture predates v0.7.2)
+  - `doctor/runner.test.ts:78` — doctor doesn't read source
+    format; arbitrary stub data
+  - `cli-runner.test.ts:774-777` — tests source_path endsWith;
+    independent of source-convention migration
+  - `cli-validate-atlas.test.ts:197` — testing rejection of
+    non-canonical nested structure; format incidental
+
+  **Substantive substrate-currency claim defended via
+  mechanical-floor first-run empirical verification:**
+
+  Post-v0.7.2 ship, v0.8 Stage 2.a CLI re-extract under v0.7.2
+  substrate produces atlases that pass `validate-atlas`
+  (canonical schema) + `validate-extraction` (depth-floor +
+  ADR-scoped coverage). Three-substrate alignment at modern
+  `adr:<basename>` convention closes the v0.7.1 first-run
+  mechanical-floor verification surface. v0.7 Step 2.3.b.0
+  substrate-equivalence claim is now mechanically enforced
+  across CLI + Skill + validator surfaces.
+
+  **Cross-references:**
+  - v0.7.2 ship commit (this amendment + Fix 1 deriveSourceName
+    migration + Fix 2 validate-extraction source_coverage
+    scoping + Fix 3 test fixture updates + Fix 5 ADR-02
+    amendment + Fix 6 version bump + tag)
+  - v0.7.1 ship boundary (Turn 1 a5b3edb + Turn 2 a1f7bc3 +
+    Turn 3 6a59ed9 + v0.7.1 tag) — substantive Path D
+    architecture closure
+  - v0.8 Step 1.1.b.5 Stage 2.a hono CLI re-extract empirical
+    evidence (v0.7.1 first-run validate-extraction auto-invoke
+    surface)
+  - Q1.1.H lock chain (LOCKs 9-11 absorbed into v0.7.2 ship)
+
+  **Cycle-execution observation 16 (NEW; canonical capture at
+  v0.7.2 substrate boundary):**
+
+  Substrate-currency-gap-from-earlier-cycle-carried-forward-
+  and-surfaced-by-mechanical-floor pattern. Composes with
+  cycle-observation 15 (Skill-vs-CLI substrate-equivalence
+  requires per-feature mechanical floor) at adjacent layer.
+
+  Why: Earlier-cycle substrate decisions (v0.3-v0.5 era CLI
+  conventions; v0.7.1 Turn 1 validator-invariant calibration)
+  carry forward across cycle boundaries silently if no
+  mechanical-floor verification crosses both layers. Tag-only
+  discipline (cycle observation captures the decision) without
+  control-verification (mechanical floor enforces the decision
+  at all surfaces) creates substrate-drift surface.
+
+  How to apply: When shipping a mechanical-floor enforcement
+  layer (validate-* CLI subcommand; new CLI gate), expect
+  first-run empirical verification at canonical substrate to
+  surface substrate-currency gaps invisible at single-surface
+  verification. Schedule first-run verification at multiple
+  canonical-substrate surfaces (CLI + Skill + benchmarks)
+  immediately post-ship; absorb surfaced gaps as hotfix scope
+  rather than launch-narrative drift.
+
+  Empirical evidence: v0.7.1 Turn 1 validate-extraction shipped
+  with invariant `adr_claims_present` expecting Skill substrate
+  source convention; surfaced at Stage 2.a CLI re-extract that
+  CLI carries pre-Skill-adoption legacy convention. Substrate-
+  currency gap visible only because v0.7.1 introduced the
+  mechanical floor at validate-extraction. Pre-v0.7.1 cycles
+  shipped with the gap unnoticed (no surface to verify against).
+
+  Closure pattern: v0.7.2 substrate-currency hotfix migrates
+  CLI to modern convention + calibrates validator-invariant
+  to empirical source_shas semantics. Single ship-commit; LOCK
+  8 substep-bounded cadence does not apply (hotfix scope, not
+  load-bearing substrate work).
+
+  Generalizes to v0.8+ Skill-feature substrate work: when
+  shipping a new mechanical floor at any layer (CLI subcommand
+  validator; Skill workflow gate; storage schema check),
+  schedule first-run empirical verification at all canonical
+  substrate surfaces immediately. Earlier-cycle substrate-
+  currency gaps surface predictably at the first mechanical
+  floor crossing them.
+
+  Composes with 15-class enumeration → 16-class for v0.7+ ship-
+  gate working-content-gap-inventory inheritance. Substrate-
+  record reference location: this amendment. v0.8 Step 1.1.c
+  progress log captures cycle-discipline observation 16
+  alongside 15 at Step 1.1.b empirical reference.

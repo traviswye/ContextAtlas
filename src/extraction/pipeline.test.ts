@@ -110,20 +110,27 @@ function makeClaim(
 // Tests
 // ---------------------------------------------------------------------------
 
-describe("deriveSourceName", () => {
-  it("uses YAML frontmatter id when present", () => {
-    const raw =
-      "---\nid: ADR-42\ntitle: x\n---\n\n# Heading\nbody";
-    expect(deriveSourceName("/tmp/whatever.md", raw)).toBe("ADR-42");
+describe("deriveSourceName (v0.7.2 substrate-currency migration)", () => {
+  it("emits adr:<basename> prefix convention regardless of frontmatter id", () => {
+    // Pre-v0.7.2 returned the frontmatter id ("ADR-42"); post-v0.7.2
+    // ignores frontmatter content and uses basename. Substrate-
+    // currency alignment with Skill /index-atlas + validate-extraction.
+    expect(deriveSourceName("/tmp/whatever.md")).toBe("adr:whatever.md");
   });
 
-  it("falls back to ADR-\\d+ pattern in filename (case-insensitive)", () => {
-    expect(deriveSourceName("/tmp/adr-03-foo.md", "body")).toBe("ADR-03");
-    expect(deriveSourceName("/tmp/ADR-07-idempotency.md", "body")).toBe("ADR-07");
+  it("uses basename for ADR-shaped filenames (case-preserved)", () => {
+    expect(deriveSourceName("/tmp/adr-03-foo.md")).toBe("adr:adr-03-foo.md");
+    expect(deriveSourceName("/tmp/ADR-07-idempotency.md")).toBe(
+      "adr:ADR-07-idempotency.md",
+    );
   });
 
-  it("falls back to basename-without-extension as last resort", () => {
-    expect(deriveSourceName("/tmp/README.md", "body")).toBe("README");
+  it("uses basename with extension for non-ADR prose files", () => {
+    expect(deriveSourceName("/tmp/README.md")).toBe("adr:README.md");
+  });
+
+  it("uses .rst basename for reStructuredText sources per Scope γ' walker", () => {
+    expect(deriveSourceName("/tmp/ADR-01-foo.rst")).toBe("adr:ADR-01-foo.rst");
   });
 });
 
@@ -206,7 +213,9 @@ describe("runExtractionPipeline", () => {
     // Claim was inserted and linked to the symbol.
     const claims = listAllClaims(db);
     expect(claims).toHaveLength(1);
-    expect(claims[0]?.source).toBe("ADR-07");
+    // v0.7.2 substrate-currency migration: source field uses
+    // adr:<basename> convention (was "ADR-07" identifier pre-fix).
+    expect(claims[0]?.source).toBe("adr:ADR-07-idempotency.md");
     expect(claims[0]?.symbolIds).toEqual([
       "sym:ts:src/processor.ts:OrderProcessor",
     ]);
@@ -714,7 +723,9 @@ describe("runExtractionPipeline", () => {
     // source_path is relative to the ADR dir (outside-source-root
     // branch of proseRelPath), matching ADR-08's stated rule.
     expect(claims[0]?.sourcePath).toBe("ADR-201.md");
-    expect(claims[0]?.source).toBe("ADR-EXT");
+    // v0.7.2 substrate-currency migration: source field uses
+    // adr:<basename> convention (was frontmatter id "ADR-EXT" pre-fix).
+    expect(claims[0]?.source).toBe("adr:ADR-201.md");
     expect(claims[0]?.symbolIds).toEqual(["sym:ts:example.ts:ExtPoint"]);
 
     // atlas.json was written in the config's home, not the source
