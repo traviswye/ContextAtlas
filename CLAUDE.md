@@ -110,9 +110,38 @@ These are decisions already made. Do not relitigate them.
 
 ## Current Version
 
-- **Current:** v0.7 shipped 2026-05-12 (tag `v0.7.0`); v1.0
-  public launch substrate complete. v0.8+ candidates queued
-  post-launch per `research/v0.8-candidates.md`.
+- **Current:** v0.8 shipped 2026-05-14 (tag `v0.8.0`); last
+  substantive code/features cycle before v1.0 public launch.
+  Cycle-engineering substrate at [`v1_1-HANDOFF.md`](v1_1-HANDOFF.md);
+  v1.1 candidates queued post-launch per
+  [`research/v1.1-candidates.md`](research/v1.1-candidates.md)
+  (renamed from `research/v0.8-candidates.md` at v0.8 cycle
+  close).
+- **v0.8 outcome:** Substrate-equivalence + path-comparability
+  + BM25 activation. v0.7.1 + v0.7.2 + v0.7.3 substep ships
+  closed Skill-substrate parity to CLI at 65-83% claim ratio
+  across hono/httpx/cobra benchmarks (depth-floor ≥8 ADRs
+  preserved). v0.7.3 Ship 1 (ab38f54) closed v0.3-era BM25
+  dormancy on get_symbol_context via handler-side
+  `args.query ?? symbol.name` synthesis. Ship 4b (a8277a3)
+  added doctor BM25 recommendation gate (threshold: any symbol
+  with ≥6 attached claims; grounded in Ship 4a empirical
+  dogfood at hono v0.8-cli). Path-comparability validated via
+  Stage 3 dual F3 dry-runs (api+atlas ≈ cc+atlas within
+  5-16%). v0.5 efficiency paradigm re-validated via Option B
+  4-condition factorial (96 trials, $39.40, fingerprint
+  d613f0ca1ea3d861, atlas SHA 826fd87): 5 of 6 non-trick
+  cells reduce tool-call count at alpha-vs-ca contrast; 2
+  biggest wins (httpx/p1 -62%; hono/h5 -56%) are 50%+
+  reductions; cobra/c3 is the single atlas-induced-over-
+  exploration case flagged for v1.1. Cycle-observations
+  15-23 locked (21 withdrawn per dev fresh-read correction).
+  V1.0 ship-gate status post-v0.8: criterion #1 parenthetical
+  CLOSED at v0.5; criterion #1 statistically-meaningful-wins
+  PARTIAL via v0.8 Option B n=3 re-validation (full
+  v0.5-rigor paired-t at v0.8 is v1.1 candidate); criterion
+  #2 CLOSED at v0.7; criterion #3 NOT MET (post-launch cohort
+  exposure execution).
 - **Strategic arc:** [`ROADMAP.md`](ROADMAP.md) covers v0.1 → v1.0.
 - **v0.7 outcome:** Launch-bearing cycle ship to v1.0 public
   launch under 3-tier scope (PRIMARY claude-code-only +
@@ -134,7 +163,7 @@ These are decisions already made. Do not relitigate them.
   × cold-start + reference-context). 15 Class-15 cycle-
   execution observations captured (capstone composition per
   Step 3.2 aggregation). 21 v0.8+ forward-pointer candidates
-  consolidated at `research/v0.8-candidates.md`. V1.0 ship-
+  consolidated at `research/v1.1-candidates.md` (renamed at v0.8 close). V1.0 ship-
   gate status post-v0.7: criterion #1 parenthetical CLOSED at
   v0.5 (preserved); criterion #1 statistically-meaningful-
   wins PARTIAL via v0.6 8-cell subset → v0.8+ matrix-
@@ -320,17 +349,22 @@ These are decisions already made. Do not relitigate them.
   across languages and repos") empirically validated.
 - **v0.8+ candidates.** Multiple complementary substrates per
   post-v1.0-launch posture:
-  (1) `research/v0.8-candidates.md` captures the 21 v0.8+
-  forward-pointer candidates consolidated at v0.7 cycle close
-  (substrate evolution + mechanical absorption + cohort UX
-  refinement + test substrate + cross-cycle inheritance
-  categories).
-  (2) `v0_8-HANDOFF.md` v0.8 cycle pre-planning canonical
-  bridge document (forward-pointer scope handoff; post-v1.0-
-  launch posture; cohort exposure execution per v0.6 Tier 3
-  deferred; F1-F9 atlas-substrate-version confound causal
-  investigation; matrix-completion graduation per v0.6 8-cell
-  subset).
+  (1) `research/v1.1-candidates.md` (renamed from
+  `research/v0.8-candidates.md` at v0.8 cycle close) captures
+  the v1.1 forward-pointer candidates: substrate-quality
+  investigations (parseArgs attribution; cobra/c3 over-
+  exploration); measurement-substrate refinements (BM25
+  quality-axis; full v0.5-rigor paired-t at v0.8; bucket-
+  design re-calibration); capability refinements (soft-
+  chain-α; SKILL.md drift discipline; CHANGELOG promotion);
+  measurement-discipline carry-forward.
+  (2) `v1_1-HANDOFF.md` v1.1 cycle-engineering knowledge
+  cluster authored at v0.8 cycle close (cycle-observations
+  15-23; observation 21 withdrawn; cycle-discipline patterns
+  1-6; cross-role verification at measurement-substrate
+  entry as the most-load-bearing v1.1 entry-point). Replaces
+  the prior `v0_8-HANDOFF.md` pre-cycle bridge document
+  (preserved as historical record).
   (3) `../ContextAtlas-benchmarks/research/phase-10-v0.6-reference-run.md`
   §9 captures cycle-emergent v0.7+ candidates surfaced during
   v0.6 execution (canonical inventory residual).
@@ -376,7 +410,7 @@ canonical-depth-floor enforcement; SECONDARY contextatlas-on-
 itself dogfood validation + α SKILL.md refresh-aware workflow;
 4-cohort entry-surface framing; 15 Class-15 cycle-execution
 observations capstone composition; 21 v0.8+ candidates
-consolidated at `research/v0.8-candidates.md`; V1.0 ship-gate
+consolidated at `research/v1.1-candidates.md` (renamed at v0.8 close); V1.0 ship-gate
 2-of-3 MET + 2 carried-forward). Historical MVP build-plan
 details live in git history, not this file.
 

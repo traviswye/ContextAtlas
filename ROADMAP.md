@@ -114,39 +114,58 @@ v0.1 ──┬── v0.2 (language adapter breadth)         — SHIPPED
                                                      infrastructure + Tier 3
                                                      cohort exposure cancellation
 
-v0.7 (launch-bearing cycle to v1.0)                — PLANNED; PRIMARY claude-
-                                                     code-only extraction path +
+v0.7 (launch-bearing cycle to v1.0)                — SHIPPED 2026-05-12; tag
+                                                     v0.7.0; PRIMARY claude-code-
+                                                     only extraction path +
+                                                     generate-adrs feature with
+                                                     canonical depth-floor +
                                                      SECONDARY install/setup
-                                                     pipeline real-repo
-                                                     verification + TERTIARY
-                                                     backlog-drain launch-blocking;
-                                                     launch-bearing timeline
-                                                     to v1.0
+                                                     dogfood validated + α SKILL.md
+                                                     refresh-aware workflow
 
-v0.8+ (post-launch substrate)                      — full matrix-completion +
-                                                     F1-F9 methodology amendments
-                                                     + cohort exposure execution +
-                                                     task-shaped queries + post-
-                                                     launch enrichment items
+v0.8 (substrate-equivalence +                      — SHIPPED 2026-05-14; tag
+      path-comparability + BM25 activation)          v0.8.0; v0.7.1+v0.7.2 Skill
+                                                     parity (65-83% Skill/CLI
+                                                     claim ratio) + v0.7.3 BM25
+                                                     activation closes v0.3-era
+                                                     dormancy gap + Option B
+                                                     re-validates v0.5 efficiency
+                                                     paradigm (5 of 6 non-trick
+                                                     cells reduce at alpha-vs-ca;
+                                                     2 wins at 50%+) +
+                                                     path-comparability validated
+                                                     (api+atlas ≈ cc+atlas
+                                                     within 5-16%)
+
+v1.0 (public launch)                               — gates honest 2-of-3 MET +
+                                                     1 carried forward: criterion
+                                                     #1 parenthetical CLOSED
+                                                     (v0.5) + criterion #1
+                                                     statistical-wins PARTIAL via
+                                                     v0.8 Option B re-validation
+                                                     (n=3 bounded-scope; full
+                                                     v0.5-rigor paired-t at v0.8
+                                                     substrate is v1.1 candidate)
+                                                     + criterion #2 onboarding
+                                                     pipeline shipped (v0.7) +
+                                                     criterion #3 external
+                                                     dogfood NOT MET (post-launch
+                                                     cohort exposure execution)
+
+v1.1+ (post-launch substantive cycle)              — substrate-quality
+                                                     investigations (parseArgs
+                                                     attribution; cobra/c3 over-
+                                                     exploration); BM25 quality-
+                                                     axis measurement; full
+                                                     v0.5-rigor paired-t at v0.8;
+                                                     bucket-design re-calibration;
+                                                     cohort exposure execution
 
 v1.0+ (post-launch enrichment)                     — orthogonal; each graduates
                                                      to own version
-
-v1.0 (public launch via v0.7)                      — gates honest 2-of-3 MET +
-                                                     1 carried forward: criterion
-                                                     #1 quality-axis parenthetical
-                                                     CLOSED (v0.5) + criterion #2
-                                                     onboarding pipeline shipped
-                                                     (v0.7) + criterion #1
-                                                     statistical-wins PARTIAL
-                                                     (v0.6 8-cell subset → v0.8+
-                                                     full matrix) + criterion #3
-                                                     external dogfood NOT MET
-                                                     (carried forward to v0.8+
-                                                     post-launch cohort exposure)
 ```
 
-Practical implication: v0.4 shipped 2026-04-29; v0.5 shipped 2026-05-04; v0.6 shipped 2026-05-09; v0.7 launch-bearing cycle to v1.0 per launch-bearing reframe (Travis pivot at v0.6 Step 7.5); v0.8+ post-launch substrate (matrix-completion + cohort exposure execution + F1-F9 methodology amendments). v1.0 gates honest 2-of-3 MET + 1 carried forward per launch-bearing reframe.
+Practical implication: v0.4 shipped 2026-04-29; v0.5 shipped 2026-05-04; v0.6 shipped 2026-05-09; v0.7 shipped 2026-05-12; v0.8 shipped 2026-05-14. v0.8 is the last substantive code/features cycle before v1.0 public launch. v1.0 gates honest 2-of-3 MET + 1 carried forward per launch-bearing reframe. v1.1+ candidate substrate at [`research/v1.1-candidates.md`](research/v1.1-candidates.md); cycle-engineering substrate at [`v1_1-HANDOFF.md`](v1_1-HANDOFF.md).
 
 ### v0.1 — Serving architecture with hand-authored intent [SHIPPED]
 
@@ -641,7 +660,7 @@ for v0.8+ post-launch real-world cohort.
 
 ---
 
-### v0.7 — Launch-bearing cycle to v1.0 [PLANNED]
+### v0.7 — Launch-bearing cycle to v1.0 [SHIPPED]
 
 **Thesis:** Launch-bearing cycle targeting v1.0 public launch
 per Travis pivot at v0.6 Step 7.5. Substantive reframe from
@@ -708,12 +727,27 @@ at v0.7 empirical verification) + criterion #1 statistical-
 wins PARTIAL via 8-cell subset carried forward to v0.8+ +
 criterion #3 NOT MET carried forward to v0.8+ post-launch.
 
-**Status:** [PLANNED] — cycle-pre-planning at v0.6 cycle close
-(post-v0.6 ship); v0.7-SCOPE.md drafts then; cycle launches at
-scope-doc lock. Substrate-preservation document
+**Status:** [SHIPPED] 2026-05-12. Tag `v0.7.0` at ship commit
+`fe3ae7e`. PRIMARY claude-code-only extraction path shipped
+(ADR-02 amendment + ADR-02 graduation; Strategy pattern + Skills
+mechanism + legacy deprecation cycle). PRIMARY (b) generate-adrs
+feature shipped with investigative-depth-per-decision-candidate
+workflow + canonical depth-floor mechanical enforcement via
+`validate-adrs`. SECONDARY contextatlas-on-itself dogfood
+validated at install-pipeline. TERTIARY substrate-gap fixes
+deferred to v0.8. Substrate-preservation document
 [`v0_7-HANDOFF.md`](v0_7-HANDOFF.md) captures detailed launch-
 bearing reframe substrate + original Phase 2 4-stream framing
 preserved as historical record.
+
+V1.0 ship-gate status post-v0.7: criterion #1 parenthetical
+CLOSED at v0.5 (preserved); criterion #1 statistically-
+meaningful-wins PARTIAL via v0.6 8-cell subset → v1.1 matrix-
+completion candidate; criterion #2 newly CLOSED at v0.7 via
+PRIMARY (a) + PRIMARY (b) pipeline-mechanics empirical
+verification; criterion #3 NOT MET via v0.6 Tier 3 cancellation
+→ post-launch cohort exposure execution against carried-forward
+recruitment infrastructure.
 
 **Why this version:** Travis pivot at v0.6 Step 7.5 reframed
 v0.7 as launch-bearing not substrate-generation-bearing.
@@ -732,37 +766,138 @@ v0.8+.
 
 ---
 
-### v0.8+ — Post-launch substrate cycle [PLANNED]
+### v0.8 — Substrate-equivalence + path-comparability + BM25 activation [SHIPPED]
 
-**Thesis:** Post-launch substrate cycle absorbing v0.7-deferred
-work after v1.0 launch lands. Closes carried-forward V1.0 ship-
-gate criteria + executes F1-F9 methodology amendments against
-carried-forward substrate.
+**Thesis:** Last substantive code/features cycle before v1.0
+public launch. Closes the substrate-equivalence gap between
+Skill and CLI deployment paths for cohort use; activates the
+dormant BM25 ranking capability shipped at v0.3; re-validates
+the v0.5 atlas-vs-vanilla efficiency paradigm at v0.8 substrate
+scale.
 
-**Delivers (firms at v0.8-SCOPE.md drafting time post-v1.0 ship):**
+**Shipped:**
 
-- **Full matrix-completion** (~remaining trials beyond v0.6
-  8-cell subset; statistically-meaningful-wins gate work for
-  V1.0 ship-gate criterion #1 closure)
-- **F1-F9 methodology amendments** (5 items per v0_7-HANDOFF.md
-  v0.6 cycle execution substrate section): atlas-version-
-  control methodology amendment (F1 + F9); cell-selection
-  empirical pre-screen (F3); 2-axis retry policy (F4 F6
-  reframing); variance-control auto-stretch (F5); causal
-  mechanism investigation (F1 deferred work)
-- **Cohort exposure execution** against v0.6-shipped recruitment
-  infrastructure (V1.0 ship-gate criterion #3 closure work)
-- **Stream D backlog absorption** (C1 task-shaped queries;
-  slash commands; A1/A2/A3 substrate gaps) per v0_7-HANDOFF.md
-  preserved 4-stream framing
-- **Post-launch enrichment items** per v1.0+ POST-LAUNCH section
-  below as evidence-gates trigger
+- **Substrate-equivalence work (v0.7.1 + v0.7.2 + v0.7.3
+  substep ships).** Skill-substrate extraction pipeline now
+  produces atlases comparable to CLI-substrate at extraction-
+  claim semantics across three benchmark repos:
+  - CLI atlases: 318 / 269 / 253 claims (hono / httpx / cobra)
+  - Skill atlases: 263 / 204 / 164 claims
+  - Skill/CLI claim ratio: 65-83% (within target band for
+    substrate-equivalence at the extraction layer)
+  - Depth-floor ≥8 ADRs preserved at both substrates
+  - validate-extraction PASS at v0.7.2 across all three repos
+- **v0.7.2 substrate-currency hotfix (`4954a38`).** CLI
+  `deriveSourceName` migration to modern `adr:<basename>`
+  convention + `validate-extraction` source_coverage ADR-shape
+  scoping. Closed substrate-currency drift surfaced at first-
+  execution verification.
+- **BM25 activation (v0.7.3 Ship 1 at `ab38f54`).** Handler-side
+  `args.query ?? symbol.name` synthesis fallback closes the
+  v0.3-shipped dormant-capability gap on `get_symbol_context`.
+  Multi-symbol mode preserves ADR-15 §3 uniform-when-provided /
+  per-symbol-when-absent split. v0.7.3 substrate-version bump at
+  `826fd87` signals the activation to cohort users at substrate-
+  version manifests.
+- **Doctor BM25 recommendation logic (Ship 4b at `a8277a3`).**
+  `contextatlas doctor` now emits `atlas.bm25_recommendation`:
+  WARN-level RECOMMEND ENABLE when any symbol in the atlas has
+  ≥6 attached claims (threshold grounded in Ship 4a empirical
+  dogfood at hono v0.8-cli: divergence@5 reorders occur at every
+  densely-attached symbol under BM25=on). ADR-16 amendment
+  documents the synthesis-vs-severity-first behavioral
+  disclosure.
+- **Path-comparability validation (Stage 3 dual F3 dry-runs).**
+  api+atlas vs claude-code+atlas perform within ~5-16% of each
+  other across most cells under the same atlas. Both deployment
+  paths drive comparable agent behavior — the path-comparability
+  claim for v1.0 cohort UX.
+- **v0.5 efficiency paradigm re-validation (Option B 96-trial
+  factorial).** 4-condition factorial (alpha + ca + beta +
+  beta-ca) at 8 intersection cells × n=3 trials = 96 trials.
+  Cost: $39.40. Atlas substrate SHA: `826fd87` (v0.7.3
+  BM25-active). Fingerprint: `d613f0ca1ea3d861`. At the
+  alpha-vs-ca contrast (cleanest atlas-effect control — both
+  conditions share the same agent loop / system prompt; the
+  only difference is whether atlas MCP tools are present):
+  - 5 of 6 non-trick cells: atlas reduced tool-call count
+  - 2 biggest wins (httpx/p1, hono/h5): 50%+ reductions
+  - 1 of 6 (cobra/c3): atlas added calls (+25%; the single
+    atlas-induced-inefficiency case in the dataset, flagged for
+    v1.1 investigation — qualitatively distinct from the
+    priors-driven `beta=1.000` cells which were 0-tool-call
+    pretraining answers)
+  - Tricks performed as designed (vanilla wins both)
 
-**Status:** [PLANNED] — cycle-pre-planning post-v1.0 launch.
+**Launch claim for v1.0:**
+
+> Atlas reduces tool-call count when the model needs to ground
+> reasoning in repo-specific architectural evidence — 50-60%
+> reductions on the two clearest cells in the v0.8 measurement
+> (httpx/p1, hono/h5), with 5 of 6 non-trick cells reducing at
+> the alpha-vs-ca contrast. This re-validates the v0.5 paradigm
+> claim at v0.8 substrate scale on the cleanest control
+> available.
+>
+> On questions whose answers are covered by Claude Code's
+> pretraining (popular OSS design questions, well-documented
+> public API), the model frequently answers with zero tool
+> calls regardless of whether atlas is connected — atlas
+> neither helps nor hurts there. This is a feature of the
+> deployment substrate, not a regression.
+>
+> One cell (cobra/c3 hook-lifecycle at beta-ca) shows atlas-
+> induced over-exploration — Claude Code with atlas issued
+> 2-3× more symbol queries than without. The mechanism is
+> plausibly atlas-claim-cross-reference fan-out and warrants
+> v1.1 investigation; not generalizing across the matrix.
+
+**Cost summary:** ~$115 platform-billed across v0.8 cycle
+measurement runs (Stage 3 dual dry-runs + Option B factorial +
+auxiliary diagnostics). Within initial envelope; ceiling
+formally dissolved late-cycle when launch-bearing scope
+expanded.
+
+**Carry-forward to v1.1:** Cycle-engineering knowledge cluster
+(observations 15-23; observation 21 withdrawn per dev fresh-read
+correction) + substrate-quality investigations (symbol-
+attribution over-fragmentation on parseArgs; cobra/c3 atlas-
+induced over-exploration) + measurement-substrate refinements
+(BM25 quality-axis measurement; full v0.5-rigor paired-t at
+v0.8; bucket-design re-calibration). Full inventory at
+[`research/v1.1-candidates.md`](research/v1.1-candidates.md);
+cycle-engineering substrate at [`v1_1-HANDOFF.md`](v1_1-HANDOFF.md).
+
+**V1.0 ship-gate status post-v0.8:** criterion #1 parenthetical
+CLOSED at v0.5; criterion #1 statistically-meaningful-wins
+PARTIAL — v0.8 Option B re-validates v0.5 paradigm at v0.8
+substrate scale (5 of 6 non-trick cells) but n=3 power is
+bounded-scope; full v0.5-rigor paired-t at v0.8 deferred to
+v1.1 candidate item 4. Criterion #2 CLOSED at v0.7 (preserved).
+Criterion #3 NOT MET — carried forward to post-launch cohort
+exposure execution against v0.6-shipped recruitment
+infrastructure.
+
+**Status:** [SHIPPED] 2026-05-14. Tag `v0.8.0`.
 
 ---
 
-### v0.8+ — must-ship-before-v1.0 backlog (items beyond v0.6 + v0.7) [FLEXIBLE PLACEMENT]
+### v0.8+ — Post-launch substrate cycle [SUPERSEDED → see v1.1+]
+
+**Status:** [SUPERSEDED] at v0.8 cycle close (2026-05-14). v0.8
+shipped as the last substantive code/features cycle before v1.0
+public launch (see preceding section). Items originally scoped
+for "v0.8+ post-launch" — full matrix-completion, F1-F9
+methodology amendments, cohort exposure execution, Stream D
+backlog — are carried forward as v1.1+ candidates (cycle-
+pre-planning post-v1.0 public launch). See
+[`research/v1.1-candidates.md`](research/v1.1-candidates.md) +
+[`v1_1-HANDOFF.md`](v1_1-HANDOFF.md) for the v0.8 cycle-close
+substrate.
+
+---
+
+### v0.8+ — must-ship-before-v1.0 backlog (items beyond v0.6 + v0.7) [SUPERSEDED]
 
 **Items below MUST ship before v1.0 public launch but specific
 version assignment is flexible.** v0.6 + v0.7 cycles covered in
@@ -1021,6 +1156,42 @@ Tracked here, not committed to a version. Each gets its own ADR when approached.
 ---
 
 ## Revision history
+
+- **2026-05-14 — v0.8 ship.** Tag `v0.8.0`. v0.7 section status
+  flipped `[PLANNED]` → `[SHIPPED]` with substantive cycle
+  outcome paragraph (PRIMARY claude-code-only + generate-adrs
+  + SECONDARY dogfood + V1.0 ship-gate status post-v0.7). NEW
+  v0.8 [SHIPPED] section inserted between v0.7 and the
+  superseded v0.8+ post-launch placeholder (substrate-
+  equivalence work via v0.7.1+v0.7.2+v0.7.3 substep ships;
+  Skill/CLI 65-83% claim ratio across hono/httpx/cobra; BM25
+  activation closing v0.3 dormancy gap; Doctor BM25
+  recommendation logic; Path-comparability via Stage 3 dual
+  F3 dry-runs; Option B 4-condition factorial 96 trials $39.40
+  re-validating v0.5 paradigm at v0.8 substrate scale —
+  5 of 6 non-trick cells reduce calls at alpha-vs-ca contrast;
+  cobra/c3 atlas-induced over-exploration flagged for v1.1).
+  Existing "v0.8+ — Post-launch substrate cycle [PLANNED]"
+  section marked [SUPERSEDED] with pointer to v1.1+; existing
+  "v0.8+ — must-ship-before-v1.0 backlog" marked [SUPERSEDED]
+  (items absorbed at v0.8 or moved to v1.1 candidates).
+  Version dependency graph rewritten: v0.7 + v0.8 SHIPPED;
+  v1.1+ post-launch substantive cycle with cycle-engineering
+  knowledge cluster carry-forward from v0.8 (observations
+  15-23; 21 withdrawn). V1.0 ship-gate criterion #1
+  statistical-wins PARTIAL framing refreshed (n=3 Option B
+  re-validation; full v0.5-rigor paired-t at v0.8 substrate
+  is v1.1 candidate). Companion artifacts: NEW
+  [`v1_1-HANDOFF.md`](v1_1-HANDOFF.md) cycle-engineering
+  knowledge cluster (10 LOC scale: observations 15-23 +
+  patterns 1-6); `research/v0.8-candidates.md` renamed to
+  [`research/v1.1-candidates.md`](research/v1.1-candidates.md)
+  with content replaced by v0.8 cycle-close deferred-items
+  inventory (12 candidates). ADR-16 amendments shipped at
+  ab38f54 + a8277a3 (non-revisionist; preserves v0.3 chain α
+  decision + 2026-04-26 production-vs-benchmark distinction +
+  2026-05-14 Ship 1 activation + 2026-05-14 Ship 4b doctor
+  recommendation).
 
 - **2026-05-09 — v0.6 ship.** Tag `v0.6.0`. v0.6 section
   status flipped `[PLANNED]` → `[SHIPPED]` with substantive
