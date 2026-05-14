@@ -176,5 +176,153 @@ export function atlasChecks(ctx: CheckContext): DoctorCheck[] {
         }),
   });
 
+  // 7. atlas.bm25_recommendation (v0.8 Ship 4b; per ADR-16 v0.7.3
+  // activation amendment). Advises whether to enable
+  // `mcp.symbol_context_bm25` based on atlas claim density. BM25
+  // ranking on get_symbol_context materially diverges from the v0.2
+  // severity-then-source ordering only when symbols carry enough
+  // attached claims that top-5 must SELECT from a longer pool —
+  // empirically validated at v0.8 Ship 4a dogfood (hono v0.8-cli
+  // atlas: 4/4 densely-attached symbols showed top-5 reorder under
+  // BM25=on; ≤5 claims attached → reorder is invisible because all
+  // claims surface anyway). Threshold ≥6 claims per any single
+  // symbol per ADDENDUM AJ Option A lock.
+  out.push(bm25RecommendationCheck(claims, ctx));
+
   return out;
+}
+
+// ---------------------------------------------------------------------------
+// BM25 recommendation helper (v0.8 Ship 4b)
+// ---------------------------------------------------------------------------
+
+const BM25_RECOMMENDATION_THRESHOLD = 6;
+
+interface MinimalClaimShape {
+  readonly symbol_ids?: unknown;
+}
+
+/**
+ * Compute per-symbol attached-claims counts from the atlas claim
+ * array. Each claim's `symbol_ids` is an array of symbol-ID strings;
+ * a claim contributes +1 to each of its referenced symbols. Returns
+ * (totalClaims, qualifyingSymbols, maxCount, maxSymbol) where
+ * `qualifyingSymbols` is the count of symbols meeting
+ * BM25_RECOMMENDATION_THRESHOLD.
+ *
+ * Exported for direct unit testing — keeps the recommendation
+ * logic and the counting logic separately verifiable.
+ */
+export function computeBM25DensitySignal(claims: readonly unknown[]): {
+  totalClaims: number;
+  perSymbolCount: ReadonlyMap<string, number>;
+  qualifyingSymbols: number;
+  maxCount: number;
+  maxSymbol: string | null;
+} {
+  const perSymbol = new Map<string, number>();
+  for (const c of claims) {
+    if (!c || typeof c !== "object") continue;
+    const ids = (c as MinimalClaimShape).symbol_ids;
+    if (!Array.isArray(ids)) continue;
+    for (const id of ids) {
+      if (typeof id !== "string") continue;
+      perSymbol.set(id, (perSymbol.get(id) ?? 0) + 1);
+    }
+  }
+  let maxCount = 0;
+  let maxSymbol: string | null = null;
+  let qualifyingSymbols = 0;
+  for (const [sym, n] of perSymbol) {
+    if (n > maxCount) {
+      maxCount = n;
+      maxSymbol = sym;
+    }
+    if (n >= BM25_RECOMMENDATION_THRESHOLD) qualifyingSymbols++;
+  }
+  return {
+    totalClaims: claims.length,
+    perSymbolCount: perSymbol,
+    qualifyingSymbols,
+    maxCount,
+    maxSymbol,
+  };
+}
+
+/**
+ * Build the doctor check that advises on `mcp.symbol_context_bm25`
+ * enablement. Four outcome shapes per ADDENDUM AJ:
+ *
+ *   - flag-on  + dense → PASS (already enabled at density that benefits)
+ *   - flag-on  + sparse → PASS with note (enabled but density below threshold)
+ *   - flag-off + dense → WARN with RECOMMEND ENABLE message
+ *   - flag-off + sparse → PASS with SKIP rationale
+ *
+ * Exported for direct unit testing without going through the full
+ * atlasChecks orchestrator.
+ */
+export function bm25RecommendationCheck(
+  claims: readonly unknown[],
+  ctx: CheckContext,
+): DoctorCheck {
+  const signal = computeBM25DensitySignal(claims);
+  const bm25Enabled = ctx.config?.mcp?.symbolContextBM25 === true;
+  const dense = signal.qualifyingSymbols > 0;
+  const totalClaims = signal.totalClaims;
+
+  if (bm25Enabled && dense) {
+    return {
+      id: "atlas.bm25_recommendation",
+      category: "atlas",
+      status: "pass",
+      message:
+        `mcp.symbol_context_bm25 enabled; atlas density supports it ` +
+        `(${signal.qualifyingSymbols} symbol(s) with ≥${BM25_RECOMMENDATION_THRESHOLD} claims; ` +
+        `max=${signal.maxCount} on ${signal.maxSymbol})`,
+    };
+  }
+  if (bm25Enabled && !dense) {
+    return {
+      id: "atlas.bm25_recommendation",
+      category: "atlas",
+      status: "pass",
+      message:
+        `mcp.symbol_context_bm25 enabled (atlas total: ${totalClaims} claims; ` +
+        `no symbol has ≥${BM25_RECOMMENDATION_THRESHOLD} attached)`,
+      detail:
+        "BM25 is active but reordering is invisible at this substrate density — " +
+        "top-5 bundle surfaces every attached claim regardless of ranking choice. " +
+        "Effect becomes substantive once any symbol accumulates ≥6 claims.",
+    };
+  }
+  if (!bm25Enabled && dense) {
+    return {
+      id: "atlas.bm25_recommendation",
+      category: "atlas",
+      status: "warn",
+      message:
+        `RECOMMEND enable mcp.symbol_context_bm25 ` +
+        `(atlas has ${totalClaims} claims; ${signal.qualifyingSymbols} symbol(s) ` +
+        `with ≥${BM25_RECOMMENDATION_THRESHOLD} claims attached; ` +
+        `max=${signal.maxCount} on ${signal.maxSymbol})`,
+      detail:
+        "BM25 ranking is functional at v0.7.3 and substantively improves retrieval " +
+        "on densely-attached symbols. Enable by adding to your config:\n" +
+        "          mcp:\n" +
+        "            symbol_context_bm25: true\n" +
+        "        See ADR-16 for behavioral details (synthesis-vs-severity-first tradeoff at flag-on).",
+    };
+  }
+  // !bm25Enabled && !dense → SKIP
+  return {
+    id: "atlas.bm25_recommendation",
+    category: "atlas",
+    status: "pass",
+    message:
+      `mcp.symbol_context_bm25 not recommended at this density ` +
+      `(atlas has ${totalClaims} claims; no symbol has ≥${BM25_RECOMMENDATION_THRESHOLD} attached)`,
+    detail:
+      "BM25 available but unlikely to substantively improve retrieval — severity-then-source " +
+      "ordering already surfaces all attached claims per bundle.",
+  };
 }

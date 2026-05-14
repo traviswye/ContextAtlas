@@ -558,3 +558,119 @@ entry-point*.
 **Substrate-record reference location.** This amendment.
 v0.8 substrate-record (Travis's session log) line 2982 captures
 the cycle-context lock chain (Adjudication 1–3 + ADDENDUM AC).
+
+## Amendment (2026-05-14, v0.8 Ship 4b): synthesis-vs-severity-first behavioral disclosure + doctor recommendation
+
+Non-revisionist. The Ship 1 amendment above stays unchanged.
+This block documents the v0.8 Ship 4b ship: a doctor check that
+advises on enabling `mcp.symbol_context_bm25`, plus user-facing
+disclosure of the synthesis-vs-severity-first behavioral shift
+that surfaces when the flag is on.
+
+### Behavioral disclosure — synthesis-vs-severity-first ordering
+
+Pre-Ship-1 (v0.3 → v0.7.2): when the server flag was off OR the
+caller didn't pass `query`, claim ranking fell through to
+`severity → source → claim_id` (v0.2 default). Users on the
+default flag-off path saw a triage-first ordering — hard
+severity invariants surfaced ahead of context-severity supporting
+material.
+
+Post-Ship-1 (v0.7.3+) at flag-on: the handler synthesizes
+`bm25Query = args.query ?? symbol.name`. BM25 score dominates
+the sort chain α (Decision §2 above). The user-visible behavior
+shifts:
+
+- **Without query, synthesis fallback** — top-5 surfaces claims
+  whose text mentions the symbol name by token, regardless of
+  severity. Context-severity claims with name mentions can rank
+  ahead of hard-severity claims that don't. Empirically observed
+  at v0.8 Ship 4a dogfood against the hono v0.8-cli atlas:
+  - `Context` symbol (17 claims) — v0.2 baseline top-5 was 5/5
+    hard-severity; synthesis top-5 is 4 hard + 1 context.
+  - `Hono` symbol (27 claims) — v0.2 baseline top-5 was 5/5
+    hard-severity; synthesis top-5 is 5/5 context-severity
+    (each mentions "Hono" or a variant by name).
+
+- **With caller-provided query** — top-5 surfaces semantically
+  relevant claims first, which is the originally intended
+  behavior (matches what `find_by_intent`'s BM25 chain produces
+  per ADR-09). Empirically the cleanest ranking when caller
+  knows the user's intent.
+
+**Why this matters for users.** Operators who chose flag-off
+implicitly relied on severity-first triage. Enabling the flag
+materially changes what surfaces in the top-N of bundles for
+densely-attached symbols. Neither ordering is universally
+better — they optimize for different reading patterns:
+- Severity-first: "show me the hard invariants I must respect"
+- BM25-with-synthesis: "show me the claims most-relevant to the
+  symbol I asked about"
+- BM25-with-caller-query: "show me the claims most-relevant to
+  my actual question"
+
+Users who prefer severity-first ordering should leave the flag
+at its default (`false`). Users who want relevance-weighted
+ordering should enable the flag and (optionally) instruct their
+MCP clients to pass meaningful `query` parameters where
+possible.
+
+### Doctor recommendation gate (Ship 4b)
+
+`contextatlas doctor` now emits an `atlas.bm25_recommendation`
+check that fires one of four outcomes based on a 2×2 matrix of
+{flag-on / flag-off} × {dense / sparse}:
+
+- **flag-off + dense** → WARN: `RECOMMEND enable
+  mcp.symbol_context_bm25`. Detail surfaces config snippet +
+  pointer to this ADR for the behavioral disclosure above.
+- **flag-off + sparse** → PASS: not recommended at current
+  atlas density (rationale: severity-first ordering already
+  surfaces all attached claims per bundle at low density).
+- **flag-on + dense** → PASS: already enabled at density that
+  benefits.
+- **flag-on + sparse** → PASS with note: enabled but reordering
+  invisible at current density.
+
+"Dense" is defined as **any symbol in the atlas carrying ≥6
+claims attached**, per ADDENDUM AJ Option A lock. Rationale
+(Ship 4a empirical): with top-5 bundle return, ≤5 attached
+claims means top-5 surfaces all of them → reorder is
+user-invisible. At 6+ claims, top-5 must SELECT from a longer
+pool → ranking choice becomes user-visible. Validated at hono
+v0.8-cli dogfood across 4/4 densely-attached symbols (Context,
+Hono, Router, compose) showing 3-5 top-5 position reorders
+under BM25=on vs v0.2 baseline.
+
+The recommendation lives in
+[`src/doctor/checks/atlas.ts`](../../src/doctor/checks/atlas.ts)
+via `bm25RecommendationCheck` + the pure `computeBM25DensitySignal`
+helper. Both exported for direct unit testing in
+`src/doctor/checks/bm25-recommendation.test.ts`.
+
+### Quality-axis measurement deferred (v0.9+ candidate)
+
+Ship 4a measured **ordering shift** under BM25=on vs BM25=off —
+not whether BM25-reordered bundles produce *better Claude
+responses*. The retrieval-relevance changes empirically; the
+downstream-task-quality consequence is empirically untested at
+this cycle. Worth v0.9+ candidate: extend the Ship 4a dogfood
+methodology with answer-quality grading (LLM-judge or rubric-
+based) against BM25-on vs BM25-off bundles, at a fixed atlas
+substrate, to close the activation→quality evidence loop.
+
+Composes with v0.9+ inheritance shape per the 2026-05-14 v0.8
+Step 1 amendment: "shipping mechanically-functional capability
+with caller-activation requirement" generalizes to "validating
+quality-axis consequences of activation at next measurement
+entry-points." The Ship 4b doctor-check closes the activation-
+verification loop at the *user-advisory* layer; the v0.9+
+quality-axis measurement closes it at the *evidence* layer.
+
+### Substrate-record reference location
+
+This amendment. v0.8 substrate-record line 3517 captures
+ADDENDUM AJ (Adjudication: Option A threshold + cycle-
+observation 21 withdrawal + score-metric semantics correction).
+v0.8 Ship 4a empirical paste-back captures the 4/4-densely-
+attached-symbols evidence underlying the ≥6 threshold choice.
