@@ -102,16 +102,27 @@ export interface BuildBundleOptions {
   gitRecentCommits?: number;
   /**
    * Optional BM25 query string for ranking the intent block (ADR-16,
-   * v0.3 Theme 1.2 Fix 3). When present, claims attached to the
-   * symbol are FTS5 BM25-ranked against this query, then tiebroken
-   * by severity → source → claim_id. When absent, falls back to v0.2
-   * deterministic ordering (severity → source → claim_id).
+   * v0.3 Theme 1.2 Fix 3; v0.8 Step 1 activation amendment). When
+   * present, claims attached to the symbol are FTS5 BM25-ranked
+   * against this query, then tiebroken by severity → source →
+   * claim_id. When absent, falls back to v0.2 deterministic
+   * ordering (severity → source → claim_id).
    *
-   * **Two-layer gating** at the handler level (see HandlerDeps in
-   * `src/mcp/handlers/get-symbol-context.ts`): the
-   * `symbolContextBM25` server flag must be on AND the caller must
-   * pass a `query` parameter for this option to be set here. Either
-   * condition absent → option absent → v0.2 ranking.
+   * **API-level contract.** This option's presence at the
+   * `buildBundle` boundary tracks the actual ranking path: option
+   * present → BM25; option absent → v0.2 fallback. Guarded by the
+   * v0.2-equivalence canary in
+   * `src/queries/symbol-context.test.ts` (CANARY 1).
+   *
+   * **Handler-layer gating** (see HandlerDeps in
+   * `src/mcp/handlers/get-symbol-context.ts`): pre-v0.8 the handler
+   * applied two-layer gating (server flag AND caller query both
+   * required); v0.8 Step 1 amends to server-flag-only with
+   * symbol-name synthesis when caller-query absent. This option's
+   * API-level contract is unchanged — only the handler's decision
+   * about WHEN to set this option moved. Callers that build
+   * bundles directly (tests, scripts) retain full control over
+   * BM25 vs v0.2 path via option presence.
    *
    * Differs from find_by_intent's BM25 chain: NO name-overlap
    * tiebreaker, since all claims for a single symbol share the same

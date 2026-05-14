@@ -65,12 +65,15 @@ export interface HandlerDeps {
    */
   gitRecentCommits: number;
   /**
-   * BM25 ranking opt-in (v0.3 Theme 1.2 Fix 3, ADR-16). When true,
-   * `get_symbol_context` ranks the intent block via FTS5 BM25 if
-   * the caller passes a `query` parameter. Mirrors
-   * `config.mcp.symbolContextBM25`. Defaults to false; flag-off
-   * is byte-equivalent to v0.2 ranking (severity → source →
-   * claim_id), guarded by the v0.2-equivalence canary tests.
+   * BM25 ranking opt-in (v0.3 Theme 1.2 Fix 3, ADR-16; v0.8 Step 1
+   * activation-layer amendment). When true, `get_symbol_context`
+   * ranks the intent block via FTS5 BM25 — caller-provided `query`
+   * wins when present, otherwise the handler synthesizes a query
+   * from the resolved `symbol.name` (closes the v0.3→v0.7 dormancy
+   * gap documented in ADR-16 Limitations / 2026-05-14 amendment).
+   * Mirrors `config.mcp.symbolContextBM25`. Defaults to false;
+   * flag-off is byte-equivalent to v0.2 ranking (severity → source
+   * → claim_id), guarded by the v0.2-equivalence canary tests.
    */
   symbolContextBM25?: boolean;
 }
@@ -166,13 +169,22 @@ async function resolveSingle(
       include: args.include,
       maxRefs: args.maxRefs,
       gitRecentCommits: deps.gitRecentCommits,
-      // ADR-16: BM25 path activates only when both the server flag is
-      // on AND the caller provided a query. Either condition absent
-      // falls through to v0.2 deterministic ranking (severity → source
-      // → claim_id), preserving byte-equivalence with pre-Step-6
-      // bundles. Both fallback rules guarded by canary tests.
-      ...(deps.symbolContextBM25 === true && args.query !== undefined
-        ? { bm25Query: args.query }
+      // ADR-16 (v0.8 Step 1 activation amendment): when the server
+      // flag is on, BM25 always activates — caller-provided `query`
+      // wins when present, else the handler synthesizes from the
+      // resolved `symbol.name`. Closes the v0.3-era activation gap
+      // documented in ADR-16 Limitations (existing MCP clients call
+      // `get_symbol_context` without a query string; pre-amendment
+      // two-layer gating left BM25=on at deployment-config dormant
+      // on the caller side). Multi-symbol mode (ADR-15 §3): each
+      // symbol synthesizes from its own resolved name when caller's
+      // query is absent — preserves uniform-when-provided /
+      // per-symbol-when-absent split. Flag-off path unchanged:
+      // bm25Query option absent → v0.2 deterministic ranking, still
+      // guarded by the v0.2-equivalence canary in
+      // src/queries/symbol-context.test.ts.
+      ...(deps.symbolContextBM25 === true
+        ? { bm25Query: args.query ?? symbol.name }
         : {}),
     },
   );

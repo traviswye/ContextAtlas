@@ -387,3 +387,174 @@ was made before the Step 6 spot-check ran; the 7-of-8 cross-severity-
 promotion evidence confirmed but did not change it. Future
 reconsideration follows ROADMAP rescope conditions, not
 amendment-here.
+
+## Amendment (2026-05-14, v0.8 Step 1): handler-side query synthesis closes the v0.3-era activation gap
+
+Non-revisionist. The Decision §3 two-layer gating description and
+the Limitations "Implementation vs activation gap" entry stay
+unchanged as historical record of the v0.3 ship state. This block
+documents the v0.8 Step 1 activation-layer amendment.
+
+**What changed.** The handler at
+[`src/mcp/handlers/get-symbol-context.ts`](../../src/mcp/handlers/get-symbol-context.ts)
+moves from two-layer gating (server flag AND caller query both
+required) to **server-flag-only gating with symbol-name synthesis
+fallback**:
+
+```ts
+// pre-v0.8 — two-layer gating
+...(deps.symbolContextBM25 === true && args.query !== undefined
+  ? { bm25Query: args.query } : {}),
+
+// post-v0.8 Step 1 — server-flag-only, synth fallback
+...(deps.symbolContextBM25 === true
+  ? { bm25Query: args.query ?? symbol.name } : {}),
+```
+
+**What did NOT change.**
+
+- `buildBundle`'s API-level contract (`bm25Query` present →
+  BM25; `bm25Query` absent → v0.2 fallback). CANARY 1 in
+  `src/queries/symbol-context.test.ts` continues passing untouched.
+- The server flag `mcp.symbol_context_bm25` default-off behavior.
+  Flag-off path remains byte-equivalent to v0.2.
+- Decision §4 multi-symbol composition rule. When caller passes
+  `query`, every symbol in the batch uses that uniform query;
+  when caller omits `query`, each symbol synthesizes from its own
+  resolved `symbol.name` — preserves the uniform-when-provided /
+  per-symbol-when-absent split cleanly.
+- Decision §2 chain α tiebreaker hierarchy (BM25 → severity →
+  source → claim_id).
+
+**Why synthesis-from-symbol-name was the chosen activation path.**
+Decision §1 originally rejected "server-derived query" as design-
+debate territory with no clear right answer. The v0.8 amendment
+narrows the scope: synthesis is bounded to `symbol.name` (the
+resolved canonical name from the atlas symbol record), not free-
+form inference. The bare symbol name is already known to be
+relevant to the bundle being returned (it IS the bundle subject);
+using it as a BM25 query says "rank claims that talk about this
+symbol explicitly above claims that don't" — which is exactly the
+muddy-bundle remediation Phase 6 §5.1 motivated. Caller-provided
+queries still win when present, so the "what query does this
+symbol imply" design debate Decision §1 rejected stays out of
+scope at the handler — synthesis is a deterministic single-
+expression fallback, not inference.
+
+**Degenerate-name edge cases.** Symbols whose names tokenize to
+nothing under FTS5's `unicode61 tokenchars '_-'` configuration
+(ADR-17) — pure punctuation, Unicode-only operators, etc. —
+synthesize to a query that `sanitizeQuery` reduces to empty
+tokens. `buildMatchQuery` returns `null` for empty token lists;
+`sortClaimsByBM25` falls through to `sortClaimsBySeverityThenSource`
+within the all-unmatched bucket. Net effect: degenerate-name
+synthesis degrades gracefully to v0.2 ordering within that
+symbol's slot. Explicit test coverage in
+`src/mcp/server.test.ts` ("flag-on + no query + punctuation-heavy
+symbol name").
+
+### Cycle-observation 19 (NEW; canonical capture at this amendment): dormant-capability-carry-forward sub-pattern
+
+Composes with cycle-observations 15 (Skill-vs-CLI substrate-
+equivalence requires per-feature mechanical floor; canonical
+capture at ADR-02 v0.7.1 amendment) and 16 (substrate-currency-
+gap-from-earlier-cycle-carried-forward-and-surfaced-by-
+mechanical-floor; canonical capture at ADR-02 v0.7.2 amendment)
+at the orthogonal "activation-vs-implementation" layer.
+
+**Pattern.** When a mechanically-functional capability ships with
+caller-activation as a separate concern — the implementation is
+production-ready, but the activation chain requires deliberate
+caller behavior the cycle didn't surface or instrument — the
+capability can remain dormant across multiple subsequent cycles
+without anyone noticing.
+
+**Why.** "Default off, opt-in available" framing obscures the
+distinction between:
+- *Mechanically dormant* — flag off; capability cannot fire; no
+  caller-side behavior matters. Cheap to surface (config audit).
+- *Activationally dormant* — flag on at deployment; capability
+  can fire but doesn't because no caller exercises the activation
+  chain. Expensive to surface (requires caller-trace inspection,
+  not config audit).
+
+The v0.3 ADR-16 Limitations section explicitly documented the
+gap. Despite that, BM25=on at the v1.0-trajectory deployment
+config remained activationally dormant through v0.3 → v0.4 →
+v0.5 → v0.6 → v0.7 (five cycles). The discipline failure wasn't
+*recognition* of the gap (recognition was captured); it was
+*verification at next cycle's measurement entry-points*. Each
+cycle's measurement substrate (Phase 6 / Phase 7 / Phase 8 /
+Phase 9 / Phase 10 reference runs; v0.7 dogfood) could have
+caught the dormancy by inspecting a single CA trace, but
+didn't, because no cycle's success criteria forced an
+activation-trace inspection.
+
+**How to apply.** When shipping a mechanically-functional
+capability with caller-activation as a separate concern:
+
+1. Document the activation path explicitly in the ADR
+   Limitations or a dedicated "Activation" section (ADR-16
+   already did this — necessary but not sufficient).
+2. **Add an activation verification to the next cycle's
+   measurement entry-points.** Examples: a trace-shape
+   assertion in benchmark output ("at least one CA call to
+   tool X passed parameter Y"); a doctor-script check ("did
+   any call in the last N invocations exercise parameter Y");
+   a tool-description QA gate.
+3. If activation isn't shipped concurrently with implementation,
+   gate the implementation behind a "DORMANT" status flag in
+   the substrate (not "accepted"), surfacing at config-audit
+   that the capability needs activation work.
+4. Treat activation as load-bearing for any cycle whose
+   measurements would be affected by activation. The v0.6
+   F1 atlas-substrate-version confound is a structurally
+   parallel pattern: the substrate variable was captured (tag-
+   only) but not controlled at measurement entry-points (the
+   F9 tag-AND-control gap). Activation-tag-AND-activation-
+   control is the v0.8 inheritance.
+
+**Empirical evidence.** v0.8 Step 1 ca-agent trace investigation
+(Asks 1–3 parallel batch) confirmed:
+- ADR-16 amendment (2026-04-26) documented the activation gap
+  for the synthetic ca-agent path.
+- `src/harness/tools/ca-adapter.ts:108` `adaptMcpTool` passes
+  `args` verbatim from the model's tool_use input → no query
+  synthesis at the harness layer. Unchanged from v0.3 through
+  v0.8.
+- v0.5 / v0.6 / v0.7 cycles did not include trace-shape
+  inspection of ca-agent `get_symbol_context` calls.
+- BM25=on at deployment-config remained activationally dormant
+  through five cycles before v0.8 Step 1 closed it.
+
+**Closure pattern.** Handler-side synthesis (this amendment) is
+the immediate fix — moves activation from caller responsibility
+to handler responsibility, so the activation chain is closed
+mechanically regardless of caller behavior. v0.8 Option B
+factorial run + doctor-script BM25 recommendation logic (post-
+Ship-1 work) re-verifies the activation at measurement entry-
+points, establishing the discipline the v0.3 → v0.7 cycles
+didn't apply.
+
+**Generalizes to v0.9+ inheritance.** When v0.9+ ships any
+mechanically-functional capability with a caller-activation
+component (server flags that depend on caller behavior; new
+tool parameters; new MCP capabilities requiring client
+adoption), the cycle must:
+- Document activation path in ADR/Limitations (necessary baseline)
+- Add an activation verification check to the next cycle's
+  measurement entry-points (the v0.8 amendment delta — necessary
+  AND sufficient)
+
+**Composes with cycle-observations 15 + 16** as the third element
+of the "mechanical-floor-discipline" cluster: 15 covers
+substrate-equivalence floors; 16 covers substrate-currency
+floors across cycle boundaries; 19 covers activation floors at
+caller boundaries. All three patterns share the same generative
+shape: a substrate-relevant property was *recognized* but not
+*mechanically enforced at the measurement / verification
+entry-point*.
+
+**Substrate-record reference location.** This amendment.
+v0.8 substrate-record (Travis's session log) line 2982 captures
+the cycle-context lock chain (Adjudication 1–3 + ADDENDUM AC).

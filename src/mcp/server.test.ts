@@ -1046,12 +1046,76 @@ describe("MCP server — get_symbol_context BM25 query parameter (ADR-16)", () =
     expect(idempotencyIdx).toBeLessThan(streamingIdx);
   });
 
-  it("flag-on but no query: falls back to v0.2 ordering (insertion order)", async () => {
-    // Two-layer gating: server flag on but caller didn't pass query →
-    // fallback. This is the load-bearing fallback rule that prevents
-    // existing v0.2 callers from seeing different output when an
-    // admin flips the flag on.
-    await setupServer(true);
+  it("flag-on + no query: handler synthesizes BM25 query from symbol.name (v0.8 Step 1 activation amendment)", async () => {
+    // v0.8 Step 1 amendment to ADR-16: server-flag-only gating with
+    // symbol-name synthesis when caller-query absent. Closes the
+    // v0.3-era activation gap where pre-amendment two-layer gating
+    // left BM25=on at deployment-config dormant on caller side
+    // (existing MCP clients call get_symbol_context without query).
+    //
+    // Setup: two claims attached to symbol "OrderProcessor" — one
+    // mentions "OrderProcessor" by name in the claim text, the other
+    // is off-topic. Synthesis sets bm25Query = symbol.name =
+    // "OrderProcessor", so the name-matching claim must rank first.
+    db.close();
+    db = openDatabase(":memory:");
+    const sym: AtlasSymbol = {
+      id: "sym:ts:src/orders/processor.ts:OrderProcessor",
+      name: "OrderProcessor",
+      kind: "class",
+      path: "src/orders/processor.ts",
+      line: 42,
+      signature: "class OrderProcessor",
+      language: "typescript",
+      fileSha: "abc",
+    };
+    upsertSymbols(db, [sym]);
+    insertClaims(db, [
+      {
+        source: "ADR-07",
+        sourcePath: "docs/adr/ADR-07.md",
+        sourceSha: "s",
+        severity: "hard",
+        // Inserted FIRST — would win under v0.2 insertion-order
+        // fallback. Off-topic relative to synthesized query.
+        claim: "request-side streaming uses a generator object",
+        symbolIds: [sym.id],
+      },
+      {
+        source: "ADR-07",
+        sourcePath: "docs/adr/ADR-07.md",
+        sourceSha: "s",
+        severity: "hard",
+        // Inserted SECOND — would lose under v0.2 fallback, but BM25
+        // synthesis with bm25Query="OrderProcessor" ranks it first.
+        claim: "OrderProcessor coordinates the retry budget for orders",
+        symbolIds: [sym.id],
+      },
+    ]);
+    // Recreate server with same flag value so it points at the
+    // fresh db. setupServer's afterEach handles cleanup.
+    await client.close();
+    await server.close();
+    server = createServer({
+      name: "ContextAtlas",
+      version: "0.0.1-test",
+      context: {
+        db,
+        adapters: new Map([["typescript", stubAdapter({})]]),
+        gitRecentCommits: 5,
+        symbolContextBM25: true,
+      },
+    });
+    client = new Client(
+      { name: "test-client", version: "0.0.1" },
+      { capabilities: {} },
+    );
+    const [clientTransport, serverTransport] =
+      InMemoryTransport.createLinkedPair();
+    await Promise.all([
+      server.connect(serverTransport),
+      client.connect(clientTransport),
+    ]);
     const result = await client.request(
       {
         method: "tools/call",
@@ -1063,12 +1127,16 @@ describe("MCP server — get_symbol_context BM25 query parameter (ADR-16)", () =
       CallToolResultSchema,
     );
     const text = (result.content[0] as { text: string }).text;
-    // v0.2 insertion order: streaming claim first (claim id = 1).
-    const streamingIdx = text.indexOf("off-target streaming claim");
-    const idempotencyIdx = text.indexOf("payment idempotency must be enforced");
-    expect(streamingIdx).toBeGreaterThan(-1);
-    expect(idempotencyIdx).toBeGreaterThan(-1);
-    expect(streamingIdx).toBeLessThan(idempotencyIdx);
+    // BM25 synthesis activates: name-matching claim ranks first.
+    const onTopic = text.indexOf(
+      "OrderProcessor coordinates the retry budget for orders",
+    );
+    const offTopic = text.indexOf(
+      "request-side streaming uses a generator object",
+    );
+    expect(onTopic).toBeGreaterThan(-1);
+    expect(offTopic).toBeGreaterThan(-1);
+    expect(onTopic).toBeLessThan(offTopic);
   });
 
   it("flag-off + query: query is silently ignored (no BM25 path)", async () => {
@@ -1095,8 +1163,64 @@ describe("MCP server — get_symbol_context BM25 query parameter (ADR-16)", () =
     expect(streamingIdx).toBeLessThan(idempotencyIdx);
   });
 
-  it("flag-on + empty query string: empty trimmed query treated as absent", async () => {
-    await setupServer(true);
+  it("flag-on + empty query string: treated as absent → synthesis fires from symbol.name (v0.8 Step 1)", async () => {
+    // Whitespace-only query trims to absent at parseArgs. Post-Ship-1
+    // the handler then synthesizes bm25Query = symbol.name rather
+    // than falling through to v0.2 ranking. Setup mirrors the
+    // synthesis test above — name-matching claim must rank first.
+    db.close();
+    db = openDatabase(":memory:");
+    const sym: AtlasSymbol = {
+      id: "sym:ts:src/orders/processor.ts:OrderProcessor",
+      name: "OrderProcessor",
+      kind: "class",
+      path: "src/orders/processor.ts",
+      line: 42,
+      signature: "class OrderProcessor",
+      language: "typescript",
+      fileSha: "abc",
+    };
+    upsertSymbols(db, [sym]);
+    insertClaims(db, [
+      {
+        source: "ADR-07",
+        sourcePath: "docs/adr/ADR-07.md",
+        sourceSha: "s",
+        severity: "hard",
+        claim: "request-side streaming uses a generator object",
+        symbolIds: [sym.id],
+      },
+      {
+        source: "ADR-07",
+        sourcePath: "docs/adr/ADR-07.md",
+        sourceSha: "s",
+        severity: "hard",
+        claim: "OrderProcessor coordinates the retry budget for orders",
+        symbolIds: [sym.id],
+      },
+    ]);
+    await client.close();
+    await server.close();
+    server = createServer({
+      name: "ContextAtlas",
+      version: "0.0.1-test",
+      context: {
+        db,
+        adapters: new Map([["typescript", stubAdapter({})]]),
+        gitRecentCommits: 5,
+        symbolContextBM25: true,
+      },
+    });
+    client = new Client(
+      { name: "test-client", version: "0.0.1" },
+      { capabilities: {} },
+    );
+    const [clientTransport, serverTransport] =
+      InMemoryTransport.createLinkedPair();
+    await Promise.all([
+      server.connect(serverTransport),
+      client.connect(clientTransport),
+    ]);
     const result = await client.request(
       {
         method: "tools/call",
@@ -1108,11 +1232,244 @@ describe("MCP server — get_symbol_context BM25 query parameter (ADR-16)", () =
       CallToolResultSchema,
     );
     const text = (result.content[0] as { text: string }).text;
-    // Whitespace-only query → trimmed to "" → handler treats as
-    // absent → BM25 path doesn't activate → v0.2 ordering.
-    const streamingIdx = text.indexOf("off-target streaming claim");
-    const idempotencyIdx = text.indexOf("payment idempotency must be enforced");
-    expect(streamingIdx).toBeLessThan(idempotencyIdx);
+    const onTopic = text.indexOf(
+      "OrderProcessor coordinates the retry budget for orders",
+    );
+    const offTopic = text.indexOf(
+      "request-side streaming uses a generator object",
+    );
+    expect(onTopic).toBeLessThan(offTopic);
+  });
+
+  it("flag-on + no query + punctuation-heavy symbol name: synthesis degrades gracefully to v0.2 within unmatched bucket (v0.8 Step 1 edge case)", async () => {
+    // Edge case: symbol whose name produces no usable FTS5 tokens
+    // after sanitizeQuery + buildMatchQuery (e.g., pure punctuation).
+    // sanitizeQuery strips non-alphanumerics; buildMatchQuery returns
+    // null on empty token list; sortClaimsByBM25 then falls back to
+    // sortClaimsBySeverityThenSource for the unmatched bucket.
+    // Verifies the BM25 path doesn't crash on degenerate synthesis
+    // input — degrades gracefully to v0.2 ordering.
+    db.close();
+    db = openDatabase(":memory:");
+    const sym: AtlasSymbol = {
+      id: "sym:ts:src/util.ts:$",
+      name: "$",
+      kind: "function",
+      path: "src/util.ts",
+      line: 1,
+      signature: "function $(): void",
+      language: "typescript",
+      fileSha: "abc",
+    };
+    upsertSymbols(db, [sym]);
+    insertClaims(db, [
+      {
+        source: "ADR-07",
+        sourcePath: "docs/adr/ADR-07.md",
+        sourceSha: "s",
+        severity: "hard",
+        claim: "first claim — would win under v0.2 insertion order",
+        symbolIds: [sym.id],
+      },
+      {
+        source: "ADR-07",
+        sourcePath: "docs/adr/ADR-07.md",
+        sourceSha: "s",
+        severity: "hard",
+        claim: "second claim — would lose under v0.2",
+        symbolIds: [sym.id],
+      },
+    ]);
+    await client.close();
+    await server.close();
+    server = createServer({
+      name: "ContextAtlas",
+      version: "0.0.1-test",
+      context: {
+        db,
+        adapters: new Map([["typescript", stubAdapter({})]]),
+        gitRecentCommits: 5,
+        symbolContextBM25: true,
+      },
+    });
+    client = new Client(
+      { name: "test-client", version: "0.0.1" },
+      { capabilities: {} },
+    );
+    const [clientTransport, serverTransport] =
+      InMemoryTransport.createLinkedPair();
+    await Promise.all([
+      server.connect(serverTransport),
+      client.connect(clientTransport),
+    ]);
+    const result = await client.request(
+      {
+        method: "tools/call",
+        params: {
+          name: TOOL_NAMES.getSymbolContext,
+          arguments: { symbol: "$" },
+        },
+      },
+      CallToolResultSchema,
+    );
+    const text = (result.content[0] as { text: string }).text;
+    // No crash; both claims surface. Unmatched bucket falls back to
+    // severity → source → claim_id ASC → insertion order.
+    const first = text.indexOf("first claim — would win under v0.2 insertion order");
+    const second = text.indexOf("second claim — would lose under v0.2");
+    expect(first).toBeGreaterThan(-1);
+    expect(second).toBeGreaterThan(-1);
+    expect(first).toBeLessThan(second);
+  });
+
+  it("flag-on + multi-symbol input + no query: each symbol synthesizes from its own resolved name (v0.8 Step 1 + ADR-15 §3)", async () => {
+    // Per-symbol synthesis preserves ADR-15 §3's uniform-when-
+    // provided / per-symbol-when-absent split. When caller passes a
+    // query, every symbol uses that uniform query (existing
+    // "multi-symbol input with query" test below covers that path).
+    // When caller omits the query, each symbol synthesizes from its
+    // own resolved name.
+    //
+    // Cross-contamination check: each symbol's first claim mentions
+    // the OTHER symbol's name (lowercase, no token-match) but NOT
+    // its own — so under correct per-symbol synthesis it stays
+    // unmatched (sorts last). The second claim contains its own
+    // name AND the other's. Under correct synthesis: claim 2 wins
+    // in each slot. Under broken-uniform synthesis (e.g., handler
+    // accidentally using args.query for all symbols when it's
+    // undefined → undefined ?? first.symbol.name → uniform), the
+    // ordering would flip in the non-first slot.
+    db.close();
+    db = openDatabase(":memory:");
+    upsertSymbols(db, [
+      {
+        id: "sym:ts:src/orders/processor.ts:OrderProcessor",
+        name: "OrderProcessor",
+        kind: "class",
+        path: "src/orders/processor.ts",
+        line: 1,
+        language: "typescript",
+        fileSha: "abc",
+      },
+      {
+        id: "sym:ts:src/billing/retry.ts:RetryBudget",
+        name: "RetryBudget",
+        kind: "class",
+        path: "src/billing/retry.ts",
+        line: 1,
+        language: "typescript",
+        fileSha: "def",
+      },
+    ]);
+    insertClaims(db, [
+      // OrderProcessor's claims. Claim 1 references "the order
+      // processor" (lowercase, two tokens) — no "OrderProcessor"
+      // single-token match. Claim 2 contains "OrderProcessor".
+      // Synth for this slot is "OrderProcessor" → claim 2 wins.
+      {
+        source: "ADR-08",
+        sourcePath: "docs/adr/ADR-08.md",
+        sourceSha: "s",
+        severity: "hard",
+        claim: "RetryBudget delegates to the order processor when retries exhaust",
+        symbolIds: ["sym:ts:src/orders/processor.ts:OrderProcessor"],
+      },
+      {
+        source: "ADR-08",
+        sourcePath: "docs/adr/ADR-08.md",
+        sourceSha: "s",
+        severity: "hard",
+        claim: "OrderProcessor owns order lifecycle state in concert with RetryBudget",
+        symbolIds: ["sym:ts:src/orders/processor.ts:OrderProcessor"],
+      },
+      // RetryBudget's claims. Claim 1 contains "OrderProcessor"
+      // but NOT "RetryBudget" — would WIN if synthesis incorrectly
+      // used a uniform OrderProcessor query for this slot. Claim 2
+      // contains "RetryBudget". Synth for this slot is "RetryBudget"
+      // → claim 2 wins. The reversal-on-broken-synth makes the
+      // cross-contamination check meaningful.
+      {
+        source: "ADR-08",
+        sourcePath: "docs/adr/ADR-08.md",
+        sourceSha: "s",
+        severity: "hard",
+        claim: "OrderProcessor consults the budget for retry decisions",
+        symbolIds: ["sym:ts:src/billing/retry.ts:RetryBudget"],
+      },
+      {
+        source: "ADR-08",
+        sourcePath: "docs/adr/ADR-08.md",
+        sourceSha: "s",
+        severity: "hard",
+        claim: "RetryBudget tracks the per-tenant retry envelope; OrderProcessor reads it",
+        symbolIds: ["sym:ts:src/billing/retry.ts:RetryBudget"],
+      },
+    ]);
+    await client.close();
+    await server.close();
+    server = createServer({
+      name: "ContextAtlas",
+      version: "0.0.1-test",
+      context: {
+        db,
+        adapters: new Map([["typescript", stubAdapter({})]]),
+        gitRecentCommits: 5,
+        symbolContextBM25: true,
+      },
+    });
+    client = new Client(
+      { name: "test-client", version: "0.0.1" },
+      { capabilities: {} },
+    );
+    const [clientTransport, serverTransport] =
+      InMemoryTransport.createLinkedPair();
+    await Promise.all([
+      server.connect(serverTransport),
+      client.connect(clientTransport),
+    ]);
+    const result = await client.request(
+      {
+        method: "tools/call",
+        params: {
+          name: TOOL_NAMES.getSymbolContext,
+          arguments: { symbol: ["OrderProcessor", "RetryBudget"] },
+        },
+      },
+      CallToolResultSchema,
+    );
+    const text = (result.content[0] as { text: string }).text;
+    const procStart = text.indexOf("OrderProcessor (1 of 2)");
+    const retryStart = text.indexOf("RetryBudget (2 of 2)");
+    expect(procStart).toBeGreaterThan(-1);
+    expect(retryStart).toBeGreaterThan(-1);
+    // Within OrderProcessor's slot: name-match claim ranks first.
+    const procNameMatch = text.indexOf(
+      "OrderProcessor owns order lifecycle state in concert with RetryBudget",
+      procStart,
+    );
+    const procOther = text.indexOf(
+      "RetryBudget delegates to the order processor when retries exhaust",
+      procStart,
+    );
+    expect(procNameMatch).toBeGreaterThan(-1);
+    expect(procOther).toBeGreaterThan(-1);
+    expect(procNameMatch).toBeLessThan(procOther);
+    expect(procNameMatch).toBeLessThan(retryStart);
+    // Within RetryBudget's slot: name-match claim ranks first.
+    // Cross-contamination check: claim 1 here references
+    // OrderProcessor but NOT RetryBudget — it would win the slot if
+    // the handler accidentally used a uniform query.
+    const retryNameMatch = text.indexOf(
+      "RetryBudget tracks the per-tenant retry envelope",
+      retryStart,
+    );
+    const retryOther = text.indexOf(
+      "OrderProcessor consults the budget for retry decisions",
+      retryStart,
+    );
+    expect(retryNameMatch).toBeGreaterThan(-1);
+    expect(retryOther).toBeGreaterThan(-1);
+    expect(retryNameMatch).toBeLessThan(retryOther);
   });
 
   it("non-string query rejected with InvalidParams", async () => {
