@@ -28,20 +28,23 @@ Findings land at `docs/adr/ruby-lsp-probe-findings.md`.
 
 ## Version pinning
 
-v1.0 ships on the **stable-compatible pair**: ruby-lsp 0.24.2 +
+v1.0 ships on the **stable-compatible pair**: ruby-lsp 0.26.x +
 ruby-lsp-rails 0.4.8.
 
-ruby-lsp's stable max is 0.26.9 (May 2026), but ruby-lsp-rails 0.4.8
-pins ruby-lsp `>= 0.24.0, < 0.25.0` — the add-on lags 2+ minor
-versions behind main. ruby-lsp 0.27+ (Rubydex-backed indexer) and
-ruby-lsp-rails 0.5.0+ are pre-release only.
+Per actual bundler resolution at May 15, 2026: ruby-lsp-rails 0.4.8
+depends on ruby-lsp `>= 0.26.0, < 0.27.0`. ruby-lsp's stable max is
+0.26.9; the resolver picks the latest compatible patch. ruby-lsp
+0.27+ (Rubydex-backed indexer) and ruby-lsp-rails 0.5.0+ are
+pre-release only.
 
-**Implication for probe findings**: at 0.24.2, Rubydex (the
+**Implication for probe findings**: at 0.26.x, Rubydex (the
 2026-05-12 indexer rework that expanded methods/instance-vars
-references coverage) is NOT present. Probe-findings on
-`findReferences` will reflect pre-Rubydex coverage shape, which
-ADR-21 Limitations must document honestly. v1.1 upgrade to the
-0.27+/0.5+ pair is anchored as a v1.1-candidate entry.
+references coverage) is NOT present — Rubydex landed in 0.27+
+pre-release. Probe-findings on `findReferences` will reflect pre-
+Rubydex coverage shape against the most recent pre-Rubydex stable
+patch, which ADR-21 Limitations must document honestly. v1.1
+upgrade to the 0.27+/0.5+ pair is anchored as a v1.1-candidate
+entry.
 
 ## What this fixture exercises
 

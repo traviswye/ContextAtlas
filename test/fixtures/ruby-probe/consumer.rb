@@ -1,6 +1,6 @@
 # Cross-file consumer for findReferences probe (v0.9 Stream A Substep 3).
 # Each expression below references a symbol declared in app/ or lib/;
-# probes verify ruby-lsp 0.24.2 resolves these cross-file references
+# probes verify ruby-lsp 0.26.x resolves these cross-file references
 # correctly across the various symbol kinds. Coverage at the pre-
 # Rubydex baseline (per Gemfile Version pinning note) — methods-
 # references may be limited per roadmap, instance-variables likely not

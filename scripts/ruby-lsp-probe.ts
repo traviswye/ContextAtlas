@@ -2,24 +2,25 @@
  * ruby-lsp + ruby-lsp-rails LSP probe — throwaway empirical behavior
  * capture for ADR-21 (Ruby adapter).
  *
- * Goal: exercise ruby-lsp 0.24.2 + ruby-lsp-rails 0.4.8 (the
- * stable-compatible pair as of May 2026; see "Version pinning"
- * below) against a minimal Rails-shaped fixture so ADR-21's LSP
- * primitive mappings + Limitations sections are grounded in observed
- * behavior rather than documentation guesses.
+ * Goal: exercise ruby-lsp 0.26.x + ruby-lsp-rails 0.4.8 (the
+ * stable-compatible pair per bundler resolution at May 2026; see
+ * "Version pinning" below) against a minimal Rails-shaped fixture so
+ * ADR-21's LSP primitive mappings + Limitations sections are grounded
+ * in observed behavior rather than documentation guesses.
  *
  * Version pinning (Option D adjudication; cycle-observation 24
- * third surface): ruby-lsp's stable max is 0.26.9 (May 2026), but
- * ruby-lsp-rails 0.4.8 pins ruby-lsp `>= 0.24.0, < 0.25.0` — the
- * add-on lags 2+ minor versions behind main. ruby-lsp 0.27+
+ * fourth surface): per actual bundler resolution, ruby-lsp-rails
+ * 0.4.8 depends on ruby-lsp `>= 0.26.0, < 0.27.0`. ruby-lsp 0.27+
  * (Rubydex-backed indexer) and ruby-lsp-rails 0.5.0+ exist only as
- * pre-release. v1.0 ships on the stable pair; v1.1 candidate
- * tracks upgrade to 0.27+/0.5+ once both have stable releases.
+ * pre-release. v1.0 ships on the stable 0.26.x/0.4.8 pair; v1.1
+ * candidate tracks upgrade to 0.27+/0.5+ once both have stable
+ * releases.
  *
- * Implication for probe findings: at 0.24.2, Rubydex's expanded
- * methods/instance-var references coverage is NOT present. Probe-
- * findings reflect pre-Rubydex coverage shape, which ADR-21
- * Limitations must document honestly.
+ * Implication for probe findings: 0.26.x is still pre-Rubydex
+ * (Rubydex landed in 0.27+). Rubydex's expanded methods/instance-
+ * var references coverage is NOT present at 0.26.x. Probe-findings
+ * reflect pre-Rubydex coverage at the most recent pre-Rubydex
+ * stable patch, which ADR-21 Limitations must document honestly.
  *
  * Per v0.9 Stream A plan:
  *   - Substep 1 (this file, scaffold): boot + handler stubs +
@@ -365,12 +366,13 @@ async function main(): Promise<void> {
   out.push("# ruby-lsp probe findings");
   out.push("");
   out.push(
-    "Raw behavior capture from ruby-lsp 0.24.2 + ruby-lsp-rails 0.4.8",
+    "Raw behavior capture from ruby-lsp 0.26.x + ruby-lsp-rails 0.4.8",
   );
   out.push(
-    "(stable-compatible pair as of May 2026) against a minimal Rails 8",
+    "(stable-compatible pair per bundler resolution at May 2026)",
   );
-  out.push("fixture. Produced by `scripts/ruby-lsp-probe.ts` on " + new Date().toISOString() + ".");
+  out.push("against a minimal Rails 8 fixture. Produced by");
+  out.push("`scripts/ruby-lsp-probe.ts` on " + new Date().toISOString() + ".");
   out.push("");
   out.push(
     "Purpose: ground ADR-21's LSP primitive mappings and Limitations",
@@ -381,20 +383,22 @@ async function main(): Promise<void> {
   out.push("ADR-authoring discipline per ADR-13 (Pyright) + ADR-14 (gopls)");
   out.push("precedent.");
   out.push("");
-  out.push("**Version targets.** Ruby 3.3, Rails 8.0, ruby-lsp 0.24.2,");
-  out.push("ruby-lsp-rails 0.4.8 (auto-loaded when Rails detected).");
+  out.push("**Version targets.** Ruby 3.3, Rails 8.0, ruby-lsp 0.26.x");
+  out.push("(latest 0.26.9), ruby-lsp-rails 0.4.8 (auto-loaded when");
+  out.push("Rails detected).");
   out.push("");
   out.push(
     "**Version pinning rationale** (Option D adjudication; cycle-",
   );
   out.push(
-    "observation 24 third surface): ruby-lsp's stable max is 0.26.9,",
+    "observation 24 fourth surface): per actual bundler resolution,",
   );
-  out.push("but ruby-lsp-rails 0.4.8 pins ruby-lsp `>= 0.24.0, < 0.25.0`.");
+  out.push("ruby-lsp-rails 0.4.8 depends on ruby-lsp `>= 0.26.0, < 0.27.0`.");
   out.push("ruby-lsp 0.27+ (Rubydex-backed indexer; landed in pre-release");
   out.push("per Rails-at-Scale 2026-05-12) is NOT in scope at v1.0; v1.1");
-  out.push("candidate tracks the upgrade. Probe-findings on findReferences");
-  out.push("therefore reflect pre-Rubydex coverage shape.");
+  out.push("candidate tracks the upgrade. 0.26.x is still pre-Rubydex,");
+  out.push("so probe-findings on findReferences reflect pre-Rubydex");
+  out.push("coverage shape at the most recent pre-Rubydex stable patch.");
   out.push("");
 
   const rubyFiles = walkRubyRecursive(FIXTURE).map((p) => normalizePath(p));
@@ -439,7 +443,7 @@ async function main(): Promise<void> {
 
     await openAll(probe, rubyFiles);
 
-    // Wait for workspace analysis to complete. ruby-lsp 0.24.2's
+    // Wait for workspace analysis to complete. ruby-lsp 0.26.x's
     // analysis time on a small Rails fixture is unknown (pre-Rubydex
     // indexer architecture) — Substep 3 tightens this based on
     // observed $/progress traffic.
@@ -495,12 +499,14 @@ async function main(): Promise<void> {
     // TODO (Substep 3, probe #2): findReferences — methods specifically
     //   - References on a constant (class/module): expected full support
     //     per ruby-lsp pre-Rubydex baseline (roadmap: constants supported)
-    //   - References on an instance variable: NOT in pre-Rubydex 0.24.2
-    //     per roadmap ("planned"). Rubydex 2026-05-12 expansion is at
+    //   - References on an instance variable: roadmap "planned" at the
+    //     pre-Rubydex baseline. Rubydex 2026-05-12 expansion is at
     //     0.27+ pre-release, NOT in scope at v1.0 — see file header
-    //     "Version pinning" note. Probe captures actual 0.24.2 coverage.
+    //     "Version pinning" note. Probe captures actual 0.26.x coverage.
+    //     0.26.x may have incremental pre-Rubydex improvements not
+    //     present in older patches; probe-findings empirical input.
     //   - References on a method with no receiver-type inference: roadmap
-    //     "planned" status at 0.24.2; capture actual coverage shape
+    //     "planned" status pre-Rubydex; capture actual 0.26.x coverage
     //   - References on a method inside a typed-context (Sorbet-like
     //     scenarios not in scope at v1.0 but worth a control trial)
     heading(out, "Probe #2 — findReferences (TODO Substep 3)");

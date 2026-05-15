@@ -18,17 +18,24 @@ gem 'rails', '~> 8.0.0'
 gem 'paranoia', '~> 2.6'
 
 # Version pinning per Option D adjudication (cycle-observation 24
-# third surface): ship on stable-compatible pair, NOT pre-release.
+# fourth surface): ship on stable-compatible pair, NOT pre-release.
 #
-# ruby-lsp's stable max is 0.26.9 (May 2026), but ruby-lsp-rails 0.4.8
-# pins ruby-lsp `>= 0.24.0, < 0.25.0` — the add-on lags 2+ minor
-# versions behind main. ruby-lsp 0.27+ (Rubydex-backed indexer) and
-# ruby-lsp-rails 0.5.0+ exist only as pre-release at this date.
+# Per actual bundler resolution at May 15, 2026:
+#   - ruby-lsp-rails 0.4.8 depends on ruby-lsp `>= 0.26.0, < 0.27.0`
+#   - ruby-lsp stable max is 0.26.9 (current 0.26.x patch)
+#   - ruby-lsp 0.27+ (Rubydex-backed indexer) + ruby-lsp-rails 0.5.0+
+#     exist only as pre-release at this date
 #
-# Stable-compatible pair: ruby-lsp 0.24.2 + ruby-lsp-rails 0.4.8.
-# v1.1-candidates entry: upgrade to 0.27+/0.5+ pair once both have
-# stable releases.
+# Stable-compatible pair: ruby-lsp 0.26.x + ruby-lsp-rails 0.4.8.
+# Pin `~> 0.26.0` allows any 0.26.x patch — resolver picks latest
+# (0.26.9 currently). v1.1-candidates entry: upgrade to 0.27+/0.5+
+# pair once both have stable releases.
+#
+# Surface 4 honest note: the prior pin attempt (`~> 0.24.2`) was
+# itself based on an inherited-without-verification dependency
+# claim. Bundler's resolver is the authoritative source for
+# add-on/main pair compatibility, not documentation summaries.
 group :development do
-  gem 'ruby-lsp', '~> 0.24.2', require: false
+  gem 'ruby-lsp', '~> 0.26.0', require: false
   gem 'ruby-lsp-rails', '~> 0.4.8', require: false
 end
