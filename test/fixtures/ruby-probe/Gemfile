@@ -17,7 +17,18 @@ gem 'rails', '~> 8.0.0'
 # ruby-lsp-rails behavior on external DSL vs core Rails DSL.
 gem 'paranoia', '~> 2.6'
 
+# Version pinning per Option D adjudication (cycle-observation 24
+# third surface): ship on stable-compatible pair, NOT pre-release.
+#
+# ruby-lsp's stable max is 0.26.9 (May 2026), but ruby-lsp-rails 0.4.8
+# pins ruby-lsp `>= 0.24.0, < 0.25.0` — the add-on lags 2+ minor
+# versions behind main. ruby-lsp 0.27+ (Rubydex-backed indexer) and
+# ruby-lsp-rails 0.5.0+ exist only as pre-release at this date.
+#
+# Stable-compatible pair: ruby-lsp 0.24.2 + ruby-lsp-rails 0.4.8.
+# v1.1-candidates entry: upgrade to 0.27+/0.5+ pair once both have
+# stable releases.
 group :development do
-  gem 'ruby-lsp', '~> 0.27', require: false
-  gem 'ruby-lsp-rails', '~> 0.4', require: false
+  gem 'ruby-lsp', '~> 0.24.2', require: false
+  gem 'ruby-lsp-rails', '~> 0.4.8', require: false
 end
