@@ -1,0 +1,23 @@
+# Minimal Rails 8.0 probe fixture per v0.9 Stream A Substep 2.
+# Authored for scripts/ruby-lsp-probe.ts to exercise ruby-lsp +
+# ruby-lsp-rails capabilities; not a runnable application.
+#
+# Run `bundle install` once before running the probe so
+# `bundle exec ruby-lsp` resolves correctly.
+
+source 'https://rubygems.org'
+
+ruby '~> 3.3'
+
+gem 'rails', '~> 8.0.0'
+
+# External acts_as_* DSL macro probe target. Chosen for canonical
+# class-level external-DSL shape; soft-delete is the most-installed
+# acts_as_* gem on production Rails codebases. Probe captures
+# ruby-lsp-rails behavior on external DSL vs core Rails DSL.
+gem 'paranoia', '~> 2.6'
+
+group :development do
+  gem 'ruby-lsp', '~> 0.27', require: false
+  gem 'ruby-lsp-rails', '~> 0.4', require: false
+end

@@ -1,0 +1,6 @@
+# Bundler artifacts produced by `bundle install`. Manifest (Gemfile)
+# is committed; lockfile + local gem cache are not, mirroring the Go
+# fixture pattern (go.mod committed, go.sum + vendor/ not).
+Gemfile.lock
+.bundle/
+vendor/bundle/

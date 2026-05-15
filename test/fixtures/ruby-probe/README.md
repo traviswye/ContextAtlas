@@ -1,0 +1,47 @@
+# ruby-lsp probe fixture
+
+Minimal Rails 8.0 application substrate authored for
+[`scripts/ruby-lsp-probe.ts`](../../../scripts/ruby-lsp-probe.ts)
+per v0.9 Stream A Substep 2.
+
+This is **not** a runnable Rails application — no database
+configuration, no real initializers, no asset pipeline. It's a
+fixture for exercising LSP capabilities against ruby-lsp +
+ruby-lsp-rails. Rails detection by ruby-lsp-rails fires on
+`Gemfile` + `config/application.rb` presence; runtime correctness
+is not a goal.
+
+## Setup (one-shot before running the probe)
+
+```sh
+cd test/fixtures/ruby-probe
+bundle install
+```
+
+Then from the repo root:
+
+```sh
+npx tsx scripts/ruby-lsp-probe.ts
+```
+
+Findings land at `docs/adr/ruby-lsp-probe-findings.md`.
+
+## What this fixture exercises
+
+| File | DSL surface |
+|---|---|
+| `app/models/user.rb` | has_many, has_one, enum, scope (3x), validates, callbacks (before_save + after_create), `acts_as_paranoid` (external DSL), class methods, instance methods, constants |
+| `app/models/post.rb` | belongs_to, has_and_belongs_to_many, enum, scope (2x), ActiveSupport::Concern include, before_validation |
+| `app/models/concerns/sluggable.rb` | ActiveSupport::Concern pattern — included block, class_methods block, instance methods |
+| `app/controllers/posts_controller.rb` | < ActionController::Base, before_action, CRUD actions, strong params |
+| `lib/analytics.rb` | Plain Ruby module + module_function (no Rails magic) |
+| `lib/dynamic_methods.rb` | `define_method` metaprogramming probe |
+| `consumer.rb` | Cross-file references for `findReferences` probe |
+| `broken.rb` | Deliberate parse error for `publishDiagnostics` probe |
+
+## Promotion to `test/fixtures/ruby/`
+
+Per ADR-13 precedent (`test/fixtures/pyright-probe/` → `test/fixtures/python/`),
+this directory promotes to `test/fixtures/ruby/` once ADR-21 and the
+RubyAdapter implementation land. The probe-specific directory carries
+forward as the adapter's integration-test substrate.

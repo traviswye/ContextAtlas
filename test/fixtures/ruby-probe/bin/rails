@@ -1,0 +1,6 @@
+#!/usr/bin/env ruby
+# Standard Rails launcher. Required for Rails detection by some
+# tooling; not actually invoked in probe context.
+APP_PATH = File.expand_path('../config/application', __dir__)
+require_relative '../config/boot'
+require 'rails/commands'
