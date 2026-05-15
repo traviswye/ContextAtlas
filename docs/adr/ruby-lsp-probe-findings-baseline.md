@@ -1,27 +1,56 @@
 # ruby-lsp probe findings — BASELINE-ONLY (add-on not loaded)
 
 > **Baseline-only capture note.** This file is the ruby-lsp 0.26.9
-> baseline-only probe — the ruby-lsp-rails add-on attempted to load
-> and crashed at Rails app boot because `tzinfo-data` was missing
-> from the fixture's Gemfile (Rails 8 + Windows standard requirement
-> I omitted at fixture authoring). The Rails-runner subprocess
-> crashed with `TZInfo::DataSourceNotFound`; see the `serverMessages`
-> section below for the full stack trace.
+> baseline-only probe. The ruby-lsp-rails add-on did NOT load
+> successfully against the synthetic fixture — its Rails-runner
+> subprocess crashed during `Rails.application.initialize!` because
+> the fixture is not a fully-bootable Rails app. Surfaces in order
+> at Substep 3 execution:
 >
-> Substep 3 follow-up #3 fixed the Gemfile by adding
-> `gem 'tzinfo-data', platforms: %i[ windows jruby ]` per Rails 8
-> `rails new` default. The canonical findings file
-> [`ruby-lsp-probe-findings.md`](ruby-lsp-probe-findings.md) contains
-> the add-on-enabled re-run produced after the fix.
+> 1. `TZInfo::DataSourceNotFound` (tzinfo-data missing from Gemfile)
+>    — fixed at commit a7e6f85 by adding
+>    `gem 'tzinfo-data', platforms: %i[ windows jruby ]`
+> 2. `Could not load database configuration. No such file
+>    - ["config/database.yml"]` (Rails 8 ActiveRecord requires
+>    database.yml) — NOT fixed; triggered Surface 5 pause-and-survey
+>    discipline.
 >
-> **Substep 4 ADR-21 §probe #6 (Rails DSL surface) composes A/B
-> between this baseline-only file and the canonical add-on-enabled
-> file** — the accidental two-run substrate is more valuable than a
-> single complete run would have been, since probe #6's entire
-> framing is "what does the add-on contribute on top of baseline?"
+> The surface trajectory revealed a deeper pattern: **ruby-lsp-rails
+> requires a fully-bootable Rails app**, not a fixture that pretends
+> to be one. Its Rails-runner subprocess runs the full Rails boot
+> sequence — every railtie, every initializer, every config
+> requirement. The "minimum-viable Rails 8 fixture" approach is
+> fighting Rails 8's architecture; each "fix" surfaces the next
+> requirement; the iteration tail is unbounded.
 >
-> Findings below are captured from the actual probe execution on
-> 2026-05-15T17:05:01.076Z against the pre-fix fixture Gemfile.
+> **Path β + δ adjudication** at Surface 5 (commit pending this
+> file):
+> - Path β — accept baseline-only findings as Substep 3 substrate.
+>   This file is the canonical probe substrate going forward.
+> - Path δ — compose Substep 5 qualitative observations from real
+>   Rails work-repo (single cohort-representative repo per
+>   IP/privacy lock) to anchor the add-on-enabled empirical
+>   confirmation (or honest contradiction) of documentation
+>   citation.
+>
+> **ADR-21 §probe #6 (Rails DSL surface) substrate composition:**
+> 1. (a) Empirical baseline from THIS file — what ruby-lsp 0.26.9
+>    surfaces without the add-on
+> 2. (b) Qualitative observations from Travis's real Rails
+>    work-repo (Substep 5) — what the add-on adds when it loads
+>    successfully on a real bootable Rails app
+> 3. (c) Documentation citation from ruby-lsp-rails README + design
+>    docs — what the add-on claims to provide
+>
+> Substep 4 ADR-21 authoring uses (a) + (c) immediately with (b)
+> placeholder; (b) composes when work-repo dogfood completes.
+>
+> Findings below were captured on 2026-05-15T17:05:01.076Z against
+> the pre-tzinfo-fix fixture Gemfile. After tzinfo fix at a7e6f85,
+> a re-run produced substantively identical capability data with
+> the database.yml failure replacing tzinfo in serverMessages — the
+> probe data on capabilities/symbols/etc. itself is invariant to
+> add-on load success because the add-on failed in both runs.
 
 # ruby-lsp probe findings
 

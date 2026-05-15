@@ -73,7 +73,17 @@ import { toFileUri, normalizePath } from "../src/utils/paths.js";
 // ---------------------------------------------------------------------------
 
 const FIXTURE = pathResolve("test/fixtures/ruby-probe");
-const OUTPUT = pathResolve("docs/adr/ruby-lsp-probe-findings.md");
+
+// Output path is `-baseline.md` per Substep 3 close Path β+δ
+// adjudication. The synthetic fixture can't get ruby-lsp-rails
+// add-on to load (surface 5 + iteration tail of Rails-boot
+// requirements); probe captures ruby-lsp baseline-only against
+// the fixture. Add-on-enabled empirical substrate composes from
+// Substep 5 work-repo qualitative observations, not from this
+// probe. Future re-runs deliberately overwrite this baseline
+// file; the v0.9 Substep 3 close snapshot is preserved in git
+// history at commit ${SUBSTEP_3_CLOSE_COMMIT}.
+const OUTPUT = pathResolve("docs/adr/ruby-lsp-probe-findings-baseline.md");
 
 /**
  * Bundler command. ruby-lsp is invoked via `bundle exec ruby-lsp` per
@@ -273,9 +283,19 @@ async function bootRubyLsp(
   });
 
   // window/logMessage + window/showMessage — capture server-side log
-  // and notice traffic for diagnostic value. ruby-lsp may surface
-  // setup warnings (missing add-on, Rails detection failure, etc.)
-  // via these channels.
+  // and notice traffic for diagnostic value. ruby-lsp surfaces add-on
+  // load status messages here, including ruby-lsp-rails Rails-runner
+  // subprocess success/failure.
+  //
+  // Path β+δ adjudication finding (Substep 3 close): ruby-lsp-rails
+  // requires a fully-bootable Rails app to load successfully — its
+  // Rails-runner subprocess runs the complete Rails boot sequence
+  // (every railtie, every initializer, full config validation). On
+  // the synthetic probe fixture, the add-on fails to load but
+  // ruby-lsp baseline continues working. This is itself ADR-21
+  // substrate: the adapter should treat ruby-lsp-rails as best-
+  // effort enhancement, NOT baseline assumption. Graceful
+  // degradation when add-on fails is the correct design.
   client.onNotification("window/logMessage", (p) => {
     const m = p as { type?: number; message?: string } | null;
     if (!m?.message) return;
@@ -446,6 +466,32 @@ async function main(): Promise<void> {
   out.push("candidate tracks the upgrade. 0.26.x is still pre-Rubydex,");
   out.push("so probe-findings on findReferences reflect pre-Rubydex");
   out.push("coverage shape at the most recent pre-Rubydex stable patch.");
+  out.push("");
+  out.push(
+    "**Path β + δ adjudication note** (Substep 3 close): this file",
+  );
+  out.push(
+    "captures ruby-lsp baseline-only behavior. The ruby-lsp-rails",
+  );
+  out.push(
+    "add-on requires a fully-bootable Rails app to load — its Rails-",
+  );
+  out.push(
+    "runner subprocess runs the complete Rails boot sequence. The",
+  );
+  out.push(
+    "synthetic probe fixture cannot satisfy that requirement without",
+  );
+  out.push(
+    "substantial fixture rework (full `rails new` shape). Add-on-",
+  );
+  out.push(
+    "enabled empirical substrate composes from Substep 5 work-repo",
+  );
+  out.push(
+    "qualitative observations against a real Rails codebase; ADR-21",
+  );
+  out.push("§probe #6 (Rails DSL surface) is the A/B framing target.");
   out.push("");
 
   const rubyFiles = walkRubyRecursive(FIXTURE).map((p) => normalizePath(p));
