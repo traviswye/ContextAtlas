@@ -49,6 +49,19 @@ export function createAdapter(
           ? { requestTimeoutMs: initializeTimeoutMs }
           : undefined,
       );
+    case "ruby":
+      // Placeholder per v0.9 Stream A Phase 2 type substrate landing
+      // ahead of Phase 3 RubyAdapter implementation. Matches ADR-13
+      // precedent: registry case lands with placeholder throw during
+      // pre-implementation; replaced with `new RubyAdapter(...)` at
+      // Phase 3 ship. ADR-21 documents the adapter design substrate
+      // this placeholder anchors against.
+      throw new Error(
+        "RubyAdapter not yet implemented (v0.9 Stream A Phase 3 work). " +
+          "Type substrate for Ruby landed at Phase 2; adapter implementation " +
+          "follows per ADR-21 Decision section. See docs/adr/" +
+          "ADR-21-ruby-adapter-ruby-lsp.md.",
+      );
     default: {
       const exhaustive: never = language;
       throw new Error(`Unknown language code: ${String(exhaustive)}`);

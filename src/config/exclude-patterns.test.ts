@@ -24,10 +24,11 @@ function makeConfig(
 }
 
 describe("DEFAULT_EXCLUDE_PATTERNS", () => {
-  it("covers all three v0.1 languages", () => {
+  it("covers all supported languages (v0.1 + v0.9 Ruby)", () => {
     expect(Object.keys(DEFAULT_EXCLUDE_PATTERNS).sort()).toEqual([
       "go",
       "python",
+      "ruby",
       "typescript",
     ]);
   });
@@ -56,6 +57,16 @@ describe("DEFAULT_EXCLUDE_PATTERNS", () => {
     expect(DEFAULT_EXCLUDE_PATTERNS.go).toEqual([
       "**/tests/**",
       "**/*_test.go",
+    ]);
+  });
+
+  it("Ruby defaults cover RSpec + Minitest conventions (v0.9 Stream A Phase 2)", () => {
+    expect(DEFAULT_EXCLUDE_PATTERNS.ruby).toEqual([
+      "**/tests/**",
+      "**/test/**",
+      "**/spec/**",
+      "**/*_spec.rb",
+      "**/*_test.rb",
     ]);
   });
 });

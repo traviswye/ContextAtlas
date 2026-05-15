@@ -54,6 +54,13 @@ export const DEFAULT_EXCLUDE_PATTERNS: Record<
     "**/tests/**",
     "**/*_test.go",
   ],
+  ruby: [
+    "**/tests/**",
+    "**/test/**",
+    "**/spec/**",
+    "**/*_spec.rb",
+    "**/*_test.rb",
+  ],
 };
 
 /**

@@ -31,6 +31,7 @@ const VALID_LANGUAGES: readonly LanguageCode[] = [
   "typescript",
   "python",
   "go",
+  "ruby",
 ];
 const VALID_ADR_FORMATS = ["markdown-frontmatter"] as const;
 type ValidAdrFormat = (typeof VALID_ADR_FORMATS)[number];

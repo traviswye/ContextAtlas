@@ -64,6 +64,7 @@ const LANGUAGE_EXTENSIONS: Record<string, readonly string[]> = {
   javascript: [".js", ".jsx", ".mjs", ".cjs"],
   python: [".py"],
   go: [".go"],
+  ruby: [".rb"],
   rust: [".rs"],
   java: [".java"],
   csharp: [".cs"],
@@ -80,6 +81,7 @@ const ATLAS_SUPPORTED_LANGUAGES: ReadonlySet<LanguageCode> = new Set<LanguageCod
   "typescript",
   "python",
   "go",
+  "ruby",
 ]);
 
 // ---------------------------------------------------------------------------
