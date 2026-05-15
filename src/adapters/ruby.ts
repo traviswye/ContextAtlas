@@ -77,9 +77,16 @@ interface LspDiagnostic {
   severity?: number;
   message: string;
 }
-// LspLocation + LspDocumentSymbol re-added at Substep 3.2 (listSymbols) +
-// Substep 3.4 (findReferences); omitted from skeleton to keep noUnusedLocals
-// clean.
+interface LspDocumentSymbol {
+  name: string;
+  detail?: string;
+  kind: number;
+  range: LspRange;
+  selectionRange: LspRange;
+  children?: LspDocumentSymbol[];
+}
+// LspLocation re-added at Substep 3.4 (findReferences); omitted from
+// listSymbols substep to keep noUnusedLocals clean.
 
 // ---------------------------------------------------------------------------
 // Kind mapping per ADR-21 §"Symbol-kind mapping" — initial scaffolding;
@@ -372,17 +379,140 @@ export class RubyAdapter implements LanguageAdapter {
   }
 
   // -------------------------------------------------------------------------
-  // Data methods — Substep 3.1 skeleton stubs. Subsequent substeps fill in
-  // per ADR-21 LSP primitive mappings table.
+  // Private helpers
   // -------------------------------------------------------------------------
 
-  async listSymbols(_filePath: string): Promise<AtlasSymbol[]> {
-    throw new Error(
-      "RubyAdapter.listSymbols not yet implemented (Phase 3 Substep 3.2). " +
-        "ADR-21 §LSP primitive mappings: documentSymbol via " +
-        "hierarchicalDocumentSymbolSupport request shape + URL-encoding " +
-        "dedup pass + kind remapping per ADR-01 reduced taxonomy.",
+  /**
+   * Resolve a filePath argument to absolute + workspace-relative
+   * forms. Accepts either absolute paths or workspace-relative
+   * paths; returns both for use by callers (LSP requests need
+   * absolute paths via toFileUri; Symbol-IDs need workspace-
+   * relative paths per ADR-01).
+   */
+  private resolveFile(filePath: string): { absPath: string; relPath: string } {
+    if (!this.rootPath) {
+      throw new Error("RubyAdapter not initialized; call initialize() first.");
+    }
+    const abs = pathResolve(this.rootPath, filePath);
+    const absNormalized = normalizePath(abs);
+    const rel = toRelativePath(absNormalized, this.rootPath);
+    return { absPath: absNormalized, relPath: rel };
+  }
+
+  /**
+   * Send `textDocument/didOpen` for `absPath` if not already opened
+   * in this session. ruby-lsp (like Pyright + gopls) requires files
+   * to be opened before symbol queries return results. Matches
+   * gopls/pyright `ensureOpen` precedent.
+   */
+  private async ensureOpen(absPath: string): Promise<void> {
+    const normalized = normalizePath(absPath);
+    if (this.openFiles.has(normalized)) return;
+    this.openFiles.add(normalized);
+    const { readFileSync } = await import("node:fs");
+    this.client.notify("textDocument/didOpen", {
+      textDocument: {
+        uri: toFileUri(absPath),
+        languageId: "ruby",
+        version: 1,
+        text: readFileSync(absPath, "utf8"),
+      },
+    });
+  }
+
+  /**
+   * Construct a Ruby Symbol-ID per ADR-01 format: `sym:rb:<path>:<name>`.
+   * Path is workspace-relative forward-slash-separated; name is the
+   * symbol identifier as ruby-lsp emits it (including verbatim `self.`
+   * prefix for class methods per Φ-γ-variant lock, and verbatim
+   * `"macro :argument"` form for Rails DSL macros).
+   */
+  private symbolId(relPath: string, name: string): SymbolId {
+    return `sym:${LANG_CODES["ruby"]}:${relPath}:${name}`;
+  }
+
+  // -------------------------------------------------------------------------
+  // Data methods — Substep 3.1 skeleton stubs (3.2 fills in listSymbols).
+  // Subsequent substeps fill in per ADR-21 LSP primitive mappings table.
+  // -------------------------------------------------------------------------
+
+  async listSymbols(filePath: string): Promise<AtlasSymbol[]> {
+    const { absPath, relPath } = this.resolveFile(filePath);
+    if (!existsSync(absPath)) return [];
+    await this.ensureOpen(absPath);
+
+    const result = await this.client.request<LspDocumentSymbol[] | null>(
+      "textDocument/documentSymbol",
+      { textDocument: { uri: toFileUri(absPath) } },
+      this.options.requestTimeoutMs ?? 30_000,
     );
+    if (!result || !Array.isArray(result)) return [];
+
+    // Walk the hierarchical documentSymbol tree, flattening to a flat
+    // AtlasSymbol[] with parentId back-pointers per ADR-14 gopls
+    // precedent. ruby-lsp's documentSymbol response has:
+    //   - Classes (kind 5) / Modules (kind 2) at top level with
+    //     children[] for their methods, constants, DSL macros, etc.
+    //   - Methods (kind 6) may have nested children (kind 8 instance
+    //     vars). The kind-8 children are filtered out per ADR-13
+    //     Python parameter/instance-var filtering precedent.
+    //   - DSL macro symbols (has_many :posts, scope :active) surface
+    //     as kind-6 entries with their "macro :argument" naming
+    //     preserved verbatim per probe-empirical (ADR-21 §LSP
+    //     primitive mappings).
+    //   - Class methods (`def self.foo`) surface as kind-12 (Function)
+    //     with `self.` prefix in name. Adapter remaps kind to `method`
+    //     via mapRubyKind AND preserves `self.` prefix verbatim in
+    //     Symbol-ID name field per Φ-γ-variant lock (ADR-21 §Rationale
+    //     "Why preserve `self.method` name verbatim per gopls
+    //     precedent" + commit a76c1c4 surgical revision).
+    const out: AtlasSymbol[] = [];
+    const walk = (
+      sym: LspDocumentSymbol,
+      parentId: SymbolId | undefined,
+    ): void => {
+      const kind = mapRubyKind(sym.kind);
+      if (kind === "other") {
+        // Filter out: instance variables (kind 8 nested under methods)
+        // and any other kinds we don't surface as top-level Symbol
+        // records. Children of filtered symbols are NOT recursively
+        // walked — they're scoped to the filtered parent and not
+        // independently relevant per ADR-21 §Symbol-kind mapping.
+        return;
+      }
+      const atlasSym: AtlasSymbol = {
+        id: this.symbolId(relPath, sym.name),
+        name: sym.name,
+        kind,
+        path: relPath,
+        line: sym.selectionRange.start.line + 1,
+        language: "ruby",
+      };
+      if (sym.detail !== undefined && sym.detail.length > 0) {
+        atlasSym.signature = sym.detail;
+      }
+      if (parentId !== undefined) {
+        atlasSym.parentId = parentId;
+      }
+      out.push(atlasSym);
+
+      // Recurse children with current symbol as parent. Class/Module
+      // children include methods + DSL macros + constants; Method
+      // children include kind-8 instance vars (filtered). Recurse
+      // depth is bounded by ruby-lsp's tree shape (typically
+      // class/module → method → instance vars; depth ≤ 3).
+      if (sym.children && sym.children.length > 0) {
+        for (const child of sym.children) {
+          walk(child, atlasSym.id);
+        }
+      }
+    };
+
+    for (const top of result) {
+      walk(top, undefined);
+    }
+
+    return out;
   }
 
   async getSymbolDetails(_id: SymbolId): Promise<AtlasSymbol | null> {
@@ -555,6 +685,46 @@ export function runRubyVersionPreflight(rubyBin: string): Promise<void> {
       );
     });
   });
+}
+
+/**
+ * URL-encoding dedup utility per ADR-21 §"URL-encoding result
+ * duplication (Windows-specific)". ruby-lsp returns each cross-file
+ * location TWICE under different URI encodings (`c%3A` and `c:`
+ * forms) on Windows; the adapter dedupes via `normalizePath`-driven
+ * tuple-keyed deduplication.
+ *
+ * Generic over the response item type — caller provides an extractor
+ * function returning the URI + position to dedup on. listSymbols
+ * (Substep 3.2) doesn't actually need dedup (single-file response,
+ * no cross-file collisions), but this utility ships now as foundation
+ * for Substeps 3.4 (findReferences), 3.6 (getTypeInfo →
+ * declaration-parse may reuse references), and any cross-file
+ * resolution that surfaces in Substep 3.7. Validates the path-line-
+ * tuple-key shape generalizes across LSP response types.
+ *
+ * Edge cases handled:
+ *   - URL-encoded `%3A` vs literal `:` drive-letter forms (probe-
+ *     empirical)
+ *   - Forward-slash vs backslash separators (normalizePath converts)
+ *   - Optional column-component for cases needing finer dedup
+ *     granularity than (path, line)
+ */
+export function dedupLocationsByNormalizedPath<T>(
+  items: readonly T[],
+  extractKey: (item: T) => { uri: string; line: number; col?: number },
+): T[] {
+  const seen = new Set<string>();
+  const out: T[] = [];
+  for (const item of items) {
+    const { uri, line, col } = extractKey(item);
+    const path = normalizePath(uri);
+    const key = `${path}:${line}:${col ?? ""}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(item);
+  }
+  return out;
 }
 
 /**
