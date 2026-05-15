@@ -147,7 +147,7 @@ called out per §.
 
 | Capability | ruby-lsp behavior | Adapter response | Probe § |
 |---|---|---|---|
-| `textDocument/documentSymbol` | Hierarchical via `hierarchicalDocumentSymbolSupport: true` request shape. Classes (kind 5), Modules (kind 2), Methods (kind 6 — includes Rails DSL macros with `"macro :argument"` naming), class methods (kind 12 with `"self.method"` name), Constants (kind 14), Instance variables (kind 8, nested under enclosing methods). | Used as-is. Adapter kind-mapping per Symbol-kind mapping §. Class methods detected via `self.` prefix in the name field; remap to `method` kind. | Probe #1 |
+| `textDocument/documentSymbol` | Hierarchical via `hierarchicalDocumentSymbolSupport: true` request shape. Classes (kind 5), Modules (kind 2), Methods (kind 6 — includes Rails DSL macros with `"macro :argument"` naming), class methods (kind 12 with `"self.method"` name), Constants (kind 14), Instance variables (kind 8, nested under enclosing methods). | Used as-is. Adapter kind-mapping per Symbol-kind mapping §. Class methods detected via `self.` prefix in the name field; remap to `method` kind. **`self.` prefix preserved verbatim** in Symbol-ID name field per gopls receiver-prefix precedent (ADR-14 §Decision 4); consumers pattern-match `^self\.` for class-method discrimination. | Probe #1 |
 | `textDocument/references` | Works cross-file for most symbol kinds. Each result returned TWICE under different URI encodings (`c%3A` and `c:` lowercase) on Windows — see Limitations §URL-encoding. Empty `[]` for top-level constant queried at declaration position. | Used with path-dedup pass (normalize URL encoding; dedupe on `(path, line)` tuple). Documented Limitation for declaration-site constant queries. | Probe #2 |
 | `textDocument/definition` | Works cross-file using LSP LocationLink format (`targetUri`/`targetRange`/`targetSelectionRange`). Cross-mixin resolution works (Sluggable mixin methods resolve from Post/User references). Empty `[]` for scopes. Same URL-encoding duplication as references. | Used with path-dedup pass. LocationLink-format consumption; remap to standard ContextAtlas Reference shape. Scopes documented as edge-case. | Probe #7 |
 | `textDocument/hover` | Returns markdown with `kind: "markdown"` envelope containing code block + definition links. For Rails DSL macros resolved from gem source: rich RDoc inline (200+ line dumps from `has_many` / `belongs_to`). For methods with rbs signatures: rbs-derived signature + RDoc (rbs 4.0.2 contribution). For user-defined methods without docstrings: `null`. For unresolved DSL (e.g., `scope :active`): `null`. | Used for `getSymbolDetails` and `getDocstring`. Adapter strips definition-links section to extract the prose portion (matches gopls pattern of docstring-from-hover; substantively different from ADR-13 Pyright omits-docstrings). | Probe #4 |
@@ -177,7 +177,7 @@ called out per §.
 | Class | 5 | `class` | LSP kind 5 |
 | Module | 2 | `module` | LSP kind 2 |
 | Method (instance) | 6 | `method` | LSP kind 6, no `self.` prefix in name |
-| Class method (`def self.foo`) | 12 | `method` | LSP kind 12 + `self.` prefix in name. The adapter remaps to `method` kind and strips the `self.` prefix for symbol-ID `name` field, preserving the receiver-vs-instance distinction via a separate field (see Rationale). |
+| Class method (`def self.foo`) | 12 | `method` | LSP kind 12 + `self.` prefix in name. The adapter remaps to `method` kind AND **preserves the `self.` prefix verbatim** in the symbol-ID name field (per ADR-14 gopls receiver-prefix-verbatim precedent; see Rationale). The `self.` prefix disambiguates class methods from instance methods at the Symbol.name level — downstream consumers needing class-method discrimination pattern-match on `^self\.`. |
 | Rails DSL macro (has_many, scope, validates, before_save, etc.) | 6 | `method` | LSP kind 6 + name matches `^[a-z_]+(:|\s)` pattern (macro-with-argument form). Surfaced as method symbols with name like `"has_many :posts"`. |
 | Constant | 14 | `variable` | LSP kind 14. ContextAtlas's reduced SymbolKind doesn't have `constant`; `variable` is the closest fit (matches ADR-14 gopls iota-const handling). |
 | Instance variable (`@name`) | 8 | (filtered out) | LSP kind 8 nested under a method. Not surfaced as a top-level Symbol (matches ADR-13 Python parameter/instance-var filtering). |
@@ -383,15 +383,31 @@ Protocol detection; the precedent's declaration-parse approach
 adapts directly to Ruby's `class Name < Base; include Mixin`
 syntax with minor surface adjustments.
 
-**Why preserve `self.method` name with adapter remap.** Class methods
-appear in ruby-lsp's documentSymbol output as kind 12 (Function) with
-name `"self.find_by_email"`. The `self.` prefix is the canonical Ruby
-identifier for class-method declarations; preserving it in the symbol
-identifier would create disambiguation issues with instance methods.
-Adapter remaps to `method` kind + strips `self.` prefix in the
-symbol's name field. The receiver-vs-instance distinction is captured
-via a SymbolFlag (TBD at implementation phase) — parallels ADR-14's
-`*Type` vs `Type` receiver-prefix handling for Go.
+**Why preserve `self.method` name verbatim per gopls precedent.**
+Class methods appear in ruby-lsp's documentSymbol output as kind 12
+(Function) with name `"self.find_by_email"`. The `self.` prefix is
+the canonical Ruby identifier for class-method declarations. The
+adapter remaps kind 12 → `method` (reduced taxonomy has no separate
+class-method kind) AND **preserves the `self.` prefix verbatim** in
+the symbol-ID name field. This disambiguates: an instance method
+`foo` produces `sym:rb:<path>:foo`; a class method `self.foo` produces
+`sym:rb:<path>:self.foo`. Different Symbol-IDs, no collision.
+
+Parallels ADR-14's `*Type` vs `Type` receiver-prefix handling for
+Go — ADR-14 §Decision 4 explicitly says "Adapter preserves
+receiver-encoded method names verbatim in SymbolId. Do NOT strip
+parens or receiver prefix." Same precedent applied to Ruby's
+`self.` prefix: receiver-distinguishing prefix is part of the
+canonical method identity, preserved at the SymbolId layer.
+
+Downstream consumers needing class-method-vs-instance-method
+discrimination pattern-match on `^self\.` in Symbol.name. No
+SymbolFlag mechanism required; no Symbol-type substrate amendment
+needed. (Earlier ADR-21 framing referenced a TBD SymbolFlag; that
+framing was internally inconsistent with the gopls cross-reference
+and was resolved at Substep 3.2 implementation pressure per Φ-γ-
+variant adjudication. See commit body for full inconsistency-
+diagnosis substrate.)
 
 **Why URL-encoding dedup (not server-side fix).** ruby-lsp returns
 duplicate URI encodings on Windows. Adapter-side dedup is the right
