@@ -510,6 +510,51 @@ Adapter contract:
   Rails-DSL symbols (`has_many :posts` etc.) work without the add-on
   — they surface as method symbols per baseline observation.
 
+### Cohort-version support range
+
+Pre-v1.0 substrate-gathering survey (v0.9 Stream A Substep 5,
+Path R-III) revealed cohort Ruby/Rails developers may run versions
+newer than the LSP-tested-stable versions the probe substrate
+anchors to. Three axes worth explicit framing:
+
+- **Ruby version range supported:** Ruby 3.3.x (probe-substrate
+  baseline) through 4.0.x (cohort-observed; ruby-lsp 0.26.9 tracks
+  current Ruby versions per Shopify's maintenance cadence). Doctor's
+  `ruby --version` check reports the installed version but does NOT
+  block on minor-version-gap — **warn-not-error pattern**. The
+  adapter exercises only the LSP wire protocol, which is Ruby-
+  version-stable across 3.3-4.0 per Shopify maintenance scope.
+
+- **Rails version range supported:** Rails 8.0 is the probe-tested
+  baseline (synthetic fixture). Cohort developers on Rails 8.1
+  (current stable, released ~March 2026) may surface ruby-lsp-rails
+  0.4.8 + Rails 8.1 compatibility friction at add-on load —
+  ruby-lsp-rails 0.4.8 was authored for Rails 7.x / 8.0; Rails 8.1
+  compatibility is empirically untested at v1.0. Adapter's graceful-
+  degradation framing covers this case: ruby-lsp baseline continues
+  working when the add-on fails. v1.1 candidate: verify Rails 8.1
+  + add-on combination once ruby-lsp-rails 0.5+ stable releases OR
+  via post-launch cohort reports.
+
+- **Windows install path covers both Ruby version anchors.**
+  RubyInstaller3 has both 3.3.x and 4.0.x available; the same
+  `ridk install` + `ridk exec pacman -S libyaml` sequence
+  documented in the toolchain section applies symmetrically across
+  versions. Doctor's recommendation surface need not differentiate.
+
+**Substrate-record observation** (v1.1 inheritance pattern):
+fixture-substrate-version (what we anchor LSP/probe to) vs
+cohort-actual-version (what cohort developers actually run) is a
+distinct substrate axis from Pattern 7's four verification axes.
+Survey empirical evidence at Stream A close: cohort Ruby/Rails
+developers may run bleeding-edge versions that LSP add-on releases
+lag against. Doctor's warn-not-error pattern accommodates the gap
+without blocking legitimate work. v1.1 cycle's Rust / Java / .NET
+adapter authoring should consider both anchors — fixture-substrate-
+version AND cohort-actual-version range — in §install-pattern
+framing from the outset, rather than retrofitting at survey
+discovery.
+
 ## Limitations
 
 Called out explicitly so future readers don't rediscover them as
