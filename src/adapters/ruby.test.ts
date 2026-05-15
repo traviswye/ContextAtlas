@@ -4,7 +4,9 @@ import {
   RUBY_EXTENSIONS,
   dedupLocationsByNormalizedPath,
   detectRails,
+  findSymbolByName,
   mapRubyKind,
+  parseRubyHoverContent,
   parseSymbolId,
   resolveSpawnPattern,
 } from "./ruby.js";
@@ -307,6 +309,276 @@ describe("resolveSpawnPattern", () => {
       railsDetected: true, // Rails detected but override wins
     });
     expect(out.pattern).toBe("direct"); // direct, not bundler
+  });
+});
+
+describe("parseRubyHoverContent", () => {
+  // Probe #4 baseline empirical substrate covers these cases.
+  // ADR-21 §LSP primitive mappings: hover envelope structure is
+  //   ```ruby <signature> ``` + **Definitions**: ... + optional RDoc.
+
+  it("parses User class hover (code block + definitions, no RDoc)", () => {
+    // Probe #4 captured: hover on User class declaration.
+    const value =
+      "```ruby\nUser\n```\n\n" +
+      "**Definitions**: [user.rb](file:///c%3A/foo/user.rb#L1,1-36,4) | " +
+      "[user.rb](file:///c:/foo/user.rb#L1,1-36,4)";
+    const out = parseRubyHoverContent(value);
+    expect(out.signature).toBe("User");
+    expect(out.prose).toBeNull();
+  });
+
+  it("parses has_many DSL macro hover (code block + definitions + rich RDoc)", () => {
+    // Probe #4 captured: hover on `has_many :posts` returns 200+ line
+    // RDoc from activerecord gem. Test verifies RDoc body preserved
+    // (no truncation) and definitions section stripped.
+    const value =
+      "```ruby\nhas_many(name, scope = <default>, **options, &extension)\n```\n\n" +
+      "**Definitions**: [associations.rb](file:///C%3A/.../associations.rb#L1302,9-1305,12)\n\n\n\n" +
+      "Specifies a one-to-many association.\n\nMore RDoc body content.";
+    const out = parseRubyHoverContent(value);
+    expect(out.signature).toBe(
+      "has_many(name, scope = <default>, **options, &extension)",
+    );
+    expect(out.prose).toBe(
+      "Specifies a one-to-many association.\n\nMore RDoc body content.",
+    );
+  });
+
+  it("parses module_function hover (rbs signature + HTML comment + RDoc)", () => {
+    // Probe #4 captured: hover on `module_function` includes rbs-
+    // derived signature with overload count + HTML comment with
+    // rdoc-file metadata + RDoc body. HTML comment should be stripped.
+    const value =
+      "```ruby\nmodule_function()\n(+4 overloads)\n```\n\n" +
+      "**Definitions**: [module.rbs](file:///C%3A/.../module.rbs#L1226,3-1230,94)\n\n\n\n" +
+      "<!--\n  rdoc-file=vm_method.c\n  - module_function -> nil\n-->\n" +
+      "Creates module functions for the named methods.";
+    const out = parseRubyHoverContent(value);
+    expect(out.signature).toBe("module_function()\n(+4 overloads)");
+    expect(out.prose).toBe(
+      "Creates module functions for the named methods.",
+    );
+  });
+
+  it("returns nulls for empty value", () => {
+    const out = parseRubyHoverContent("");
+    expect(out.signature).toBeNull();
+    expect(out.prose).toBeNull();
+  });
+
+  it("parses code-block-only value (no definitions, no prose)", () => {
+    const value = "```ruby\nMyClass\n```";
+    const out = parseRubyHoverContent(value);
+    expect(out.signature).toBe("MyClass");
+    expect(out.prose).toBeNull();
+  });
+
+  it("preserves multi-line code block content (overload signatures)", () => {
+    const value =
+      "```ruby\nmethod_a(x)\nmethod_a(x, y)\n(+2 more)\n```\n\nDocs.";
+    const out = parseRubyHoverContent(value);
+    expect(out.signature).toBe("method_a(x)\nmethod_a(x, y)\n(+2 more)");
+    expect(out.prose).toBe("Docs.");
+  });
+
+  it("handles value with no code block (signature null, prose populated)", () => {
+    // Edge case: ruby-lsp could theoretically emit prose-only hover.
+    // Probe didn't observe this but parser handles defensively.
+    const value =
+      "**Definitions**: [foo.rb](file:///foo.rb)\n\nSome prose content.";
+    const out = parseRubyHoverContent(value);
+    expect(out.signature).toBeNull();
+    expect(out.prose).toBe("Some prose content.");
+  });
+});
+
+describe("findSymbolByName", () => {
+  // Recursive walker over LspDocumentSymbol[] tree. Used at
+  // getSymbolDetails (3.3) + downstream substeps to locate target
+  // by name across nested children (Rails class with method
+  // children, Concern with class_methods block flattened to
+  // direct children, etc.).
+
+  it("finds top-level symbol by name", () => {
+    const symbols = [
+      {
+        name: "User",
+        kind: 5,
+        range: {
+          start: { line: 0, character: 0 },
+          end: { line: 10, character: 0 },
+        },
+        selectionRange: {
+          start: { line: 0, character: 6 },
+          end: { line: 0, character: 10 },
+        },
+      },
+    ];
+    const out = findSymbolByName(symbols, "User");
+    expect(out?.name).toBe("User");
+    expect(out?.kind).toBe(5);
+  });
+
+  it("finds nested child symbol (User.display_name)", () => {
+    const symbols = [
+      {
+        name: "User",
+        kind: 5,
+        range: {
+          start: { line: 0, character: 0 },
+          end: { line: 10, character: 0 },
+        },
+        selectionRange: {
+          start: { line: 0, character: 6 },
+          end: { line: 0, character: 10 },
+        },
+        children: [
+          {
+            name: "display_name",
+            kind: 6,
+            range: {
+              start: { line: 5, character: 2 },
+              end: { line: 7, character: 5 },
+            },
+            selectionRange: {
+              start: { line: 5, character: 6 },
+              end: { line: 5, character: 18 },
+            },
+          },
+        ],
+      },
+    ];
+    const out = findSymbolByName(symbols, "display_name");
+    expect(out?.name).toBe("display_name");
+    expect(out?.kind).toBe(6);
+  });
+
+  it("finds DSL macro by verbatim name (has_many :posts)", () => {
+    const symbols = [
+      {
+        name: "User",
+        kind: 5,
+        range: {
+          start: { line: 0, character: 0 },
+          end: { line: 10, character: 0 },
+        },
+        selectionRange: {
+          start: { line: 0, character: 6 },
+          end: { line: 0, character: 10 },
+        },
+        children: [
+          {
+            name: "has_many :posts",
+            kind: 6,
+            range: {
+              start: { line: 3, character: 11 },
+              end: { line: 3, character: 17 },
+            },
+            selectionRange: {
+              start: { line: 3, character: 12 },
+              end: { line: 3, character: 17 },
+            },
+          },
+        ],
+      },
+    ];
+    const out = findSymbolByName(symbols, "has_many :posts");
+    expect(out?.name).toBe("has_many :posts");
+  });
+
+  it("finds class method preserving 'self.' prefix per Φ-γ-variant", () => {
+    const symbols = [
+      {
+        name: "User",
+        kind: 5,
+        range: {
+          start: { line: 0, character: 0 },
+          end: { line: 10, character: 0 },
+        },
+        selectionRange: {
+          start: { line: 0, character: 6 },
+          end: { line: 0, character: 10 },
+        },
+        children: [
+          {
+            name: "self.find_by_email",
+            kind: 12,
+            range: {
+              start: { line: 22, character: 2 },
+              end: { line: 24, character: 5 },
+            },
+            selectionRange: {
+              start: { line: 22, character: 11 },
+              end: { line: 22, character: 24 },
+            },
+          },
+        ],
+      },
+    ];
+    const out = findSymbolByName(symbols, "self.find_by_email");
+    expect(out?.name).toBe("self.find_by_email");
+    expect(out?.kind).toBe(12);
+  });
+
+  it("returns null when name not found", () => {
+    const symbols = [
+      {
+        name: "User",
+        kind: 5,
+        range: {
+          start: { line: 0, character: 0 },
+          end: { line: 10, character: 0 },
+        },
+        selectionRange: {
+          start: { line: 0, character: 6 },
+          end: { line: 0, character: 10 },
+        },
+      },
+    ];
+    expect(findSymbolByName(symbols, "Nonexistent")).toBeNull();
+  });
+
+  it("returns null for empty input", () => {
+    expect(findSymbolByName([], "anything")).toBeNull();
+  });
+
+  it("first match wins on duplicate names (instance vs class method)", () => {
+    // Edge case: Ruby allows instance method `foo` and class method
+    // `self.foo` in the same class — different names so no collision.
+    // But test verifies the walker returns first match deterministically
+    // when nothing else differentiates.
+    const symbols = [
+      {
+        name: "wrapper",
+        kind: 5,
+        range: {
+          start: { line: 0, character: 0 },
+          end: { line: 100, character: 0 },
+        },
+        selectionRange: {
+          start: { line: 0, character: 6 },
+          end: { line: 0, character: 13 },
+        },
+        children: [
+          {
+            name: "foo",
+            kind: 6,
+            range: {
+              start: { line: 5, character: 2 },
+              end: { line: 7, character: 5 },
+            },
+            selectionRange: {
+              start: { line: 5, character: 6 },
+              end: { line: 5, character: 9 },
+            },
+          },
+        ],
+      },
+    ];
+    const out = findSymbolByName(symbols, "foo");
+    expect(out?.name).toBe("foo");
+    expect(out?.range.start.line).toBe(5);
   });
 });
 

@@ -515,12 +515,78 @@ export class RubyAdapter implements LanguageAdapter {
     return out;
   }
 
-  async getSymbolDetails(_id: SymbolId): Promise<AtlasSymbol | null> {
-    throw new Error(
-      "RubyAdapter.getSymbolDetails not yet implemented (Phase 3 Substep 3.3). " +
-        "ADR-21 §LSP primitive mappings: hover-based detail extraction; " +
-        "strip definition-links section, return signature.",
+  async getSymbolDetails(id: SymbolId): Promise<AtlasSymbol | null> {
+    const parsed = parseSymbolId(id);
+    if (!parsed || !this.rootPath) return null;
+    const { absPath, relPath } = this.resolveFile(parsed.path);
+    if (!existsSync(absPath)) return null;
+    await this.ensureOpen(absPath);
+
+    // Re-query documentSymbol to find target with full LSP position
+    // info. listSymbols normalizes to AtlasSymbol[] which loses
+    // selectionRange.start needed for hover positioning. Matches
+    // gopls precedent (go.ts getDocstring re-queries documentSymbol
+    // to get position before hover call).
+    const symbols = await this.client.request<LspDocumentSymbol[] | null>(
+      "textDocument/documentSymbol",
+      { textDocument: { uri: toFileUri(absPath) } },
+      this.options.requestTimeoutMs ?? 30_000,
     );
+    if (!symbols || !Array.isArray(symbols)) return null;
+    const target = findSymbolByName(symbols, parsed.name);
+    if (!target) return null;
+
+    const kind = mapRubyKind(target.kind);
+    if (kind === "other") return null;
+
+    // Build base AtlasSymbol; hover enrichment adds signature below
+    // when available.
+    const baseSym: AtlasSymbol = {
+      id,
+      name: target.name,
+      kind,
+      path: relPath,
+      line: target.selectionRange.start.line + 1,
+      language: "ruby",
+    };
+    if (target.detail !== undefined && target.detail.length > 0) {
+      baseSym.signature = target.detail;
+    }
+
+    // ADR-21 §LSP primitive mappings: hover used for getSymbolDetails.
+    // Substantively diverges from Pyright/gopls precedent (both leave
+    // signature as listSymbols-populated). ruby-lsp's documentSymbol
+    // typically doesn't populate detail field; hover provides rich
+    // RDoc + rbs-derived signatures (probe #4 baseline).
+    const hover = await this.client.request<{
+      contents?: { kind?: string; value?: string } | string;
+    } | null>(
+      "textDocument/hover",
+      {
+        textDocument: { uri: toFileUri(absPath) },
+        position: target.selectionRange.start,
+      },
+      this.options.requestTimeoutMs ?? 30_000,
+    );
+
+    // Null fallthrough — probe #4 captured null hover for user-defined
+    // methods without docstrings + unresolved DSL macros (e.g.,
+    // `scope :active`). Adapter returns Symbol unchanged with no
+    // signature enrichment; no error.
+    if (!hover || !hover.contents) return baseSym;
+    const value =
+      typeof hover.contents === "object" &&
+      "value" in hover.contents &&
+      typeof hover.contents.value === "string"
+        ? hover.contents.value
+        : null;
+    if (!value) return baseSym;
+
+    const { signature: hoverSig } = parseRubyHoverContent(value);
+    if (hoverSig !== null) {
+      return { ...baseSym, signature: hoverSig };
+    }
+    return baseSym;
   }
 
   async findReferences(_id: SymbolId): Promise<Reference[]> {
@@ -685,6 +751,91 @@ export function runRubyVersionPreflight(rubyBin: string): Promise<void> {
       );
     });
   });
+}
+
+/**
+ * Recursive walker over LspDocumentSymbol[] looking for a symbol by
+ * name. Walks children depth-first; first match wins. Returns null
+ * if no match.
+ *
+ * Match shape: ruby-lsp's documentSymbol may emit DSL macros with
+ * "macro :argument" naming (e.g., "has_many :posts"), class methods
+ * with "self." prefix (e.g., "self.find_by_email"), and standard
+ * names. Caller passes the verbatim name as parsed from Symbol-ID.
+ */
+export function findSymbolByName(
+  symbols: readonly LspDocumentSymbol[],
+  name: string,
+): LspDocumentSymbol | null {
+  for (const sym of symbols) {
+    if (sym.name === name) return sym;
+    if (sym.children && sym.children.length > 0) {
+      const found = findSymbolByName(sym.children, name);
+      if (found) return found;
+    }
+  }
+  return null;
+}
+
+/**
+ * Parse ruby-lsp hover response markdown envelope into structured
+ * `{ signature, prose }` shape per ADR-21 §LSP primitive mappings
+ * (Probe #4 baseline empirical substrate).
+ *
+ * ruby-lsp hover envelope structure (probe-empirical):
+ *   ```ruby
+ *   <signature line(s) — single-line or multi-line for overloads>
+ *   ```
+ *
+ *   **Definitions**: [link1](file:///...) | [link2](file:///...)
+ *
+ *   <optional HTML comment with rdoc-file metadata>
+ *   <optional RDoc body — may be empty (User class) or substantial
+ *    (has_many's 200+ line documentation)>
+ *
+ * Parser strips:
+ *   - Definition-links section (the `**Definitions**: ...` paragraph)
+ *   - HTML comments (rdoc-file metadata, not user-facing)
+ *
+ * Parser preserves:
+ *   - First fenced ```ruby code block content (signature; multi-line
+ *     when ruby-lsp emits overload counts or expanded signatures)
+ *   - RDoc body prose (for getDocstring at Substep 3.7)
+ *
+ * Edge cases:
+ *   - Empty/null value → both fields null
+ *   - Code block only (no prose) → signature populated, prose null
+ *   - No code block → signature null, prose = stripped value
+ *
+ * Returns: `{ signature, prose }` — both string-or-null.
+ * Substep 3.3 consumes `signature`; Substep 3.7 will consume `prose`.
+ */
+export function parseRubyHoverContent(value: string): {
+  signature: string | null;
+  prose: string | null;
+} {
+  const codeBlockMatch = /```ruby\n([\s\S]*?)\n```/.exec(value);
+  const signature = codeBlockMatch ? codeBlockMatch[1]!.trim() : null;
+
+  let prose: string | null;
+  if (codeBlockMatch) {
+    const afterBlock = value.slice(
+      codeBlockMatch.index + codeBlockMatch[0].length,
+    );
+    const proseRaw = afterBlock
+      .replace(/^\s*\n?\*\*Definitions\*\*:[^\n]*\n*/m, "")
+      .replace(/<!--[\s\S]*?-->/g, "")
+      .trim();
+    prose = proseRaw.length > 0 ? proseRaw : null;
+  } else {
+    const proseRaw = value
+      .replace(/^\s*\n?\*\*Definitions\*\*:[^\n]*\n*/gm, "")
+      .replace(/<!--[\s\S]*?-->/g, "")
+      .trim();
+    prose = proseRaw.length > 0 ? proseRaw : null;
+  }
+
+  return { signature, prose };
 }
 
 /**
