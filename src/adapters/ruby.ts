@@ -122,7 +122,9 @@ export function mapRubyKind(lspKind: number): SymbolKind {
   }
 }
 
-function mapDiagnosticSeverity(n: number | undefined): Diagnostic["severity"] {
+export function mapDiagnosticSeverity(
+  n: number | undefined,
+): Diagnostic["severity"] {
   switch (n) {
     case 1:
       return "error";
@@ -660,13 +662,29 @@ export class RubyAdapter implements LanguageAdapter {
     });
   }
 
-  async getDiagnostics(_filePath: string): Promise<Diagnostic[]> {
-    throw new Error(
-      "RubyAdapter.getDiagnostics not yet implemented (Phase 3 Substep 3.5). " +
-        "ADR-21 §LSP primitive mappings: LSP 3.17 pull-model via " +
-        "textDocument/diagnostic REQUEST (NOT publishDiagnostics notification). " +
-        "Net-new substrate pattern not present in Pyright/gopls.",
+  async getDiagnostics(filePath: string): Promise<Diagnostic[]> {
+    const { absPath, relPath } = this.resolveFile(filePath);
+    if (!existsSync(absPath)) return [];
+    await this.ensureOpen(absPath);
+
+    // LSP 3.17 pull-model textDocument/diagnostic request per ADR-21
+    // §LSP primitive mappings + Probe #3. Substantively diverges from
+    // Pyright/gopls which use publishDiagnostics push-model
+    // notification pattern. Probe captured count: 0 for broken.rb
+    // because probe used push-channel handler which ruby-lsp doesn't
+    // populate; pull-request returns actual diagnostics from prism
+    // parser per ADR-21 Decision §"Diagnostics via PULL model".
+    //
+    // Per-call ceiling absorbs cold-start variance (Pyright pattern
+    // per ADR-18 + probe substrate empty $/progress confirmation).
+    // No waitForServerReady gate; per-call timeout is sufficient.
+    const response = await this.client.request<DocumentDiagnosticReport | null>(
+      "textDocument/diagnostic",
+      { textDocument: { uri: toFileUri(absPath) } },
+      this.options.requestTimeoutMs ?? 30_000,
     );
+
+    return buildDiagnosticsFromResponse(response, relPath);
   }
 
   async getTypeInfo(_id: SymbolId): Promise<TypeInfo> {
@@ -813,6 +831,63 @@ export function runRubyVersionPreflight(rubyBin: string): Promise<void> {
       );
     });
   });
+}
+
+/**
+ * LSP 3.17 pull-model diagnostic response shape per ADR-21
+ * §LSP primitive mappings. Two variants:
+ *   - full: items array contains diagnostics for the document
+ *   - unchanged: no items; resultId only (diagnostics haven't
+ *     changed since previousResultId in request — adapter doesn't
+ *     send previousResultId at v1.0, but defensive handling here)
+ *
+ * relatedDocuments key (diagnostics for OTHER files affected by
+ * errors in this file) is part of the LSP 3.17 spec but ignored
+ * at v1.0 — adapter contract is per-file scope.
+ */
+export type DocumentDiagnosticReport =
+  | {
+      kind: "full";
+      items?: LspDiagnostic[];
+      resultId?: string;
+      relatedDocuments?: unknown;
+    }
+  | {
+      kind: "unchanged";
+      resultId: string;
+      relatedDocuments?: unknown;
+    };
+
+/**
+ * Build ContextAtlas Diagnostic[] from a ruby-lsp pull-model
+ * DocumentDiagnosticReport response. Exported for unit-test access
+ * to variant handling without requiring live LSP integration.
+ *
+ * Variant handling per ADR-21 §LSP primitive mappings:
+ *   - null response → empty array (defensive; per-call timeout
+ *     fallback case)
+ *   - kind: "unchanged" → empty array (ruby-lsp shouldn't emit
+ *     this when no previousResultId is sent, but defensive
+ *     handling at v1.0; future enhancement could track resultId
+ *     state for "diagnostics-haven't-changed" optimization)
+ *   - kind: "full" → items mapped to ContextAtlas Diagnostic[]
+ *     with severity remap via mapDiagnosticSeverity + 1-indexed
+ *     line conversion
+ */
+export function buildDiagnosticsFromResponse(
+  response: DocumentDiagnosticReport | null,
+  relPath: string,
+): Diagnostic[] {
+  if (!response) return [];
+  if (response.kind === "unchanged") return [];
+  const items = response.items ?? [];
+  return items.map((d): Diagnostic => ({
+    severity: mapDiagnosticSeverity(d.severity),
+    message: d.message,
+    path: relPath,
+    line: d.range.start.line + 1,
+    column: d.range.start.character,
+  }));
 }
 
 /**

@@ -2,10 +2,12 @@ import { describe, expect, it } from "vitest";
 
 import {
   RUBY_EXTENSIONS,
+  buildDiagnosticsFromResponse,
   buildReferenceId,
   dedupLocationsByNormalizedPath,
   detectRails,
   findSymbolByName,
+  mapDiagnosticSeverity,
   mapRubyKind,
   parseRubyHoverContent,
   parseSymbolId,
@@ -717,6 +719,164 @@ describe("dedupLocationsByNormalizedPath — LspLocation-shape integration (Subs
       }),
     );
     expect(out).toEqual([]);
+  });
+});
+
+describe("mapDiagnosticSeverity", () => {
+  // LSP DiagnosticSeverity codes:
+  //   1 = Error, 2 = Warning, 3 = Information, 4 = Hint
+  // ContextAtlas Diagnostic severity: "error" | "warning" | "info"
+
+  it("maps LSP severity 1 → 'error'", () => {
+    expect(mapDiagnosticSeverity(1)).toBe("error");
+  });
+
+  it("maps LSP severity 2 → 'warning'", () => {
+    expect(mapDiagnosticSeverity(2)).toBe("warning");
+  });
+
+  it("maps LSP severity 3 → 'info'", () => {
+    expect(mapDiagnosticSeverity(3)).toBe("info");
+  });
+
+  it("maps LSP severity 4 → 'info'", () => {
+    expect(mapDiagnosticSeverity(4)).toBe("info");
+  });
+
+  it("maps undefined severity → 'info' (defensive default)", () => {
+    expect(mapDiagnosticSeverity(undefined)).toBe("info");
+  });
+});
+
+describe("buildDiagnosticsFromResponse", () => {
+  // ADR-21 §LSP primitive mappings: pull-model
+  // DocumentDiagnosticReport handling. Two variants (full +
+  // unchanged) plus null fallthrough.
+
+  it("handles null response → empty array (per-call timeout fallback)", () => {
+    expect(buildDiagnosticsFromResponse(null, "app/models/user.rb")).toEqual(
+      [],
+    );
+  });
+
+  it("handles kind: 'unchanged' → empty array (defensive, no resultId tracking at v1.0)", () => {
+    const response = {
+      kind: "unchanged" as const,
+      resultId: "abc-123",
+    };
+    expect(
+      buildDiagnosticsFromResponse(response, "app/models/user.rb"),
+    ).toEqual([]);
+  });
+
+  it("handles kind: 'full' with empty items → empty array", () => {
+    const response = {
+      kind: "full" as const,
+      items: [],
+    };
+    expect(buildDiagnosticsFromResponse(response, "broken.rb")).toEqual([]);
+  });
+
+  it("handles kind: 'full' with missing items field → empty array", () => {
+    const response = {
+      kind: "full" as const,
+    };
+    expect(buildDiagnosticsFromResponse(response, "broken.rb")).toEqual([]);
+  });
+
+  it("maps LspDiagnostic[] to ContextAtlas Diagnostic[] with 1-indexed lines", () => {
+    // Probe #3 anticipated shape: prism-emitted parse error from
+    // broken.rb (deliberate unclosed-paren in method signature).
+    const response = {
+      kind: "full" as const,
+      items: [
+        {
+          range: {
+            start: { line: 4, character: 18 },
+            end: { line: 4, character: 19 },
+          },
+          severity: 1,
+          message: "unexpected token ')'",
+        },
+      ],
+    };
+    const out = buildDiagnosticsFromResponse(response, "broken.rb");
+    expect(out).toHaveLength(1);
+    expect(out[0]).toEqual({
+      severity: "error",
+      message: "unexpected token ')'",
+      path: "broken.rb",
+      line: 5, // 0-indexed LSP line 4 → 1-indexed line 5
+      column: 18,
+    });
+  });
+
+  it("preserves ordering of multiple diagnostics", () => {
+    const response = {
+      kind: "full" as const,
+      items: [
+        {
+          range: {
+            start: { line: 0, character: 0 },
+            end: { line: 0, character: 5 },
+          },
+          severity: 1,
+          message: "First error",
+        },
+        {
+          range: {
+            start: { line: 10, character: 2 },
+            end: { line: 10, character: 8 },
+          },
+          severity: 2,
+          message: "Second warning",
+        },
+      ],
+    };
+    const out = buildDiagnosticsFromResponse(response, "user.rb");
+    expect(out).toHaveLength(2);
+    expect(out[0]?.message).toBe("First error");
+    expect(out[0]?.severity).toBe("error");
+    expect(out[1]?.message).toBe("Second warning");
+    expect(out[1]?.severity).toBe("warning");
+  });
+
+  it("maps each severity correctly via mapDiagnosticSeverity", () => {
+    const response = {
+      kind: "full" as const,
+      items: [
+        {
+          range: {
+            start: { line: 0, character: 0 },
+            end: { line: 0, character: 1 },
+          },
+          severity: 1,
+          message: "err",
+        },
+        {
+          range: {
+            start: { line: 1, character: 0 },
+            end: { line: 1, character: 1 },
+          },
+          severity: 2,
+          message: "warn",
+        },
+        {
+          range: {
+            start: { line: 2, character: 0 },
+            end: { line: 2, character: 1 },
+          },
+          severity: 3,
+          message: "info-msg",
+        },
+      ],
+    };
+    const out = buildDiagnosticsFromResponse(response, "x.rb");
+    expect(out.map((d) => d.severity)).toEqual([
+      "error",
+      "warning",
+      "info",
+    ]);
   });
 });
 
