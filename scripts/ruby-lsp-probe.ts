@@ -450,9 +450,11 @@ async function main(): Promise<void> {
   out.push("ADR-authoring discipline per ADR-13 (Pyright) + ADR-14 (gopls)");
   out.push("precedent.");
   out.push("");
-  out.push("**Version targets.** Ruby 3.3, Rails 8.0, ruby-lsp 0.26.x");
-  out.push("(latest 0.26.9), ruby-lsp-rails 0.4.8 (auto-loaded when");
-  out.push("Rails detected).");
+  out.push("**Version targets.** Ruby 4.0.3 (cohort-actual-version");
+  out.push("anchor per v0.9 Stream A Phase 1 lock), Rails 8.0, ruby-lsp");
+  out.push("0.26.x (latest 0.26.9), ruby-lsp-rails 0.4.8 (auto-loaded");
+  out.push("when Rails detected). Doctor's warn-not-error pattern");
+  out.push("supports earlier Ruby 3.3.x cohort developers.");
   out.push("");
   out.push(
     "**Version pinning rationale** (Option D adjudication; cycle-",

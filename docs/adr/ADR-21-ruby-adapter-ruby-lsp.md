@@ -517,13 +517,18 @@ Path R-III) revealed cohort Ruby/Rails developers may run versions
 newer than the LSP-tested-stable versions the probe substrate
 anchors to. Three axes worth explicit framing:
 
-- **Ruby version range supported:** Ruby 3.3.x (probe-substrate
-  baseline) through 4.0.x (cohort-observed; ruby-lsp 0.26.9 tracks
-  current Ruby versions per Shopify's maintenance cadence). Doctor's
-  `ruby --version` check reports the installed version but does NOT
-  block on minor-version-gap — **warn-not-error pattern**. The
-  adapter exercises only the LSP wire protocol, which is Ruby-
-  version-stable across 3.3-4.0 per Shopify maintenance scope.
+- **Ruby version range supported:** Ruby 4.0.x (probe-substrate
+  baseline; cohort-actual-version anchored at Phase 1 lock —
+  empirical probe re-execution on Ruby 4.0.3 against ruby-lsp
+  0.26.9 confirmed compatibility; Substep 3 baseline captured on
+  Ruby 3.3 remains in git history at `a7e6f85` / `a1ddb01`).
+  Earlier Ruby 3.3.x cohort developers supported via doctor's
+  warn-not-error pattern; ruby-lsp 0.26.9 covers Ruby 3.3-4.0 per
+  Shopify's maintenance cadence. Doctor's `ruby --version` check
+  reports the installed version but does NOT block on minor-
+  version-gap — **warn-not-error pattern**. The adapter exercises
+  only the LSP wire protocol, which is Ruby-version-stable across
+  3.3-4.0 per Shopify maintenance scope.
 
 - **Rails version range supported:** Rails 8.0 is the probe-tested
   baseline (synthetic fixture). Cohort developers on Rails 8.1
@@ -546,14 +551,22 @@ anchors to. Three axes worth explicit framing:
 fixture-substrate-version (what we anchor LSP/probe to) vs
 cohort-actual-version (what cohort developers actually run) is a
 distinct substrate axis from Pattern 7's four verification axes.
-Survey empirical evidence at Stream A close: cohort Ruby/Rails
+Survey empirical evidence at Substep 5 close: cohort Ruby/Rails
 developers may run bleeding-edge versions that LSP add-on releases
-lag against. Doctor's warn-not-error pattern accommodates the gap
-without blocking legitimate work. v1.1 cycle's Rust / Java / .NET
+lag against (recognition-service pinned Ruby 4.0.3 + Rails 8.1;
+ContextAtlas fixture had pinned Ruby 3.3 + Rails 8.0). **Path V-a
+adjudication** closed the gap at Phase 1 lock by shifting fixture-
+substrate-version to cohort-actual-version (Ruby 4.0.3) rather
+than carrying it as v1.1 amendment — eliminates the discrepancy
+for Ruby version specifically; Rails version delta (8.0 vs 8.1)
+remains carried-forward as v1.1 candidate. Doctor's warn-not-error
+pattern still accommodates earlier-cohort gap (developers on
+Ruby 3.3.x continue to work). v1.1 cycle's Rust / Java / .NET
 adapter authoring should consider both anchors — fixture-substrate-
 version AND cohort-actual-version range — in §install-pattern
 framing from the outset, rather than retrofitting at survey
-discovery.
+discovery. Path V-a is the resolution-shape precedent: anchor
+fixture to current cohort version when available.
 
 ## Limitations
 
