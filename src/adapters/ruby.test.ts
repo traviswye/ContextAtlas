@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   RUBY_EXTENSIONS,
+  buildReferenceId,
   dedupLocationsByNormalizedPath,
   detectRails,
   findSymbolByName,
@@ -579,6 +580,143 @@ describe("findSymbolByName", () => {
     const out = findSymbolByName(symbols, "foo");
     expect(out?.name).toBe("foo");
     expect(out?.range.start.line).toBe(5);
+  });
+});
+
+describe("buildReferenceId", () => {
+  // ADR-01 Reference-ID format: ref:<lang-short>:<path>:<line>
+  // Ruby short code: 'rb'. Line is 1-indexed (human-readable).
+
+  it("builds canonical Reference-ID", () => {
+    expect(buildReferenceId("app/models/user.rb", 5)).toBe(
+      "ref:rb:app/models/user.rb:5",
+    );
+  });
+
+  it("preserves forward-slash path separators", () => {
+    expect(buildReferenceId("lib/concerns/sluggable.rb", 12)).toBe(
+      "ref:rb:lib/concerns/sluggable.rb:12",
+    );
+  });
+
+  it("uses 1-indexed lines", () => {
+    // Line 1 = first line of file (LSP is 0-indexed; adapter
+    // converts at the boundary). Line 0 is invalid for human-
+    // readable identification.
+    expect(buildReferenceId("a.rb", 1)).toBe("ref:rb:a.rb:1");
+  });
+});
+
+describe("dedupLocationsByNormalizedPath — LspLocation-shape integration (Substep 3.4 first reuse)", () => {
+  // First empirical reuse of the utility designed at Substep 3.2
+  // against the actual LspLocation shape used by findReferences.
+  // Validates extractor-function shape generalizes for cross-file
+  // Location[] arrays exhibiting probe-empirical URL-encoding
+  // duplication on Windows.
+
+  it("dedupes Windows URL-encoded vs literal drive-letter Location duplicates", () => {
+    const locations = [
+      {
+        uri: "file:///c%3A/repo/file.rb",
+        range: {
+          start: { line: 5, character: 0 },
+          end: { line: 5, character: 10 },
+        },
+      },
+      {
+        uri: "file:///c:/repo/file.rb",
+        range: {
+          start: { line: 5, character: 0 },
+          end: { line: 5, character: 10 },
+        },
+      },
+    ];
+    const out = dedupLocationsByNormalizedPath(locations, (loc) => ({
+      uri: loc.uri,
+      line: loc.range.start.line,
+      col: loc.range.start.character,
+    }));
+    expect(out).toHaveLength(1);
+  });
+
+  it("preserves multiple references at distinct positions in same file", () => {
+    // Probe #2 captured cases like User.recent referenced at multiple
+    // lines across multiple files. Dedup MUST NOT collapse legitimate
+    // distinct-position references.
+    const locations = [
+      {
+        uri: "file:///c:/repo/post.rb",
+        range: {
+          start: { line: 8, character: 2 },
+          end: { line: 8, character: 7 },
+        },
+      },
+      {
+        uri: "file:///c:/repo/post.rb",
+        range: {
+          start: { line: 9, character: 2 },
+          end: { line: 9, character: 7 },
+        },
+      },
+    ];
+    const out = dedupLocationsByNormalizedPath(locations, (loc) => ({
+      uri: loc.uri,
+      line: loc.range.start.line,
+      col: loc.range.start.character,
+    }));
+    expect(out).toHaveLength(2);
+  });
+
+  it("dedupes URL-encoding duplicates at same line, preserves distinct lines", () => {
+    // Compose case: URL-encoding-duplicated reference at line 5 +
+    // distinct-position reference at line 10. Expected: dedup the
+    // line-5 pair to one entry; preserve line-10 as separate.
+    const locations = [
+      {
+        uri: "file:///c%3A/repo/file.rb",
+        range: {
+          start: { line: 5, character: 0 },
+          end: { line: 5, character: 10 },
+        },
+      },
+      {
+        uri: "file:///c:/repo/file.rb",
+        range: {
+          start: { line: 5, character: 0 },
+          end: { line: 5, character: 10 },
+        },
+      },
+      {
+        uri: "file:///c:/repo/file.rb",
+        range: {
+          start: { line: 10, character: 0 },
+          end: { line: 10, character: 5 },
+        },
+      },
+    ];
+    const out = dedupLocationsByNormalizedPath(locations, (loc) => ({
+      uri: loc.uri,
+      line: loc.range.start.line,
+      col: loc.range.start.character,
+    }));
+    expect(out).toHaveLength(2);
+    // First-seen wins: dedup keeps the c%3A-encoded variant for line 5.
+    expect(out[0]?.uri).toBe("file:///c%3A/repo/file.rb");
+    expect(out[1]?.range.start.line).toBe(10);
+  });
+
+  it("returns empty for empty input (constant-references gap case)", () => {
+    // Probe #2 captured PREMIUM_TIER_LIMIT empty references at
+    // declaration site. Adapter handles empty Location[] gracefully.
+    const out = dedupLocationsByNormalizedPath(
+      [] as { uri: string; range: { start: { line: number; character: number } } }[],
+      (loc) => ({
+        uri: loc.uri,
+        line: loc.range.start.line,
+        col: loc.range.start.character,
+      }),
+    );
+    expect(out).toEqual([]);
   });
 });
 

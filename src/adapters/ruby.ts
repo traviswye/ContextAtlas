@@ -51,6 +51,7 @@ import {
   type LanguageAdapter,
   type LanguageCode,
   type Reference,
+  type ReferenceId,
   type Symbol as AtlasSymbol,
   type SymbolId,
   type SymbolKind,
@@ -85,8 +86,10 @@ interface LspDocumentSymbol {
   selectionRange: LspRange;
   children?: LspDocumentSymbol[];
 }
-// LspLocation re-added at Substep 3.4 (findReferences); omitted from
-// listSymbols substep to keep noUnusedLocals clean.
+interface LspLocation {
+  uri: string;
+  range: LspRange;
+}
 
 // ---------------------------------------------------------------------------
 // Kind mapping per ADR-21 §"Symbol-kind mapping" — initial scaffolding;
@@ -589,13 +592,72 @@ export class RubyAdapter implements LanguageAdapter {
     return baseSym;
   }
 
-  async findReferences(_id: SymbolId): Promise<Reference[]> {
-    throw new Error(
-      "RubyAdapter.findReferences not yet implemented (Phase 3 Substep 3.4). " +
-        "ADR-21 §LSP primitive mappings: references request + URL-encoding " +
-        "dedup pass; declaration-site vs usage-site handling per Limitations §" +
-        "Constant references.",
+  async findReferences(id: SymbolId): Promise<Reference[]> {
+    const parsed = parseSymbolId(id);
+    if (!parsed || !this.rootPath) return [];
+    const { absPath } = this.resolveFile(parsed.path);
+    if (!existsSync(absPath)) return [];
+    await this.ensureOpen(absPath);
+
+    // Re-query documentSymbol to find target with selectionRange.start
+    // position (same pattern as 3.3 getSymbolDetails; gopls precedent).
+    const symbols = await this.client.request<LspDocumentSymbol[] | null>(
+      "textDocument/documentSymbol",
+      { textDocument: { uri: toFileUri(absPath) } },
+      this.options.requestTimeoutMs ?? 30_000,
     );
+    if (!symbols || !Array.isArray(symbols)) return [];
+    const target = findSymbolByName(symbols, parsed.name);
+    if (!target) return [];
+
+    // textDocument/references with includeDeclaration: false per
+    // ADR-21 §LSP primitive mappings + Pyright/gopls precedent
+    // (verified empirically at Substep 3.4 cross-reference-claim-
+    // coherence catch: pyright.ts:493 + go.ts:422 + probe substrate
+    // all use false; Pattern 7 axis 5 second instance — see commit
+    // body for full framing).
+    const locations = await this.client.request<LspLocation[] | null>(
+      "textDocument/references",
+      {
+        textDocument: { uri: toFileUri(absPath) },
+        position: target.selectionRange.start,
+        context: { includeDeclaration: false },
+      },
+      this.options.requestTimeoutMs ?? 30_000,
+    );
+
+    // Empty-result handling: ruby-lsp 0.26.9 baseline returns empty
+    // `[]` for constant declaration-site queries (probe #2
+    // PREMIUM_TIER_LIMIT). Adapter returns empty Reference[] without
+    // error per ADR-21 §Limitations "Constant references at
+    // declaration site". null + non-array also fold through to empty.
+    if (!locations || !Array.isArray(locations) || locations.length === 0) {
+      return [];
+    }
+
+    // First empirical reuse of dedupLocationsByNormalizedPath utility
+    // from Substep 3.2. ADR-21 §URL-encoding result duplication —
+    // ruby-lsp returns each cross-file location TWICE under c%3A vs
+    // c: URI encodings on Windows. Adapter dedupes via
+    // normalizePath-driven (path, line, col) tuple key.
+    const deduped = dedupLocationsByNormalizedPath(locations, (loc) => ({
+      uri: loc.uri,
+      line: loc.range.start.line,
+      col: loc.range.start.character,
+    }));
+
+    const rootPath = this.rootPath;
+    return deduped.map((loc): Reference => {
+      const rel = toRelativePath(normalizePath(loc.uri), rootPath);
+      const line = loc.range.start.line + 1;
+      return {
+        id: buildReferenceId(rel, line),
+        symbolId: id,
+        path: rel,
+        line,
+        column: loc.range.start.character,
+      };
+    });
   }
 
   async getDiagnostics(_filePath: string): Promise<Diagnostic[]> {
@@ -751,6 +813,16 @@ export function runRubyVersionPreflight(rubyBin: string): Promise<void> {
       );
     });
   });
+}
+
+/**
+ * Construct a Ruby Reference-ID per ADR-01 format:
+ * `ref:rb:<path>:<line>`. Path is workspace-relative forward-slash-
+ * separated; line is 1-indexed (human-readable). Exported for
+ * testability of ID format separate from full findReferences flow.
+ */
+export function buildReferenceId(relPath: string, line: number): ReferenceId {
+  return `ref:${LANG_CODES["ruby"]}:${relPath}:${line}`;
 }
 
 /**

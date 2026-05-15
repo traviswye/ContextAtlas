@@ -647,6 +647,12 @@ implementation when the cursor is on the declaration. Adapter-side
 workaround: also probe the references at usage sites if the
 declaration-site query returns empty. v1.1 candidate to refine.
 
+Empirically reconfirmed at v0.9 Stream A Phase 3 Substep 3.4 findReferences
+implementation. Adapter honors the gap by returning empty `Reference[]`
+without error per `if (!locations || !Array.isArray(locations) || locations.length === 0)`
+fold-through; downstream consumers see zero references for constant
+declaration-site queries.
+
 ### URL-encoding result duplication (Windows-specific)
 
 Every cross-file LSP response duplicates each location under two URI
