@@ -11,6 +11,13 @@ ruby '~> 3.3'
 
 gem 'rails', '~> 8.0.0'
 
+# Required for Rails on Windows; matches `rails new` default.
+# tzinfo can't find timezone data without it on Windows; Rails
+# initialization crashes during Bootloader timezone setup. Captured
+# at Substep 3 follow-up #3 empirical surface (fixture-authoring-
+# discipline gap distinct from Pattern 7).
+gem 'tzinfo-data', platforms: %i[ windows jruby ]
+
 # External-DSL probe slot dropped at Pattern 7 surface 5: paranoia
 # 2.6.3 caps at `activerecord < 7.2`, incompatible with Rails 8.
 # Path B adjudication: cite ruby-lsp-rails's documented scope in
