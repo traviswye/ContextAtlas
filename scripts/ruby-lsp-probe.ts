@@ -36,11 +36,18 @@
  * precedent). If the probe can't drive ruby-lsp with that client,
  * that's itself a finding for ADR-21.
  *
- * Bundler/spawn note (Windows): on win32 we default to `bundle.bat`
- * because Node's spawn doesn't auto-resolve `.bat`/`.cmd` shims
- * without shell:true. Env vars CONTEXTATLAS_BUNDLE_BIN and
- * CONTEXTATLAS_RUBY_LSP_BIN let callers override if their install
- * uses non-standard names or absolute paths.
+ * Bundler/spawn note (Windows): bundle is `bundle.bat` and gem-
+ * installed ruby-lsp is `ruby-lsp.bat`. Both are .bat shims; Node's
+ * spawn refuses direct execution without shell:true per
+ * CVE-2024-27980 (security fix landed in Node 18.20.2+/20.12.2+).
+ * Probe-local fix per Substep 3 b-cmd adjudication: wrap in
+ * `cmd.exe /c` so spawn sees an .exe directly. Adapter-
+ * implementation will need symmetric Windows handling at adapter
+ * phase — that's a separate adjudication informed by this probe-
+ * phase substrate, not pre-locked here. Env vars
+ * CONTEXTATLAS_BUNDLE_BIN and CONTEXTATLAS_RUBY_LSP_BIN let callers
+ * override if their install uses non-standard names or absolute
+ * paths; both work on the cmd.exe wrap path on Windows.
  *
  * Discard after ADR-21 + RubyAdapter land. The findings file the
  * probe produces is what carries forward.
@@ -292,10 +299,29 @@ async function bootRubyLsp(
   //   - direct: spawn ruby-lsp binary itself (gem-install pattern).
   //     Enable by setting CONTEXTATLAS_RUBY_LSP_BIN to the absolute
   //     binary path; bypasses BUNDLE_BIN entirely.
+  //
+  // Windows .bat-spawn handling (CVE-2024-27980): both bundle.bat
+  // and ruby-lsp.bat are shims; Node refuses direct spawn. Wrap in
+  // cmd.exe /c so spawn sees the .exe directly. Symmetric across
+  // both spawn paths. Probe-local fix per Substep 3 b-cmd
+  // adjudication; adapter phase will revisit with full substrate.
+  const isWindows = process.platform === "win32";
   if (RUBY_LSP_DIRECT) {
-    client.start(RUBY_LSP_DIRECT, [], root);
+    if (isWindows) {
+      client.start("cmd.exe", ["/c", RUBY_LSP_DIRECT], root);
+    } else {
+      client.start(RUBY_LSP_DIRECT, [], root);
+    }
   } else {
-    client.start(BUNDLE_BIN, ["exec", "ruby-lsp"], root);
+    if (isWindows) {
+      client.start(
+        "cmd.exe",
+        ["/c", BUNDLE_BIN, "exec", "ruby-lsp"],
+        root,
+      );
+    } else {
+      client.start(BUNDLE_BIN, ["exec", "ruby-lsp"], root);
+    }
   }
 
   const initResult = await withTimeout("initialize", 60_000, () =>
