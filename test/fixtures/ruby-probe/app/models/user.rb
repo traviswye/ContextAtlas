@@ -1,8 +1,6 @@
 class User < ApplicationRecord
   PREMIUM_TIER_LIMIT = 1000
 
-  acts_as_paranoid
-
   has_many :posts, dependent: :destroy
   has_one :profile
 

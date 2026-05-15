@@ -491,8 +491,11 @@ async function main(): Promise<void> {
     //   - For each fixture file, request textDocument/documentSymbol
     //   - Compare ruby-lsp-rails Rails files (models/controllers) to
     //     plain .rb files (lib/) to surface add-on delta
-    //   - Capture: acts_as_*, scopes, associations, enums, callbacks
+    //   - Capture: scopes, associations, enums, callbacks, validations
     //   - Most load-bearing — primitive for everything else
+    //   - External-DSL (acts_as_*) surface deliberately not in
+    //     fixture per Pattern 7 surface 5 / Path B — cited in
+    //     ADR-21 Limitations from ruby-lsp-rails documented scope
     heading(out, "Probe #1 — documentSymbol (TODO Substep 3)");
     out.push("_Not yet implemented — lands in Substep 3._");
 
@@ -542,10 +545,14 @@ async function main(): Promise<void> {
     //   - Capture which Rails macros ruby-lsp-rails surfaces in
     //     documentSymbol: has_many, belongs_to, has_one, has_and_belongs_to_many,
     //     scope, enum, validates, before_/after_/around_ callbacks,
-    //     acts_as_*, devise integrations, ActiveSupport::Concern
+    //     ActiveSupport::Concern (Sluggable in fixture)
     //   - Compare baseline (rails-rails disabled) to add-on (enabled)
     //   - Most ADR-21-Limitations-relevant probe; residual gaps go
     //     directly into Limitations section
+    //   - External-DSL (acts_as_*, devise) deliberately not in
+    //     fixture per Pattern 7 surface 5 / Path B — cited
+    //     finding in ADR-21 from ruby-lsp-rails documented scope,
+    //     not fixture-probe evidence
     heading(out, "Probe #6 — Rails DSL surface delta (TODO Substep 3)");
     out.push("_Not yet implemented — lands in Substep 3._");
 

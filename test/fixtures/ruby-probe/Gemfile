@@ -11,11 +11,11 @@ ruby '~> 3.3'
 
 gem 'rails', '~> 8.0.0'
 
-# External acts_as_* DSL macro probe target. Chosen for canonical
-# class-level external-DSL shape; soft-delete is the most-installed
-# acts_as_* gem on production Rails codebases. Probe captures
-# ruby-lsp-rails behavior on external DSL vs core Rails DSL.
-gem 'paranoia', '~> 2.6'
+# External-DSL probe slot dropped at Pattern 7 surface 5: paranoia
+# 2.6.3 caps at `activerecord < 7.2`, incompatible with Rails 8.
+# Path B adjudication: cite ruby-lsp-rails's documented scope in
+# ADR-21 Limitations rather than fixture-probe external DSL. Core
+# Rails DSL coverage remains the load-bearing probe surface.
 
 # Version pinning per Option D adjudication (cycle-observation 24
 # fourth surface): ship on stable-compatible pair, NOT pre-release.

@@ -50,7 +50,7 @@ entry.
 
 | File | DSL surface |
 |---|---|
-| `app/models/user.rb` | has_many, has_one, enum, scope (3x), validates, callbacks (before_save + after_create), `acts_as_paranoid` (external DSL), class methods, instance methods, constants |
+| `app/models/user.rb` | has_many, has_one, enum, scope (3x), validates, callbacks (before_save + after_create), class methods, instance methods, constants |
 | `app/models/post.rb` | belongs_to, has_and_belongs_to_many, enum, scope (2x), ActiveSupport::Concern include, before_validation |
 | `app/models/concerns/sluggable.rb` | ActiveSupport::Concern pattern — included block, class_methods block, instance methods |
 | `app/controllers/posts_controller.rb` | < ActionController::Base, before_action, CRUD actions, strong params |
@@ -58,6 +58,18 @@ entry.
 | `lib/dynamic_methods.rb` | `define_method` metaprogramming probe |
 | `consumer.rb` | Cross-file references for `findReferences` probe |
 | `broken.rb` | Deliberate parse error for `publishDiagnostics` probe |
+
+**External-DSL probe slot deliberately omitted.** ruby-lsp-rails
+covers core Rails patterns (associations, scopes, enums, callbacks,
+ActiveSupport::Concern, validations) per its documented scope; it
+does not surface symbols for third-party DSL macros from gems like
+`acts_as_paranoid`, `acts_as_list`, or `acts_as_taggable_on`. This
+is a documentation-cited Limitation in ADR-21 rather than fixture-
+probed evidence; the fixture focuses on core Rails DSL coverage
+delta from the add-on. (Origin: Pattern 7 surface 5 — paranoia
+2.6.3 caps at `activerecord < 7.2`, incompatible with Rails 8;
+Path B adjudication dropped the external-DSL slot rather than
+adopt a replacement gem.)
 
 ## Promotion to `test/fixtures/ruby/`
 
