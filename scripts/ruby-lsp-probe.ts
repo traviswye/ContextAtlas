@@ -92,6 +92,27 @@ const BUNDLE_BIN =
 const RUBY_LSP_DIRECT =
   process.env.CONTEXTATLAS_RUBY_LSP_BIN ?? null;
 
+// FINDING (for ADR-21 + doctor): bundle.bat (and ruby-lsp.bat in the
+// gem-install path) spawns `ruby.exe` as a subprocess. ruby.exe must
+// be on PATH in the bundle process's env, OR bundle reports
+// "'ruby.exe' is not recognized" and the LSP subprocess exits with
+// code 1. Parallel to ADR-14 gopls's "Go binary must be on PATH"
+// finding (gopls-probe.ts §FINDING). Probe-specific workaround:
+// prepend known Ruby bin dirs to current process's PATH so cmd.exe
+// → bundle.bat inherits them. Adapter implementation will prefer
+// PATH resolution + doctor preflight (`ruby --version` check); this
+// hardcoded fallback is probe-only. Surfaced at Substep 3 first
+// clean-spawn execution after cmd.exe wrap (bf05c9c).
+const RUBY_BIN_DIRS = [
+  "C:\\Ruby33-x64\\bin", // RubyInstaller3 default for Ruby 3.3
+  "C:\\Ruby34-x64\\bin", // future-Ruby fallback
+];
+if (process.platform === "win32") {
+  process.env.PATH = [...RUBY_BIN_DIRS, process.env.PATH ?? ""]
+    .filter(Boolean)
+    .join(";");
+}
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
