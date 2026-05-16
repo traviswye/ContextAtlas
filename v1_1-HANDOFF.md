@@ -340,3 +340,166 @@ getting that discipline right at cycle kickoff.
 - Annotated tag bodies at `git show v0.7.0` through
   `git show v0.8.0` — canonical release-notes substrate per
   Pattern 4
+
+---
+
+## §7 v0.9 Stream A close — Ruby adapter ship substrate-record (added 2026-05-16)
+
+**Cycle:** v0.9.0 — Stream A scope (Ruby adapter ship)
+**Closed:** 2026-05-16
+**Status:** Operationally complete; Phase 6 (weekend Rails dogfood) parallel non-blocker
+**Next:** v0.9.1 (Streams B-E launch execution; no formal tag) → v1.0.0 public launch
+
+### Cycle scope
+
+v0.9 was launch-prep cycle, not feature cycle (per §4 v0.8-close
+framing). Stream A turned out to be a substantive code-work scope
+extension: shipped Ruby adapter as the fourth supported language
+at v1.0 launch, extending the TS/Python/Go matrix established at
+v0.2. Streams B-E (repo cleanup + launch positioning + visual
+assets + execution) ship as v0.9.1 work folding directly into
+v1.0.0 public launch.
+
+§4 v0.8-close framing ("v0.9 is not a substantive code-work
+cycle") preserved as honest substrate-record per Pattern 3 non-
+revisionist discipline. Reader sees v0.8-close-anticipated framing
+vs v0.9-actual-outcome evolution.
+
+### Commit chain — Stream A
+
+**Probe phase (Substeps 1-5):**
+- `5da4100` — Substep 1 probe scaffold
+- `f3faafb` — Substep 2 Rails fixture
+- `3bb15e8` → `815125f` — Correction sweeps (ruby-lsp version anchor; Pattern 7 four-axis canonicalized)
+- `b6ea824` — Path B paranoia drop (pause-vs-verify discipline canonicalized)
+- `0bde75f` → `bf05c9c` → `ebc241e` → `a7e6f85` → `a1ddb01` — Substep 3 probe implementation (8 probes + Windows cmd.exe wrap + PATH enrichment + tzinfo + baseline preservation)
+- `70d111d` — Substep 4 ADR-21 authored (702 lines)
+- `f614c78` — Substep 5 Path R-III (cohort-version amendment)
+
+**Phase 1-2 (version anchor + type substrate):**
+- `17988be` — Ruby 4.0.3 probe re-execution + ADR-21 §Cohort-version range surgical revision
+- `df374d6` — LanguageCode + LANG_CODES additions
+
+**Phase 3 (RubyAdapter implementation):**
+- `0569e97` — 3.1 Skeleton (419 LOC)
+- `8e40e63` — 3.2 listSymbols (514 LOC + URL-encoding dedup utility)
+- `a76c1c4` — Mid-3.2 ADR-21 §Rationale surgical revision (Φ-γ-variant self.method preserve verbatim)
+- `b7967e4` — 3.3 getSymbolDetails (272 LOC; hover-based; forward-composition prose reserved for 3.7)
+- `1f7ff52` — 3.4 findReferences (224 LOC + ADR-21 §Limitations Constant-references addendum)
+- `d9e39ea` — 3.5 getDiagnostics (242 LOC; pull-model net-new substrate)
+- `9888d72` — 3.6 getTypeInfo (357 LOC + ADR-21 §Limitations getTypeInfo addendum)
+- `5c93898` — 3.7 getDocstring (179 LOC; consumes 3.3 prose field)
+- `8cd0666` — 3.8 Phase 3 close
+
+**Phase 4 (conformance test substrate):**
+- `43b7396` — Pre-Substep-4.1 verification (top-level def for empirical kind-12 confirmation)
+- `c54ff7c` — Path β (α-FALSIFIED; conformance harness functionSymbol flexibility for Ruby kind-6-uniform callable mapping)
+- `6f9ae29` — Substep 4.1 fixture promotion + reshape
+- `eb69d53` — Substep 4.2 probe substrate archival (K-2-ii consolidated subdirectory)
+- `ec62c1a` — Substep 4.3 conformance test scaffold + Path P-1 PATH-enrichment helper + Phase 4 close
+
+**Phase 5 (Ruby integration sweep, Z-3 hybrid):**
+- `ffcfceb` — Substep 5.1 docs + init + Rails excludePatterns
+- `6570440` — Substep 5.2 doctor Ruby/Rails check surface (10 checks)
+
+**Phase 6:** parallel weekend Rails dogfood (Travis-paced; non-blocking)
+
+### Quantitative summary
+
+- ~30 substantive commits across Stream A
+- Adapter substrate: ~1300 LOC (`src/adapters/ruby.ts`) + ~535 LOC (`src/doctor/checks/ruby-environment.ts`) ≈ 1835 LOC implementation
+- Test substrate: 94 unit tests (`ruby.test.ts`) + 14 conformance tests (`ruby.conformance.test.ts`) + 8 doctor environment tests (`ruby-environment.test.ts`) = 116 Ruby-specific tests
+- ADR-21 final size: 851 lines; 5 substantive amendments within cycle
+- Wall-clock: ~11 days actual vs 3-4 weeks estimate (substantively ahead of pace)
+
+### Cycle-discipline observations validated in v0.9
+
+**(1) Pattern 7 four-axis verification.** Structural-precedent / measurement-claim / version-anchor / dependency-constraint. Canonicalized in commit body `815125f`. Fired multiple times across cycle.
+
+**(2) Pattern 7 axis 5 canonicalized + sub-decomposed.** Three empirical instances across cycle promote axis 5 from candidate to canonical:
+- **5a Cross-reference-claim-coherence** — cited precedents claim what we say they claim. Two instances: `a76c1c4` §Rationale gopls direction inversion + 3.4 includeDeclaration claim inversion.
+- **5b Substrate-coverage-completeness** — empirical substrate covers the range of cases ADR/adapter scope claims to handle. One instance: `c54ff7c` Path β kind-6 top-level def catch (probe #1 baseline didn't cover top-level def).
+
+Both surface at downstream empirical verification, not at authoring-time documentation review.
+
+**(3) Pause-and-surface vs verify-and-act discipline.** Canonicalized at `b6ea824`. Scope-affecting decisions pause-and-surface; constraint-correcting decisions verify-and-act. Applied empirically across all 8 Phase 3 substeps + Phase 4 surgical revisions.
+
+**(4) Substep-bounded ship-commit discipline.** Each substep one commit; mid-substep surgical revisions ship as separate commits per `b6ea824` boundary.
+
+**(5) Empirical-survey-before-decomposition discipline.** Phase 5 Z-3 hybrid decomposition emerged from dev's empirical survey of existing surface. Pre-deciding decomposition without survey risks over- or under-decomposition. Same discipline pattern fired again at v0.9 close — dev's empirical grep of cycle-artifact cross-references caught migration scope drafted without empirical grounding (30+ reference files; 15+ markdown links would break). Migration dropped from v0.9 close → Stream B substep per dev empirical catch.
+
+**(6) Skip-with-rationale pattern.** Substep 5.1 — 4 surfaces deliberately not touched (CLAUDE.md, MCP schemas, benchmark targets, historical TS+Python framing) each with explicit reason. Future-reader sees why surface wasn't touched.
+
+**(7) Forward-composition design pattern.** Phase 3 — `parseRubyHoverContent` at 3.3 returns `{ signature, prose }` with prose reserved for 3.7. Single hover request, single markdown parse, two field consumers. Design choice at earlier substep prevented redundant parsing at later substep.
+
+**(8) Execution-discipline (staging-set verification).** Two empirical instances:
+- 4.1 post-commit catch (partial-stage shipped; amend per Path X authorization)
+- 4.3 pre-commit catch (heredoc apostrophe; `git status --short` reinforcement)
+
+Different mechanisms; same category — commit fires against unintended/incomplete stage state. Pattern: multi-file substep commits require `git status --short` empirical check before commit fires. Reinforced via commit-via-F file pattern after 4.3 heredoc lesson; applied cleanly across 4.2 + 4.3 + 5.1 + 5.2 + this Sub-close-2.
+
+**(9) Cross-adapter conformance harness flexibility as discipline pattern.** Two instances at v1.0:
+- `classSymbol`: "class" OR "interface" (line 50, pre-existing precedent)
+- `functionSymbol`: "function" OR "method" (Path β `c54ff7c`)
+
+Conformance harness accommodates language-semantic-divergence via per-language flexibility. Not exception; pattern.
+
+**(10) K-2-ii consolidated archival pattern.** ADR-13 (Pyright) + ADR-14 (gopls) probe substrate stayed at live paths post-adapter-ship. Ruby K-2-ii consolidated subdirectory archival (`docs/adr/ruby-lsp-probe/`) is NEW discipline-pattern refinement, not precedent-inheritance.
+
+**(11) LSP-server-install-variation correlates with PATH-enrichment-helper need.** Three v1.0 adapter precedents: pyright (no enrichment), gopls (enrichment), Ruby (enrichment for wider install variation — RubyInstaller versions / rbenv / RVM / chocolatey / Homebrew Intel + Apple Silicon / system).
+
+**(12) Doctor-substrate null-filter-at-orchestrator pattern.** Non-applicable checks return null + filtered at orchestrator (Rails-conditional / platform-conditional / suppress-when-not-applicable). Cleaner cohort UX than PASS-with-irrelevant-message.
+
+**(13) Adapter divergence axes decomposition.** Empirical instances of adapter implementation divergence from precedent, empirically grounded across two axes:
+- **LSP response-shape conventions** — concrete instances at observation (14) Probing-against-actual-channel-pattern discipline and (17) Diagnostic-delivery-channel-axis
+- **Language-structural-properties** — concrete instances at Path β kind-6-uniform (observation 9 reference) and usedByTypes Pyright-pass-1-skip (Phase 3.6)
+
+Adapter pattern uniformity at base-class shape; adapter implementation divergence at per-LSP response-handling AND per-language semantic-structural-properties.
+
+**(14) Probing-against-actual-channel-pattern discipline.** Probe script's `count: 0` for broken.rb was probe-script design choice (push-channel handler), not ruby-lsp behavior gap. Cross-adapter probe substrate quality depends on probing against the actual delivery channel, not assumed channel from precedent adapters.
+
+**(15) Rename-detection threshold composes with file size + modification scope.** Substep 4.1 `consumer.rb` (delete+create at <50% similarity) vs Substep 4.2 probe artifacts (97% similarity). Smaller modifications on larger files preserve continuity even at coincident-with-rename surface.
+
+**(16) Fixture-substrate-version vs cohort-actual-version axis.** Distinct from Pattern 7's four verification axes. Probe substrate captured at Ruby 3.3 → cohort developers actually run Ruby 4.0+. Path V-a at Phase 1 closed the gap rather than carrying as v1.1 amendment.
+
+**(17) Diagnostic-delivery-channel-axis as substrate-design dimension.** Push-model (Pyright/gopls publishDiagnostics notifications) vs pull-model (ruby-lsp textDocument/diagnostic LSP 3.17 request). Net-new substrate at Ruby.
+
+**(18) Fixture-authoring discipline pattern.** Distinct from Pattern 7. Matches framework-generator-defaults (Rails 8.0 fixture; Gemfile follows Rails 8 conventions) + LSP add-on architectural model (ruby-lsp-rails requires bootable Rails app).
+
+**(19) ADR-21 amendment frequency observation.** 5 substantive amendments within v0.9 cycle. Cross-adapter precedent: ADR-13 + ADR-14 §Symbol-kind sections shipped at original authoring without substantive amendments. ADR-21's amendment frequency reflects Ruby's structural complexity (no functions-vs-methods semantic split, class methods kind-12 divergence) vs Python/Go's relative LSP-mapping cleanliness. Substantive ADRs for structurally-complex languages should expect 3-5 §Symbol-kind mapping amendments within shipping cycle.
+
+### Stream A backlog → v1.1
+
+**Concrete v1.1 triggers (release-version-gated or cohort-feedback-gated):**
+
+1. **`db/migrate/**` and `public/uploads/**` exclude pattern decisions.** v0.9.0 Substep 5.1 deliberately omitted from conservative Rails-excludePattern tier as potentially-substantive-content. v1.1 cohort feedback informs whether default-exclude makes sense.
+
+2. **rbenv shims / RVM / chocolatey install detection refinements.** v0.9.0 Substep 5.2 doctor substrate covers these via filesystem + path checks. v1.1 candidate: surface non-PATH install detection findings empirically and refine heuristics.
+
+3. **ruby-lsp 0.27+ probe re-execution.** Current v1.0 baseline anchors at ruby-lsp 0.26.9 + ruby-lsp-rails 0.4.8. When ruby-lsp 0.27 + ruby-lsp-rails 0.5 stable releases, re-run probe substrate against new versions. ADR-21 §Cohort-version range updates.
+
+4. **Rails 8.1 + ruby-lsp-rails 0.5 compatibility.** v1.0 ships against Rails 8.0; cohort developers on Rails 8.1 may surface add-on friction. Empirical verification at v1.1.
+
+**Phase 6 dogfood spillover:**
+
+5. **Phase 6 weekend dogfood findings.** Travis recognition-service + commons Rails work-repo dogfood. Composes to ADR-21 §probe #6 (b) amendment if load-bearing findings surface; Limitations subsection candidates for add-on-enabled behavior differing from documentation citation.
+
+**Scope expansion (substep deferrals):**
+
+6. **ERB / .rake / .gemspec language extension support.** v1.0 ships `.rb` only. v1.1 candidate: add ERB template support (mixed Ruby + HTML/text); rake task + gemspec coverage. ADR-21 + LANG_CODES amendments.
+
+7. **Deep ActiveSupport::Concern bubble-up.** v1.0 ships shallow `implements: ["ConcernModule"]`; deep Concern bubble-up (included do hooks, class_methods do blocks surfacing) deferred to v1.1.
+
+8. **Multi-mixin-per-line + nested-block-scope-aware parsing.** Substep 3.6 declaration parser v1.0 scope handles top-level class body includes; v1.1 candidate for sophisticated mixin scanning.
+
+9. **getTypeInfo `usedByTypes` implementation.** v1.0 ships empty array (degraded mode per language-structural-property local-parseability). v1.1 candidate: pass-1 inventory walk if cohort demands cross-class type-usage queries.
+
+### Stream A test-infrastructure observations → v1.1 investigation candidates
+
+**EBUSY tmpdir Windows flake (recurring across v0.9 cycle).** Test-infrastructure category, separate from Pattern 7. Multiple instances across Phase 3-5 substeps; isolated re-runs consistently pass. Worth v1.1 investigation — root cause analysis + remediation. May require test-infrastructure architectural change or simply tmpdir cleanup discipline.
+
+### Tooling-discipline observations
+
+**Heredoc-apostrophe interaction with single-quoted bash delimiter.** v0.9.0 4.3 catch. Workaround: commit-via-F file pattern. Worth v1.1 inheritance for any cycle authoring commit bodies with apostrophes.
+
+**Multi-Ruby-install PATH precedence subtlety on Windows.** v0.9.0 Phase 1 catch — `where.exe` empirical disambiguation needed when both 3.3 + 4.0 RubyInstaller installs coexist. Doctor substrate handles via `lsp.ruby.multiple_ruby_installs` check (Substep 5.2).
