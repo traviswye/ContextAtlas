@@ -29,8 +29,9 @@
  *     named test/fixtures/ruby-probe/; promoted at v0.9 Substep 4.1).
  *   - Substep 3: implement the ordered capability probes (TODO
  *     markers below).
- *   - Substep 4: human-author docs/adr/ruby-lsp-probe-findings.md
- *     from probe output.
+ *   - Substep 4: human-author docs/adr/ruby-lsp-probe/findings-baseline.md
+ *     from probe output (archived at v0.9 Substep 4.2 from
+ *     docs/adr/ruby-lsp-probe-findings-baseline.md).
  *   - Substep 5: compose Travis's real-Rails-repo dogfood findings.
  *
  * Reuses src/adapters/lsp-client.ts unchanged (Pyright/gopls
@@ -50,8 +51,14 @@
  * override if their install uses non-standard names or absolute
  * paths; both work on the cmd.exe wrap path on Windows.
  *
- * Discard after ADR-21 + RubyAdapter land. The findings file the
- * probe produces is what carries forward.
+ * Archived at v0.9 Substep 4.2 to docs/adr/ruby-lsp-probe/ (moved
+ * from scripts/) per Option K-2-ii — substrate-record preservation
+ * pattern that departs from ADR-13 (Pyright) + ADR-14 (gopls)
+ * flat-precedent (probe scripts stay at scripts/ in those adapters).
+ * See sibling README.md for archive purpose + re-run pattern. Both
+ * the script and findings file are preserved rather than discarded —
+ * re-runnable for v1.1 0.27+/0.5+ pair upgrade validation or for
+ * any future ruby-lsp-rails Rails-runner regression investigation.
  */
 
 import {
@@ -66,14 +73,21 @@ import {
   resolve as pathResolve,
 } from "node:path";
 
-import { LspClient } from "../src/adapters/lsp-client.js";
-import { toFileUri, normalizePath } from "../src/utils/paths.js";
+import { LspClient } from "../../../src/adapters/lsp-client.js";
+import { toFileUri, normalizePath } from "../../../src/utils/paths.js";
 
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
 
-const FIXTURE = pathResolve("test/fixtures/ruby");
+// FIXTURE root. Defaults to the canonical test/fixtures/ruby/ post
+// v0.9 Substep 4.1 promotion. Override via CONTEXTATLAS_PROBE_ROOT
+// env var if invoking the archived probe against an alternate
+// fixture (e.g., for re-runs against a v1.1 ruby-lsp 0.27+/0.5+
+// pair against a different Rails-shaped target).
+const FIXTURE = process.env.CONTEXTATLAS_PROBE_ROOT
+  ? pathResolve(process.env.CONTEXTATLAS_PROBE_ROOT)
+  : pathResolve("test/fixtures/ruby");
 
 // Output path is `-baseline.md` per Substep 3 close Path β+δ
 // adjudication. The synthetic fixture can't get ruby-lsp-rails
@@ -84,7 +98,7 @@ const FIXTURE = pathResolve("test/fixtures/ruby");
 // probe. Future re-runs deliberately overwrite this baseline
 // file; the v0.9 Substep 3 close snapshot is preserved in git
 // history at commit ${SUBSTEP_3_CLOSE_COMMIT}.
-const OUTPUT = pathResolve("docs/adr/ruby-lsp-probe-findings-baseline.md");
+const OUTPUT = pathResolve("docs/adr/ruby-lsp-probe/findings-baseline.md");
 
 /**
  * Bundler command. ruby-lsp is invoked via `bundle exec ruby-lsp` per

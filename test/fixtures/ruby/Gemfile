@@ -1,6 +1,8 @@
 # Minimal Rails 8.0 probe fixture per v0.9 Stream A Substep 2.
-# Authored for scripts/ruby-lsp-probe.ts to exercise ruby-lsp +
-# ruby-lsp-rails capabilities; not a runnable application.
+# Authored for the probe script (archived at v0.9 Substep 4.2 to
+# docs/adr/ruby-lsp-probe/ruby-lsp-probe.ts; originally at
+# scripts/ruby-lsp-probe.ts) to exercise ruby-lsp + ruby-lsp-rails
+# capabilities; not a runnable application.
 #
 # Run `bundle install` once before running the probe so
 # `bundle exec ruby-lsp` resolves correctly.

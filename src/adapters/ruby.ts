@@ -52,8 +52,10 @@
  *     in Symbol-ID per Φ-γ-variant lock (ADR-21 §Rationale; gopls
  *     receiver-prefix-verbatim precedent applied to Ruby).
  *
- * See `docs/adr/ruby-lsp-probe-findings-baseline.md` for the
- * empirical probe substrate motivating these design choices.
+ * See `docs/adr/ruby-lsp-probe/findings-baseline.md` for the
+ * empirical probe substrate motivating these design choices
+ * (archived at v0.9 Substep 4.2 from the original flat path
+ * `docs/adr/ruby-lsp-probe-findings-baseline.md`).
  */
 
 import { spawn as childSpawn } from "node:child_process";
@@ -339,7 +341,7 @@ export class RubyAdapter implements LanguageAdapter {
     this.client.start(spawn.command, spawn.args, absRoot);
 
     // ruby-lsp's capability declaration per probe baseline empirical
-    // capture (see ruby-lsp-probe-findings-baseline.md
+    // capture (see docs/adr/ruby-lsp-probe/findings-baseline.md
     // §"initialize response — capabilities"). We declare:
     //   - documentSymbol (hierarchical) — Substep 3.2
     //   - references — Substep 3.4

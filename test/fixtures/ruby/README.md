@@ -41,10 +41,14 @@ bundle install
 Then from the repo root:
 
 ```sh
-npx tsx scripts/ruby-lsp-probe.ts
+npx tsx docs/adr/ruby-lsp-probe/ruby-lsp-probe.ts
 ```
 
-Findings land at `docs/adr/ruby-lsp-probe-findings-baseline.md`.
+(Probe script archived at v0.9 Substep 4.2 from `scripts/`. Set
+`CONTEXTATLAS_PROBE_ROOT` env var to override the FIXTURE root if
+re-running against an alternate target.)
+
+Findings land at `docs/adr/ruby-lsp-probe/findings-baseline.md`.
 
 ## Version pinning
 

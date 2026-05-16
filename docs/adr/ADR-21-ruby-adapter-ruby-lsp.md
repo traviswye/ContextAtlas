@@ -41,7 +41,7 @@ documented limits become Limitations rather than blockers.
 
 Per the cycle-precedent gate, a probe phase ran against ruby-lsp 0.26.9
 + ruby-lsp-rails 0.4.8 before this ADR — empirical findings live in
-[`docs/adr/ruby-lsp-probe-findings-baseline.md`](ruby-lsp-probe-findings-baseline.md)
+[`docs/adr/ruby-lsp-probe/findings-baseline.md`](ruby-lsp-probe/findings-baseline.md)
 (3915 lines, baseline-only capture per v0.9 Stream A Substep 3 Path
 β+δ adjudication; the ruby-lsp-rails add-on did not load successfully
 against the synthetic fixture). Decisions below cite probe findings or
@@ -330,7 +330,7 @@ docs; per Path B precedent for external DSL):
 These are documentation-cited and remain to be empirically confirmed
 or contradicted by Substep 5 work-repo qualitative observations
 against a real bootable Rails app. ADR-21 §probe #6 substrate at
-[`ruby-lsp-probe-findings-baseline.md` §"Probe #6"](ruby-lsp-probe-findings-baseline.md)
+[`ruby-lsp-probe/findings-baseline.md` §"Probe #6"](ruby-lsp-probe/findings-baseline.md)
 remains baseline-only.
 
 **Adapter response:** the adapter accepts the kind-6 DSL-macro
