@@ -25,7 +25,8 @@
  * Per v0.9 Stream A plan:
  *   - Substep 1 (this file, scaffold): boot + handler stubs +
  *     initialize handshake + ordered probe-section placeholders.
- *   - Substep 2: author test/fixtures/ruby-probe/ Rails fixture.
+ *   - Substep 2: author test/fixtures/ruby/ Rails fixture (then
+ *     named test/fixtures/ruby-probe/; promoted at v0.9 Substep 4.1).
  *   - Substep 3: implement the ordered capability probes (TODO
  *     markers below).
  *   - Substep 4: human-author docs/adr/ruby-lsp-probe-findings.md
@@ -72,7 +73,7 @@ import { toFileUri, normalizePath } from "../src/utils/paths.js";
 // Constants
 // ---------------------------------------------------------------------------
 
-const FIXTURE = pathResolve("test/fixtures/ruby-probe");
+const FIXTURE = pathResolve("test/fixtures/ruby");
 
 // Output path is `-baseline.md` per Substep 3 close Path β+δ
 // adjudication. The synthetic fixture can't get ruby-lsp-rails

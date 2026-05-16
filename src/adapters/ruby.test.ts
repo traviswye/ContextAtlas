@@ -41,7 +41,7 @@ describe("mapRubyKind", () => {
   // top-level def, module functions) emit LSP kind 6 and map to
   // 'method' uniformly. Empirically verified at v0.9 Stream A
   // Phase 4 mid-substep watch (b) per probe fixture amendment
-  // (top-level `def greet` in `test/fixtures/ruby-probe/lib/
+  // (top-level `def greet` in `test/fixtures/ruby/lib/
   // analytics.rb` — documentSymbol emits kind 6, identical to the
   // module-internal `def track` / `def identify` under
   // `module_function` in the same file).
@@ -1190,7 +1190,7 @@ describe("detectRails", () => {
   });
 
   // Full positive-case test requires a Rails-shaped fixture filesystem
-  // (test/fixtures/ruby-probe/ qualifies but bin/rails is created by
+  // (test/fixtures/ruby/ qualifies but bin/rails is created by
   // probe-fixture authoring). Conformance test substrate (Phase 4)
   // covers the positive case.
 });

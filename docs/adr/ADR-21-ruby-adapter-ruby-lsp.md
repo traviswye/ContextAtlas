@@ -453,13 +453,16 @@ normalization through `normalizePath()`.
   - DSL-macro symbol acceptance + remapping pass
   - Declaration-parse for `getTypeInfo` (analogous to Pyright's parser)
   - `self.method` class-method-prefix handling + flag preservation
-- **`test/fixtures/ruby/` migrates from `test/fixtures/ruby-probe/`** at
-  adapter implementation time, per ADR-13 / ADR-14 precedent
-  (`pyright-probe/` → `python/`, `gopls-probe/` → `go/`). Probe
-  fixture's six load-bearing files carry forward as the adapter's
-  integration-test substrate; v1.1 candidate to extend fixture with
-  super-call resolution evidence + larger Rails sample once
-  ruby-lsp-rails has stable 0.27+/0.5+ pair.
+- **`test/fixtures/ruby/` migrated from `test/fixtures/ruby-probe/`**
+  at v0.9 Substep 4.1 (single `git mv`; preserves git history),
+  per ADR-13 / ADR-14 precedent (`pyright-probe/` → `python/`,
+  `gopls-probe/` → `go/`). Probe fixture's load-bearing files
+  carried forward as the adapter's integration-test substrate;
+  canonical `sample.rb` authored at promotion time to fit the
+  conformance harness contract (`src/adapters/conformance.ts`).
+  v1.1 candidate to extend fixture with super-call resolution
+  evidence + larger Rails sample once ruby-lsp-rails has stable
+  0.27+/0.5+ pair.
 - **ADR-07 semantics hold across all four languages** — TypeScript /
   Python / Go / Ruby. `TypeInfo.{extends, implements, usedByTypes}`
   has the same meaning; only the extraction mechanism differs.
