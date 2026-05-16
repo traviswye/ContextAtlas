@@ -494,6 +494,12 @@ Adapter pattern uniformity at base-class shape; adapter implementation divergenc
 
 9. **getTypeInfo `usedByTypes` implementation.** v1.0 ships empty array (degraded mode per language-structural-property local-parseability). v1.1 candidate: pass-1 inventory walk if cohort demands cross-class type-usage queries.
 
+**Substrate-currency repair items (v0.9.1 Stream B.3 catches):**
+
+10. **Full test suite CI with language-server install matrix.** v1.0 ships typecheck-only minimal CI per cohort-signal-clarity + lint substrate-currency gap (item #11 below). v1.1 candidate: language-server install matrix (Ruby + Go + Pyright + TS-language-server setup steps); install cache strategy; multi-OS matrix (Windows + macOS + Linux); multi-Node-version matrix (20 + 22). Prerequisite: EBUSY tmpdir flake root-cause investigation (already tracked at §"Stream A test-infrastructure observations") + lint substrate-currency repair (item #11).
+
+11. **ESLint v9 flat-config substrate-currency repair.** ESLint upgraded to v9 but `eslint.config.js` not authored; `npm run lint` non-functional. v0.9.1 Stream B.3 catch via empirical-verification-before-classification (7th cycle instance). v1.1 candidate: author `eslint.config.js` (recommended preset baseline); triage surfaced pre-existing violations; integrate lint into CI (composes with backlog #10 full-CI-matrix scope).
+
 ### Stream A test-infrastructure observations → v1.1 investigation candidates
 
 **EBUSY tmpdir Windows flake (recurring across v0.9 cycle).** Test-infrastructure category, separate from Pattern 7. Multiple instances across Phase 3-5 substeps; isolated re-runs consistently pass. Worth v1.1 investigation — root cause analysis + remediation. May require test-infrastructure architectural change or simply tmpdir cleanup discipline.
