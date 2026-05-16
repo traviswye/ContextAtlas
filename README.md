@@ -827,8 +827,10 @@ ContextAtlas is MIT licensed and welcomes contributions. Areas where
 contribution will be especially valuable:
 
 - **New language adapters.** The `LanguageAdapter` interface is small
-  and stable. Adding Go, Java, .NET, or Rust support is a
-  self-contained project.
+  and stable. Adding Java, .NET, Rust, Kotlin, or other language
+  support is a self-contained project. See
+  [`docs/language-adapter-guide.md`](docs/language-adapter-guide.md)
+  for the contributor onboarding walkthrough.
 - **Non-markdown intent sources.** Currently we support markdown ADRs
   with YAML frontmatter. RST, AsciiDoc, and other formats are
   welcome extensions.

@@ -12,6 +12,8 @@ This document carries forward discipline-pattern artifacts, structural design pa
 
 Distinct from [`../v1_1-HANDOFF.md`](../v1_1-HANDOFF.md) (which captures cycle-specific backlog + retrospective observations from v0.8 + v0.9 closes). This document is **prospective** — what future adapter authors should anticipate, prepare for, and plan around at probe-phase + ADR-authoring + implementation + conformance + integration phases.
 
+Also distinct from [`language-adapter-guide.md`](language-adapter-guide.md) (external contributor onboarding for new language adapter authoring; LanguageAdapter interface tour + registry integration + conformance wire-up + PR checklist; external-contributor-friendly vocabulary). This INHERITANCE-SUBSTRATE document targets the dev/advisor team's internal discipline patterns; the language-adapter-guide targets a community contributor adding a new language adapter from outside the project. The two compose: language-adapter-guide references this document for "internal discipline pattern detail" where contributors want to understand the substantive reasoning behind plan-substrate templates.
+
 ## Anticipated v1.1+ adapter candidates
 
 Per README §Language Support roadmap: Rust, Java, .NET (by demand). Empirical cohort feedback at v1.0+ informs prioritization.

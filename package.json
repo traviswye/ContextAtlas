@@ -8,8 +8,10 @@
     "claude-code",
     "lsp",
     "language-server-protocol",
+    "codebase-context",
     "code-atlas",
     "code-intelligence",
+    "atlas",
     "adr",
     "architectural-decision-records",
     "typescript",
@@ -18,7 +20,16 @@
     "ruby",
     "rails"
   ],
+  "author": "Travis Wye",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/traviswye/contextatlas.git"
+  },
+  "bugs": {
+    "url": "https://github.com/traviswye/contextatlas/issues"
+  },
+  "homepage": "https://github.com/traviswye/contextatlas#readme",
   "private": false,
   "type": "module",
   "main": "./dist/index.js",
@@ -28,7 +39,10 @@
   "files": [
     "dist/",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "CHANGELOG.md",
+    "CODE_OF_CONDUCT.md",
+    "SECURITY.md"
   ],
   "scripts": {
     "build": "tsc && node scripts/generate-prompt-artifacts.mjs",
