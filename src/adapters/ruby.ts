@@ -7,31 +7,50 @@
  * src/types.ts per ADR-03 (adapters are plugins) and ADR-07
  * (getTypeInfo is a required capability).
  *
- * Substep 3.1 (this commit): skeleton — constructor, handler stubs,
- * spawn pattern with Windows cmd.exe wrap, initialize handshake,
- * Rails detection, shutdown. Data methods throw "not yet
- * implemented" placeholders. Subsequent Phase 3 substeps fill in
- * listSymbols (3.2), getSymbolDetails (3.3), findReferences (3.4),
- * getDiagnostics (3.5; pull-model — net-new substrate), getTypeInfo
- * (3.6; declaration-parse fallback per Pyright precedent), and
- * getDocstring (3.7; hover-with-comments per gopls precedent).
+ * Phase 3 implementation complete across 8 substeps:
+ *   - 3.1: skeleton — constructor, handler stubs, spawn pattern,
+ *     initialize handshake, Rails detection, shutdown
+ *   - 3.2: listSymbols — hierarchical-tree walk + parentId
+ *     back-pointer + URL-encoding dedup utility foundation
+ *   - 3.3: getSymbolDetails — hover-based signature enrichment +
+ *     parseRubyHoverContent + findSymbolByName
+ *   - 3.4: findReferences — first empirical reuse of dedup
+ *     utility; includeDeclaration: false per actual precedent
+ *   - 3.5: getDiagnostics — LSP 3.17 pull-model
+ *     (textDocument/diagnostic REQUEST; net-new substrate)
+ *   - 3.6: getTypeInfo — declaration-parse fallback per Pyright
+ *     precedent; parseRubyClassExtends + parseRubyMixins
+ *   - 3.7: getDocstring — hover-with-comments per gopls precedent;
+ *     forward-composition consumer of parseRubyHoverContent prose
+ *   - 3.8: adapter close — final cleanup + Phase 3 substrate-record
  *
  * Divergences from ADR-13 (Pyright) + ADR-14 (gopls) documented in
  * ADR-21:
  *   - Pull-model diagnostics (LSP 3.17 `textDocument/diagnostic`
- *     REQUEST), NOT publishDiagnostics notification. Substep 3.5.
+ *     REQUEST), NOT publishDiagnostics notification.
  *   - URL-encoding result duplication on Windows (`c%3A` + `c:`
  *     forms). Adapter dedupes via `normalizePath` + (path, line)
- *     tuple. Substep 3.2 + reused thereafter.
+ *     tuple per dedupLocationsByNormalizedPath utility.
  *   - Dual-pattern install (bundler vs direct gem) detected per-
- *     workspace via Gemfile + bin/rails heuristic. This file.
+ *     workspace via Gemfile + bin/rails heuristic.
  *   - Windows .bat-spawn wrap in `cmd.exe /c` per CVE-2024-27980.
- *     This file.
  *   - No cold-start `$/progress` readiness gate — ruby-lsp follows
  *     Pyright pattern; per-call ceiling absorbs cold-start variance.
  *   - ruby-lsp-rails add-on is best-effort enhancement, NOT baseline
  *     assumption. Adapter logs add-on load failure but continues
  *     with baseline LSP functionality.
+ *   - getSymbolDetails uses hover for signature enrichment (Pyright/
+ *     gopls don't); ruby-lsp's documentSymbol typically omits the
+ *     detail field, hover provides rich RDoc + rbs-derived signatures.
+ *   - getTypeInfo uses local declaration-parse from documentSymbol
+ *     range (Pyright pass-1/pass-2 cache architecture not replicated
+ *     since Ruby's class hierarchy is locally-parseable);
+ *     usedByTypes always [] at v1.0 per simpler-adapter-private-scope.
+ *   - getDocstring uses hover-with-comments (gopls precedent;
+ *     substantively different from ADR-13 Pyright omits-docstrings).
+ *   - self.method class-method names preserve `self.` prefix verbatim
+ *     in Symbol-ID per Φ-γ-variant lock (ADR-21 §Rationale; gopls
+ *     receiver-prefix-verbatim precedent applied to Ruby).
  *
  * See `docs/adr/ruby-lsp-probe-findings-baseline.md` for the
  * empirical probe substrate motivating these design choices.
@@ -92,9 +111,9 @@ interface LspLocation {
 }
 
 // ---------------------------------------------------------------------------
-// Kind mapping per ADR-21 §"Symbol-kind mapping" — initial scaffolding;
-// Substep 3.2 expands with DSL-macro pattern detection + `self.method`
-// class-method remap. ruby-lsp emitted kinds per probe #1:
+// Kind mapping per ADR-21 §"Symbol-kind mapping". DSL-macro pattern
+// detection + `self.method` class-method remap handled at listSymbols
+// layer (Substep 3.2). ruby-lsp emitted kinds per probe #1:
 //   2  Module     — module declarations + Concern modules
 //   5  Class      — class declarations
 //   6  Method     — instance methods + Rails DSL macros (`has_many :posts`
@@ -437,8 +456,8 @@ export class RubyAdapter implements LanguageAdapter {
   }
 
   // -------------------------------------------------------------------------
-  // Data methods — Substep 3.1 skeleton stubs (3.2 fills in listSymbols).
-  // Subsequent substeps fill in per ADR-21 LSP primitive mappings table.
+  // Data methods — all 6 LanguageAdapter capabilities implemented across
+  // Phase 3 Substeps 3.2-3.7 per ADR-21 LSP primitive mappings table.
   // -------------------------------------------------------------------------
 
   async listSymbols(filePath: string): Promise<AtlasSymbol[]> {
@@ -1169,7 +1188,7 @@ export function findSymbolByName(
  * Parser preserves:
  *   - First fenced ```ruby code block content (signature; multi-line
  *     when ruby-lsp emits overload counts or expanded signatures)
- *   - RDoc body prose (for getDocstring at Substep 3.7)
+ *   - RDoc body prose (consumed by getDocstring at Substep 3.7)
  *
  * Edge cases:
  *   - Empty/null value → both fields null
@@ -1177,7 +1196,9 @@ export function findSymbolByName(
  *   - No code block → signature null, prose = stripped value
  *
  * Returns: `{ signature, prose }` — both string-or-null.
- * Substep 3.3 consumes `signature`; Substep 3.7 will consume `prose`.
+ * Forward-composition design: Substep 3.3 consumes `signature`;
+ * Substep 3.7 consumes `prose`. Single hover request, single
+ * markdown parse, two field consumers.
  */
 export function parseRubyHoverContent(value: string): {
   signature: string | null;
