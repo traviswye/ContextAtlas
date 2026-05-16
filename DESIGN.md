@@ -341,6 +341,8 @@ constant in `src/types.ts`:
 |----------------|------------|
 | `typescript`   | `ts`       |
 | `python`       | `py`       |
+| `go`           | `go`       |
+| `ruby`         | `rb`       |
 
 Adding a language adapter adds an entry to `LANG_CODES`. Changing an
 existing short code is a breaking change requiring a major version bump.
@@ -371,6 +373,8 @@ version: 1
 languages:
   - typescript
   - python
+  - go
+  - ruby
 adrs:
   path: docs/adr/
   format: markdown-frontmatter
@@ -772,7 +776,7 @@ languages can be added without modifying core.
 
 ```typescript
 interface LanguageAdapter {
-  language: string;                    // "typescript", "python"
+  language: string;                    // "typescript", "python", "go", "ruby"
   extensions: string[];                // [".ts", ".tsx"]
 
   // Enumerate all exported symbols in a file

@@ -60,8 +60,8 @@ ContextAtlas runs as an MCP server alongside Claude Code. At index time,
 it reads your codebase and your architectural documentation, then builds
 a structured atlas:
 
-- **Symbols and structure** from the language server (TypeScript or
-  Python): definitions, references, types, diagnostics.
+- **Symbols and structure** from the language server (TypeScript,
+  Python, Go, or Ruby): definitions, references, types, diagnostics.
 - **Architectural intent** extracted from your ADRs, READMEs, and design
   docs by Opus 4.7, producing structured claims keyed to the specific
   symbols they govern.
@@ -163,12 +163,19 @@ npm install -g contextatlas
 **Runtime requirements:**
 
 - Node.js 20 or newer.
-- A TypeScript language server on your system. ContextAtlas declares
-  `typescript-language-server` as a **peer dependency** rather than a
-  direct one, so you control the version. Install it alongside
-  ContextAtlas (e.g. `npm i -D typescript-language-server typescript`).
-  Python projects additionally require Pyright on the PATH — configured
-  similarly in step 9 of development.
+- A language server for each language you configure:
+  - **TypeScript** — `typescript-language-server` (declared as a
+    **peer dependency** rather than a direct one, so you control the
+    version). Install alongside ContextAtlas
+    (e.g. `npm i -D typescript-language-server typescript`).
+  - **Python** — Pyright on the PATH (also a peer dependency).
+  - **Go** — `gopls` on the PATH (install via
+    `go install golang.org/x/tools/gopls@latest`).
+  - **Ruby** — `ruby-lsp` 0.26.x. Recommended install via Bundler in
+    your project's `Gemfile` (`gem 'ruby-lsp', '~> 0.26.0', require:
+    false` under `group :development`). Rails projects additionally
+    benefit from `ruby-lsp-rails` 0.4.x for Rails-specific symbol
+    awareness. Ruby 3.3+ required (4.0+ recommended).
 
 Configure ContextAtlas as an MCP server in your Claude Code settings.
 Choose based on whether `contextatlas` is on your PATH:
@@ -208,6 +215,8 @@ version: 1
 languages:
   - typescript
   - python
+  - go
+  - ruby
 adrs:
   path: docs/adr/
   format: markdown-frontmatter
@@ -619,8 +628,10 @@ not a core change.
 - [x] TypeScript language adapter (via `typescript-language-server`)
 - [x] Python language adapter (via Pyright, ADR-13)
 - [x] **Go language adapter (via `gopls`, ADR-14) — v0.2**
+- [x] **Ruby language adapter (via `ruby-lsp` + `ruby-lsp-rails`,
+  ADR-21) — v0.9**
 - [x] Adapter conformance test suite (identical behavioral contract
-  across all three adapters)
+  across all four adapters)
 - [x] Opus 4.7 index-time extraction pipeline (validated: 100% parse
   success across 12 production-grade documents tested)
 - [x] SQLite storage with SHA-based incremental reindex

@@ -310,7 +310,7 @@ revisitation under multi-run.
 
 **Thesis:** Make ContextAtlas production-usable end-to-end (install
 → atlas → query → trust the output) for a solo developer on an
-existing TypeScript / Python / Go codebase. v0.3 proved the tool
+existing TypeScript / Python / Go / Ruby codebase. v0.3 proved the tool
 *works on three pinned-SHA test repos under controlled conditions*;
 v0.4 hardens the substrate so the same tool *works on a developer's
 actual codebase* across the variance real-world environments

@@ -134,7 +134,7 @@ function renderSmokeLines(state: InitSuccessState): string[] {
 /**
  * Build language-aware first-query suggestions per Q4.5.4 lock.
  * Symbol-name-based with kind-tag; works across all 3 supported
- * languages (typescript / python / go) without per-language template
+ * languages (typescript / python / go / ruby) without per-language template
  * map. Q11-style refinement at v0.7+ if cohort feedback warrants
  * per-language nuance.
  *

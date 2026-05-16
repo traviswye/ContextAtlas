@@ -60,13 +60,21 @@ describe("DEFAULT_EXCLUDE_PATTERNS", () => {
     ]);
   });
 
-  it("Ruby defaults cover RSpec + Minitest conventions (v0.9 Stream A Phase 2)", () => {
+  it("Ruby defaults cover RSpec + Minitest conventions + Rails noise (v0.9 Stream A Phase 2 + Substep 5.1)", () => {
     expect(DEFAULT_EXCLUDE_PATTERNS.ruby).toEqual([
+      // RSpec + Minitest conventions (v0.9 Phase 2).
       "**/tests/**",
       "**/test/**",
       "**/spec/**",
       "**/*_spec.rb",
       "**/*_test.rb",
+      // Rails-specific noise (v0.9 Substep 5.1).
+      "**/vendor/bundle/**",
+      "**/.bundle/**",
+      "**/tmp/**",
+      "**/log/**",
+      "**/storage/**",
+      "**/public/assets/**",
     ]);
   });
 });

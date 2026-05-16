@@ -55,11 +55,23 @@ export const DEFAULT_EXCLUDE_PATTERNS: Record<
     "**/*_test.go",
   ],
   ruby: [
+    // RSpec + Minitest conventions (v0.9 Stream A Phase 2).
     "**/tests/**",
     "**/test/**",
     "**/spec/**",
     "**/*_spec.rb",
     "**/*_test.rb",
+    // Rails-specific noise (v0.9 Stream A Substep 5.1). Conservative
+    // tier — uncontroversial Rails-generated/build directories.
+    // db/migrate/** + public/uploads/** deliberately omitted as
+    // potentially-substantive content (migrations may carry schema
+    // intent; uploads are project-specific).
+    "**/vendor/bundle/**",
+    "**/.bundle/**",
+    "**/tmp/**",
+    "**/log/**",
+    "**/storage/**",
+    "**/public/assets/**",
   ],
 };
 
