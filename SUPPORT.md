@@ -7,7 +7,7 @@ the community; please be patient with response times.
 
 ### Bugs and unexpected behavior
 
-[Open a GitHub Issue](https://github.com/traviswye/contextatlas/issues/new/choose)
+[Open a GitHub Issue](https://github.com/traviswye/ContextAtlas/issues/new/choose)
 using the **Bug report** template. Please include:
 
 - ContextAtlas version (`contextatlas --version` or `npm ls contextatlas`)
@@ -19,14 +19,14 @@ using the **Bug report** template. Please include:
 
 ### Feature requests
 
-[Open a GitHub Issue](https://github.com/traviswye/contextatlas/issues/new/choose)
+[Open a GitHub Issue](https://github.com/traviswye/ContextAtlas/issues/new/choose)
 using the **Feature request** template. Describe the use case
 first; concrete proposals are easier to evaluate when the
 underlying need is clear.
 
 ### Language adapter requests
 
-[Open a GitHub Issue](https://github.com/traviswye/contextatlas/issues/new/choose)
+[Open a GitHub Issue](https://github.com/traviswye/ContextAtlas/issues/new/choose)
 using the **Language adapter request** template. v1.0 ships with
 TypeScript / Python / Go / Ruby; Rust / Java / .NET / others are
 on the roadmap by demand.

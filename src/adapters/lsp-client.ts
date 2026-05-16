@@ -169,7 +169,7 @@ export class LspClient {
             `smaller subdirectory, or install runtime dependencies ` +
             `(pip install -r requirements.txt) to resolve missing ` +
             `imports. Open an issue at ` +
-            `https://github.com/traviswye/contextatlas if behavior is ` +
+            `https://github.com/traviswye/ContextAtlas if behavior is ` +
             `unexpected.\n`,
         );
       }

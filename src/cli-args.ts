@@ -300,7 +300,7 @@ Subcommand options (selected; see individual subcommand for full set):
   mcp (default; no subcommand):
     --observe             Per-session observability override
 
-See https://github.com/traviswye/contextatlas for full documentation
+See https://github.com/traviswye/ContextAtlas for full documentation
 and architectural decision records.`;
 
 /**

@@ -24,12 +24,12 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/traviswye/contextatlas.git"
+    "url": "git+https://github.com/traviswye/ContextAtlas.git"
   },
   "bugs": {
-    "url": "https://github.com/traviswye/contextatlas/issues"
+    "url": "https://github.com/traviswye/ContextAtlas/issues"
   },
-  "homepage": "https://github.com/traviswye/contextatlas#readme",
+  "homepage": "https://github.com/traviswye/ContextAtlas#readme",
   "private": false,
   "type": "module",
   "main": "./dist/index.js",

@@ -20,7 +20,7 @@ for the dev-team-internal companion document.
 
 **Before you start:**
 
-- File a [Language adapter request issue](https://github.com/traviswye/contextatlas/issues/new/choose)
+- File a [Language adapter request issue](https://github.com/traviswye/ContextAtlas/issues/new/choose)
   so we can discuss approach before substantive implementation
 - Confirm the LSP server choice + version + stable install pattern
 

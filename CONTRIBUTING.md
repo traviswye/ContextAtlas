@@ -8,7 +8,7 @@ you agree to the [Code of Conduct](CODE_OF_CONDUCT.md).
 
 ## Getting help
 
-- **Bugs / unexpected behavior**: file a [GitHub Issue](https://github.com/traviswye/contextatlas/issues)
+- **Bugs / unexpected behavior**: file a [GitHub Issue](https://github.com/traviswye/ContextAtlas/issues)
   using the **Bug report** template.
 - **Feature requests**: file an Issue using the **Feature request** template.
 - **Language adapter requests**: file an Issue using the **Language adapter request** template (Rust, Java, .NET, etc.).
@@ -29,7 +29,7 @@ Prerequisites:
 Clone + install:
 
 ```sh
-git clone https://github.com/traviswye/contextatlas.git
+git clone https://github.com/traviswye/ContextAtlas.git
 cd contextatlas
 npm install
 ```
