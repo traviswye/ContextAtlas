@@ -240,7 +240,7 @@ namespace children, Gap 5 type-alias signature bleed) surfaced by
 the Phase C hono spot-check, plus a time-boxed Gap 3 (complex class
 signature) investigation. Per
 [v0.2-SCOPE.md Stream A #4](v0.2-SCOPE.md) and
-[`docs/ts-adapter-parity-check.md`](docs/ts-adapter-parity-check.md).
+[`docs/ts-adapter-parity-check.md`](../../ts-adapter-parity-check.md).
 
 **Ship criteria.**
 - [ ] Parity matrix doc committed at
@@ -1867,7 +1867,7 @@ the hono analog. Step 4c is unique to the hono situation because
 the existing Phase 5 artifact uses the pre-refinement atlas; no
 equivalent Phase 5 artifact exists for httpx to spot-check against.
 
-Reference: [`docs/ts-adapter-parity-check.md`](docs/ts-adapter-parity-check.md).
+Reference: [`docs/ts-adapter-parity-check.md`](../../ts-adapter-parity-check.md).
 
 ### 2026-04-23 (commit bcf032f): Step 1 shipped as verification, not surgery.
 Step 1 was scoped as ~1-2 days of adapter modification (fix three

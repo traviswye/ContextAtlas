@@ -1,7 +1,7 @@
 # TypeScriptAdapter parity check (v0.2 Stream A #4)
 
 **Status:** Investigation artifact. Tracks Step 4 of
-[`../STEP-PLAN-V0.2.md`](../STEP-PLAN-V0.2.md). Supersedes the scope
+[`cycles/v0_2/STEP-PLAN-V0.2.md`](cycles/v0_2/STEP-PLAN-V0.2.md). Supersedes the scope
 doc's "Python-adapter dogfood query set" framing, which referenced
 an artifact that didn't exist — see revision history in the step
 plan.
@@ -172,7 +172,7 @@ If future evidence (e.g., claim-resolution failures on real hono code) suggests 
 
 ## Document relationship
 
-- [`../STEP-PLAN-V0.2.md`](../STEP-PLAN-V0.2.md) — parent step plan
+- [`cycles/v0_2/STEP-PLAN-V0.2.md`](cycles/v0_2/STEP-PLAN-V0.2.md) — parent step plan
 - [`adr/ADR-03-language-adapter-plugin.md`](adr/ADR-03-language-adapter-plugin.md)
   — LanguageAdapter plugin interface contract
 - [`adr/ADR-13-python-adapter-pyright.md`](adr/ADR-13-python-adapter-pyright.md)

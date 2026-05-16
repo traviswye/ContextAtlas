@@ -334,7 +334,7 @@ getting that discipline right at cycle kickoff.
 - [`docs/adr/ADR-02-extraction-sole-api-caller.md`](docs/adr/ADR-02-extraction-sole-api-caller.md) —
   cycle-observations 15 + 16 canonical captures (v0.7.1 + v0.7.2
   amendments)
-- [`v0_7-HANDOFF.md`](v0_7-HANDOFF.md), [`v0_8-HANDOFF.md`](v0_8-HANDOFF.md) —
+- [`v0_7-HANDOFF.md`](docs/cycles/v0_7/v0_7-HANDOFF.md), [`v0_8-HANDOFF.md`](docs/cycles/v0_8/v0_8-HANDOFF.md) —
   prior cycle pre-planning bridge documents, preserved as
   historical record
 - Annotated tag bodies at `git show v0.7.0` through

@@ -4,7 +4,7 @@
 validated (hono / httpx / cobra) via Phase 5/6/7 reference runs in
 the [benchmarks repo](https://github.com/traviswye/ContextAtlas-benchmarks).
 Architectural reference, not a scope document — v0.2 scope lives in
-[`v0.2-SCOPE.md`](v0.2-SCOPE.md); version-arc context in
+[`v0.2-SCOPE.md`](docs/cycles/v0_2/v0.2-SCOPE.md); version-arc context in
 [`ROADMAP.md`](ROADMAP.md).
 **Last Updated:** 2026-04-23
 **Scope:** Core architecture. Most sections apply across versions;
@@ -435,7 +435,7 @@ Pipeline knobs surfaced after v0.2 reference runs.
 
   **Step 7 ship default (Pattern 2 retention).** v0.3 ships
   `drop-with-fallback` as default-on per [STEP-PLAN-V0.3 Step 7
-  progress log](STEP-PLAN-V0.3.md). The "Absent (default)" semantics
+  progress log](docs/cycles/v0_3/STEP-PLAN-V0.3.md). The "Absent (default)" semantics
   above describe the pre-Step-7 schema; the Step 7 decision flips
   the absent-value behavior to `drop-with-fallback`-equivalent.
   Opt-out for v0.2-equivalent attribution: explicit
@@ -968,5 +968,5 @@ version. Atlas schema versioning is additive within minor versions
 v0.4 + v0.5 + v0.6 atlas schema unchanged at 1.3 — substrate-hardening,
 methodology, and substrate-cohort-infrastructure cycles respectively).
 Per-version release notes start with v0.3; v0.1 + v0.2 historical
-record lives in [`STEP-PLAN-V0.2.md`](STEP-PLAN-V0.2.md) progress logs
+record lives in [`STEP-PLAN-V0.2.md`](docs/cycles/v0_2/STEP-PLAN-V0.2.md) progress logs
 and the benchmarks-repo Phase 5/6/7 synthesis docs.

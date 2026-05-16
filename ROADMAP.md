@@ -189,7 +189,7 @@ Practical implication: v0.4 shipped 2026-04-29; v0.5 shipped 2026-05-04; v0.6 sh
 - Task-shaped bundle queries beyond `impact_of_change` are v0.5.
 - No semantic similarity. BM25 over claim text only.
 
-**Status:** Shipped. All MVP steps (1–12) complete; step 13 (full benchmark expansion with blind grading) moved post-v0.2 per [`v0.2-SCOPE.md`](v0.2-SCOPE.md). Phase 5 reference run completed on hono at benchmarks commit `be65a96`.
+**Status:** Shipped. All MVP steps (1–12) complete; step 13 (full benchmark expansion with blind grading) moved post-v0.2 per [`v0.2-SCOPE.md`](docs/cycles/v0_2/v0.2-SCOPE.md). Phase 5 reference run completed on hono at benchmarks commit `be65a96`.
 
 **Empirical validation (Phase 5 reference run):**
 - **50–71% tool-call reduction** on architectural win-bucket prompts (h1 18→9 calls, h2 11→5, h4 21→6)
@@ -206,7 +206,7 @@ Practical implication: v0.4 shipped 2026-04-29; v0.5 shipped 2026-05-04; v0.6 sh
 - **Stream A — Adapter quality polish.** PyrightAdapter kind-mapping refinements, cost tracking in extraction pipeline, unresolved-candidate diagnostics, TypeScriptAdapter parity check, Claude Code CLI MCP disclaimer investigation (resolved as harness `--allowedTools` regression — fix shipped in benchmarks repo, ADR-14 documented for future hardening).
 - **Stream B — Third language adapter + cross-repo benchmark.** Go adapter via `gopls` ([ADR-14](docs/adr/ADR-14-go-adapter-gopls.md)) + conformance suite; cobra as benchmark target (8 ADRs, prompts pre-registered); **httpx reference run** + **cobra reference run** — cross-repo + cross-language validation of the Phase 5 methodology.
 
-Python adapter and conformance test suite shipped in v0.1 (commits 701dba3 → 6f8d8ae); v0.2 built on that foundation. Full scope: [`v0.2-SCOPE.md`](v0.2-SCOPE.md). Atlas schema bumped 1.1 → 1.2 (additive `parent_id` support for ADR-14's interface-method flattening — same pattern as ADR-11's 1.0 → 1.1 git-signal addition).
+Python adapter and conformance test suite shipped in v0.1 (commits 701dba3 → 6f8d8ae); v0.2 built on that foundation. Full scope: [`v0.2-SCOPE.md`](docs/cycles/v0_2/v0.2-SCOPE.md). Atlas schema bumped 1.1 → 1.2 (additive `parent_id` support for ADR-14's interface-method flattening — same pattern as ADR-11's 1.0 → 1.1 git-signal addition).
 
 **Validates:**
 - ADR-03's LanguageAdapter abstraction holds across three distinct LSP implementations (tsserver, Pyright, gopls).
@@ -217,7 +217,7 @@ Python adapter and conformance test suite shipped in v0.1 (commits 701dba3 → 6
 - No new MCP tools. Existing three tools gained language coverage.
 - No new signal sources (Stream C — docstring / README mining — moved to v0.3).
 - No external-user trial (Stream D — moved to v0.3 alongside Stream C).
-- h5-class TS-compiler-space gap not addressed (v0.4+ per [`v0.2-SCOPE.md`](v0.2-SCOPE.md) §Beyond v0.2 scope).
+- h5-class TS-compiler-space gap not addressed (v0.4+ per [`v0.2-SCOPE.md`](docs/cycles/v0_2/v0.2-SCOPE.md) §Beyond v0.2 scope).
 
 **Status:** Shipped 2026-04-25. All four v0.2-SCOPE.md success criteria satisfied via committed artifacts.
 
@@ -317,7 +317,7 @@ actual codebase* across the variance real-world environments
 introduce (Node version drift, LSP server timing, non-standard
 test-file layouts, atlas extraction on recent-not-pinned SHAs).
 
-**Delivers (3 streams; full scope per [`v0.4-SCOPE.md`](v0.4-SCOPE.md)):**
+**Delivers (3 streams; full scope per [`v0.4-SCOPE.md`](docs/cycles/v0_4/v0.4-SCOPE.md)):**
 
 - **Stream A — Substrate hardening + cost transparency + commit-
   message extraction.** LSP adapter timing-race robustness
@@ -355,7 +355,7 @@ test-file layouts, atlas extraction on recent-not-pinned SHAs).
   rigor-for-launch-credibility, not rigor-for-research-paper.
 
 **Cost envelope:** $30-50 with $50 ceiling. Detailed in
-[`v0.4-SCOPE.md`](v0.4-SCOPE.md) §"Cost envelope".
+[`v0.4-SCOPE.md`](docs/cycles/v0_4/v0.4-SCOPE.md) §"Cost envelope".
 
 **Status:** Shipped 2026-04-29 (tag `v0.4.0`). Scope-doc shipped
 2026-04-28 (commit `e8b5114`); execution Steps 1-11 across 11
@@ -425,7 +425,7 @@ methodology under paired-mode anonymization with paired-t statistical
 inference, closing v1.0 ship-gate criterion #1's "full quality-axis
 methodology landed pre-v1.0" parenthetical.
 
-**Delivers (per [`STEP-PLAN-V0.5.md`](STEP-PLAN-V0.5.md)):**
+**Delivers (per [`STEP-PLAN-V0.5.md`](docs/cycles/v0_5/STEP-PLAN-V0.5.md)):**
 
 - **Step 3-4 — Rubric + anonymization.** Single + paired rubric
   prompts; 5-step anonymization pipeline (strip-list, A/B
@@ -557,7 +557,7 @@ Step-6-mistake-pattern at multi-cycle scale: design-without-
 empirical-operating-regime produces conclusions that reverse
 when operating regime arrives.
 
-**Delivered (3 streams per [`v0.6-SCOPE.md`](v0.6-SCOPE.md)
+**Delivered (3 streams per [`v0.6-SCOPE.md`](docs/cycles/v0_6/v0.6-SCOPE.md)
 commit `a8d01eb`):**
 
 - **Stream A pipeline-mechanics** (5 items): A4 lazy-spawn + A6
@@ -630,7 +630,7 @@ v0.6-SCOPE.md success criteria evaluated honestly: 14/15 ✓ MET +
 
 **v0.7+ candidate observations queued.** Multiple complementary
 substrates per launch-bearing reframe: (1)
-[`v0_7-HANDOFF.md`](v0_7-HANDOFF.md) v0.7 launch-bearing
+[`v0_7-HANDOFF.md`](docs/cycles/v0_7/v0_7-HANDOFF.md) v0.7 launch-bearing
 reframe section is canonical bridge document for v0.7 cycle
 pre-planning; (2) [Phase-10 reference doc §9](https://github.com/traviswye/ContextAtlas-benchmarks/blob/main/research/phase-10-v0.6-reference-run.md)
 captures cycle-emergent v0.7+ candidates; (3)
@@ -666,7 +666,7 @@ for v0.8+ post-launch real-world cohort.
 per Travis pivot at v0.6 Step 7.5. Substantive reframe from
 original Phase 2 v0.6-cycle-pre-planning 4-stream production-
 launch-substrate framing (preserved as historical record at
-[`v0_7-HANDOFF.md`](v0_7-HANDOFF.md) §V0.7 4-stream item-level
+[`v0_7-HANDOFF.md`](docs/cycles/v0_7/v0_7-HANDOFF.md) §V0.7 4-stream item-level
 descriptions). Substrate-generation thesis preserved via post-
 launch infrastructure inheritance — recruitment + observability
 + consent contract + feedback template + onboarding documentation
@@ -736,7 +736,7 @@ workflow + canonical depth-floor mechanical enforcement via
 `validate-adrs`. SECONDARY contextatlas-on-itself dogfood
 validated at install-pipeline. TERTIARY substrate-gap fixes
 deferred to v0.8. Substrate-preservation document
-[`v0_7-HANDOFF.md`](v0_7-HANDOFF.md) captures detailed launch-
+[`v0_7-HANDOFF.md`](docs/cycles/v0_7/v0_7-HANDOFF.md) captures detailed launch-
 bearing reframe substrate + original Phase 2 4-stream framing
 preserved as historical record.
 
@@ -905,7 +905,7 @@ preceding [PLANNED] sections; this backlog covers items beyond
 v0.7 cycle scope but before v1.0 launch. Canonical candidate
 reference (see [`research/phase-9-v0.5-reference-run.md`](../ContextAtlas-benchmarks/research/phase-9-v0.5-reference-run.md)
 §9 for canonical list of v0.6+ candidates carried forward from
-v0.5 cycle; supplemented by [`v0_7-HANDOFF.md`](v0_7-HANDOFF.md)
+v0.5 cycle; supplemented by [`v0_7-HANDOFF.md`](docs/cycles/v0_7/v0_7-HANDOFF.md)
 for v0.7-specific substrate). `research/v0.5-candidates.md`
 remains canonical for the 9 remaining items not absorbed at v0.5;
 absorbed-item in-place annotations mark #7/#8/#9/#12 v0.5-Step-10
@@ -1123,12 +1123,12 @@ ContextAtlas has multiple docs serving different readers. This roadmap is the st
 - **[DESIGN.md](DESIGN.md)** — Architectural design in technical detail
 - **[docs/adr/](docs/adr/)** — Specific architectural decisions with rationale
 - **[CLAUDE.md](CLAUDE.md)** — Guidance for AI collaborators working on this repo
-- **[v0.6-SCOPE.md](v0.6-SCOPE.md)** — Current-version scope anchor (v0.6 shipped 2026-05-09; commit `a8d01eb`)
-- **[v0_7-HANDOFF.md](v0_7-HANDOFF.md)** — v0.7 cycle pre-planning substrate (launch-bearing reframe canonical bridge document)
-- **[v0.5-SCOPE.md](v0.5-SCOPE.md)** — v0.5 scope anchor (shipped 2026-05-04; preserved as historical record)
-- **[v0.4-SCOPE.md](v0.4-SCOPE.md)** — v0.4 scope anchor (shipped 2026-04-29; preserved as historical record)
-- **[v0.3-SCOPE.md](v0.3-SCOPE.md)** — v0.3 scope anchor (shipped 2026-04-28; preserved as historical record)
-- **[STEP-PLAN-V0.6.md](STEP-PLAN-V0.6.md)** — Per-version build plan (current); v0.5/v0.4/v0.3/v0.2 step plans preserved as historical record
+- **[v0.6-SCOPE.md](docs/cycles/v0_6/v0.6-SCOPE.md)** — Current-version scope anchor (v0.6 shipped 2026-05-09; commit `a8d01eb`)
+- **[v0_7-HANDOFF.md](docs/cycles/v0_7/v0_7-HANDOFF.md)** — v0.7 cycle pre-planning substrate (launch-bearing reframe canonical bridge document)
+- **[v0.5-SCOPE.md](docs/cycles/v0_5/v0.5-SCOPE.md)** — v0.5 scope anchor (shipped 2026-05-04; preserved as historical record)
+- **[v0.4-SCOPE.md](docs/cycles/v0_4/v0.4-SCOPE.md)** — v0.4 scope anchor (shipped 2026-04-29; preserved as historical record)
+- **[v0.3-SCOPE.md](docs/cycles/v0_3/v0.3-SCOPE.md)** — v0.3 scope anchor (shipped 2026-04-28; preserved as historical record)
+- **[STEP-PLAN-V0.6.md](docs/cycles/v0_6/STEP-PLAN-V0.6.md)** — Per-version build plan (current); v0.5/v0.4/v0.3/v0.2 step plans preserved as historical record
 - **[RUBRIC.md](../ContextAtlas-benchmarks/RUBRIC.md)** (in benchmarks repo) — Measurement methodology
 
 ## Open questions (tracked, not decided)
@@ -1280,6 +1280,6 @@ Tracked here, not committed to a version. Each gets its own ADR when approached.
   delta ~+25 LOC. Companion artifact:
   `research/v0.4-step11-prep-checklist.md` (ship-gate prep).
 
-- **2026-04-28 — v0.3 ship + v0.4 reframe.** v0.3 shipped (tag `v0.3.0`); ROADMAP refreshed in parallel per (γ) production-tool hardening primary thesis lock + P6 backlog discipline. v0.4 section reframed from "Semantic layer [PLANNED, EVIDENCE-GATED]" to "Production-installability foundation [IN PROGRESS]" per [v0.4-SCOPE.md](v0.4-SCOPE.md) (commit `e8b5114`); v0.5 section reframed as "v0.5+ must-ship-before-v1.0 backlog [FLEXIBLE PLACEMENT]" per backlog-discipline lock (every deferred item gets explicit forward-pointer; per-version placement at per-scope-doc time, not now); v0.6+ renamed to v1.0+ enrichment backlog [POST-LAUNCH] clarifying post-v1.0-flavored items distinct from must-ship-before-v1.0 backlog; v1.0 section amended with onboarding pipeline + launch-document + quality-axis methodology ship criteria; version dependency graph updated to reflect v0.4-IN-PROGRESS + v0.5+-flexible-placement framing. Net delta ~+45 LOC. Drafted following 16-item v0.4 candidate inventory walk + cross-instance scope discussion + P1-P6 pushback resolution.
+- **2026-04-28 — v0.3 ship + v0.4 reframe.** v0.3 shipped (tag `v0.3.0`); ROADMAP refreshed in parallel per (γ) production-tool hardening primary thesis lock + P6 backlog discipline. v0.4 section reframed from "Semantic layer [PLANNED, EVIDENCE-GATED]" to "Production-installability foundation [IN PROGRESS]" per [v0.4-SCOPE.md](docs/cycles/v0_4/v0.4-SCOPE.md) (commit `e8b5114`); v0.5 section reframed as "v0.5+ must-ship-before-v1.0 backlog [FLEXIBLE PLACEMENT]" per backlog-discipline lock (every deferred item gets explicit forward-pointer; per-version placement at per-scope-doc time, not now); v0.6+ renamed to v1.0+ enrichment backlog [POST-LAUNCH] clarifying post-v1.0-flavored items distinct from must-ship-before-v1.0 backlog; v1.0 section amended with onboarding pipeline + launch-document + quality-axis methodology ship criteria; version dependency graph updated to reflect v0.4-IN-PROGRESS + v0.5+-flexible-placement framing. Net delta ~+45 LOC. Drafted following 16-item v0.4 candidate inventory walk + cross-instance scope discussion + P1-P6 pushback resolution.
 
 - **2026-04-25 — Phase A realignment.** Added "What ContextAtlas Is FOR" subsection capturing canonical product-positioning anchor (production tool for developers, not research experiment); added Vision tagline integration; added "Key efficiency unlocks" subsection consolidating the 7-item efficiency-collapse list across versions; expanded v0.5 section to include ADR-crafting pipeline as second deliverable alongside task-shaped queries; added developer-tool framing paragraph to Architectural Layers section. Realignment surfaced during Step 7 alignment check; framing source is Travis's anchor statement: *"The benchmark repo should only be used as a tool to better our main repo, whose ultimate goal is to be a production tool for developers to use with Claude Code to enable life improvements for Claude (the token burn, architectural context, etc)."* Non-revisionist amendments — existing content preserved.

@@ -508,7 +508,7 @@ methodology amendment scope items at the [Phase-10 reference
 doc](https://github.com/traviswye/ContextAtlas-benchmarks/blob/main/research/phase-10-v0.6-reference-run.md).
 
 Cross-repo and cross-language validation shipped in v0.2 — see
-the Phase 6/7 links above and [`v0.2-SCOPE.md`](v0.2-SCOPE.md)
+the Phase 6/7 links above and [`v0.2-SCOPE.md`](docs/cycles/v0_2/v0.2-SCOPE.md)
 for context. v0.3 Phase 8 cross-target measurement at the Phase
 8 link above.
 
@@ -669,7 +669,7 @@ Go adapter via `gopls` (ADR-14) with cobra benchmark target +
 cross-repo httpx reference run + cross-language cobra reference
 run (Stream B). Three-language baseline established. Three v0.3+
 investigation findings logged in benchmarks-repo Phase 7
-synthesis. See [`v0.2-SCOPE.md`](v0.2-SCOPE.md) for the original
+synthesis. See [`v0.2-SCOPE.md`](docs/cycles/v0_2/v0.2-SCOPE.md) for the original
 stream-level scope and the Phase 6/7 synthesis docs above for
 empirical findings.
 
@@ -681,7 +681,7 @@ hardening (atlas-file-visibility filter + per-language cost priors +
 cross-harness asymmetry comparison convention); Stream D Phase 8
 reference run + supplement. Four named findings (3 VALIDATED + 1
 FALSIFIED). Cumulative spend across Step 14 atlas re-extraction +
-Step 15 reference run: $55.67. See [`v0.3-SCOPE.md`](v0.3-SCOPE.md)
+Step 15 reference run: $55.67. See [`v0.3-SCOPE.md`](docs/cycles/v0_3/v0.3-SCOPE.md)
 for original stream-level scope; Phase 8 synthesis docs for empirical
 detail.
 
@@ -700,7 +700,7 @@ VALIDATED; Q3 bifurcated reading SHIPPED; bounded-validity
 replication CONFIRMED; cost-projection-vs-platform-billing
 systematic 3x reduction VALIDATED. Cumulative spend: ~$43.80
 script-projected / ~$14.50 platform-billed estimated; below
-$50 ceiling. See [`v0.4-SCOPE.md`](v0.4-SCOPE.md) for original
+$50 ceiling. See [`v0.4-SCOPE.md`](docs/cycles/v0_4/v0.4-SCOPE.md) for original
 stream-level scope.
 
 **v0.5 shipped (2026-05-04):** Stream A LLM-judge harness +
@@ -721,7 +721,7 @@ F2-F9 per ref-doc §7. V1.0 ship-gate criterion #1 quality-axis
 methodology parenthetical CLOSED at v0.5; statistically-
 meaningful-wins gate remains open (matrix-replication graduation
 v0.6+). Cumulative spend: ~$10.25 platform-billed reconstructed
-/ ~12% of $51-97 base envelope. See [`v0.5-SCOPE.md`](v0.5-SCOPE.md)
+/ ~12% of $51-97 base envelope. See [`v0.5-SCOPE.md`](docs/cycles/v0_5/v0.5-SCOPE.md)
 for original stream-level scope.
 
 **v0.6 shipped (2026-05-09):** Stream A pipeline-mechanics (A4
@@ -746,8 +746,8 @@ v0.8+ matrix-completion; criterion #2 PARTIAL via Step 4.5
 pipeline-mechanics → v0.7 empirical verification; criterion #3
 NOT MET via Tier 3 cancellation → v0.8+ post-launch. Honest
 2-of-3 MET + 1 carried forward framing. See
-[`v0.6-SCOPE.md`](v0.6-SCOPE.md) for original stream-level
-scope; [`v0_7-HANDOFF.md`](v0_7-HANDOFF.md) for v0.7 launch-
+[`v0.6-SCOPE.md`](docs/cycles/v0_6/v0.6-SCOPE.md) for original stream-level
+scope; [`v0_7-HANDOFF.md`](docs/cycles/v0_7/v0_7-HANDOFF.md) for v0.7 launch-
 bearing reframe + v0.8+ deferral substrate.
 
 **v0.7 shipped (2026-05-12):** Launch-bearing cycle ship to v1.0
@@ -778,8 +778,8 @@ V1.0 ship-gate status post-v0.7: 2-of-3 MET + 2 carried-forward
 PRIMARY (a) + PRIMARY (b) pipeline-mechanics empirical
 verification; criterion #3 NOT MET via v0.6 Tier 3 cancellation
 → v0.8+ post-launch cohort exposure execution). See
-[`v0.7-SCOPE.md`](v0.7-SCOPE.md) for original tier-level scope;
-[`v0_8-HANDOFF.md`](v0_8-HANDOFF.md) for v0.8 cycle pre-planning
+[`v0.7-SCOPE.md`](docs/cycles/v0_7/v0.7-SCOPE.md) for original tier-level scope;
+[`v0_8-HANDOFF.md`](docs/cycles/v0_8/v0_8-HANDOFF.md) for v0.8 cycle pre-planning
 canonical bridge document.
 
 **v0.8+ candidate observations queued.** Multiple complementary
@@ -789,7 +789,7 @@ captures the 21 v0.8+ forward-pointer candidates consolidated at
 v0.7 cycle close (substrate evolution + mechanical absorption +
 cohort UX refinement + test substrate + cross-cycle inheritance
 categories);
-(2) [`v0_8-HANDOFF.md`](v0_8-HANDOFF.md) v0.8 cycle pre-planning
+(2) [`v0_8-HANDOFF.md`](docs/cycles/v0_8/v0_8-HANDOFF.md) v0.8 cycle pre-planning
 canonical bridge document (forward-pointer scope handoff; post-
 v1.0-launch posture; cohort exposure execution per v0.6 Tier 3
 deferred; F1-F9 atlas-substrate-version confound causal
