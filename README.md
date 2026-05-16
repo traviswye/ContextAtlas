@@ -823,10 +823,8 @@ exposure execution.
 
 ## Contributing
 
-ContextAtlas is currently All Rights Reserved during active development.
-The plan is to transition to a permissive open-source license (MIT or
-Apache-2.0) after the hackathon, at which point contributions will be
-welcomed. Areas where contribution will be especially valuable:
+ContextAtlas is MIT licensed and welcomes contributions. Areas where
+contribution will be especially valuable:
 
 - **New language adapters.** The `LanguageAdapter` interface is small
   and stable. Adding Go, Java, .NET, or Rust support is a
@@ -860,4 +858,4 @@ an internal monorepo build.
 
 ## License
 
-All Rights Reserved during active development. See LICENSE.
+MIT. See [LICENSE](LICENSE).
