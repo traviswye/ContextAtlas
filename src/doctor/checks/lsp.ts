@@ -20,6 +20,7 @@ import { spawnSync } from "node:child_process";
 import { createAdapter } from "../../adapters/registry.js";
 import type { LanguageCode } from "../../types.js";
 import type { CheckContext, DoctorCheck } from "../types.js";
+import { rubyEnvironmentChecks } from "./ruby-environment.js";
 import { findSampleSymbol } from "./sample-symbol.js";
 
 const SPAWN_TIMEOUT_MS = 10_000;
@@ -46,24 +47,28 @@ export async function lspChecks(ctx: CheckContext): Promise<DoctorCheck[]> {
   if (config === null) return out; // Limited mode.
 
   for (const lang of config.languages) {
-    out.push(...checkExecutable(lang));
+    out.push(...checkExecutable(lang, ctx.repoRoot));
     out.push(await checkSpawn(lang, ctx.repoRoot));
     out.push(await checkDeepHealth(lang, ctx.repoRoot));
   }
   return out;
 }
 
-function checkExecutable(lang: LanguageCode): DoctorCheck[] {
+function checkExecutable(lang: LanguageCode, repoRoot: string): DoctorCheck[] {
   const out: DoctorCheck[] = [];
   // Resolution path differs per language: TS + Python use peer-
   // dependencies resolved via require.resolve from main repo's
-  // node_modules; Go uses PATH-resolved gopls binary.
+  // node_modules; Go uses PATH-resolved gopls binary; Ruby
+  // dispatches to the 10-check ruby-environment substrate per
+  // ADR-21 §Install Pattern + v0.9 Substep 5.2.
   if (lang === "typescript") {
     out.push(resolveNodeBin("typescript", "typescript-language-server/lib/cli.mjs"));
   } else if (lang === "python") {
     out.push(resolveNodeBin("python", "pyright/langserver.index.js"));
   } else if (lang === "go") {
     out.push(resolvePathBin("go"));
+  } else if (lang === "ruby") {
+    out.push(...rubyEnvironmentChecks(repoRoot));
   }
   return out;
 }
