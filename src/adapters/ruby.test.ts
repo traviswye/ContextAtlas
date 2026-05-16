@@ -6,6 +6,7 @@ import {
   buildReferenceId,
   dedupLocationsByNormalizedPath,
   detectRails,
+  extractDocstringFromHoverResponse,
   findSymbolByName,
   mapDiagnosticSeverity,
   mapRubyKind,
@@ -1039,6 +1040,106 @@ describe("parseRubyMixins", () => {
     const source =
       "class Foo\n  include Mixin if Rails.env.development?\nend\n";
     expect(parseRubyMixins(source, 0, 2)).toEqual(["Mixin"]);
+  });
+});
+
+describe("extractDocstringFromHoverResponse", () => {
+  // ADR-21 §LSP primitive mappings: hover-with-comments per gopls
+  // precedent. Forward-composition consumer of parseRubyHoverContent
+  // prose field (3.3 substrate; 3.7 reuses without re-parsing).
+
+  it("returns null for null response (per-call timeout fallback)", () => {
+    expect(extractDocstringFromHoverResponse(null)).toBeNull();
+  });
+
+  it("returns null for response missing contents field", () => {
+    expect(extractDocstringFromHoverResponse({})).toBeNull();
+  });
+
+  it("returns null for string-shape contents (LSP older shape; v1.0 ignores)", () => {
+    // Older LSP versions used `contents: string` shape. v1.0 adapter
+    // only handles markdown content envelope per ADR-21 capability
+    // declaration (`hover: { contentFormat: ["markdown", "plaintext"] }`).
+    expect(
+      extractDocstringFromHoverResponse({ contents: "raw string" }),
+    ).toBeNull();
+  });
+
+  it("returns null for object contents without value field", () => {
+    expect(
+      extractDocstringFromHoverResponse({
+        contents: { kind: "markdown" } as { kind: string; value?: string },
+      }),
+    ).toBeNull();
+  });
+
+  it("returns null for empty value", () => {
+    expect(
+      extractDocstringFromHoverResponse({
+        contents: { kind: "markdown", value: "" },
+      }),
+    ).toBeNull();
+  });
+
+  it("returns null for User-class-style hover (code block only, no RDoc body)", () => {
+    // Probe #4 captured: User class hover has code block + Definitions
+    // section but no RDoc body. parseRubyHoverContent returns
+    // prose: null for this shape. extractDocstringFromHoverResponse
+    // surfaces the null.
+    const value =
+      "```ruby\nUser\n```\n\n" +
+      "**Definitions**: [user.rb](file:///c%3A/foo/user.rb)";
+    expect(
+      extractDocstringFromHoverResponse({
+        contents: { kind: "markdown", value },
+      }),
+    ).toBeNull();
+  });
+
+  it("returns prose for has_many-style hover (rich RDoc preserved without truncation)", () => {
+    // Probe #4 captured 200+ line RDoc for has_many. Test verifies
+    // forward-composition: parseRubyHoverContent extracts prose;
+    // extractDocstringFromHoverResponse passes it through.
+    const value =
+      "```ruby\nhas_many(name, scope = <default>, **options, &extension)\n```\n\n" +
+      "**Definitions**: [associations.rb](file:///C%3A/.../associations.rb)\n\n\n\n" +
+      "Specifies a one-to-many association.\n\nMore RDoc body.";
+    expect(
+      extractDocstringFromHoverResponse({
+        contents: { kind: "markdown", value },
+      }),
+    ).toBe("Specifies a one-to-many association.\n\nMore RDoc body.");
+  });
+
+  it("returns prose for module_function-style hover (rbs sig + HTML comment + RDoc; HTML stripped)", () => {
+    // Probe #4 captured: module_function has rbs-derived signature
+    // + HTML comment (rdoc-file metadata) + RDoc body. parseRubyHoverContent
+    // strips the HTML comment; extractDocstringFromHoverResponse
+    // returns the cleaned prose.
+    const value =
+      "```ruby\nmodule_function()\n(+4 overloads)\n```\n\n" +
+      "**Definitions**: [module.rbs](file:///C%3A/.../module.rbs)\n\n\n\n" +
+      "<!--\n  rdoc-file=vm_method.c\n  - module_function -> nil\n-->\n" +
+      "Creates module functions for the named methods.";
+    expect(
+      extractDocstringFromHoverResponse({
+        contents: { kind: "markdown", value },
+      }),
+    ).toBe("Creates module functions for the named methods.");
+  });
+
+  it("preserves multi-paragraph RDoc body without truncation (large content stress)", () => {
+    // Stress-test the no-truncation discipline. Construct a large
+    // RDoc body and verify it round-trips through the helper unchanged.
+    const longProse = Array.from({ length: 50 }, (_, i) =>
+      `Paragraph ${i}: lorem ipsum dolor sit amet`,
+    ).join("\n\n");
+    const value = `\`\`\`ruby\nfoo\n\`\`\`\n\n**Definitions**: [a.rb](file:///a.rb)\n\n${longProse}`;
+    expect(
+      extractDocstringFromHoverResponse({
+        contents: { kind: "markdown", value },
+      }),
+    ).toBe(longProse);
   });
 });
 

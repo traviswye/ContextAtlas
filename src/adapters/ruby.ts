@@ -758,13 +758,45 @@ export class RubyAdapter implements LanguageAdapter {
     };
   }
 
-  async getDocstring(_id: SymbolId): Promise<string | null> {
-    throw new Error(
-      "RubyAdapter.getDocstring not yet implemented (Phase 3 Substep 3.7). " +
-        "ADR-21 §LSP primitive mappings: hover-with-comments per gopls " +
-        "precedent (NOT Pyright); extract RDoc + rbs-derived content from " +
-        "hover markdown response.",
+  async getDocstring(id: SymbolId): Promise<string | null> {
+    const parsed = parseSymbolId(id);
+    if (!parsed || !this.rootPath) return null;
+    const { absPath } = this.resolveFile(parsed.path);
+    if (!existsSync(absPath)) return null;
+    await this.ensureOpen(absPath);
+
+    // documentSymbol → find target → hover (same pattern as 3.3
+    // getSymbolDetails). Forward-composition design from Substep 3.3:
+    // parseRubyHoverContent returns { signature, prose }; 3.3
+    // consumes signature, 3.7 consumes prose. Single hover request
+    // per symbol; no re-parsing.
+    const symbols = await this.client.request<LspDocumentSymbol[] | null>(
+      "textDocument/documentSymbol",
+      { textDocument: { uri: toFileUri(absPath) } },
+      this.options.requestTimeoutMs ?? 30_000,
     );
+    if (!symbols || !Array.isArray(symbols)) return null;
+    const target = findSymbolByName(symbols, parsed.name);
+    if (!target) return null;
+
+    // ADR-21 §LSP primitive mappings: hover-with-comments per gopls
+    // precedent (substantively different from ADR-13 Pyright omits-
+    // docstrings). Probe #4 captured rich RDoc for DSL macros
+    // resolved from gem source (200+ lines for has_many) + rbs-
+    // derived signatures + RDoc for module_function. User-defined
+    // methods without docstrings return null hover.
+    const hover = await this.client.request<{
+      contents?: { kind?: string; value?: string } | string;
+    } | null>(
+      "textDocument/hover",
+      {
+        textDocument: { uri: toFileUri(absPath) },
+        position: target.selectionRange.start,
+      },
+      this.options.requestTimeoutMs ?? 30_000,
+    );
+
+    return extractDocstringFromHoverResponse(hover);
   }
 }
 
@@ -893,6 +925,46 @@ export function runRubyVersionPreflight(rubyBin: string): Promise<void> {
       );
     });
   });
+}
+
+/**
+ * Extract docstring prose from a ruby-lsp hover response per ADR-21
+ * §LSP primitive mappings. Forward-composition consumer of
+ * parseRubyHoverContent's `prose` field (3.3 substrate; 3.7 reuses).
+ *
+ * Exported for unit-test access to the response-handling pipeline
+ * without requiring live LSP integration. Defensive null-fallthrough
+ * for response variants:
+ *   - null response → null
+ *   - missing contents → null
+ *   - string contents (LSP older shape) → null at v1.0 (only
+ *     handle markdown content envelope)
+ *   - object contents without value field → null
+ *   - empty value → null
+ *   - value with no code block AND no prose → null
+ *   - value with code block only (no RDoc body; e.g., User class
+ *     hover from probe #4) → null prose
+ *   - value with code block + RDoc body → prose returned (HTML
+ *     comments stripped, definition-links stripped, per
+ *     parseRubyHoverContent's existing logic)
+ */
+export function extractDocstringFromHoverResponse(
+  response:
+    | {
+        contents?: { kind?: string; value?: string } | string;
+      }
+    | null,
+): string | null {
+  if (!response || !response.contents) return null;
+  const value =
+    typeof response.contents === "object" &&
+    "value" in response.contents &&
+    typeof response.contents.value === "string"
+      ? response.contents.value
+      : null;
+  if (!value) return null;
+  const { prose } = parseRubyHoverContent(value);
+  return prose;
 }
 
 /**
