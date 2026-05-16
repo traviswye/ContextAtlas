@@ -38,7 +38,7 @@
  */
 
 import { spawn as childSpawn } from "node:child_process";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import {
   join as pathJoin,
   resolve as pathResolve,
@@ -687,13 +687,75 @@ export class RubyAdapter implements LanguageAdapter {
     return buildDiagnosticsFromResponse(response, relPath);
   }
 
-  async getTypeInfo(_id: SymbolId): Promise<TypeInfo> {
-    throw new Error(
-      "RubyAdapter.getTypeInfo not yet implemented (Phase 3 Substep 3.6). " +
-        "ADR-21 §getTypeInfo: declaration-parse fallback per Pyright " +
-        "precedent (ADR-13); extends via class header, implements via " +
-        "include/extend/prepend, usedByTypes via pass-1 inventory walk.",
+  async getTypeInfo(id: SymbolId): Promise<TypeInfo> {
+    const empty: TypeInfo = { extends: [], implements: [], usedByTypes: [] };
+    const parsed = parseSymbolId(id);
+    if (!parsed || !this.rootPath) return empty;
+    const { absPath } = this.resolveFile(parsed.path);
+    if (!existsSync(absPath)) return empty;
+    await this.ensureOpen(absPath);
+
+    // Re-query documentSymbol to find target with range info per
+    // gopls/Pyright precedent. Pull range AND selectionRange — body
+    // scan needs range.start..range.end (full class body); declaration
+    // line uses selectionRange.start (class header).
+    const symbols = await this.client.request<LspDocumentSymbol[] | null>(
+      "textDocument/documentSymbol",
+      { textDocument: { uri: toFileUri(absPath) } },
+      this.options.requestTimeoutMs ?? 30_000,
     );
+    if (!symbols || !Array.isArray(symbols)) return empty;
+    const target = findSymbolByName(symbols, parsed.name);
+    if (!target) return empty;
+
+    // getTypeInfo applies to type-like symbols only — classes (kind
+    // 5) + modules (kind 2). Methods, constants, instance vars all
+    // return empty TypeInfo per ADR-07 contract semantics.
+    const kind = mapRubyKind(target.kind);
+    if (kind !== "class" && kind !== "module") return empty;
+
+    // Read source for declaration-parse fallback per ADR-21
+    // §getTypeInfo (Pyright precedent — ADR-13 §getTypeInfo). ruby-lsp
+    // doesn't expose textDocument/implementation or typeDefinition
+    // (probe #5: queries hang); declaration-parse from source is the
+    // canonical approach.
+    let sourceText: string;
+    try {
+      sourceText = readFileSync(absPath, "utf8");
+    } catch {
+      return empty;
+    }
+
+    // extends: parse class header `class Name < Super` syntax.
+    // Modules return [] (no `module Name < Other` syntax in Ruby).
+    const extendsList = parseRubyClassExtends(
+      sourceText,
+      target.selectionRange.start.line,
+    );
+
+    // implements: scan class body for include/extend/prepend
+    // statements at top level. ADR-21 §getTypeInfo §Decision: all
+    // three (include/extend/prepend) treated uniformly as
+    // implements at v1.0; v1.1 candidate to split per call shape
+    // if downstream consumers need it.
+    const implementsList = parseRubyMixins(
+      sourceText,
+      target.range.start.line,
+      target.range.end.line,
+    );
+
+    // usedByTypes: empty at v1.0 per simpler-adapter-private-scope
+    // framing (Travis's watch (c) verify-and-act; ADR-21 §getTypeInfo
+    // notes pass-1 inventory walk via Pyright precedent for full-
+    // indexing runs but adapter at single-symbol-query path returns
+    // degraded-mode empty per ADR-13 precedent for "getTypeInfo at
+    // query time without the cache"). v1.1 candidate to add full
+    // pass-1 inventory walk if benchmark evidence demands.
+    return {
+      extends: extendsList,
+      implements: implementsList,
+      usedByTypes: [],
+    };
   }
 
   async getDocstring(_id: SymbolId): Promise<string | null> {
@@ -831,6 +893,94 @@ export function runRubyVersionPreflight(rubyBin: string): Promise<void> {
       );
     });
   });
+}
+
+/**
+ * Parse Ruby class extends (superclass) from source line. Ruby
+ * syntax: `class Name < Super` (with optional namespacing on
+ * either side: `class Foo::Bar < Baz::Qux`).
+ *
+ * Returns array (not single value) for symmetry with TypeInfo.extends
+ * shape — Ruby supports only single inheritance, so the array is
+ * always 0 or 1 element. Modules return [] (no superclass syntax).
+ *
+ * Edge cases handled:
+ *   - `class Name` (no superclass) → []
+ *   - `class << self` (singleton class syntax) → [] (not standard
+ *     inheritance; the regex requires `<` followed by identifier,
+ *     not `<<`)
+ *   - `module Name` → [] (modules have no superclass syntax)
+ *   - Out-of-bounds line index → []
+ *   - Empty/missing line → []
+ *
+ * Reopened class scope: this parser only sees the line at
+ * `classLine0Indexed`. If a class is reopened in multiple files,
+ * the inheritance is parseable only at the FIRST occurrence (the
+ * declaration line). Reopened-class mixins are still surfaced via
+ * parseRubyMixins per the line-range-scan it performs.
+ */
+export function parseRubyClassExtends(
+  sourceText: string,
+  classLine0Indexed: number,
+): string[] {
+  const lines = sourceText.split(/\r?\n/);
+  const line = lines[classLine0Indexed];
+  if (!line) return [];
+  // Match: ^[whitespace] class [identifier with :: support] <
+  //        [identifier with :: support]
+  // Identifier pattern \w+(?:::\w+)* matches Foo or Foo::Bar or
+  // Foo::Bar::Baz. The `<` requires a single < (not <<; singleton
+  // class syntax), with optional spacing.
+  const match = /^\s*class\s+\w+(?:::\w+)*\s*<\s*(\w+(?:::\w+)*)/.exec(line);
+  if (!match) return [];
+  return [match[1]!];
+}
+
+/**
+ * Parse Ruby mixin statements (include/extend/prepend) from class
+ * body. Scans lines from `startLine0Indexed + 1` (after class
+ * header) to `endLine0Indexed - 1` (before closing `end`).
+ *
+ * All three mixin keywords (include, extend, prepend) treated
+ * uniformly per ADR-21 §getTypeInfo §Decision — collected into a
+ * single array. Order preserved per source position.
+ *
+ * Edge cases handled:
+ *   - Multiple includes: all surfaced
+ *   - Namespaced mixins (`include Foo::Bar`): preserved verbatim
+ *   - Mixins at top of class body (common): scanned
+ *   - Mixins inside method bodies: NOT matched (regex requires
+ *     line to start with whitespace + keyword + identifier; method
+ *     body content typically has deeper indentation but the
+ *     keyword pattern still fires — this is a v1.0 known
+ *     limitation; v1.1 candidate for proper scope-aware parsing)
+ *   - Reopened class bodies: scanned via line-range
+ *   - ActiveSupport::Concern's `included do` block contents NOT
+ *     scanned for mixins (Concern bubble-up is v1.1 candidate per
+ *     ADR-21 §getTypeInfo)
+ */
+export function parseRubyMixins(
+  sourceText: string,
+  startLine0Indexed: number,
+  endLine0Indexed: number,
+): string[] {
+  const lines = sourceText.split(/\r?\n/);
+  const result: string[] = [];
+  // Scan from line AFTER class header (header is at startLine) to
+  // line BEFORE closing `end` (end is at endLine).
+  const from = startLine0Indexed + 1;
+  const to = Math.min(endLine0Indexed - 1, lines.length - 1);
+  for (let i = from; i <= to; i++) {
+    const line = lines[i];
+    if (!line) continue;
+    // Match: ^[whitespace] (include|extend|prepend) [identifier
+    // with :: support] [optional rest of line for symbol args etc.]
+    const match = /^\s*(include|extend|prepend)\s+(\w+(?:::\w+)*)/.exec(line);
+    if (match) {
+      result.push(match[2]!);
+    }
+  }
+  return result;
 }
 
 /**

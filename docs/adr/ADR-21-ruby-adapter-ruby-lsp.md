@@ -689,6 +689,44 @@ way at v1.0 to distinguish a class-method-via-class_methods-block
 from a regular instance method on the Module. Cited add-on may
 provide kind-12-remapping; unverified.
 
+### `getTypeInfo` declaration-parse v1.0 scope
+
+Substep 3.6 implementation lands the declaration-parse fallback
+per Pyright precedent. v1.0 scope:
+
+- **`extends`**: standard `class Name < Super` syntax (with
+  optional namespacing on either side: `class Foo::Bar < Baz::Qux`)
+  parsed via `parseRubyClassExtends`. Singleton class syntax
+  (`class << self`) not parsed for extends — singleton class is
+  not standard inheritance. Conditional class definitions (e.g.,
+  `class Foo < Bar if cond`) NOT parsed for extends. Modules
+  return `[]` for extends (no superclass syntax in Ruby).
+- **`implements`**: top-level `include` / `extend` / `prepend`
+  statements within class/module body parsed via
+  `parseRubyMixins`. Multi-mixin-per-line syntax
+  (`include Foo, Bar`) only captures the first identifier
+  (`Foo`) at v1.0; v1.1 candidate to extend regex for comma-list
+  parsing if benchmark evidence demands. ActiveSupport::Concern's
+  `included do` and `class_methods do` block contents NOT scanned
+  for nested `include` statements (parser is line-range-bounded
+  to the class body; nested-block-scope-aware parsing is v1.1
+  candidate per Concern bubble-up framing in §getTypeInfo).
+- **`usedByTypes`**: ALWAYS empty array at v1.0. Single-symbol-
+  query path returns degraded mode per ADR-13 precedent
+  ("getTypeInfo at query time without the cache"). Full pass-1
+  inventory walk for usedByTypes computation (Pyright-pattern
+  Protocol-cache shape adapted for Ruby class-hierarchy) is v1.1
+  candidate; deferred at v1.0 per simpler-adapter-private-scope
+  framing. Downstream consumers see `usedByTypes: []` for all
+  Ruby symbols at v1.0.
+
+Reopened class scope: parser only sees the line at the
+selectionRange start. If a class is reopened in multiple files,
+inheritance is parseable only at the FIRST occurrence (the
+declaration line). Reopened-class mixins ARE surfaced via
+parseRubyMixins per the line-range-scan it performs against the
+specific symbol's range.
+
 ### implementation + typeDefinition: hang, not fail-clean
 
 Queries to these methods HANG rather than return JSON-RPC error

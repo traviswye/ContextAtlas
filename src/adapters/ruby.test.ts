@@ -9,7 +9,9 @@ import {
   findSymbolByName,
   mapDiagnosticSeverity,
   mapRubyKind,
+  parseRubyClassExtends,
   parseRubyHoverContent,
+  parseRubyMixins,
   parseSymbolId,
   resolveSpawnPattern,
 } from "./ruby.js";
@@ -877,6 +879,166 @@ describe("buildDiagnosticsFromResponse", () => {
       "warning",
       "info",
     ]);
+  });
+});
+
+describe("parseRubyClassExtends", () => {
+  // ADR-21 §getTypeInfo: extends via class header parsing.
+  // Ruby syntax: `class Name < Super` (with optional namespacing).
+
+  it("parses standard class with superclass", () => {
+    const source = "class User < ApplicationRecord\n  # body\nend\n";
+    expect(parseRubyClassExtends(source, 0)).toEqual(["ApplicationRecord"]);
+  });
+
+  it("returns empty for class with no superclass", () => {
+    const source = "class Foo\n  # body\nend\n";
+    expect(parseRubyClassExtends(source, 0)).toEqual([]);
+  });
+
+  it("returns empty for module declaration (no superclass syntax in Ruby)", () => {
+    const source = "module Sluggable\n  # body\nend\n";
+    expect(parseRubyClassExtends(source, 0)).toEqual([]);
+  });
+
+  it("returns empty for singleton class syntax (`class << self`)", () => {
+    const source = "class << self\n  # body\nend\n";
+    expect(parseRubyClassExtends(source, 0)).toEqual([]);
+  });
+
+  it("preserves namespaced superclass (Module::SubModule)", () => {
+    const source = "class Post < ActiveRecord::Base\n  # body\nend\n";
+    expect(parseRubyClassExtends(source, 0)).toEqual(["ActiveRecord::Base"]);
+  });
+
+  it("preserves deeply namespaced superclass", () => {
+    const source = "class Foo < Acme::Foo::Bar::Base\n  # body\nend\n";
+    expect(parseRubyClassExtends(source, 0)).toEqual([
+      "Acme::Foo::Bar::Base",
+    ]);
+  });
+
+  it("handles namespaced class definition", () => {
+    const source = "class Foo::Bar < Baz\n  # body\nend\n";
+    expect(parseRubyClassExtends(source, 0)).toEqual(["Baz"]);
+  });
+
+  it("handles whitespace variations around `<` operator", () => {
+    expect(parseRubyClassExtends("class A<B\nend\n", 0)).toEqual(["B"]);
+    expect(parseRubyClassExtends("class A   <   B\nend\n", 0)).toEqual([
+      "B",
+    ]);
+  });
+
+  it("handles class declaration with leading indentation", () => {
+    const source = "  class Inner < Outer\n    # body\n  end\n";
+    expect(parseRubyClassExtends(source, 0)).toEqual(["Outer"]);
+  });
+
+  it("returns empty for out-of-bounds line index", () => {
+    const source = "class Foo < Bar\nend\n";
+    expect(parseRubyClassExtends(source, 99)).toEqual([]);
+    expect(parseRubyClassExtends(source, -1)).toEqual([]);
+  });
+
+  it("returns empty for empty source", () => {
+    expect(parseRubyClassExtends("", 0)).toEqual([]);
+  });
+});
+
+describe("parseRubyMixins", () => {
+  // ADR-21 §getTypeInfo: implements via include/extend/prepend
+  // scanning. All three keywords treated uniformly per §Decision.
+
+  it("scans single include statement", () => {
+    const source =
+      "class Post\n  include Sluggable\n  # body\nend\n";
+    // Class body is lines 0-3; scan range is line 1 to line 2.
+    expect(parseRubyMixins(source, 0, 3)).toEqual(["Sluggable"]);
+  });
+
+  it("scans extend statement", () => {
+    const source =
+      "module Sluggable\n  extend ActiveSupport::Concern\nend\n";
+    expect(parseRubyMixins(source, 0, 2)).toEqual([
+      "ActiveSupport::Concern",
+    ]);
+  });
+
+  it("scans prepend statement", () => {
+    const source = "class Foo\n  prepend Wrapper\nend\n";
+    expect(parseRubyMixins(source, 0, 2)).toEqual(["Wrapper"]);
+  });
+
+  it("scans multiple mixins (include + extend + prepend uniform)", () => {
+    // ADR-21 §getTypeInfo §Decision: all three uniformly collected.
+    const source =
+      "class Post\n  include Sluggable\n  extend Helpers\n  prepend LoggingMixin\n  # body\nend\n";
+    expect(parseRubyMixins(source, 0, 5)).toEqual([
+      "Sluggable",
+      "Helpers",
+      "LoggingMixin",
+    ]);
+  });
+
+  it("preserves namespaced mixin names", () => {
+    const source =
+      "class Post\n  include Acme::SluggableConcerns::V2\nend\n";
+    expect(parseRubyMixins(source, 0, 2)).toEqual([
+      "Acme::SluggableConcerns::V2",
+    ]);
+  });
+
+  it("preserves order of multiple includes (source position)", () => {
+    const source =
+      "class Foo\n  include First\n  include Second\n  include Third\nend\n";
+    expect(parseRubyMixins(source, 0, 4)).toEqual([
+      "First",
+      "Second",
+      "Third",
+    ]);
+  });
+
+  it("returns empty for class with no mixins", () => {
+    const source = "class Standalone\n  attr_reader :name\nend\n";
+    expect(parseRubyMixins(source, 0, 2)).toEqual([]);
+  });
+
+  it("returns empty for empty class body", () => {
+    const source = "class Empty\nend\n";
+    expect(parseRubyMixins(source, 0, 1)).toEqual([]);
+  });
+
+  it("scans only the line range provided (bounded scan)", () => {
+    // Even if mixins exist outside the range, they shouldn't be
+    // included. Simulates a reopened class scenario where the
+    // adapter has documentSymbol range for ONE class definition
+    // but the file has multiple class openings.
+    const source =
+      "class Foo\n  include Out1\nend\n\nclass Bar\n  include InScope\nend\n\nclass Baz\n  include Out2\nend\n";
+    // Bar's class body is lines 4-6; range is (4, 6).
+    expect(parseRubyMixins(source, 4, 6)).toEqual(["InScope"]);
+  });
+
+  it("handles deeply indented mixin declarations", () => {
+    // Nested module scenario — Ruby allows namespacing via nested
+    // modules. The mixin is still scanned (regex is whitespace-
+    // tolerant at the start).
+    const source =
+      "module Outer\n  module Inner\n    class Foo\n      include Mixin\n    end\n  end\nend\n";
+    // Foo's body is lines 2-4; scan finds Mixin at line 3.
+    expect(parseRubyMixins(source, 2, 4)).toEqual(["Mixin"]);
+  });
+
+  it("matches mixin declarations even with bracket-method-call args", () => {
+    // Some include forms have additional args: `include Mixin if cond`
+    // or `include Foo, Bar`. v1.0 captures the first identifier
+    // after the keyword (Mixin in both cases). Multi-mixin-per-line
+    // (`include Foo, Bar`) would only capture Foo at v1.0; ADR-21
+    // Limitations note v1.0 single-identifier-per-line scope.
+    const source =
+      "class Foo\n  include Mixin if Rails.env.development?\nend\n";
+    expect(parseRubyMixins(source, 0, 2)).toEqual(["Mixin"]);
   });
 });
 
