@@ -49,7 +49,12 @@ export interface ConformanceFixtureSpec {
    * suite assumes:
    *   - `classSymbol`: has kind === "class" OR "interface"
    *     (Python Protocol → interface is allowed)
-   *   - `functionSymbol`: has kind === "function"
+   *   - `functionSymbol`: has kind === "function" OR "method"
+   *     (Ruby's kind-6-uniform callable mapping is allowed — Ruby has
+   *     no functions-vs-methods semantic split; all callables —
+   *     instance methods, top-level def, module functions — emit LSP
+   *     kind 6 and map to "method". Parallel to classSymbol
+   *     class-or-interface flexibility for languages that distinguish.)
    *   - `referencedSymbol`: appears in `consumer` (for findReferences)
    */
   symbols: {
@@ -133,11 +138,17 @@ export function runConformanceSuite(
       expect(["class", "interface"]).toContain(cls?.kind);
     });
 
-    it("listSymbols contains the fixture's function symbol with kind 'function'", async () => {
+    it("listSymbols contains the fixture's function symbol with an accepted kind", async () => {
       const symbols = await adapter.listSymbols(sampleAbs);
       const fn = symbols.find((s) => s.name === spec.symbols.functionSymbol);
       expect(fn).toBeDefined();
-      expect(fn?.kind).toBe("function");
+      // Ruby's kind-6-uniform callable mapping means the adapter may
+      // legitimately return "method" for what the fixture calls a
+      // function symbol (Ruby has no functions-vs-methods semantic
+      // split — instance methods, top-level def, and module functions
+      // all emit LSP kind 6). Both are acceptable. Parallel to the
+      // classSymbol class-or-interface flexibility above.
+      expect(["function", "method"]).toContain(fn?.kind);
     });
 
     it("listSymbols on a non-existent file returns empty (does not throw)", async () => {

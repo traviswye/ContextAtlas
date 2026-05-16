@@ -3,18 +3,18 @@
 Raw behavior capture from ruby-lsp 0.26.x + ruby-lsp-rails 0.4.8
 (stable-compatible pair per bundler resolution at May 2026)
 against a minimal Rails 8 fixture. Produced by
-`scripts/ruby-lsp-probe.ts` on 2026-05-15T18:50:55.359Z.
+`scripts/ruby-lsp-probe.ts` on 2026-05-16T03:13:00.627Z.
 
 Purpose: ground ADR-21's LSP primitive mappings and Limitations
 sections in observed behavior — empirical-probe-substrate-before-
 ADR-authoring discipline per ADR-13 (Pyright) + ADR-14 (gopls)
 precedent.
 
-**Version targets.** Ruby 4.0.3 (cohort-actual-version anchor per
-v0.9 Stream A Phase 1 lock), Rails 8.0, ruby-lsp 0.26.x (latest
-0.26.9), ruby-lsp-rails 0.4.8 (auto-loaded when Rails detected).
-Doctor's warn-not-error pattern supports earlier Ruby 3.3.x cohort
-developers.
+**Version targets.** Ruby 4.0.3 (cohort-actual-version
+anchor per v0.9 Stream A Phase 1 lock), Rails 8.0, ruby-lsp
+0.26.x (latest 0.26.9), ruby-lsp-rails 0.4.8 (auto-loaded
+when Rails detected). Doctor's warn-not-error pattern
+supports earlier Ruby 3.3.x cohort developers.
 
 **Version pinning rationale** (Option D adjudication; cycle-
 observation 24 fourth surface): per actual bundler resolution,
@@ -1435,6 +1435,31 @@ lib/analytics.rb, lib/dynamic_methods.rb.
         "children": []
       }
     ]
+  },
+  {
+    "name": "greet",
+    "kind": 6,
+    "range": {
+      "start": {
+        "line": 24,
+        "character": 0
+      },
+      "end": {
+        "line": 26,
+        "character": 3
+      }
+    },
+    "selectionRange": {
+      "start": {
+        "line": 24,
+        "character": 4
+      },
+      "end": {
+        "line": 24,
+        "character": 9
+      }
+    },
+    "children": []
   }
 ]
 ```
@@ -2890,6 +2915,31 @@ for what ruby-lsp surfaces without add-on contribution.
         "children": []
       }
     ]
+  },
+  {
+    "name": "greet",
+    "kind": 6,
+    "range": {
+      "start": {
+        "line": 24,
+        "character": 0
+      },
+      "end": {
+        "line": 26,
+        "character": 3
+      }
+    },
+    "selectionRange": {
+      "start": {
+        "line": 24,
+        "character": 4
+      },
+      "end": {
+        "line": 24,
+        "character": 9
+      }
+    },
+    "children": []
   }
 ]
 ```

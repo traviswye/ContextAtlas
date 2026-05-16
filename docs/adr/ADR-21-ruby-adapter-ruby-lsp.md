@@ -176,8 +176,10 @@ called out per §.
 |---|---:|---|---|
 | Class | 5 | `class` | LSP kind 5 |
 | Module | 2 | `module` | LSP kind 2 |
-| Method (instance) | 6 | `method` | LSP kind 6, no `self.` prefix in name |
-| Class method (`def self.foo`) | 12 | `method` | LSP kind 12 + `self.` prefix in name. The adapter remaps to `method` kind AND **preserves the `self.` prefix verbatim** in the symbol-ID name field (per ADR-14 gopls receiver-prefix-verbatim precedent; see Rationale). The `self.` prefix disambiguates class methods from instance methods at the Symbol.name level — downstream consumers needing class-method discrimination pattern-match on `^self\.`. |
+| Method (instance) | 6 | `method` | LSP kind 6 inside a class body. |
+| Top-level `def` | 6 | `method` | LSP kind 6 with no enclosing class/module container. Ruby has no functions-vs-methods semantic split (see §Kind-6-uniform callable mapping below); top-level def is structurally a method on `Object` and emits the same LSP kind as instance methods. |
+| Module function (`def foo` under `module_function`) | 6 | `method` | LSP kind 6 inside a `module` body. Ruby-lsp does not distinguish module functions from instance methods at the LSP kind layer; both emit kind 6. |
+| Class method (`def self.foo`) | 12 | `method` | LSP kind 12 + `self.` prefix in name. The adapter remaps to `method` kind AND **preserves the `self.` prefix verbatim** in the symbol-ID name field (per ADR-14 gopls receiver-prefix-verbatim precedent; see Rationale). The `self.` prefix disambiguates class methods from instance methods at the Symbol.name level — downstream consumers needing class-method discrimination pattern-match on `^self\.`. The kind-12 emission for class methods is the ONLY divergence from Ruby's kind-6-uniform callable mapping (see §Kind-6-uniform callable mapping below). |
 | Rails DSL macro (has_many, scope, validates, before_save, etc.) | 6 | `method` | LSP kind 6 + name matches `^[a-z_]+(:|\s)` pattern (macro-with-argument form). Surfaced as method symbols with name like `"has_many :posts"`. |
 | Constant | 14 | `variable` | LSP kind 14. ContextAtlas's reduced SymbolKind doesn't have `constant`; `variable` is the closest fit (matches ADR-14 gopls iota-const handling). |
 | Instance variable (`@name`) | 8 | (filtered out) | LSP kind 8 nested under a method. Not surfaced as a top-level Symbol (matches ADR-13 Python parameter/instance-var filtering). |
@@ -190,6 +192,32 @@ as kind-6 method symbols. The adapter accepts this representation —
 the `"macro :argument"` name form preserves the macro's parameter for
 downstream consumers. See Limitations §DSL-symbol-naming for the
 trade-off.
+
+**Kind-6-uniform callable mapping.** Ruby has no functions-vs-methods
+semantic split — all callables are methods (instance methods on a
+class, top-level def methods on `Object`, module functions exposed
+via `module_function`, singleton methods, etc.). Ruby-lsp's documentSymbol
+emits LSP kind 6 (`Method`) uniformly across these forms; the only
+divergence is class methods declared with `def self.foo`, which emit
+kind 12 (`Function`) and are preserved with the `self.` prefix
+verbatim per Φ-γ-variant (see Class method row above + Rationale).
+Empirically verified at v0.9 Stream A Phase 4 mid-substep watch (b)
+per probe fixture amendment (top-level `def greet` added to
+`lib/analytics.rb`; documentSymbol emits kind 6, parallel to instance
+methods inside the same file's `module Analytics` body).
+
+This is a language-structural property, not an LSP-convention
+divergence from Pyright/gopls — it reflects Ruby's actual semantic
+model (everything is a method on some object). The adapter therefore
+maps kind 6 → `method` uniformly without context-discrimination; the
+conformance harness (`src/adapters/conformance.ts`) accommodates this
+via per-language flexibility (`functionSymbol` accepts kind ===
+`"function"` OR `"method"`), parallel to the existing classSymbol
+class-or-interface flexibility for languages like Python where the
+`Protocol` shape legitimately maps to `interface`. Downstream
+consumers that need structural-context discrimination (top-level vs
+inside-class) walk the symbol container hierarchy rather than relying
+on kind.
 
 ### Diagnostics via PULL model (LSP 3.17)
 

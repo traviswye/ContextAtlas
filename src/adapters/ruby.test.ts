@@ -35,8 +35,38 @@ describe("mapRubyKind", () => {
     expect(mapRubyKind(5)).toBe("class");
   });
 
-  it("maps Method (kind 6) → 'method'", () => {
-    expect(mapRubyKind(6)).toBe("method");
+  // Kind-6-uniform callable mapping per ADR-21 §Symbol-kind +
+  // §Kind-6-uniform callable mapping. Ruby has no functions-vs-
+  // methods semantic split — all callables (instance methods,
+  // top-level def, module functions) emit LSP kind 6 and map to
+  // 'method' uniformly. Empirically verified at v0.9 Stream A
+  // Phase 4 mid-substep watch (b) per probe fixture amendment
+  // (top-level `def greet` in `test/fixtures/ruby-probe/lib/
+  // analytics.rb` — documentSymbol emits kind 6, identical to the
+  // module-internal `def track` / `def identify` under
+  // `module_function` in the same file).
+  describe("kind 6 (Method) — kind-6-uniform callable mapping", () => {
+    it("maps instance method (inside class) → 'method'", () => {
+      // Probe baseline §lib/user.rb (Class User > def initialize)
+      // and §app/models/user.rb (Class User > def display_name).
+      expect(mapRubyKind(6)).toBe("method");
+    });
+
+    it("maps top-level def (no enclosing container) → 'method'", () => {
+      // Probe baseline §lib/analytics.rb at line 24 — top-level
+      // `def greet(name)` outside any module/class container.
+      // Empirically kind 6 (NOT kind 12); Path β adjudication
+      // accommodates via conformance harness flexibility.
+      expect(mapRubyKind(6)).toBe("method");
+    });
+
+    it("maps module function (inside module, under module_function) → 'method'", () => {
+      // Probe baseline §lib/analytics.rb at lines 6/10 — `def track`
+      // and `def identify` inside `module Analytics` with
+      // `module_function`. Empirically kind 6 (uniform with
+      // instance methods and top-level def).
+      expect(mapRubyKind(6)).toBe("method");
+    });
   });
 
   it("maps Function (kind 12 — class methods) → 'method' per Φ-γ-variant lock", () => {
