@@ -6,8 +6,8 @@
 
 ContextAtlas turns your codebase into a *single-call* context bundle for Claude Code —
 fusing LSP-grade structure, architectural intent from your ADRs, git history, and test
-associations. Measured **45-72% token reduction** on architectural prompts across the
-hono / httpx / cobra benchmark suite.
+associations. Measured **45-72% token reduction with zero quality regression across
+benchmark axes** on architectural prompts across the hono / httpx / cobra benchmark suite.
 
 ![Claude Code](https://img.shields.io/badge/Claude_Code-000?style=flat&logo=anthropic&logoColor=white)
 ![MCP](https://img.shields.io/badge/MCP-1f6feb?style=flat)
@@ -413,7 +413,7 @@ contextatlas init
 Then in Claude Code:
 
 ```
-/generate-adrs   # Skip if you already have ADRs in docs/adr/
+/generate-adrs   # Skip if you already have ADRs (any path; see Using existing ADRs below)
 /index-atlas     # Build the atlas
 /prime-atlas     # Verify connection (once per session)
 ```
@@ -424,10 +424,29 @@ Then in Claude Code:
 npm install -g contextatlas
 export ANTHROPIC_API_KEY=sk-...
 contextatlas init
-contextatlas generate-adrs   # Optional; skip if you already have ADRs
+contextatlas generate-adrs   # Skip if you already have ADRs (any path; see Using existing ADRs below)
 contextatlas index
 contextatlas doctor          # Verify health
 ```
+
+### Using existing ADRs and docs
+
+ContextAtlas extracts architectural intent from whatever ADRs and
+documentation you already have — `generate-adrs` is for repos
+without existing ADR substrate.
+
+- **Existing ADRs at `docs/adr/`?** Skip `generate-adrs`;
+  ContextAtlas extracts your existing ADRs automatically.
+- **ADRs at a different path?** Set `adrs.path` in
+  `.contextatlas.yml` (default: `docs/adr/`).
+- **README, design docs, or other prose?** ContextAtlas extracts
+  these too via `docs.include` (default: `README.md` +
+  `docs/**/*.md`). Add custom paths to extract additional
+  documentation surfaces.
+
+The extraction pipeline produces structured claims from any prose
+source pointed at via config — existing substrate doesn't go unused.
+See [Configuration](#configuration) below for full schema.
 
 ### MCP server registration
 
