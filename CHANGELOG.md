@@ -7,8 +7,11 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 For substantive cycle-engineering detail beyond the per-version
 summaries below, see the corresponding `docs/cycles/v0_X/`
-subdirectory (cycle scope + step plans) and `v1_1-HANDOFF.md`
-(cycle-engineering knowledge clusters).
+subdirectory (cycle scope + step plans), `v1_1-HANDOFF.md`
+(cycle-engineering knowledge clusters), and
+[`docs/release-history.md`](docs/release-history.md) (cycle
+narrative substrate — what shipped per cycle + why it mattered +
+load-bearing empirical findings).
 
 ## [Unreleased]
 
