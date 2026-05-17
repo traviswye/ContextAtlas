@@ -1,8 +1,47 @@
+<div align="center">
+
 # ContextAtlas
 
-**An MCP server that gives Claude Code a curated atlas of your codebase
-— fusing LSP-grade structure, architectural intent from your ADRs and
-docs, git history, and test associations into single-call context bundles.**
+**Stop watching Claude burn tokens grepping for context it can't possibly find.**
+
+ContextAtlas turns your codebase into a *single-call* context bundle for Claude Code —
+fusing LSP-grade structure, architectural intent from your ADRs, git history, and test
+associations. Measured **45-72% token reduction** on architectural prompts across the
+hono / httpx / cobra benchmark suite.
+
+![Claude Code](https://img.shields.io/badge/Claude_Code-000?style=flat&logo=anthropic&logoColor=white)
+![MCP](https://img.shields.io/badge/MCP-1f6feb?style=flat)
+![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=flat&logo=typescript&logoColor=white)
+![Python](https://img.shields.io/badge/Python-3776AB?style=flat&logo=python&logoColor=white)
+![Go](https://img.shields.io/badge/Go-00ADD8?style=flat&logo=go&logoColor=white)
+![Ruby](https://img.shields.io/badge/Ruby-CC342D?style=flat&logo=ruby&logoColor=white)
+![MIT](https://img.shields.io/badge/License-MIT-blue.svg)
+
+</div>
+
+<!-- DEMO-GIF-PLACEHOLDER-STREAM-D -->
+
+[**Quick start →**](#installation) · [**Benchmark results →**](#benchmark-results) · [**Architecture →**](#architecture-at-a-glance) · [**ADRs →**](docs/adr/)
+
+---
+
+## Two ways to use ContextAtlas
+
+ContextAtlas ships two equivalent entry paths — pick based on your workflow:
+
+**CLI path** (`contextatlas init` + `contextatlas index`):
+- Best fit: teams comfortable with API key management; CI/CD integration
+- Anthropic API direct; ~$5-15 per repo one-time scaffolding;
+  ~$0.20-1 per incremental refresh
+
+**Skills path** (`/index-atlas` + `/generate-adrs`):
+- Best fit: individual developers; Claude Code-only workflows
+- No API key required; runs under your Claude subscription
+
+Both paths produce substrate-equivalent `atlas.json` per
+[ADR-02](docs/adr/ADR-02-extraction-sole-api-caller.md). Deeper detail:
+[§Atlas refresh + cohort entry paths](#atlas-refresh--cohort-entry-paths)
+below.
 
 ---
 
@@ -74,6 +113,45 @@ references, governing ADR constraints, recent commits, related tests —
 in a dense format optimized for LLM consumption.
 
 One call. What would otherwise take 10-15 tool calls.
+
+## What ContextAtlas Is Not
+
+A few deliberate non-claims:
+
+- **Not a session-memory tool.** Projects like claude-mem, engram, and
+  anamnesis capture accumulated session history — what Claude learned or
+  did in past conversations. ContextAtlas provides static architectural
+  ground truth extracted from your code, ADRs, and docs. Different
+  information sources with occasional overlap (when session discussions
+  became ADRs or commits), but fundamentally different problems.
+- **Not a replacement for LSP.** ContextAtlas *uses* LSP as its source
+  of structural truth. If you just want LSP-in-MCP, projects like LSP-AI
+  solve that well. ContextAtlas layers architectural intent and git
+  history on top.
+- **In the same category as Graphify, with different architectural bets.**
+  Graphify and ContextAtlas both build pre-computed indexes over
+  codebases for LLM agents via MCP. That's genuine category overlap,
+  and we want to be straight about it. Where we differ:
+  - **LSP-grounded vs. heuristic-extracted.** ContextAtlas delegates all
+    structural questions to the language server (tsserver, Pyright).
+    Graphify derives structure via parsing and extraction.
+  - **Pre-composed bundles vs. graph primitives.** ContextAtlas's MCP
+    tools return fused bundles in one call. Graphify exposes graph
+    operations (`graph_query`, `get_neighbors`, `shortest_path`) that
+    callers compose.
+  - **Narrow scope vs. broad scope.** ContextAtlas indexes code + prose
+    + git. Graphify ingests documentation, diagrams, research papers,
+    and more.
+  - **Claim-first vs. graph-first.** ContextAtlas stores discrete claims
+    with severity labels, optimized for "what constrains this symbol?"
+    Graphify models the world as nodes and edges, optimized for "what
+    connects to this node?"
+
+  Whether our bets produce better results for a given workload is an
+  empirical question. See benchmark results below.
+- **Not an embedding-based search tool.** We evaluated this and chose
+  symbol-keyed claims instead. Embeddings are fuzzy; LSP symbols are
+  exact. For code, exactness wins.
 
 ## Quick Example
 
@@ -521,45 +599,6 @@ the tool helps us ship the tool, it'll help others too. This is a
 development practice, not part of the measured benchmark matrix —
 the four-condition matrix runs only against the three external
 targets above.
-
-## What ContextAtlas Is Not
-
-A few deliberate non-claims:
-
-- **Not a session-memory tool.** Projects like claude-mem, engram, and
-  anamnesis capture accumulated session history — what Claude learned or
-  did in past conversations. ContextAtlas provides static architectural
-  ground truth extracted from your code, ADRs, and docs. Different
-  information sources with occasional overlap (when session discussions
-  became ADRs or commits), but fundamentally different problems.
-- **Not a replacement for LSP.** ContextAtlas *uses* LSP as its source
-  of structural truth. If you just want LSP-in-MCP, projects like LSP-AI
-  solve that well. ContextAtlas layers architectural intent and git
-  history on top.
-- **In the same category as Graphify, with different architectural bets.**
-  Graphify and ContextAtlas both build pre-computed indexes over
-  codebases for LLM agents via MCP. That's genuine category overlap,
-  and we want to be straight about it. Where we differ:
-  - **LSP-grounded vs. heuristic-extracted.** ContextAtlas delegates all
-    structural questions to the language server (tsserver, Pyright).
-    Graphify derives structure via parsing and extraction.
-  - **Pre-composed bundles vs. graph primitives.** ContextAtlas's MCP
-    tools return fused bundles in one call. Graphify exposes graph
-    operations (`graph_query`, `get_neighbors`, `shortest_path`) that
-    callers compose.
-  - **Narrow scope vs. broad scope.** ContextAtlas indexes code + prose
-    + git. Graphify ingests documentation, diagrams, research papers,
-    and more.
-  - **Claim-first vs. graph-first.** ContextAtlas stores discrete claims
-    with severity labels, optimized for "what constrains this symbol?"
-    Graphify models the world as nodes and edges, optimized for "what
-    connects to this node?"
-
-  Whether our bets produce better results for a given workload is an
-  empirical question. See benchmark results below.
-- **Not an embedding-based search tool.** We evaluated this and chose
-  symbol-keyed claims instead. Embeddings are fuzzy; LSP symbols are
-  exact. For code, exactness wins.
 
 ## Architecture at a Glance
 
