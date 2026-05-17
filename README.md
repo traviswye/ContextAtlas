@@ -108,6 +108,44 @@ library. But **architectural intent capture is size-invariant.** A
 surfacing, and Claude respecting them matters just as much as on a
 larger codebase.
 
+## Beyond tokens: a design-alignment case study
+
+Efficiency and quality are necessary but not sufficient. The
+substantive value of context-grounding shows up in **design
+choices** on non-trivial code-change tasks.
+
+**A/B trial during v0.3 development.** Identical 3-paragraph
+prompt across two ContextAtlas clones: implement a known bug fix —
+locate the bug, design and implement the fix, write tests,
+document via ADR. The only setup difference: MCP availability.
+
+| Arm | MCP | Approach selected |
+|-----|-----|-------------------|
+| A (vanilla) | none | Recall-first approach (broader matching; fought the project's precision-thesis with noise) |
+| B (CA-aided) | ContextAtlas | Precision-optimization approach (aligned with the project's pre-extracted-claims-with-structural-attribution thesis) |
+
+**Arm B's approach landed in main.** Both arms functionally fixed
+the bug at similar wall-clock and token cost. The substantive
+difference was *alignment with project design thesis* — the
+CA-aided arm could read the relevant ADR + prior architectural
+work from the atlas, and made a choice that fit. The vanilla arm
+couldn't see that context and chose an approach that worked but
+fought the architecture.
+
+Arm A's substantive consideration wasn't lost — captured as
+future-work investigation trigger. The recall-vs-precision
+tradeoff is preserved.
+
+Full synthesis at [v0.3 Round 3 dogfood evidence](https://github.com/traviswye/ContextAtlas-benchmarks/blob/main/research/v0.3-round-3-dogfood-evidence-2026-04-26.md).
+
+**N=1 trial; this is anecdote, not benchmark.** The systematic
+benchmark suite (hono / httpx / cobra) measures efficiency and
+quality (see §The Numbers below). This A/B trial measures the
+substantively-distinct *design-alignment* axis — which doesn't fit
+benchmark-suite methodology (every code-change task is repo-
+specific) but is the substantive value proposition for cohort
+developers building on real codebases.
+
 ## The Numbers
 
 We benchmark ContextAtlas against baseline Claude Code on three
