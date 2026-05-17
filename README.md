@@ -133,8 +133,9 @@ A few deliberate non-claims:
   codebases for LLM agents via MCP. That's genuine category overlap,
   and we want to be straight about it. Where we differ:
   - **LSP-grounded vs. heuristic-extracted.** ContextAtlas delegates all
-    structural questions to the language server (tsserver, Pyright).
-    Graphify derives structure via parsing and extraction.
+    structural questions to the language server (tsserver, Pyright,
+    gopls, ruby-lsp). Graphify derives structure via parsing and
+    extraction.
   - **Pre-composed bundles vs. graph primitives.** ContextAtlas's MCP
     tools return fused bundles in one call. Graphify exposes graph
     operations (`graph_query`, `get_neighbors`, `shortest_path`) that
@@ -225,7 +226,7 @@ tools (which can't really be committed) and knowledge-graph tools
 
 ## Installation
 
-> **Status:** v0.1 + v0.2 + v0.3 + v0.4 + v0.5 + v0.6 + v0.7 shipped (v0.7 on 2026-05-12).
+> **Status:** v0.1 + v0.2 + v0.3 + v0.4 + v0.5 + v0.6 + v0.7 + v0.8 + v0.9.0 shipped (v0.9.0 on 2026-05-16; v0.9.1 launch execution work folds into v1.0.0 public launch without separate tag).
 > Three-language baseline validated on hono (TypeScript), httpx (Python), and
 > cobra (Go) — Phase 5/6/7/8/9/10 reference runs in the
 > [benchmarks repo](https://github.com/traviswye/ContextAtlas-benchmarks).
@@ -646,11 +647,15 @@ under those terms like any other API-submitted content.
 
 ## Language Support
 
-**MVP:** TypeScript and Python.
+**Shipped:** TypeScript (v0.1), Python (v0.1, via Pyright per ADR-13),
+Go (v0.2, via gopls per ADR-14), Ruby (v0.9, via ruby-lsp +
+ruby-lsp-rails per ADR-21).
 
-**Roadmap:** Java, Go, .NET, Rust. The language adapter interface is a
-stable plugin surface — each new language is an additive contribution,
-not a core change.
+**Roadmap:** Java, .NET, Rust (by demand). The language adapter
+interface is a stable plugin surface — each new language is an
+additive contribution, not a core change. See
+[`docs/language-adapter-guide.md`](docs/language-adapter-guide.md)
+for the contributor onboarding walkthrough.
 
 ## What's Implemented Today
 
@@ -821,13 +826,81 @@ verification; criterion #3 NOT MET via v0.6 Tier 3 cancellation
 [`v0_8-HANDOFF.md`](docs/cycles/v0_8/v0_8-HANDOFF.md) for v0.8 cycle pre-planning
 canonical bridge document.
 
+**v0.8 shipped (2026-05-14):** Substrate-equivalence + path-
+comparability + BM25 activation cycle — last substantive code/
+features cycle before v1.0 public launch prep. Substrate-equivalence
+work (v0.7.1 + v0.7.2 + v0.7.3 substep ships) closed Skill-substrate
+parity to CLI at 65-83% claim ratio across hono/httpx/cobra
+benchmarks (depth-floor ≥8 ADRs preserved). BM25 activation closed
+v0.3-era dormancy on `get_symbol_context` via handler-side
+`symbol.name` synthesis (Ship 1) + doctor BM25 recommendation gate
+(Ship 4b; ADR-16 amendment for behavioral disclosure). Path-
+comparability validated via Stage 3 dual F3 dry-runs (api+atlas ≈
+cc+atlas within 5-16%). v0.5 efficiency paradigm re-validated via
+Option B 4-condition factorial (96 trials, $39.40 platform-billed;
+5 of 6 non-trick cells reduce tool-call count at alpha-vs-ca
+contrast; 2 biggest wins ≥50% reductions — httpx/p1 −62%, hono/h5
+−56%; cobra/c3 flagged as single atlas-induced-over-exploration
+case for v1.1 investigation). 9 cycle-observations 15-23 locked
+(observation 21 withdrawn per dev fresh-read correction). V1.0
+ship-gate status post-v0.8: 2-of-3 MET + 1 carried forward
+preserved. See [`v0.8 cycle artifacts`](docs/cycles/v0_8/) for
+detail; [`v1_1-HANDOFF.md`](v1_1-HANDOFF.md) §1-§6 for cycle-
+engineering knowledge cluster.
+
+**v0.9 shipped (2026-05-16 → ongoing v1.0 launch execution):**
+Launch-prep cycle closing Ruby adapter ship + repo launch substrate
+before v1.0 public launch.
+
+*v0.9.0 Stream A — Ruby adapter ship.* Fourth supported language at
+v1.0 launch; ~1300 LOC adapter (`src/adapters/ruby.ts`) + ~535 LOC
+doctor environment substrate (`src/doctor/checks/ruby-environment.ts`);
+116 Ruby-specific tests (94 unit + 14 conformance + 8 doctor);
+ADR-21 at 851 lines with 5 substantive cycle amendments; ruby-lsp
+0.26.x + ruby-lsp-rails 0.4.x stable-compatible pair; Ruby 3.3+
+minimum, 4.0+ recommended; dual-pattern install (Rails-detected
+bundler vs direct gem); pull-model diagnostics (LSP 3.17 net-new
+substrate-design dimension); kind-6-uniform callable mapping (Path
+β empirical falsification of original kind-12 hypothesis at Phase 4
+mid-substep). v0.9.0 tagged at Sub-close-3 commit (`3427611`)
+preserving Stream A operational close.
+
+*v0.9.1 Stream B — Repo cleanup operationally closed.* Cycle docs
+migration to `docs/cycles/v0_X/` subdirectories (B.1; ~28 external
+cross-reference link sweep) + MIT License transition from "All
+Rights Reserved" placeholder (B.2) + community substrate
+authoring (B.3: CONTRIBUTING + CODE_OF_CONDUCT + SECURITY +
+SUPPORT + CHANGELOG with Keep-a-Changelog 1.1.0 backfill + .github/
+issue templates + PR template + minimal CI workflow) + package
+metadata finalization + `docs/language-adapter-guide.md` external
+contributor onboarding (B.4); post-close URL case correction
+(camelCase ContextAtlas brand) + version inflection 0.7.3 → 0.9.0
++ V-1 test fixture currency repair.
+
+*v0.9.1 Streams C-E — Launch execution.* Launch positioning +
+visual assets + execution (in progress at this section authoring;
+folds into v1.0.0 public launch event without separate v0.9.1 tag
+per locked framing).
+
+*Phase 6 weekend Rails work-repo dogfood.* Parallel Travis-paced
+non-blocker; composes to v1.1 amendments if substantive findings
+surface from recognition-service + commons Rails work-repos.
+
+See [`v1_1-HANDOFF.md`](v1_1-HANDOFF.md) §7 for v0.9 Stream A close
+cycle-engineering substrate (19 cycle-discipline observations + 11
+v1.1 backlog items including substrate-currency-repair cluster +
+tooling-discipline observations) and
+[`docs/v1_1-INHERITANCE-SUBSTRATE.md`](docs/v1_1-INHERITANCE-SUBSTRATE.md)
+for prospective adapter-authoring reference.
+
 **v0.8+ candidate observations queued.** Multiple complementary
 substrates per post-v1.0-launch posture:
-(1) [`research/v0.8-candidates.md`](research/v0.8-candidates.md)
-captures the 21 v0.8+ forward-pointer candidates consolidated at
-v0.7 cycle close (substrate evolution + mechanical absorption +
-cohort UX refinement + test substrate + cross-cycle inheritance
-categories);
+(1) [`research/v1.1-candidates.md`](research/v1.1-candidates.md)
+(renamed from `research/v0.8-candidates.md` at v0.8 cycle close)
+captures the v1.1 forward-pointer candidates consolidated across
+v0.7 + v0.8 cycle closes (substrate evolution + mechanical
+absorption + cohort UX refinement + test substrate + cross-cycle
+inheritance categories);
 (2) [`v0_8-HANDOFF.md`](docs/cycles/v0_8/v0_8-HANDOFF.md) v0.8 cycle pre-planning
 canonical bridge document (forward-pointer scope handoff; post-
 v1.0-launch posture; cohort exposure execution per v0.6 Tier 3
@@ -856,7 +929,7 @@ exposure execution.
 - Task-shaped bundle queries: `why_does_this_fail`, `onboard_to_feature`,
   `audit_change` (v0.8+ post-launch per launch-bearing reframe)
 - Hot-path caching, claim capture from agent sessions (v0.8+ post-launch)
-- Additional language adapters beyond Go — Rust, C#, Java (by demand)
+- Additional language adapters beyond Go and Ruby — Rust, C#, Java (by demand)
 - Web dashboard for index inspection (out of roadmap)
 - VS Code extension (out of roadmap)
 
