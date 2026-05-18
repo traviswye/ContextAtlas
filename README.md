@@ -19,7 +19,9 @@ benchmark axes** on architectural prompts across the hono / httpx / cobra benchm
 
 </div>
 
-<!-- DEMO-GIF-PLACEHOLDER-STREAM-D -->
+<p align="center">
+  <img src="https://raw.githubusercontent.com/traviswye/ContextAtlas/main/docs/demo.gif" alt="ContextAtlas demo" />
+</p>
 
 [**Quick start →**](#quick-start) · [**Benchmark results →**](#the-numbers) · [**Why not graph-based? →**](#how-contextatlas-compares-to-alternatives) · [**Architecture →**](#architecture) · [**ADRs →**](docs/adr/)
 
