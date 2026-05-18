@@ -1,12 +1,15 @@
 # ContextAtlas: Design Document
 
-**Status:** v0.1 + v0.2 shipped (2026-04-25). Three-language baseline
-validated (hono / httpx / cobra) via Phase 5/6/7 reference runs in
-the [benchmarks repo](https://github.com/traviswye/ContextAtlas-benchmarks).
-Architectural reference, not a scope document — v0.2 scope lives in
-[`v0.2-SCOPE.md`](docs/cycles/v0_2/v0.2-SCOPE.md); version-arc context in
-[`ROADMAP.md`](ROADMAP.md).
-**Last Updated:** 2026-04-23
+**Status:** v0.9.0 shipped 2026-05-16; v1.0 public launch substrate
+complete. Four-language baseline (TypeScript / Python / Go / Ruby);
+three-language benchmark substrate (hono / httpx / cobra) validated
+via Phase 5–10 reference runs in the
+[benchmarks repo](https://github.com/traviswye/ContextAtlas-benchmarks).
+Architectural reference, not a scope document — cycle-by-cycle
+narrative at [`docs/release-history.md`](docs/release-history.md);
+version-arc context in [`ROADMAP.md`](ROADMAP.md); current-cycle
+anchor at [`v1_1-HANDOFF.md`](v1_1-HANDOFF.md).
+**Last Updated:** 2026-05-18
 **Scope:** Core architecture. Most sections apply across versions;
 adapter lineup and scope-gate lists are refreshed as versions
 advance.
@@ -193,11 +196,18 @@ chain is BM25 → severity (hard > soft > context) → source → claim_id.
 Claims that don't match any query token still surface in the bundle
 but sort to the end via a `+Infinity` sentinel — `get_symbol_context`'s
 "give me everything attached to this symbol" contract is preserved;
-BM25 only re-orders, never filters. **Two-layer gating:** flag-off OR
-query-absent both fall back to v0.2 deterministic ordering (severity
-→ source → claim_id), preserving byte-equivalence for existing
-callers. Multi-symbol mode applies the same query uniformly to every
-symbol in the batch (per ADR-15 §3 uniform-options rule).
+BM25 only re-orders, never filters. **Two-layer gating:** flag-off
+falls back to v0.2 deterministic ordering (severity → source →
+claim_id), preserving byte-equivalence. Query-absent activation
+closed at v0.8 Ship 1 (`ab38f54`) via handler-side
+`args.query ?? symbol.name` synthesis — when the flag is on and no
+explicit query is provided, the symbol name itself becomes the BM25
+query, surfacing the most-relevant-to-this-symbol claims first.
+This closed the v0.3-era dormancy gap (shipped substrate but
+inactive in practice without callers passing `query`). Multi-symbol
+mode applies the same query (or per-symbol synthesized fallback)
+uniformly to every symbol in the batch per ADR-15 §3 uniform-options
+rule.
 
 **Caller caveat — cross-severity promotion (ADR-16 §Decision 2
 chain α).** When BM25 ranking is active (server flag enabled +
@@ -512,14 +522,28 @@ Severity taxonomy:
 - **soft** — preference, violation is a smell ("should", "prefer")
 - **context** — background information, no rule ("this module handles...")
 
-**Reasoning effort.** We use Opus 4.7 at default effort, not extended
-thinking. Opus 4.7's extended thinking API (`thinking.type: "adaptive"` +
-`output_config.effort`) was tested and deferred: on production-grade ADRs,
-default effort produced valid JSON with accurate severity classification
-on every claim across 12 documents tested. Extended thinking is available
-as an escape hatch for edge cases but is not the default. This keeps
-extraction cost at the $0.25 per substantial ADR envelope rather than
-multiples of that.
+**Reasoning effort.** We use Opus 4.7 at default effort for the
+`contextatlas index` extraction path (claim extraction from ADRs,
+docstrings, and filtered commit messages). Opus 4.7's extended
+thinking API (`thinking.type: "adaptive"` + `output_config.effort`)
+was tested and deferred for extraction: on production-grade ADRs,
+default effort produced valid JSON with accurate severity
+classification on every claim across 12 documents tested. This
+keeps extraction cost at the $0.25 per substantial ADR envelope
+rather than multiples of that.
+
+The `contextatlas generate-adrs` path (v0.7) uses different reasoning
+discipline. ADR generation is the foundational substrate the entire
+atlas builds on — atlas quality is bounded by ADR quality. Per the
+deliberate quality-cost trade-off in CLAUDE.md "Generation cost
+framing," the CLI generate-adrs path uses extended thinking with a
+32k token budget (v0.7 Step 2.4.a β-1) to support investigative-
+depth-per-decision-candidate workflow with canonical depth-floor
+mechanical enforcement via `validate-adrs`. The Skill `/generate-adrs`
+path achieves comparable depth via Claude Code's session-bounded
+reasoning at xhigh effort (SKILL.md frontmatter pin). Generation
+cost expectation: $5-15 per repo, one-time. See ADR-02 v0.7
+amendment for the substrate-equivalence framing across both paths.
 
 **Stage 4 — Symbol resolution.** Resolve fuzzy symbol_candidates to canonical
 symbol IDs via the LSP inventory. Exact matches are linked; ambiguous matches
@@ -548,6 +572,64 @@ present:
 This is how new team members and returning contributors avoid paying
 the full first-run cost. See ADR-06 for the architectural rationale.
 
+### Two-paths extraction architecture (v0.7+)
+
+The extraction pipeline above describes the canonical pipeline as a
+single execution flow. At v0.7,
+[ADR-02](docs/adr/ADR-02-extraction-sole-api-caller.md) graduated and
+re-amended to support **two substrate-equivalent entry points** to
+the same pipeline, accommodating two distinct cost models.
+
+**CLI path** (`contextatlas index`, `contextatlas generate-adrs`).
+Anthropic API direct; pay-per-use via `ANTHROPIC_API_KEY`. Suitable
+for CI/CD integration, automated atlas refresh, and non-Claude-Code
+agent integration. Cost model: ~$0.20–1 per incremental refresh;
+~$5–15 per repo for first-time `generate-adrs` scaffolding (the
+deliberate quality investment documented in CLAUDE.md "Generation
+cost framing").
+
+**Skills path** (`/index-atlas`, `/generate-adrs`, `/prime-atlas`).
+Subscription-bounded; runs under the user's Claude subscription.
+No separate API key required; no per-call API billing. Suitable for
+Claude Code–only workflows with zero-friction setup. Skills load
+the canonical prompts (`EXTRACTION_PROMPT`, `GENERATE_ADRS_PROMPT`)
+from build-time artifacts at `.contextatlas/prompts/`, ensuring
+substrate equivalence with the CLI path.
+
+**Substrate equivalence enforcement.** Both paths produce identical
+atlases. Mechanical validation gates at both surfaces enforce this:
+
+- `contextatlas validate-atlas` — atlas.json schema validation
+  against the canonical AtlasFileV1 v1.4 schema; non-canonical
+  atlases fail loudly with specific remediation. Mandatory workflow
+  gate for the `/index-atlas` Skill.
+- `contextatlas validate-adrs` — depth-floor canonical-shape
+  validation on generated ADRs. Mandatory workflow gate for
+  `generate-adrs` at both CLI and Skill surfaces (v0.7 Step 2.4.a
+  β-2 auto-invoke).
+- `contextatlas validate-extraction` — extraction depth-floor
+  (≥8 claims per ADR; ≥1 claim per source) and source-coverage
+  validation.
+- `contextatlas resolve-symbols` — LSP bridge resolving extraction-
+  stage symbol candidates to canonical symbol IDs. Local LSP
+  subprocess only; zero API cost.
+
+**Why two paths.** The frozen-prompt invariant locks the **substrate
+value** (prompt text, severity taxonomy, output schema, model
+choice) per ADR-02; the **load mechanism** evolves. CLI imports the
+canonical prompt constant directly from `src/extraction/prompt.ts`;
+Skills load via the Read tool against `.contextatlas/prompts/*.md`
+artifacts generated at build time by
+`scripts/generate-prompt-artifacts.mjs`. Both paths ship the same
+substrate — the difference is the entry surface and cost model,
+not the value extracted.
+
+The substrate-equivalence claim was empirically validated across
+v0.7.1 + v0.7.2 + v0.7.3 substep ships at v0.8 cycle: Skill atlases
+land at 65–83% of CLI claim count across hono / httpx / cobra
+benchmarks, with depth-floor ≥8 ADRs preserved at both substrates.
+See v0.8 cycle outcome in ROADMAP.md for the empirical detail.
+
 ## Atlas as Team Artifact
 
 ContextAtlas produces two artifacts with different lifecycle roles:
@@ -562,10 +644,10 @@ Schema:
 
 ```jsonc
 {
-  "version": "1.3",
-  "generated_at": "2026-04-25T03:06:25Z",
+  "version": "1.4",
+  "generated_at": "2026-05-16T12:00:00Z",
   "generator": {
-    "contextatlas_version": "0.3.0",
+    "contextatlas_version": "0.9.0",
     "contextatlas_commit_sha": "a1b2c3d4e5f6...",
     "extraction_model": "claude-opus-4-7"
   },
@@ -648,6 +730,13 @@ Key properties of atlas.json:
   is not run from a git checkout (e.g., a published `npm install`-ed
   binary) or when SHA resolution fails. Earlier-version atlases
   import cleanly with the field absent.
+- **Atlas schema v1.4 (v0.7 Step 2.3.a.1).** Canonical AtlasFileV1
+  schema enforcement substrate landed at v0.7. Same additive-bump
+  pattern as 1.0 → 1.1 (git signal) and 1.2 → 1.3
+  (`contextatlas_commit_sha`) — v1.3 and earlier atlases import
+  cleanly; mechanical validation via `contextatlas validate-atlas`
+  enforces canonical shape at the CLI boundary and as a mandatory
+  workflow gate for the `/index-atlas` Skill.
 - **Claim `source` field format.** Identifies where the claim was
   extracted from. Three shapes:
   - **Markdown intent** (ADRs, design docs) — bare identifier
@@ -805,18 +894,31 @@ prerequisites (PATH-resolved `go` binary, length-matched
 methods flattened with `parent_id` back-pointer, iota const block
 members surfaced as flat top-level constants).
 
-**Future (by demand):** .NET (OmniSharp), Java (Eclipse JDT LS), Rust
-(rust-analyzer). Each is a separate contributor-friendly surface
-because the adapter interface is stable.
+**Shipped in v0.9:** Ruby (via `ruby-lsp` + optional
+`ruby-lsp-rails`, [ADR-21](docs/adr/ADR-21-ruby-adapter-ruby-lsp.md))
+— four-language baseline established at v1.0 launch. ADR-21
+documents the ruby-lsp-specific decisions: pull-model diagnostics
+(`textDocument/diagnostic` requests rather than push notifications,
+per LSP 3.17); dual-install pattern (Rails-detected bundler vs
+direct gem install); declaration-parse fallback for type
+relationships; graceful rails-boot degradation when `ruby-lsp-rails`
+is unavailable. Ruby 3.3+ required, 4.0+ recommended.
 
-## Scope Gates (MVP)
+**Future (by demand):** .NET (OmniSharp), Java (Eclipse JDT LS), Rust
+(rust-analyzer), Kotlin (kotlin-language-server). Each is a separate
+contributor-friendly surface because the adapter interface is
+stable — see [ROADMAP.md](ROADMAP.md) §v1.1+ priorities for the
+post-launch adapter-expansion direction.
+
+## Scope Gates (as of v1.0)
 
 **In scope:**
-- TypeScript and Python language adapters
+- TypeScript, Python, Go, and Ruby language adapters
 - All three MCP tools: `get_symbol_context` (primitive),
   `find_by_intent` and `impact_of_change` (thin composites over the
   primitive)
-- ADR + README + markdown docs as intent sources
+- ADR + README + markdown docs + docstrings + filtered commit
+  messages as intent sources
 - Markdown with YAML frontmatter as the ADR convention
 - SQLite-backed index with SHA-based incremental reindex
 - **Committed atlas.json ↔ local index.db sync** (import on startup,
@@ -825,42 +927,30 @@ because the adapter interface is stable.
 - Per-repo config file
 - Git integration (recent commits, co-change analysis for
   `impact_of_change`, hot/cold indicator)
+- Two-paths extraction architecture per ADR-02 v0.7 amendment
+  (CLI = Anthropic API direct; Skills = subscription-bounded;
+  substrate-equivalent via mechanical validation gates)
+- BM25 ranking on `get_symbol_context` (active at v0.8 per ADR-16
+  amendment + Ship 1 handler-side synthesis)
 
-**Out of scope for MVP:**
-- Additional language adapters beyond TS/Python
-- Cross-repo symbol resolution
-- Monorepo workspace awareness
-- Embedding-based semantic search (`find_by_intent` uses text matching
-  for MVP; embeddings reconsidered post-hackathon if benchmarks warrant)
-- Query logging and hot-path pre-computation (v0.6+ per ROADMAP —
-  record query patterns, then act on them)
+**Out of scope at v1.0:**
+- Cross-repo symbol resolution and multi-repo extraction (carried
+  forward to v1.1+ per ROADMAP — ADR-05 amendment required)
+- Codex / local LLM extraction (carried forward to v1.1+ per
+  ROADMAP — ADR-02 amendment required)
+- Embedding-based semantic search (`find_by_intent` uses FTS5 + BM25;
+  embeddings remain post-launch evidence-gated per ADR-09)
+- Query logging and hot-path pre-computation (post-launch enrichment
+  per ROADMAP)
 - Web UI or visualization
 - VS Code extension
 
-**Deliberately deferred:**
-- Adapters beyond v0.2's Go addition: Rust, .NET, Java (v0.3+ by
-  demand — see [ROADMAP.md](ROADMAP.md))
+**Deliberately deferred (demand-driven):**
+- Additional language adapters beyond TS / Python / Go / Ruby —
+  Rust, .NET, Java, Kotlin (v1.1+ priorities per ROADMAP;
+  contributor-friendly surface per `docs/language-adapter-guide.md`)
 - Non-markdown intent formats (RST, asciidoc, etc.)
 - Graph clustering and architectural visualization
-
-### Scope-gate philosophy
-
-MVP includes all three tools because they share substrate — the
-primitive (`get_symbol_context`) does the substantive work, and the
-two composites reuse the same index, extraction output, and symbol
-resolution. Shipping one tool understates the architecture; shipping
-three tools makes the three access patterns (lookup, search,
-blast-radius) unmistakable to anyone evaluating the tool.
-
-The composites use the simplest possible implementations: SQL text
-matching for `find_by_intent`, direct composition with git log for
-`impact_of_change`. No new infrastructure, no embeddings, no separate
-subsystems. If the primitive is solid, the composites are thin
-shells over it.
-
-A day-4 scope gate in CLAUDE.md enforces the discipline: if the
-primitive is not rock-solid by end of day 4, do not proceed to the
-composites. Protect the primitive at all costs.
 
 ## Performance Characteristics
 
@@ -888,6 +978,27 @@ files touched). SHA-based invalidation ensures no wasted work.
 **Query-time cost:** Zero LLM calls. Pure SQLite lookups + LSP queries.
 Sub-100ms per `get_symbol_context` call on typical hardware.
 
+**Cost framings post-v0.2 (refinement layers):**
+
+- **Platform-billed vs script-projected (v0.4 finding).** Script-
+  reported extraction costs use full-token API pricing; actual
+  platform-billed costs reflect prompt-cache discount on the
+  `EXTRACTION_PROMPT` prefix. Empirical 3.0× reduction validated
+  across three reference targets (cobra $5.44 → $1.82; httpx
+  $5.53 → $1.85; hono $10.89 → $3.65). Treat projected costs as
+  conservative upper bounds.
+- **Generate-adrs cost framing (v0.7).** `contextatlas generate-adrs`
+  is foundational substrate, not recurring cost — atlas quality is
+  bounded by ADR quality. Expected cost: $5–15 per repo, one-time.
+  Cost reflects deep investigation (extended thinking 32k budget on
+  CLI; xhigh effort on Skill) plus canonical depth-floor enforcement.
+  Deliberate quality-cost trade-off per CLAUDE.md "Generation cost
+  framing."
+- **Incremental refresh cost (v0.8 empirical).** Substantively
+  cheaper than cold-start scaffolding. Typical incremental refresh
+  $0.20–1 per run per ADR-12 SHA-diff substrate; unchanged ADR and
+  docstring sources skip; only changed sources re-extracted.
+
 ## Benchmark Methodology (Summary)
 
 Full methodology in RUBRIC.md. Brief outline:
@@ -914,6 +1025,23 @@ Full methodology in RUBRIC.md. Brief outline:
   baseline; F1 PRIMARY atlas-substrate-version confound per
   Phase-10 §11). Pre-registered rubric per threshold pre-
   registration discipline.
+- **v0.7 launch-bearing reframe.** v0.7 cycle reframed as launch-
+  bearing not substrate-generation (Travis pivot at v0.6 Step 7.5);
+  no new reference run substrate generated. v0.6 F1-F9 methodology
+  amendments + matrix-completion gate + cross-vendor judge-panel
+  graduation + cohort exposure execution carry forward to post-
+  launch.
+- **v0.8 Option B re-validation.** v0.5 efficiency paradigm
+  re-validated at v0.8 substrate scale via 4-condition factorial
+  (alpha + ca + beta + beta-ca; 8 intersection cells × n=3 trials
+  = 96 trials; $39.40 platform-billed; fingerprint
+  `d613f0ca1ea3d861`; atlas substrate SHA `826fd87`). At the
+  alpha-vs-ca contrast (cleanest atlas-effect control): 5 of 6
+  non-trick cells reduced tool-call count; 2 biggest wins (httpx/p1,
+  hono/h5) at 50%+ reductions; 1 atlas-induced over-exploration
+  case (cobra/c3) flagged for v1.1+ investigation. Full v0.5-rigor
+  paired-t at v0.8 substrate is v1.1+ candidate per launch-bearing
+  reframe.
 
 ## Risks and Open Questions
 
@@ -960,13 +1088,19 @@ v2 concern.
 
 This document tracks the shipped architecture; v0.1 + v0.2 shipped
 (2026-04-25); v0.3 shipped (2026-04-28); v0.4 shipped (2026-04-29);
-v0.5 shipped (2026-05-04); v0.6 shipped (2026-05-09). Material changes
-to the tool interface, storage schema, or config schema bump the minor
-version. Atlas schema versioning is additive within minor versions
-(v0.2 bumped 1.1 → 1.2; v0.3 bumped 1.2 → 1.3 to add
-`generator.contextatlas_commit_sha`, all following ADR-11's pattern;
-v0.4 + v0.5 + v0.6 atlas schema unchanged at 1.3 — substrate-hardening,
-methodology, and substrate-cohort-infrastructure cycles respectively).
-Per-version release notes start with v0.3; v0.1 + v0.2 historical
-record lives in [`STEP-PLAN-V0.2.md`](docs/cycles/v0_2/STEP-PLAN-V0.2.md) progress logs
-and the benchmarks-repo Phase 5/6/7 synthesis docs.
+v0.5 shipped (2026-05-04); v0.6 shipped (2026-05-09); v0.7 shipped
+(2026-05-12); v0.8 shipped (2026-05-14); v0.9 shipped (2026-05-16
+— v1.0 launch substrate complete). Material changes to the tool
+interface, storage schema, or config schema bump the minor version.
+Atlas schema versioning is additive within minor versions (v0.2
+bumped 1.1 → 1.2 for `parent_id`; v0.3 bumped 1.2 → 1.3 to add
+`generator.contextatlas_commit_sha`; v0.7 bumped 1.3 → 1.4 for
+canonical AtlasFileV1 schema enforcement substrate at Step 2.3.a.1;
+v0.4 + v0.5 + v0.6 + v0.8 + v0.9 atlas schema unchanged within their
+cycles — substrate-hardening, methodology, substrate-cohort-
+infrastructure, substrate-equivalence + BM25 activation, and Ruby
+adapter cycles respectively, all following ADR-11's additive-bump
+pattern). Per-version release notes start with v0.3; v0.1 + v0.2
+historical record lives in [`STEP-PLAN-V0.2.md`](docs/cycles/v0_2/STEP-PLAN-V0.2.md)
+progress logs and the benchmarks-repo Phase 5/6/7 synthesis docs;
+v0.3–v0.9 cycle narrative at [`docs/release-history.md`](docs/release-history.md).

@@ -882,120 +882,40 @@ infrastructure.
 
 ---
 
-### v0.8+ — Post-launch substrate cycle [SUPERSEDED → see v1.1+]
+### v0.8+ historical placeholders [SUPERSEDED at v0.8 cycle close]
 
-**Status:** [SUPERSEDED] at v0.8 cycle close (2026-05-14). v0.8
-shipped as the last substantive code/features cycle before v1.0
-public launch (see preceding section). Items originally scoped
-for "v0.8+ post-launch" — full matrix-completion, F1-F9
-methodology amendments, cohort exposure execution, Stream D
-backlog — are carried forward as v1.1+ candidates (cycle-
-pre-planning post-v1.0 public launch). See
-[`research/v1.1-candidates.md`](research/v1.1-candidates.md) +
-[`v1_1-HANDOFF.md`](v1_1-HANDOFF.md) for the v0.8 cycle-close
-substrate.
+The "v0.8+ Post-launch substrate cycle" and "v0.8+ must-ship-
+before-v1.0 backlog" sections that occupied this position
+pre-v0.8 ship are SUPERSEDED as of 2026-05-14. Items originally
+scoped for those sections — full matrix-completion, F1-F9
+methodology amendments, cohort exposure execution, semantic
+embedding layer evaluation, additional language support,
+additional reference targets, developer onboarding pipeline,
+task-shaped bundle queries, team workflow / git-flow-for-atlases,
+claim source enrichment, clean-workspace mode, BM25 ranking
+activation, camelCase splitting — have been carried forward,
+absorbed, or shipped per the following routes:
 
----
-
-### v0.8+ — must-ship-before-v1.0 backlog (items beyond v0.6 + v0.7) [SUPERSEDED]
-
-**Items below MUST ship before v1.0 public launch but specific
-version assignment is flexible.** v0.6 + v0.7 cycles covered in
-preceding [PLANNED] sections; this backlog covers items beyond
-v0.7 cycle scope but before v1.0 launch. Canonical candidate
-reference (see [`research/phase-9-v0.5-reference-run.md`](../ContextAtlas-benchmarks/research/phase-9-v0.5-reference-run.md)
-§9 for canonical list of v0.6+ candidates carried forward from
-v0.5 cycle; supplemented by [`v0_7-HANDOFF.md`](docs/cycles/v0_7/v0_7-HANDOFF.md)
-for v0.7-specific substrate). `research/v0.5-candidates.md`
-remains canonical for the 9 remaining items not absorbed at v0.5;
-absorbed-item in-place annotations mark #7/#8/#9/#12 v0.5-Step-10
-closures. ref-doc §9 captures cycle-emergent candidates surfaced
-during v0.5 execution (surfaces beyond v0.5-candidates.md
-inventory scope per Q10 cycle-emergent-only scope lock). Per-
-version scope-docs (v0.8, v0.9, ...up to v0.99 if needed) decide
-which items land when based on:
-
-- v0.5 launch evidence + drafting surfacing credibility gaps
-- Community evidence accumulation (post-v0.5)
-- External user requests
-- Travis-energy + capacity intersection
-
-This section names everything that doesn't ship in v0.5 with
-explicit forward-pointers. v0.5 carries forward the v0.4
-silent-deferral-correction discipline by anchoring deferred work
-here, not letting it disappear.
-
-**Production-tool deliverables:**
-
-- **Developer onboarding pipeline (full).** End-to-end flow from
-  `npm install` to first useful query. Doctor script foundation
-  lands in v0.4 Stream B; full pipeline is v0.5+. Most natural
-  placement: v0.5 thesis primary. Includes:
-  - Configuration helper (Claude-Code-prompted onboarding;
-    conversational rather than docs-reading)
-  - ADR bootstrap pipeline (formerly v0.5 ROADMAP "ADR-crafting
-    pipeline"; opt-in per-repo; Claude drafts architectural
-    decisions inferred from code patterns + commit history +
-    naming conventions; user reviews + approves drafts)
-  - Warm-up prompt automation (post-setup smoke test)
-  - Lifecycle / continuous-integration patterns (atlas-staleness
-    watching; pre-commit-vs-CI atlas updates; per-session
-    refresh strategies)
-- **Task-shaped bundle queries.** `why_does_this_fail(symbol,
-  error)` — returns relevant symbols + recent commits + related
-  ADRs + failing tests, pre-correlated. `onboard_to_feature(
-  feature_name)` — minimum context pack to edit a feature safely.
-  `audit_change(diff_or_branch)` — architectural review of a
-  proposed change. Progressive disclosure with stable IDs.
-  Originally v0.5 ROADMAP entry; placement flexible per evidence.
-  Strong candidate for v0.6 thesis if semantic layer evidence-
-  gates negative.
-- **Team workflow / git-flow-for-atlases.** Multi-developer
-  collaboration on atlas; merge conflicts; atlas ownership;
-  pre-commit-vs-CI atlas updates. Likely v0.6 once solo-dev
-  workflow proven (post-v0.4).
-- **Claim source enrichment (v0.3-deferred items).** PR-description
-  mining (GitHub/GitLab API integration; opt-in flow); README/
-  `docs/` parsing for architectural claims (overlaps with
-  onboarding pipeline ADR-bootstrap-from-existing-prose work).
-
-**Evidence-gated production-tool items:**
-
-- **Semantic embedding layer.** Vector embeddings over claim text;
-  semantic search mode in `find_by_intent`; re-ranking combining
-  BM25 + semantic similarity. Per
-  [ADR-09](docs/adr/ADR-09-find-by-intent-fts5-bm25.md) fallback
-  preference order, embeddings are last resort. v0.6 most natural
-  placement *if* v0.4–v0.5 evidence shows BM25-tier ranking
-  insufficient.
-- **Full quality-axis blind-grading methodology.** Multi-run n≥3
-  per cell; correctness scoring rubrics; calibration measurement.
-  v0.4 Stream C is bounded validity (rigor-for-launch-credibility);
-  full methodology is the next escalation. Trigger: post-v0.4
-  launch-document feedback or community evidence demanding rigor.
-- **Clean-workspace mode** (atlas-file-visibility resolution path
-  b). Per Step 12 methodology note. Conditional on quality-axis
-  findings showing beta contamination materially distorts evidence
-  beyond Path 3b's filter correction.
-- **BM25 ranking activation on `get_symbol_context`** (Theme 1.2
-  Fix 3 evidence-gate). Conditional on quality-axis evidence
-  supporting activation.
-- **camelCase splitting in identifier search.** Conditional on
-  user-search-pattern evidence. Per
-  [ADR-17](docs/adr/ADR-17-fts5-identifier-tokenizer.md).
-
-**Demand-driven items:**
-
-- **Additional language support.** Rust, .NET, Java, etc. v0.7+
-  placement; demand-driven per external user request OR Travis
-  personal need.
-- **Additional reference targets** beyond cobra/httpx/hono. Django,
-  Next.js, etc. Phase 8 §6.6 tagged as "post-v0.5 candidates."
-
-**Per-item placement decision:** at per-version scope-doc drafting
-time, not now. v0.4 closure provides input signals (launch-
-document drafting; community evidence; capacity); v0.5+ scope-doc
-selects v0.5 thesis from this backlog using those signals.
+- **Closed at v0.5:** full quality-axis blind-grading methodology
+  (paired-t cross-cell rollup at N=27 per axis); BM25 ranking
+  on `get_symbol_context` (shipped dormant at v0.3, activated
+  via handler-side synthesis at v0.8 Ship 1)
+- **Closed at v0.7:** developer onboarding pipeline (PRIMARY
+  claude-code-only extraction path + generate-adrs feature with
+  canonical depth-floor enforcement)
+- **Closed at v0.8:** BM25 activation closure; doctor BM25
+  recommendation gate; path-comparability validation
+- **Carried forward to v1.1+:** see §v1.1+ — Post-launch
+  substantive priorities (Travis-locked: cross-repo extraction;
+  Codex / local LLM support; additional language adapter
+  expansion)
+- **Carried forward to v1.0+ enrichment backlog:** task-shaped
+  bundle queries; semantic embedding layer (evidence-gated);
+  team workflow / git-flow-for-atlases; claim capture from
+  agent sessions
+- **Canonical inventory:** [`research/v1.1-candidates.md`](research/v1.1-candidates.md)
+- **Cycle-engineering substrate:** [`v1_1-HANDOFF.md`](v1_1-HANDOFF.md)
+- **Cycle-by-cycle narrative:** [`docs/release-history.md`](docs/release-history.md)
 
 ---
 
@@ -1090,6 +1010,58 @@ above are the framing target.
   + production-tool persona, not against all imaginable
   extensions.
 
+---
+
+### v1.1+ — Post-launch substantive priorities [PLANNED]
+
+Forward direction for cycle work after v1.0 public launch. Items
+below represent committed v1.1+ direction adjudicated at v0.9 cycle
+close — not tracked-not-decided exploration. Each requires the
+named ADR amendment(s) before substrate-consistent landing. Per-
+cycle scope at per-version scope-doc drafting time.
+
+**1. Multi-repo / cross-repo extraction support.** External
+documentation, ADRs, and dependency-tree-scoped extraction. Current
+substrate constrains to a single `.contextatlas.yml` per repo with
+no inheritance, no workspaces, no cross-repo refs per
+[ADR-05](docs/adr/ADR-05-single-flat-yaml-config.md). **ADR-05
+amendment required.** Use cases: monorepos with per-package ADRs;
+teams whose architectural decisions live in a sibling docs repo;
+consuming ADRs from upstream dependencies as architectural context
+for downstream code.
+
+**2. Codex / local LLM extraction support.** Broader-model support
+for the extraction pipeline. Current substrate is frozen at
+`claude-opus-4-7` per
+[ADR-02](docs/adr/ADR-02-extraction-sole-api-caller.md) (substrate-
+value lock; load-mechanism evolves per v0.7 amendment). **ADR-02
+amendment required.** Use cases: teams without Anthropic API
+access; offline-first / air-gapped substrate generation; cohort
+users running Codex or local LLM substrates against the same MCP
+query surface.
+
+**3. Additional language adapter expansion.** Rust (rust-analyzer),
+Java (Eclipse JDT LS), C# / .NET (OmniSharp), Kotlin
+(kotlin-language-server). The `LanguageAdapter` interface
+([ADR-03](docs/adr/ADR-03-language-adapter-plugin.md)) is small and
+stable; each new adapter is an additive contribution, not a core
+change. No ADR amendment required for additive adapter ships.
+Priority ordering is demand-driven — substantive community signal
+or Travis personal need promotes a language to next-version scope.
+See [`docs/language-adapter-guide.md`](docs/language-adapter-guide.md)
+and [`docs/v1_1-INHERITANCE-SUBSTRATE.md`](docs/v1_1-INHERITANCE-SUBSTRATE.md)
+for the contributor onboarding walkthrough.
+
+**Cycle-engineering substrate:**
+
+- [`v1_1-HANDOFF.md`](v1_1-HANDOFF.md) — cycle-engineering knowledge
+  cluster (v0.9 cycle close; observations 15-23; cycle-discipline
+  patterns 1-6)
+- [`research/v1.1-candidates.md`](research/v1.1-candidates.md) —
+  forward-pointer inventory from v0.7 + v0.8 + v0.9 cycle closes
+- [`docs/v1_1-INHERITANCE-SUBSTRATE.md`](docs/v1_1-INHERITANCE-SUBSTRATE.md)
+  — prospective adapter-authoring reference
+
 ## Explicit Non-Goals
 
 These are things ContextAtlas is deliberately **not** trying to be:
@@ -1123,12 +1095,15 @@ ContextAtlas has multiple docs serving different readers. This roadmap is the st
 - **[DESIGN.md](DESIGN.md)** — Architectural design in technical detail
 - **[docs/adr/](docs/adr/)** — Specific architectural decisions with rationale
 - **[CLAUDE.md](CLAUDE.md)** — Guidance for AI collaborators working on this repo
-- **[v0.6-SCOPE.md](docs/cycles/v0_6/v0.6-SCOPE.md)** — Current-version scope anchor (v0.6 shipped 2026-05-09; commit `a8d01eb`)
-- **[v0_7-HANDOFF.md](docs/cycles/v0_7/v0_7-HANDOFF.md)** — v0.7 cycle pre-planning substrate (launch-bearing reframe canonical bridge document)
+- **[v1_1-HANDOFF.md](v1_1-HANDOFF.md)** — Current cycle-engineering anchor (v0.9.0 shipped 2026-05-16; v1.0 launch substrate complete)
+- **[docs/cycles/v0_8/v0_8-HANDOFF.md](docs/cycles/v0_8/v0_8-HANDOFF.md)** — v0.8 cycle pre-planning substrate (preserved as historical record)
+- **[v0.8-SCOPE.md](docs/cycles/v0_8/v0.8-SCOPE.md)** — v0.8 scope anchor (shipped 2026-05-14; preserved as historical record)
+- **[v0_7-HANDOFF.md](docs/cycles/v0_7/v0_7-HANDOFF.md)** — v0.7 cycle pre-planning substrate (launch-bearing reframe canonical bridge document; preserved as historical record)
+- **[v0.6-SCOPE.md](docs/cycles/v0_6/v0.6-SCOPE.md)** — v0.6 scope anchor (shipped 2026-05-09; preserved as historical record)
 - **[v0.5-SCOPE.md](docs/cycles/v0_5/v0.5-SCOPE.md)** — v0.5 scope anchor (shipped 2026-05-04; preserved as historical record)
 - **[v0.4-SCOPE.md](docs/cycles/v0_4/v0.4-SCOPE.md)** — v0.4 scope anchor (shipped 2026-04-29; preserved as historical record)
 - **[v0.3-SCOPE.md](docs/cycles/v0_3/v0.3-SCOPE.md)** — v0.3 scope anchor (shipped 2026-04-28; preserved as historical record)
-- **[STEP-PLAN-V0.6.md](docs/cycles/v0_6/STEP-PLAN-V0.6.md)** — Per-version build plan (current); v0.5/v0.4/v0.3/v0.2 step plans preserved as historical record
+- **[docs/release-history.md](docs/release-history.md)** — Cycle-by-cycle development history (canonical narrative across all versions)
 - **[RUBRIC.md](../ContextAtlas-benchmarks/RUBRIC.md)** (in benchmarks repo) — Measurement methodology
 
 ## Open questions (tracked, not decided)

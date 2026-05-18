@@ -5,7 +5,7 @@
 **Stop watching Claude burn tokens grepping for context it can't possibly find.**
 
 ContextAtlas turns your codebase into a *single-call* context bundle for Claude Code —
-fusing LSP-grade structure, architectural intent from your ADRs, git history, and test
+fusing LSP-grade structure, architectural intent from your Architectural Decision Records (ADRs), git history, and test
 associations. Measured **45-72% token reduction with zero quality regression across
 benchmark axes** on architectural prompts across the hono / httpx / cobra benchmark suite.
 
@@ -263,7 +263,7 @@ and git history on top.
 symbol-keyed claims instead. Embeddings are fuzzy; LSP symbols are
 exact. Embedding-based ranking is a post-MVP enhancement contingent
 on benchmark evidence that it helps — see
-[ADR-09](docs/adr/ADR-09-find-by-intent-ranking.md) for the full
+[ADR-09](docs/adr/ADR-09-find-by-intent-fts5-bm25.md) for the full
 rationale.
 
 ### The committed-atlas pattern
@@ -397,7 +397,7 @@ mode handles up to 10 symbols per request (per
 the symbol; find it by what it does." Ranks by BM25 against indexed
 claim text in local SQLite FTS5 — no embedding service, no external
 calls, deterministic results (per
-[ADR-09](docs/adr/ADR-09-find-by-intent-ranking.md)).
+[ADR-09](docs/adr/ADR-09-find-by-intent-fts5-bm25.md)).
 
 **`impact_of_change`** — *the blast-radius composite.* "I'm about to
 change this; what breaks?" Adds git co-change patterns and test impact
