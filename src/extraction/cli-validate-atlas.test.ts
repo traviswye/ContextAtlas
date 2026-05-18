@@ -13,15 +13,33 @@
 import {
   mkdirSync,
   mkdtempSync,
+  readFileSync,
   rmSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { join as pathJoin } from "node:path";
+import { dirname, join as pathJoin } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { runValidateAtlasSubcommand } from "./cli-validate-atlas.js";
+
+// V-2-α (Stream E.1): read package.json version at module load so
+// CANONICAL_ATLAS stays self-syncing with installed package version.
+// Prevents INTRODUCTION-class fixture-currency-gap recurrence at
+// next version-evolution surface (the V-1 catch pattern; cycle
+// substrate-record at Stream B post-close V-1 commit f70eb12).
+const PACKAGE_VERSION = (() => {
+  const pkgPath = pathJoin(
+    dirname(fileURLToPath(import.meta.url)),
+    "..",
+    "..",
+    "package.json",
+  );
+  return (JSON.parse(readFileSync(pkgPath, "utf8")) as { version: string })
+    .version;
+})();
 
 const MINIMAL_CONFIG = [
   "version: 1",
@@ -43,7 +61,7 @@ const CANONICAL_ATLAS = {
   version: "1.4",
   generated_at: "2026-05-11T20:00:00.000Z",
   generator: {
-    contextatlas_version: "0.9.0",
+    contextatlas_version: PACKAGE_VERSION,
     extraction_model: "claude-opus-4-7",
   },
   source_shas: {
