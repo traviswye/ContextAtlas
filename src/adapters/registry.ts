@@ -9,6 +9,7 @@
 
 import type { LanguageAdapter, LanguageCode } from "../types.js";
 
+import { CsharpAdapter } from "./csharp.js";
 import { GoAdapter } from "./go.js";
 import { PyrightAdapter } from "./pyright.js";
 import { RubyAdapter } from "./ruby.js";
@@ -52,6 +53,12 @@ export function createAdapter(
       );
     case "ruby":
       return new RubyAdapter(
+        initializeTimeoutMs !== undefined
+          ? { requestTimeoutMs: initializeTimeoutMs }
+          : undefined,
+      );
+    case "csharp":
+      return new CsharpAdapter(
         initializeTimeoutMs !== undefined
           ? { requestTimeoutMs: initializeTimeoutMs }
           : undefined,

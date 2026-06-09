@@ -73,6 +73,20 @@ export const DEFAULT_EXCLUDE_PATTERNS: Record<
     "**/storage/**",
     "**/public/assets/**",
   ],
+  csharp: [
+    // xUnit / NUnit / MSTest conventions (ADR-22 §Phase 5.1).
+    "**/tests/**",
+    "**/test/**",
+    "**/*.Tests/**",
+    "**/*.Test/**",
+    // .NET build artifacts (ADR-22 §Phase 5.1 — conventional excludes;
+    // applies to all .csproj-bounded projects regardless of SDK).
+    "**/bin/**",
+    "**/obj/**",
+    "**/packages/**",
+    "**/.vs/**",
+    "**/*.user",
+  ],
 };
 
 /**

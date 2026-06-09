@@ -24,8 +24,9 @@ function makeConfig(
 }
 
 describe("DEFAULT_EXCLUDE_PATTERNS", () => {
-  it("covers all supported languages (v0.1 + v0.9 Ruby)", () => {
+  it("covers all supported languages (v0.1 + v0.9 Ruby + v1.1 C#)", () => {
     expect(Object.keys(DEFAULT_EXCLUDE_PATTERNS).sort()).toEqual([
+      "csharp",
       "go",
       "python",
       "ruby",
