@@ -140,6 +140,22 @@ describe("validateAdrShape (per-ADR canonical depth-floor checks)", () => {
     ).toBe(true);
   });
 
+  it("PASS with .cs and .rb citations (v1.1.3 cohort-UX hotfix)", () => {
+    // Strip all original citations, then add new ones for .cs + .rb only.
+    // Verifies countSymbolCitations regex recognizes the supported-adapter
+    // extensions added at v1.1.3 (csharp + ruby).
+    const stripped = CANONICAL_ADR.replace(/`[^`]+\.(ts|py|yaml|md):[^`]+`/g, "[stripped]");
+    const csharpRubyADR = stripped.replace(
+      "## Context",
+      "## Context\n\nReferences `src/Services/UserService.cs:GetByIdAsync` and `app/models/user.rb:find_by_email` for cross-language coverage.\n",
+    );
+    const errors = validateAdrShape(csharpRubyADR);
+    const citationErrors = errors.filter((e) =>
+      e.includes("symbol-with-line-number citation"),
+    );
+    expect(citationErrors).toEqual([]);
+  });
+
   it("FAIL on alternatives-considered enumeration with too few alternatives", () => {
     // Replace alternatives block with keyword-only (no substantive items)
     const oneAlt = CANONICAL_ADR.replace(

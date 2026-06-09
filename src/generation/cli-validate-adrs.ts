@@ -322,14 +322,24 @@ function extractSections(content: string): Record<string, string> {
  *   - file-path-line form: path/to/file.ext:lineNumber
  *   - inline-code-wrapped variants: `src/foo.ts:Bar`
  *
- * Accepts common source extensions (.ts, .tsx, .js, .jsx, .py, .go,
- * .rs, .java, .cpp, .h, .hpp, .md). The Symbol-name portion accepts
- * identifier chars + dot for dotted names. Path prefix accepts
- * directory traversal (slash-separated word chars).
+ * Accepts supported-adapter source extensions (.ts, .tsx, .mts, .cts,
+ * .js, .jsx, .py, .go, .rb, .cs) + speculative future-adapter
+ * extensions (.rs, .java, .cpp, .h, .hpp) + cross-references to
+ * markdown (.md). The Symbol-name portion accepts identifier chars +
+ * dot for dotted names. Path prefix accepts directory traversal
+ * (slash-separated word chars).
+ *
+ * Maintenance discipline (v1.1.3+ cohort-UX inheritance): when adding
+ * a new LanguageCode + adapter, append the adapter's primary file
+ * extension(s) to this regex. Grep for `countSymbolCitations` to
+ * verify single-source-of-truth. Inheritance from v1.1.1 (config
+ * parser VALID_LANGUAGES gap) + v1.1.2 (skill files gap):
+ * surface-inventory checklist for language ships should explicitly
+ * include this regex.
  */
 function countSymbolCitations(content: string): number {
   const pattern =
-    /\b[\w.-]+(?:\/[\w.-]+)+\.(?:ts|tsx|js|jsx|py|go|rs|java|cpp|h|hpp|md):(?:[\w_$]+(?:\.[\w_$]+)*|\d+)/g;
+    /\b[\w.-]+(?:\/[\w.-]+)+\.(?:ts|tsx|mts|cts|js|jsx|py|go|rb|cs|rs|java|cpp|h|hpp|md):(?:[\w_$]+(?:\.[\w_$]+)*|\d+)/g;
   const matches = content.match(pattern);
   return matches ? new Set(matches).size : 0;
 }

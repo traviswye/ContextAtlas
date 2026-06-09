@@ -1,6 +1,6 @@
 {
   "name": "contextatlas",
-  "version": "1.1.2",
+  "version": "1.1.3",
   "mcpName": "io.github.traviswye/contextatlas",
   "description": "An MCP server that gives Claude Code a curated atlas of your codebase — fusing LSP precision with architectural intent from your ADRs, docs, and git history.",
   "keywords": [
