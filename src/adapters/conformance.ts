@@ -55,6 +55,13 @@ export interface ConformanceFixtureSpec {
    *     instance methods, top-level def, module functions — emit LSP
    *     kind 6 and map to "method". Parallel to classSymbol
    *     class-or-interface flexibility for languages that distinguish.)
+   *     Name match accepts exact OR name-with-open-paren prefix; the
+   *     C# adapter encodes parameter lists into method symbol names
+   *     per Roslyn-overload-disambiguation convention (e.g.,
+   *     `FormatGreeting(string name)`) and the spec stays readable
+   *     with just the bare name. Parallel discipline pattern to the
+   *     kind flexibility: cross-adapter conformance harness
+   *     accommodates language-structural-property divergence.
    *   - `referencedSymbol`: appears in `consumer` (for findReferences)
    */
   symbols: {
@@ -140,7 +147,20 @@ export function runConformanceSuite(
 
     it("listSymbols contains the fixture's function symbol with an accepted kind", async () => {
       const symbols = await adapter.listSymbols(sampleAbs);
-      const fn = symbols.find((s) => s.name === spec.symbols.functionSymbol);
+      // Name-format flexibility: the C# adapter encodes parameter
+      // lists into method symbol names per Roslyn-overload-
+      // disambiguation convention (e.g., `FormatGreeting(string name)`
+      // rather than `FormatGreeting`; csharp.ts §listSymbols). Accept
+      // either exact match or name-with-open-paren prefix so the
+      // fixture spec stays readable. Parallel discipline pattern to
+      // the kind flexibility below (Ruby Path β c54ff7c) — cross-
+      // adapter conformance harness accommodates language-structural-
+      // property divergence as a discipline pattern, not exception.
+      const fn = symbols.find(
+        (s) =>
+          s.name === spec.symbols.functionSymbol ||
+          s.name.startsWith(`${spec.symbols.functionSymbol}(`),
+      );
       expect(fn).toBeDefined();
       // Ruby's kind-6-uniform callable mapping means the adapter may
       // legitimately return "method" for what the fixture calls a
