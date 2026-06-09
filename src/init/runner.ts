@@ -52,6 +52,10 @@ import {
   type PromptArtifactCopyResult,
 } from "./prompt-artifact-copy.js";
 import { decideRoute, type Route } from "./routing.js";
+import {
+  copySkillArtifacts,
+  type SkillCopyResult,
+} from "./skill-copy.js";
 import { runSmokeTest } from "./smoke-test.js";
 import {
   renderSuccessMessage,
@@ -118,6 +122,13 @@ export interface InitRunOptions {
    * instead of resolving from import.meta.url. Per v0.7 Step 2.3.a.0.
    */
   readonly promptArtifactDistRootOverride?: string;
+  /**
+   * Test seam: override the Claude Code skill source directory (the
+   * package's root, parent of `.claude/skills/`). Lets unit tests
+   * point at a fixture directory instead of resolving from
+   * import.meta.url. Per v1.1.2 cohort-UX hotfix.
+   */
+  readonly skillPackageRootOverride?: string;
 }
 
 export interface InitRunResult {
@@ -264,6 +275,34 @@ export async function runInitSubcommand(
       { err: String(err) },
     );
   }
+
+  // v1.1.2 cohort-UX hotfix: install Claude Code skills into the user
+  // repo's `.claude/skills/` directory so /generate-adrs + /index-atlas
+  // + /prime-atlas slash commands are available at Claude Code session
+  // start. Surfaced at Travis cohort dogfood post-v1.1.0 publish when
+  // the skills weren't auto-installed (init only copied prompt
+  // artifacts; skills had to be manually copied from contextatlas dev
+  // workspace).
+  let skillCopyResult: SkillCopyResult | null = null;
+  try {
+    skillCopyResult = copySkillArtifacts({
+      configRoot: options.configRoot,
+      packageRootOverride: options.skillPackageRootOverride,
+    });
+    log.info(
+      `init: Claude Code skills installed at ${options.configRoot}/.claude/skills/`,
+      {
+        copied: skillCopyResult.copied.length,
+        preserved: skillCopyResult.preserved.length,
+      },
+    );
+  } catch (err) {
+    log.warn(
+      "init: failed to install Claude Code skills; /generate-adrs + /index-atlas + /prime-atlas slash commands may be unavailable",
+      { err: String(err) },
+    );
+  }
+
   // FO-3 fix (v0.7 Step 2.1.a): differentiate created vs preserved log
   // payloads. `languages` here is the filesystem-detected list — it
   // describes what init would write to a fresh scaffold. When init
