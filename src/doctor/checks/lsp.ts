@@ -20,6 +20,7 @@ import { spawnSync } from "node:child_process";
 import { createAdapter } from "../../adapters/registry.js";
 import type { LanguageCode } from "../../types.js";
 import type { CheckContext, DoctorCheck } from "../types.js";
+import { csharpEnvironmentChecks } from "./csharp-environment.js";
 import { rubyEnvironmentChecks } from "./ruby-environment.js";
 import { findSampleSymbol } from "./sample-symbol.js";
 
@@ -60,7 +61,9 @@ function checkExecutable(lang: LanguageCode, repoRoot: string): DoctorCheck[] {
   // dependencies resolved via require.resolve from main repo's
   // node_modules; Go uses PATH-resolved gopls binary; Ruby
   // dispatches to the 10-check ruby-environment substrate per
-  // ADR-21 §Install Pattern + v0.9 Substep 5.2.
+  // ADR-21 §Install Pattern + v0.9 Substep 5.2; C# dispatches to
+  // the 4-check csharp-environment substrate per ADR-22 §Install
+  // Pattern + v1.1 Substep 5.2.
   if (lang === "typescript") {
     out.push(resolveNodeBin("typescript", "typescript-language-server/lib/cli.mjs"));
   } else if (lang === "python") {
@@ -69,6 +72,8 @@ function checkExecutable(lang: LanguageCode, repoRoot: string): DoctorCheck[] {
     out.push(resolvePathBin("go"));
   } else if (lang === "ruby") {
     out.push(...rubyEnvironmentChecks(repoRoot));
+  } else if (lang === "csharp") {
+    out.push(...csharpEnvironmentChecks(repoRoot));
   }
   return out;
 }

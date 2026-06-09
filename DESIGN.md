@@ -1,15 +1,15 @@
 # ContextAtlas: Design Document
 
 **Status:** v0.9.0 shipped 2026-05-16; v1.0 public launch substrate
-complete. Four-language baseline (TypeScript / Python / Go / Ruby);
-three-language benchmark substrate (hono / httpx / cobra) validated
-via Phase 5–10 reference runs in the
+complete. Five-language baseline (TypeScript / Python / Go / Ruby /
+C#); three-language benchmark substrate (hono / httpx / cobra)
+validated via Phase 5–10 reference runs in the
 [benchmarks repo](https://github.com/traviswye/ContextAtlas-benchmarks).
 Architectural reference, not a scope document — cycle-by-cycle
 narrative at [`docs/release-history.md`](docs/release-history.md);
 version-arc context in [`ROADMAP.md`](ROADMAP.md); current-cycle
 anchor at [`v1_1-HANDOFF.md`](v1_1-HANDOFF.md).
-**Last Updated:** 2026-05-18
+**Last Updated:** 2026-06-09
 **Scope:** Core architecture. Most sections apply across versions;
 adapter lineup and scope-gate lists are refreshed as versions
 advance.
@@ -353,6 +353,7 @@ constant in `src/types.ts`:
 | `python`       | `py`       |
 | `go`           | `go`       |
 | `ruby`         | `rb`       |
+| `csharp`       | `cs`       |
 
 Adding a language adapter adds an entry to `LANG_CODES`. Changing an
 existing short code is a breaking change requiring a major version bump.
@@ -385,6 +386,7 @@ languages:
   - python
   - go
   - ruby
+  - csharp
 adrs:
   path: docs/adr/
   format: markdown-frontmatter
@@ -865,7 +867,7 @@ languages can be added without modifying core.
 
 ```typescript
 interface LanguageAdapter {
-  language: string;                    // "typescript", "python", "go", "ruby"
+  language: string;                    // "typescript", "python", "go", "ruby", "csharp"
   extensions: string[];                // [".ts", ".tsx"]
 
   // Enumerate all exported symbols in a file
@@ -904,16 +906,27 @@ direct gem install); declaration-parse fallback for type
 relationships; graceful rails-boot degradation when `ruby-lsp-rails`
 is unavailable. Ruby 3.3+ required, 4.0+ recommended.
 
-**Future (by demand):** .NET (OmniSharp), Java (Eclipse JDT LS), Rust
-(rust-analyzer), Kotlin (kotlin-language-server). Each is a separate
-contributor-friendly surface because the adapter interface is
-stable — see [ROADMAP.md](ROADMAP.md) §v1.1+ priorities for the
-post-launch adapter-expansion direction.
+**Shipped in v1.1:** C# / .NET (via `csharp-ls`, a Roslyn LSP
+wrapper, [ADR-22](docs/adr/ADR-22-csharp-adapter-roslyn.md)) —
+five-language baseline established at v1.1.0. ADR-22 documents the
+csharp-ls-specific decisions: pull-model diagnostics
+(`textDocument/diagnostic` requests parallel to ruby-lsp); File-
+kind-1 wrapper skip at documentSymbol top level (C#-specific Roslyn
+shape); Roslyn-overload-disambiguation symbol name convention
+(parameter list encoded into method names); native Windows PATH
+enrichment for `%USERPROFILE%\.dotnet\tools`. .NET SDK 8 minimum,
+10+ recommended.
+
+**Future (by demand):** Java (Eclipse JDT LS), Rust (rust-analyzer),
+Kotlin (kotlin-language-server). Each is a separate contributor-
+friendly surface because the adapter interface is stable — see
+[ROADMAP.md](ROADMAP.md) §v1.1+ priorities for the post-launch
+adapter-expansion direction.
 
 ## Scope Gates (as of v1.0)
 
 **In scope:**
-- TypeScript, Python, Go, and Ruby language adapters
+- TypeScript, Python, Go, Ruby, and C# / .NET language adapters
 - All three MCP tools: `get_symbol_context` (primitive),
   `find_by_intent` and `impact_of_change` (thin composites over the
   primitive)
@@ -946,8 +959,8 @@ post-launch adapter-expansion direction.
 - VS Code extension
 
 **Deliberately deferred (demand-driven):**
-- Additional language adapters beyond TS / Python / Go / Ruby —
-  Rust, .NET, Java, Kotlin (v1.1+ priorities per ROADMAP;
+- Additional language adapters beyond TS / Python / Go / Ruby / C# —
+  Rust, Java, Kotlin (v1.1+ priorities per ROADMAP;
   contributor-friendly surface per `docs/language-adapter-guide.md`)
 - Non-markdown intent formats (RST, asciidoc, etc.)
 - Graph clustering and architectural visualization

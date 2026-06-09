@@ -19,7 +19,9 @@
     "python",
     "go",
     "ruby",
-    "rails"
+    "rails",
+    "csharp",
+    "dotnet"
   ],
   "author": "Travis Wye",
   "license": "MIT",

@@ -308,22 +308,22 @@ describe("detectLanguagesFromFilesystem (v0.6 Step 4.3 / Q4.3.3 lock)", () => {
     expect(detectLanguagesFromFilesystem(tmpRoot)).toEqual([]);
   });
 
-  it("returns detected langs filtered to LanguageCode subset (typescript / python / go)", async () => {
+  it("returns detected langs filtered to LanguageCode subset (typescript / python / go / csharp)", async () => {
     await writeFile(path.join(tmpRoot, "a.ts"), "//", "utf8");
     await writeFile(path.join(tmpRoot, "b.py"), "#", "utf8");
     await writeFile(path.join(tmpRoot, "c.go"), "package x", "utf8");
+    await writeFile(path.join(tmpRoot, "d.cs"), "//", "utf8");
     const detected = detectLanguagesFromFilesystem(tmpRoot);
     expect(detected).toEqual(
-      expect.arrayContaining(["typescript", "python", "go"]),
+      expect.arrayContaining(["typescript", "python", "go", "csharp"]),
     );
   });
 
-  it("excludes javascript / rust / java / csharp from output (LanguageCode subset filter)", async () => {
+  it("excludes javascript / rust / java from output (LanguageCode subset filter)", async () => {
     await writeFile(path.join(tmpRoot, "a.ts"), "//", "utf8");
     await writeFile(path.join(tmpRoot, "b.js"), "//", "utf8"); // javascript — excluded
     await writeFile(path.join(tmpRoot, "c.rs"), "//", "utf8"); // rust — excluded
     await writeFile(path.join(tmpRoot, "d.java"), "//", "utf8"); // java — excluded
-    await writeFile(path.join(tmpRoot, "e.cs"), "//", "utf8"); // csharp — excluded
     const detected = detectLanguagesFromFilesystem(tmpRoot);
     expect(detected).toEqual(["typescript"]);
   });

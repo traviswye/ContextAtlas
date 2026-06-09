@@ -59,7 +59,7 @@ ContextAtlas implements signal fusion across four layers, each deterministic and
 | 3. Architectural | Intent, constraints, decisions — "why this code exists" | ADRs, design docs, PR descriptions, commit messages |
 | 4. Version history | Change patterns, hotness, co-change — "what moves together" | `git log` extraction, analyzed at index time |
 
-¹ Per-language adapter. Additional adapters (Go, Rust, C#, etc.) are representative future scope, not committed; each would ship in its own version.
+¹ Per-language adapter. Additional adapters (Rust, Java, Kotlin, etc.) are representative future scope, not committed; each would ship in its own version.
 
 Layer 1 provides correctness — the LSP truth of the code as it exists. Layer 2 provides conceptual bridging — connecting queries to code by similarity rather than keyword match. Layer 3 provides intent — why this code exists and what constraints govern it. Layer 4 provides recency and change patterns — what moves together, what's hot, what's been touched recently. The LLM handles reasoning and explanation; the layers handle structure and facts.
 
@@ -1041,8 +1041,9 @@ users running Codex or local LLM substrates against the same MCP
 query surface.
 
 **3. Additional language adapter expansion.** Rust (rust-analyzer),
-Java (Eclipse JDT LS), C# / .NET (OmniSharp), Kotlin
-(kotlin-language-server). The `LanguageAdapter` interface
+Java (Eclipse JDT LS), Kotlin (kotlin-language-server). C# / .NET
+shipped at v1.1 via `csharp-ls` (Roslyn LSP wrapper, [ADR-22](docs/adr/ADR-22-csharp-adapter-roslyn.md)).
+The `LanguageAdapter` interface
 ([ADR-03](docs/adr/ADR-03-language-adapter-plugin.md)) is small and
 stable; each new adapter is an additive contribution, not a core
 change. No ADR amendment required for additive adapter ships.

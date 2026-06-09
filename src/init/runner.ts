@@ -456,7 +456,7 @@ function renderRouteMessage(route: Route): string {
         "",
         "Next steps:",
         "",
-        "  1. Add code (TypeScript / Python / Go / Ruby supported).",
+        "  1. Add code (TypeScript / Python / Go / Ruby / C# supported).",
         "  2. Create README + DESIGN.md (architectural narrative",
         "     substantively improves generate-adrs output quality).",
         "  3. Generate ADRs:",

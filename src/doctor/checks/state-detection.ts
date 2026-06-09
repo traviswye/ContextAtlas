@@ -82,6 +82,7 @@ const ATLAS_SUPPORTED_LANGUAGES: ReadonlySet<LanguageCode> = new Set<LanguageCod
   "python",
   "go",
   "ruby",
+  "csharp",
 ]);
 
 // ---------------------------------------------------------------------------
@@ -518,8 +519,8 @@ function countWords(content: string): number {
  */
 /**
  * Returns ContextAtlasConfig-supported languages detected in the
- * filesystem (typescript / python / go / ruby subset per
- * LanguageCode union; filters out javascript/rust/java/csharp from
+ * filesystem (typescript / python / go / ruby / csharp subset per
+ * LanguageCode union; filters out javascript/rust/java from
  * LANGUAGE_EXTENSIONS map). Pure helper — no config required;
  * avoids chicken-and-egg with config setup at runner Step 4.3
  * sequence per Q4.3.3 + Q4.3.4 locks.

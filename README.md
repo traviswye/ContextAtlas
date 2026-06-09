@@ -15,6 +15,7 @@ benchmark axes** on architectural prompts across the hono / httpx / cobra benchm
 ![Python](https://img.shields.io/badge/Python-3776AB?style=flat&logo=python&logoColor=white)
 ![Go](https://img.shields.io/badge/Go-00ADD8?style=flat&logo=go&logoColor=white)
 ![Ruby](https://img.shields.io/badge/Ruby-CC342D?style=flat&logo=ruby&logoColor=white)
+![C#](https://img.shields.io/badge/C%23-239120?style=flat&logo=csharp&logoColor=white)
 ![MIT](https://img.shields.io/badge/License-MIT-blue.svg)
 
 </div>
@@ -230,8 +231,8 @@ straight about it. Where we differ:
 
 - **LSP-grounded vs. heuristic-extracted.** ContextAtlas delegates all
   structural questions to the language server (tsserver, Pyright,
-  gopls, ruby-lsp). Graphify derives structure via parsing and
-  extraction.
+  gopls, ruby-lsp, csharp-ls). Graphify derives structure via parsing
+  and extraction.
 - **Pre-composed bundles vs. graph primitives.** ContextAtlas's MCP
   tools return fused bundles in one call. Graphify exposes graph
   operations (`graph_query`, `get_neighbors`, `shortest_path`) that
@@ -332,7 +333,7 @@ Five layers, each with one job:
 1. **MCP interface.** `get_symbol_context`, `find_by_intent`, and
    `impact_of_change` tools exposed to Claude.
 2. **Query fusion.** Composes results from signal sources per query.
-3. **Signal sources.** LSP (via tsserver/Pyright/gopls/ruby-lsp),
+3. **Signal sources.** LSP (via tsserver/Pyright/gopls/ruby-lsp/csharp-ls),
    intent registry (from SQLite), git, tests.
 4. **Extraction pipeline.** Opus 4.7 reads prose docs and emits
    structured claims keyed to symbols.
@@ -442,6 +443,13 @@ and docstring sources skip; only changed sources re-extracted.
     false` under `group :development`). Rails projects additionally
     benefit from `ruby-lsp-rails` 0.4.x. Ruby 3.3+ required (4.0+
     recommended).
+  - **C# / .NET** — `csharp-ls` 0.24.x on the PATH (Roslyn LSP
+    wrapper). Install via `dotnet tool install --global csharp-ls`.
+    .NET SDK 8 minimum (10+ recommended; matches cohort backend
+    pin). On Windows, the `%USERPROFILE%\.dotnet\tools` directory
+    must be on PATH — the adapter enriches PATH automatically for
+    Bash/Git-Bash where the SDK installer only configures
+    PowerShell.
 
 ### Path A — Claude Code Skills (60 seconds, no API key)
 
@@ -549,6 +557,7 @@ languages:
   - python
   - go
   - ruby
+  - csharp
 adrs:
   path: docs/adr/
   format: markdown-frontmatter
@@ -664,7 +673,7 @@ v0.9.1 tag.
 - Semantic embedding layer for `find_by_intent` (evidence-gated)
 - Task-shaped bundle queries: `why_does_this_fail`,
   `onboard_to_feature`, `audit_change`
-- Additional language adapters by demand: Rust, C#, Java, Kotlin
+- Additional language adapters by demand: Rust, Java, Kotlin
 - Non-markdown intent sources: RST, AsciiDoc
 
 For detailed milestone arc and per-cycle scope:
@@ -685,6 +694,7 @@ the contributor onboarding walkthrough.
 | Python | `PyrightAdapter` | Pyright | v0.1 |
 | Go | `GoAdapter` | gopls | v0.2 |
 | Ruby | `RubyAdapter` | ruby-lsp (+ ruby-lsp-rails) | v0.9 |
+| C# / .NET | `CsharpAdapter` | csharp-ls (Roslyn) | v1.1 |
 
 ## Contributing
 
@@ -720,6 +730,7 @@ ContextAtlas uses:
 - Pyright for Python symbol resolution
 - gopls for Go symbol resolution
 - ruby-lsp for Ruby symbol resolution
+- csharp-ls for C# / .NET symbol resolution (Roslyn LSP wrapper)
 - better-sqlite3 for the index store
 - @modelcontextprotocol/sdk for MCP server implementation
 
