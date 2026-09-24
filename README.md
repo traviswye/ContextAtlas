@@ -732,7 +732,7 @@ ContextAtlas uses:
 - ruby-lsp for Ruby symbol resolution
 - csharp-ls for C# / .NET symbol resolution (Roslyn LSP wrapper)
 - better-sqlite3 for the index store
-- @modelcontextprotocol/sdk for MCP server implementation
+- @modelcontextprotocol/server (MCP TypeScript SDK v2) for MCP server implementation
 
 ## License
 

@@ -1364,3 +1364,184 @@ historical record per v0.5 + v0.6 + v0.7 inheritance discipline.
   record reference location: this amendment. v0.8 Step 1.1.c
   progress log captures cycle-discipline observation 16
   alongside 15 at Step 1.1.b empirical reference.
+
+- **2026-09-24** — v1.2 Phase 0 SDK-currency amendment
+  (`@anthropic-ai/sdk` ^0.32.0 → ^0.128.0). The load-bearing
+  invariants are unchanged: the query-time invariant, the
+  entry-point-determined cost model, and the frozen extraction
+  substrate. The extraction request body is still exactly
+  `{ model, max_tokens, messages }`, with no `thinking` field and no
+  sampling params; claude-opus-4-7 accepts that form as is. Earlier
+  entries above stay as the historical record. This entry
+  supersedes the specific parameters and pointers named below.
+
+  **(a) CLI generate-adrs β-1 thinking re-expression.** The
+  2026-05-12 Step 2.4.a β-1 parameter
+  `thinking: { type: "enabled", budget_tokens: 32_000 }` is rejected
+  by claude-opus-4-7 with HTTP 400. Anthropic's Opus 4.7 migration
+  guidance removes `budget_tokens` in favour of adaptive thinking plus
+  an effort level. `src/generation/generators/anthropic-api-direct.ts`
+  now calls:
+
+  ```ts
+  anthropic.messages.stream({
+    model: GENERATION_MODEL,
+    max_tokens: GENERATION_MAX_TOKENS, // 64000, unchanged
+    messages: [{ role: "user", content: fullPrompt }],
+    thinking: { type: "adaptive" },
+    output_config: { effort: "xhigh" },
+  }).finalMessage();
+  ```
+
+  - **Same effort level as the Skill.** The CLI now runs at the same
+    `xhigh` effort the `/generate-adrs` Skill pins in its frontmatter
+    (`effort: xhigh`). In v0.7 the β-1 inline code comment described
+    the CLI's 32k budget as only "substantively similar" to that
+    effort level.
+  - **Streamed.** SDK 0.128.0 refuses, client-side, a non-streaming
+    request whose `max_tokens` implies more than 10 minutes
+    (`calculateNonstreamingTimeout`; the threshold is about 21.3k
+    tokens). `finalMessage()` returns the same `Message` shape, and
+    `extractTextFromResponse` still skips thinking blocks.
+  - **Shared budget and truncation guard.** Adaptive thinking and the
+    ADR JSON share the 64000-token `max_tokens`. A `stop_reason` of
+    `"max_tokens"` or `"model_context_window_exceeded"` now raises an
+    actionable truncation error: no ADRs are written, and the tokens
+    billed are reported. Before, it surfaced as a generic JSON-parse
+    failure.
+  - **Interrupted streams.** A transport drop mid-stream, or a stream
+    that ends before `message_stop`, surfaces as a non-HTTP
+    `AnthropicError`. It is mapped to an "interrupted, no ADRs
+    written, re-run" message.
+  - **Retries and atomicity.** The generator has no retry wrapper and
+    keeps the SDK default of 2 retries. They cover only failures
+    before the stream starts. A mid-stream failure is not retried,
+    per Lock 2 atomic single-call.
+  - **Superseded matrix row.** The 2026-05-12 substrate-equivalence
+    matrix row "Extended thinking | `effort: xhigh` frontmatter |
+    `thinking: { type: "enabled", budget_tokens: 32_000 }` (β-1) |
+    EQUIVALENT" is superseded by:
+
+    | Substrate layer | Skill | CLI | Status |
+    |---|---|---|---|
+    | Thinking / effort | `effort: xhigh` frontmatter | `thinking: { type: "adaptive" }` + `output_config: { effort: "xhigh" }` (streamed) | EQUIVALENT (same `xhigh` effort level at the API-parameter layer) |
+
+    The other matrix rows are unchanged. The Framing 1 "CLI
+    single-shot" description ("extended thinking enabled (32k
+    budget)") now reads as one streamed API call with adaptive
+    thinking at `xhigh` effort. The multi-step-vs-single-shot
+    architectural difference stands as acknowledged.
+  - **Not yet live-verified.** No live API call has been made against
+    the new request form. Verification rests on SDK 0.128.0 typings,
+    stubbed-fetch SSE tests
+    (`anthropic-api-direct.stream.test.ts`) and the migration
+    guidance. A one-shot live `generate-adrs` smoke run is an open
+    v1.2 follow-up.
+
+  **(b) SDK version pointer.** The 2026-05-12 note ("SDK 0.27.3
+  type-cast workaround … v0.8+ SDK upgrade to `^0.32.0` candidate
+  retained for canonical typed surface") is superseded.
+  - v0.8 moved to `^0.32.0` (resolved 0.32.1). The v0.8 Step 4.1
+    finding was that 0.32.x still did not type `thinking`, so the
+    cast stayed.
+  - At `^0.128.0` (resolved 0.128.0), the SDK types both
+    `ThinkingConfigAdaptive` and `output_config.effort` including
+    `"xhigh"`. The `as Anthropic.Messages.MessageCreateParamsNonStreaming`
+    cast is removed.
+  - The β-1 source assertions in `src/generation/cli-runner.test.ts`
+    now check the streamed call body. They require
+    `thinking: { type: "adaptive" }`, `output_config: { effort:
+    "xhigh" }`, no `budget_tokens` and no cast.
+
+  **(c) Error-class import rule.** Modules permitted to import
+  `@anthropic-ai/sdk` import its error classes from the package root
+  (`"@anthropic-ai/sdk"`), never from `"@anthropic-ai/sdk/error.js"`.
+  - **Why.** The package's `exports["./error.js"]` maps to the
+    CommonJS build. Its classes are different objects from those the
+    ESM client throws, so `instanceof` never matched a runtime error
+    (dual-package hazard). Through v1.1.3 this silently disabled two
+    things:
+    1. **Wrapper retries.** The extraction and judge wrapper retries
+       were dead code. The SDK's own internal retries were the only
+       live layer.
+    2. **generate-adrs error mapping.** Auth failures never became
+       `GenerationSetupError` (exit 2 per ADR-12), and the 400 / 429 /
+       connection remediation messages never fired.
+  - **Where the logic lives.** Classification and backoff now live in
+    `src/extraction/retry-policy.ts`. `src/grading/retry-policy.ts` is
+    a local duplicate, kept per the 2026-04-30 intent that
+    `src/grading/` does not import from `src/extraction/`.
+  - **Two recognition paths.**
+    1. Class identity.
+    2. A shape fallback for errors thrown by another SDK copy, such as
+       the benchmarks repo's own 0.32.1 client passed into
+       `createExtractionClient`. It matches a numeric `status`, or the
+       constructor names `APIConnectionError` /
+       `APIConnectionTimeoutError`.
+  - **Regression guard.** Tests assert class-identity recognition
+    (`apiErrorOrigin(err) === "sdk-class"`). They were mutation-checked
+    to fail if the import reverts to `error.js`.
+
+  **(d) Retry ownership.** The extraction wrapper
+  (`createExtractionClient`) and the judge wrapper (`createJudgeClient`)
+  are each the single retry layer.
+  - **No stacked retries.** Every `messages.create` goes out with the
+    SDK per-request option `{ maxRetries: 0 }`, so the SDK never
+    retries underneath the wrapper. The option is honored by SDK
+    0.128.0 and by the 0.32.x clients that callers such as the
+    benchmarks repo pass in. The extractor's own client is also built
+    with `maxRetries: 0`.
+  - **Wrapper defaults.** 3 retries, 1000 ms base backoff, 30 000 ms
+    cap per step.
+  - **Retry decision.** It follows SDK 0.128.0 `shouldRetry`:
+    - An explicit `x-should-retry: true|false` response header wins.
+    - Otherwise 408, 409, 429, 5xx (including 529) and
+      connection/timeout errors retry.
+    - 408 and 409 were previously classified as fail by the wrapper.
+  - **Retry delay.**
+    - `retry-after-ms` takes precedence over `retry-after` (seconds).
+      Both are read from SDK 0.128.0's web `Headers` or from a plain
+      header record.
+    - A zero or negative value falls back to exponential backoff.
+    - Where it still differs from the SDK: server delays are capped at
+      `maxBackoffMs`, the HTTP-date form is not parsed, and there is
+      no jitter.
+  - **Worst case per call.** 4 attempts, the wrapper's, where it was
+    the SDK's 3 while the wrapper was dead code. There is no stacking.
+
+  **(e) Single-credential clients.** SDK 0.128.0 sends
+  `ANTHROPIC_AUTH_TOKEN` from the environment as a Bearer header
+  alongside `x-api-key` unless `authToken` is `null`. Both clients
+  ContextAtlas constructs in `src/` pass `authToken: null`:
+  - the extractor: `new Anthropic({ apiKey, authToken: null,
+    maxRetries: 0 })`
+  - the generator: `new Anthropic({ apiKey, authToken: null })`
+
+  This preserves the 0.32.x behavior, where an explicit API key sent
+  `x-api-key` only. The judge wrapper receives its client from the
+  caller. The dev-only `scripts/*.mjs` harnesses that construct
+  `new Anthropic()` do not pass `authToken: null`; that is an open
+  follow-up.
+
+  **(f) Permitted-modules gap (recorded, not changed).** §Decision
+  item 1 and the §Consequences grep rule name only `src/extraction/`
+  and `src/grading/` as permitted to import `@anthropic-ai/sdk`. The
+  generator client in (e),
+  `src/generation/generators/anthropic-api-direct.ts`, has imported
+  it since v0.7 Step 2.2.a.2 (commit `6813eb5`, 2026-05-11), and no
+  later permitted-modules extension names it, so that grep returns one
+  match. The generator is index-time only (`contextatlas
+  generate-adrs`), so the query-time invariant is not affected. This
+  entry leaves the rule text as written; extending the permitted list
+  to cover `src/generation/` is an open ADR decision.
+
+  **Cross-references:**
+  - `docs/cycles/v1_2/v1.2-SCOPE.md` §3 Phase 0 (scope, outcome and
+    gate evidence)
+  - ADR-19 2026-09-24 amendment (judge temperature omitted for
+    claude-opus-4-7)
+  - `CHANGELOG.md` [Unreleased]
+  - The dogfood `.contextatlas/atlas.json` still carries claims
+    extracted from the 2026-05-12 entry (the β-1 `budget_tokens`
+    parameter and the SDK cast rationale). They stay stale until a
+    re-index, which costs money on the CLI path and needs approval.

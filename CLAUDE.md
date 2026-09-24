@@ -21,7 +21,7 @@ These are decisions already made. Do not relitigate them.
 - **Language:** TypeScript (Node 20+). No Python or Go in the server code
   itself — those are supported as *target languages* via language adapters,
   not as implementation languages.
-- **Dependencies:** Minimize. Required: `@modelcontextprotocol/sdk`,
+- **Dependencies:** Minimize. Required: `@modelcontextprotocol/server`,
   `@anthropic-ai/sdk`, `better-sqlite3`, a YAML parser, a glob library.
   Do not add state management libraries, ORMs, or HTTP frameworks.
 - **`typescript-language-server` placement:** User-provided, not a
@@ -39,7 +39,20 @@ These are decisions already made. Do not relitigate them.
   above, and cleaner control over subprocess lifecycle.
 - **Storage:** SQLite via `better-sqlite3`. Single file. No Postgres, no
   Redis, no external services.
-- **MCP SDK:** `@modelcontextprotocol/sdk`. Follow their patterns.
+- **MCP SDK:** `@modelcontextprotocol/server` (TypeScript SDK v2 split
+  package), pinned to an exact version (currently `2.1.0`). Replaced
+  the monolithic `@modelcontextprotocol/sdk` at v1.2 Phase 0 (v1.x
+  pulls express/hono transitively; v2 runtime tree is ~3 packages).
+  Use the low-level `Server` with hand-written JSON Schema tool
+  definitions; zod is transitive only and must not be imported
+  (importing it would make it a direct dependency). The
+  `@modelcontextprotocol/client` + `core` packages are test-only
+  devDependencies. Follow their patterns.
+- **Anthropic SDK error classes:** import from the package root
+  (`"@anthropic-ai/sdk"`), never `"@anthropic-ai/sdk/error.js"`. That
+  subpath resolves to the CJS build, so `instanceof` never matches
+  the errors the ESM client throws. Through v1.1.x this silently
+  disabled every wrapper retry. See ADR-02 2026-09-24 amendment.
 - **Output format:** Compact text by default, JSON available via input
   parameter. Compact format is defined in DESIGN.md.
 - **Symbol ID format:** `sym:<lang-short-code>:<path>:<name>` (see
@@ -580,10 +593,16 @@ at rich-skill/.
 
 CLI `contextatlas generate-adrs` path post-Step-2.4.a: substrate-
 equivalent at API-parameter + mechanical-floor-enforcement layers
-(extended thinking enabled via `thinking: { type: "enabled",
-budget_tokens: 32_000 }`; auto-invoke `validate-adrs` post-
-generation with structured remediation; closes audit-surfaced
-substrate-equivalence gaps per Travis Lock 1 + Option β scope).
+(adaptive thinking at the Skill's effort level via
+`thinking: { type: "adaptive" }` + `output_config: { effort:
+"xhigh" }`, streamed via `messages.stream().finalMessage()`,
+`max_tokens` 64000 shared by thinking + output; auto-invoke
+`validate-adrs` post-generation with structured remediation;
+closes audit-surfaced substrate-equivalence gaps per Travis Lock 1
++ Option β scope). The original Step 2.4.a form
+`thinking: { type: "enabled", budget_tokens: 32_000 }` is rejected
+with HTTP 400 by claude-opus-4-7 and was re-expressed at v1.2
+Phase 0 (ADR-02 2026-09-24 amendment).
 
 **Architectural framing — Phase A multi-step vs single-shot
 (Travis Framing 1 honest-scope-acknowledgment):** CLI and Skill
@@ -591,8 +610,8 @@ paths produce ADRs that pass the same canonical depth-floor
 invariants via mechanical `validate-adrs` enforcement at both
 surfaces. Their reasoning regimes differ architecturally:
 
-- CLI single-shot: one Anthropic API call with extended thinking
-  enabled (32k budget); model receives codebase inventory +
+- CLI single-shot: one Anthropic API call with adaptive thinking at
+  effort `xhigh` (streamed); model receives codebase inventory +
   optional reference context + prompt in one input; produces ADRs
   in one response. Investigation discipline bound by prompt text
   + validate-adrs canonical-depth-floor mechanical enforcement.

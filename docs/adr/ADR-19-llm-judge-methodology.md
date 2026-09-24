@@ -154,6 +154,17 @@ surface them, not an edge case).
 > execution-time discipline governing versioned cost-priors
 > snapshot consumption.
 
+> **Amended 2026-09-24 (v1.2 Phase 0):** judge request
+> configuration for the escalation model. claude-opus-4-7 rejects
+> non-default sampling params with HTTP 400. Anthropic's Opus 4.7
+> migration guidance says requests carrying `temperature` / `top_p` /
+> `top_k` return 400; the SDK 0.128.0 typings add that `temperature`
+> 1.0 (and `top_p` ≥ 0.99) is still accepted for backwards
+> compatibility. The judge's `temperature: 0` is rejected, so Opus 4.7
+> judge calls omit `temperature` and run at the model's default
+> sampling. The Sonnet 4.6 default judge still sends
+> `temperature: 0`. See Revision history for details.
+
 **Single-judge: Claude Sonnet 4.6 default; Opus 4.7 escalation
 backup if Step 6 calibration fails Travis-intuition correlation
 (per `v0.5-SCOPE.md` §7.1.1).** Cross-vendor panel (Claude +
@@ -688,3 +699,40 @@ source files.
   shipped with placeholder; separate backfill commit replaces
   placeholder with actual SHA per chicken-and-egg-avoidance
   pattern).
+
+- **2026-09-24** — v1.2 Phase 0 amendment: §2 judge request
+  configuration for the Opus 4.7 escalation path.
+  - **Opus 4.7 omits `temperature`.** claude-opus-4-7 returns HTTP
+    400 for non-default sampling params. Anthropic's Opus 4.7
+    migration guidance says requests carrying `temperature`, `top_p`
+    or `top_k` return 400. The SDK 0.128.0 typings are narrower:
+    `temperature` 1.0 and `top_p` ≥ 0.99 are still accepted for
+    backwards compatibility, and any `top_k` is rejected. No live call
+    was made to check either. `src/grading/judge-client.ts` sent
+    `temperature` (default 0) on every call, so any §2 escalation to
+    `OPUS_47_MODEL` at the default would have failed on the first
+    grade call. The 400 classifies as fail, not retry. The judge now
+    leaves
+    `temperature` out for models in `MODELS_REJECTING_SAMPLING_PARAMS`,
+    currently `{ claude-opus-4-7 }`, and they run at the model's
+    default sampling.
+  - **Sonnet 4.6 is unchanged.** The default judge still sends
+    `temperature: 0` (`DEFAULT_JUDGE_TEMPERATURE`).
+  - **Where the temperature-0 config lives.** §2 itself never stated
+    a temperature. The temperature-0 "deterministic-where-possible"
+    config is documented in the `judge-client.ts` header.
+  - **Methodology consequence.** If escalation fires, within-judge
+    consistency (§5 (a)) on Opus 4.7 is measured under default
+    sampling. It is not directly comparable with Sonnet 4.6
+    temperature-0 runs; report the two separately.
+  - **No existing results affected.** The in-repo grading harnesses
+    (`scripts/v0.5-step2-probe.mjs`, `v0.5-step6-within-judge.mjs`,
+    `v0.5-step8-grading-harness.mjs`, `v0.6-step5.3-grading-harness.mjs`)
+    all use the Sonnet 4.6 default, so no recorded run went through
+    the Opus escalation path.
+  - **Tests.** Stub-level and SDK wire-level tests cover both models,
+    including a configured `temperature` with Opus 4.7 as the default
+    model.
+  - Same-phase changes to judge retries (the wrapper is the single
+    retry layer; error-class identity fix) are recorded in the
+    ADR-02 2026-09-24 amendment.

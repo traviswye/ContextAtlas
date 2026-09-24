@@ -29,6 +29,142 @@ load-bearing empirical findings).
 - Historical cycle docs migrated from repo root to `docs/cycles/v0_X/`
   subdirectories with cross-reference sweep across README / DESIGN /
   ROADMAP — v0.9.1 Stream B.1.
+- `@anthropic-ai/sdk` `^0.32.0` → `^0.128.0`, resolving to 0.128.0
+  (v1.2 Phase 0).
+  - The extraction request body is unchanged: `{ model, max_tokens,
+    messages }`, with no thinking and no sampling params.
+  - The API clients ContextAtlas builds pass `authToken: null`.
+    Without it, SDK 0.128.0 would send an `ANTHROPIC_AUTH_TOKEN` from
+    the environment as a Bearer header next to `x-api-key`; 0.32.x
+    did not.
+- MCP dependency (v1.2 Phase 0): `@modelcontextprotocol/sdk` `^0.5.0`
+  is replaced by the v2 split package `@modelcontextprotocol/server`,
+  pinned exactly to `2.1.0`. `@modelcontextprotocol/client` and
+  `@modelcontextprotocol/core` `2.1.0` are added as test-only
+  devDependencies.
+  - The low-level `Server` and the hand-written JSON Schema tool
+    definitions are kept. `tools/list` output is byte-identical to
+    0.5.0, and zod stays a transitive dependency only.
+  - v2 was chosen over `@modelcontextprotocol/sdk` 1.x. 1.x installs
+    express, hono, cors and other HTTP-framework packages as hard
+    dependencies; v2 does not.
+- MCP protocol negotiation (v1.2 Phase 0). The server now echoes the
+  client's requested protocol version when it is one the SDK supports
+  (2024-10-07 through 2025-11-25: 2024-10-07, 2024-11-05, 2025-03-26,
+  2025-06-18, 2025-11-25). SDK 0.5.0 supported only 2024-11-05 and
+  2024-10-07: it echoed 2024-10-07 and answered 2024-11-05 to every
+  other request.
+  - An unsupported version gets 2025-11-25. That includes 2026-07-28
+    sent through a plain `initialize`.
+  - The 2026-07-28 protocol era (`server/discover`) is not served yet:
+    `server/discover` returns -32601, and a client pinned to
+    2026-07-28 fails to negotiate. Clients that open with
+    `initialize` negotiate normally; that is Claude Code's default for
+    stdio servers.
+- MCP error responses (v1.2 Phase 0):
+  - JSON-RPC `error.message` no longer starts with
+    `MCP error -326xx: `. Error codes are unchanged. SDK 0.x clients,
+    which add their own prefix, now show it once instead of twice.
+  - A malformed `tools/call` (missing `name`, `arguments` not an
+    object) now returns -32602 `Invalid tools/call request: …`
+    instead of -32603.
+  - Tool results with `isError` serialize as `{content, isError}`
+    instead of `{isError, content}`. The meaning is the same.
+- MCP stdio lifecycle (v1.2 Phase 0). When the client closes stdin,
+  the server now shuts down and exits 0; it used to keep running.
+  Requests still in flight at that point are aborted and not answered.
+- MCP startup logging to stderr (v1.2 Phase 0):
+  - `MCP protocol version: X` is now `MCP SDK max supported protocol
+    version: X (negotiated version is logged when a client
+    initializes)`.
+  - A new `MCP client initialized (negotiated protocol version: V)`
+    line is logged per client.
+  - A warning is logged if `notifications/initialized` arrives without
+    a successful handshake.
+- Retries for extraction and LLM-judge calls (v1.2 Phase 0):
+  - The ContextAtlas wrapper is now the only retry layer. Each request
+    is sent with the SDK option `maxRetries: 0`, so SDK retries never
+    stack under it. Before, only the SDK's internal retries were live
+    (see Fixed).
+  - Retry decisions follow SDK 0.128.0: an `x-should-retry` response
+    header wins; otherwise 408, 409, 429, 5xx and connection errors
+    retry.
+  - The default is 3 retries, so a call makes at most 4 attempts
+    instead of the SDK's 3.
+  - `Retry-After` / `retry-after-ms` is honored, capped at 30 s by
+    default. The HTTP-date form is not parsed. Backoff has no jitter.
+- `contextatlas generate-adrs` error handling (v1.2 Phase 0):
+  - Authentication failures (401/403) now exit 2 (setup error, per
+    ADR-12) instead of 1.
+  - New actionable errors for a truncated response
+    (`stop_reason` `max_tokens` / `model_context_window_exceeded`) and
+    for an interrupted response stream.
+  - Other API errors now include the error `type`. Only transient ones
+    (no status, 408, 409, 5xx) advise re-running. A 404 points at
+    model availability, a 413 at narrowing the input, and other 4xx
+    say that re-running will not help.
+- `npm run build` now deletes `dist/` before compiling (v1.2
+  Phase 0), so compiled modules whose sources were removed can no
+  longer survive a rebuild or reach the tarball. A type error does
+  not leave `dist/` empty: `noEmitOnError` is off, so `tsc` still
+  emits the JavaScript before exiting non-zero, and the build then
+  skips prompt-artifact generation.
+
+### Removed
+
+- The `@modelcontextprotocol/sdk` 0.5.0 dependency tree (v1.2
+  Phase 0).
+- The `node-fetch` / `formdata-node` chain of `@anthropic-ai/sdk`
+  0.32.x, which goes with the SDK upgrade (v1.2 Phase 0). This removes:
+  - the `node-domexception` deprecation warning at `npm install`;
+  - the Node 22 `punycode` (DEP0040) deprecation warning at startup.
+
+### Fixed
+
+- Anthropic SDK error classes were imported from
+  `@anthropic-ai/sdk/error.js`, which resolves to the SDK's CommonJS
+  build (v1.2 Phase 0). `instanceof` therefore never matched the
+  errors the ESM client actually throws. Through 1.1.3 this meant:
+  - the extraction and judge wrappers never retried;
+  - `generate-adrs` never mapped API errors to its remediation
+    messages.
+
+  Error classes are now imported from the package root. Errors thrown
+  by another SDK copy are also recognized, by HTTP status or
+  connection-error class name.
+- `contextatlas generate-adrs` sent
+  `thinking: { type: "enabled", budget_tokens: 32000 }`, which
+  claude-opus-4-7 rejects with HTTP 400 (v1.2 Phase 0).
+  - It now sends `thinking: { type: "adaptive" }` +
+    `output_config: { effort: "xhigh" }` over a streaming request.
+    `max_tokens` is unchanged at 64000.
+  - That is the same effort level the `/generate-adrs` Skill pins.
+    See the ADR-02 2026-09-24 amendment.
+- LLM-judge calls on claude-opus-4-7, the ADR-19 §2 escalation model,
+  sent `temperature`, 0 by default (v1.2 Phase 0). That model rejects
+  non-default sampling params with HTTP 400; per the SDK 0.128.0
+  typings, only `temperature: 1.0` is still accepted, for backwards
+  compatibility. `temperature` is now omitted for Opus 4.7; the
+  Sonnet 4.6 default judge keeps `temperature: 0`.
+- Retry-After delays are now read from SDK 0.128.0's web `Headers`
+  objects as well as plain header records (v1.2 Phase 0). After the
+  SDK upgrade, bracket access would have silently dropped the delay.
+- The published npm tarball carried orphaned compiled modules whose
+  sources were removed in v0.7 (v1.2 Phase 0):
+  `dist/extraction/cli-show-prompt.*` and
+  `dist/generation/cli-show-generate-prompt.*`. The clean build drops
+  them.
+
+### Security
+
+- Removing `@modelcontextprotocol/sdk` 0.5.0 clears
+  GHSA-w48q-cv73-mx4w (v1.2 Phase 0). That advisory covers DNS
+  rebinding protection not being enabled by default in versions
+  < 1.24.0. It concerns the HTTP transports; ContextAtlas is
+  stdio-only.
+- An in-range lockfile refresh moves `brace-expansion` 5.0.7 → 5.0.12,
+  pulled in via `glob` → `minimatch` (v1.2 Phase 0). This clears
+  GHSA-mh99-v99m-4gvg and GHSA-rgw5-rvv9-x895.
 
 ## [0.9.0] - 2026-05-16
 

@@ -519,3 +519,32 @@ bugs:
   11 items, the response is `McpError InvalidParams`, not "first
   10 served, 11th dropped." Silent truncation is a contract
   hazard; explicit error is the cleaner failure mode.
+
+## Revision history
+
+- **2026-09-24** — v1.2 Phase 0 amendment: MCP SDK v2 error names.
+  ContextAtlas moved from `@modelcontextprotocol/sdk` 0.5.0 to the v2
+  split package `@modelcontextprotocol/server` 2.1.0. The error class
+  is renamed; the contract is unchanged.
+  - **Names.** §2 cites `McpError` with a JSON-RPC `InvalidParams`
+    error, and §Consequences (e) and §Non-goals cite
+    `McpError InvalidParams`. In code these were SDK 0.5.0's
+    `McpError` + `ErrorCode.InvalidParams`; they are now
+    `ProtocolError` + `ProtocolErrorCode.InvalidParams`, both
+    imported from `@modelcontextprotocol/server`.
+  - **Unchanged.** The cap is still enforced in `parseSymbolInput`
+    (`src/mcp/handlers/get-symbol-context.ts`), with the same trigger
+    (11+ items) and the same protocol-level JSON-RPC error code
+    `-32602`, distinct from per-symbol failure (§5).
+  - **Wire-visible change.** The JSON-RPC `error.message` no longer
+    starts with `MCP error -32602: `; 0.5.0's `McpError` constructor
+    added that prefix. The message now carries only the handler text,
+    e.g. `get_symbol_context: 'symbol' array exceeds 10-item cap (got
+    11). Split into multiple calls.` Callers should match on
+    `error.code`, not on message text.
+  - **Tests.** The §Consequences (e) cap-enforcement test titles in
+    `src/mcp/server.test.ts` now name `ProtocolError InvalidParams
+    (-32602)`.
+  - **Stale atlas claims.** Claims in the dogfood
+    `.contextatlas/atlas.json` that quote "McpError InvalidParams" stay
+    as they are until the next re-index.

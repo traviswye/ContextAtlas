@@ -538,14 +538,20 @@ The `contextatlas generate-adrs` path (v0.7) uses different reasoning
 discipline. ADR generation is the foundational substrate the entire
 atlas builds on — atlas quality is bounded by ADR quality. Per the
 deliberate quality-cost trade-off in CLAUDE.md "Generation cost
-framing," the CLI generate-adrs path uses extended thinking with a
-32k token budget (v0.7 Step 2.4.a β-1) to support investigative-
+framing," the CLI generate-adrs path uses adaptive thinking at
+`xhigh` effort (`thinking: { type: "adaptive" }` +
+`output_config: { effort: "xhigh" }`, streamed via
+`messages.stream().finalMessage()`, `max_tokens` 64000 shared by
+thinking and the ADR JSON) to support investigative-
 depth-per-decision-candidate workflow with canonical depth-floor
-mechanical enforcement via `validate-adrs`. The Skill `/generate-adrs`
-path achieves comparable depth via Claude Code's session-bounded
-reasoning at xhigh effort (SKILL.md frontmatter pin). Generation
-cost expectation: $5-15 per repo, one-time. See ADR-02 v0.7
-amendment for the substrate-equivalence framing across both paths.
+mechanical enforcement via `validate-adrs`. This re-expresses v0.7
+Step 2.4.a β-1 (extended thinking, 32k `budget_tokens`), which
+claude-opus-4-7 rejects with HTTP 400; see the ADR-02 2026-09-24
+amendment. The Skill `/generate-adrs` path runs at the same xhigh
+effort level via Claude Code's session-bounded reasoning (SKILL.md
+frontmatter pin). Generation cost expectation: $5-15 per repo,
+one-time. See ADR-02 v0.7 amendment for the substrate-equivalence
+framing across both paths.
 
 **Stage 4 — Symbol resolution.** Resolve fuzzy symbol_candidates to canonical
 symbol IDs via the LSP inventory. Exact matches are linked; ambiguous matches
@@ -1011,6 +1017,15 @@ Sub-100ms per `get_symbol_context` call on typical hardware.
   cheaper than cold-start scaffolding. Typical incremental refresh
   $0.20–1 per run per ADR-12 SHA-diff substrate; unchanged ADR and
   docstring sources skip; only changed sources re-extracted.
+- **Generate-adrs thinking configuration (v1.2 Phase 0).** The CLI's
+  v0.7 32k thinking budget above is replaced by adaptive thinking at
+  `xhigh` effort, the same effort level the Skill pins, because
+  claude-opus-4-7 rejects `budget_tokens` (ADR-02 2026-09-24
+  amendment). Thinking is no longer capped at 32k; it shares the
+  whole 64000-token `max_tokens` with the ADR JSON. The $5–15 v0.7
+  expectation has not been re-derived for this configuration: no
+  live CLI `generate-adrs` run has been made on it yet, and the
+  pre-flight estimator does not model thinking tokens.
 
 ## Benchmark Methodology (Summary)
 
