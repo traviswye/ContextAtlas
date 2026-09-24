@@ -19,13 +19,15 @@ import { cpSync, existsSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join as pathJoin, resolve as pathResolve } from "node:path";
 
-import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
+import {
+  Client,
+  type JSONRPCMessage,
+  type Transport,
+} from "@modelcontextprotocol/client";
 import {
   CallToolResultSchema,
   ListToolsResultSchema,
-  type JSONRPCMessage,
-} from "@modelcontextprotocol/sdk/types.js";
+} from "@modelcontextprotocol/core";
 import {
   afterAll,
   afterEach,
@@ -34,6 +36,7 @@ import {
   describe,
   expect,
   it,
+  vi,
 } from "vitest";
 
 const FIXTURE_SRC = pathResolve("test/fixtures/server-binary");
@@ -112,6 +115,29 @@ class TestSubprocessTransport implements Transport {
   async send(message: JSONRPCMessage): Promise<void> {
     if (!this.child?.stdin) throw new Error("Transport not started");
     this.child.stdin.write(JSON.stringify(message) + "\n");
+  }
+
+  /**
+   * Half-close the child's stdin (EOF — what an MCP client does first
+   * at shutdown) and resolve with the exit code once the process
+   * exits, or `null` if it is still running after `timeoutMs`.
+   */
+  async endStdinAndWaitForExit(timeoutMs: number): Promise<number | null> {
+    const child = this.child;
+    if (!child) throw new Error("Transport not started");
+    if (child.exitCode !== null) return child.exitCode;
+    return await new Promise<number | null>((resolve) => {
+      const onExit = (code: number | null): void => {
+        clearTimeout(timer);
+        resolve(code);
+      };
+      const timer = setTimeout(() => {
+        child.off("exit", onExit);
+        resolve(null);
+      }, timeoutMs);
+      child.once("exit", onExit);
+      child.stdin?.end();
+    });
   }
 
   /**
@@ -221,11 +247,33 @@ describe("MCP server binary smoke test", () => {
     ]);
   });
 
+  it("logs the SDK max protocol version at startup and the negotiated version once the client initializes", async () => {
+    // The v2 Client used here requests 2025-11-25; SDK v2 echoes it
+    // (0.5.0 always answered 2024-11-05). The startup line is the SDK
+    // ceiling only — the per-client line is what was negotiated. Both
+    // go to stderr; stdout carries only JSON-RPC.
+    await vi.waitFor(
+      () => {
+        expect(transport.stderrBuffer).toMatch(
+          /MCP client initialized \(negotiated protocol version: 2025-11-25\)/,
+        );
+      },
+      { timeout: 5_000, interval: 25 },
+    );
+    const stderr = transport.stderrBuffer;
+    expect(stderr).toMatch(
+      /MCP SDK max supported protocol version: \d{4}-\d{2}-\d{2}/,
+    );
+    expect(stderr).toMatch(
+      /"clientName":"smoke-test-client","clientVersion":"0\.0\.1"/,
+    );
+  });
+
   it("get_symbol_context returns a bundle for a known symbol", async () => {
     // SmokeTestSymbol is defined in the fixture atlas.json. This is
     // the canary for the "server not initialized" regression: if
     // the binary didn't wire runtime context, the handler would
-    // throw McpError and this call would reject.
+    // throw ProtocolError and this call would reject.
     const result = await client.request(
       {
         method: "tools/call",
@@ -539,4 +587,97 @@ describe("MCP server binary with --config (ADR-08 runtime)", () => {
     const stderr = transport.stderrBuffer;
     expect(stderr).toMatch(/Loaded config at .*[\\/]my-config\.yml\b/);
   });
+});
+
+// ---------------------------------------------------------------------------
+// Stdio lifecycle (MCP SDK v2). The v2 StdioServerTransport closes itself
+// when stdin reaches EOF; index.ts wires server.onclose to the same
+// run-once teardown as SIGINT/SIGTERM so the process exits instead of
+// lingering on the language-server child. (SDK 0.5.0 ignored EOF and
+// never exited.) Requests still in flight at EOF are aborted by the SDK
+// and not answered — clients keep stdin open until they have read
+// their responses.
+// ---------------------------------------------------------------------------
+
+describe("MCP server binary stdio lifecycle (SDK v2)", () => {
+  let fixtureRoot: string;
+  let transport: TestSubprocessTransport;
+
+  beforeEach(() => {
+    fixtureRoot = mkdtempSync(pathJoin(tmpdir(), "ca-smoke-life-"));
+    cpSync(FIXTURE_SRC, fixtureRoot, { recursive: true });
+    transport = new TestSubprocessTransport(
+      process.execPath,
+      [DIST_ENTRY],
+      fixtureRoot,
+    );
+  });
+
+  afterEach(async () => {
+    await transport.close();
+    rmWithRetry(fixtureRoot);
+  });
+
+  it("exits cleanly (code 0, full teardown) when the client closes stdin after initialize", async () => {
+    const client = new Client(
+      { name: "eof-client", version: "0.0.1" },
+      { capabilities: {} },
+    );
+    await client.connect(transport);
+    // One round-trip so the server is demonstrably serving before EOF.
+    const tools = await client.request(
+      { method: "tools/list" },
+      ListToolsResultSchema,
+    );
+    expect(tools.tools).toHaveLength(3);
+
+    const exitCode = await transport.endStdinAndWaitForExit(15_000);
+    expect(exitCode).toBe(0);
+    expect(transport.stderrBuffer).toMatch(
+      /Received stdin EOF \/ transport close, shutting down/,
+    );
+    // Teardown ran exactly once. (The run-once guard itself matters on
+    // the SIGINT/SIGTERM path, where shutdown's server.close() fires
+    // onclose; child.kill() on Windows is not a catchable signal, so
+    // that path is not exercised here.)
+    expect(
+      transport.stderrBuffer.match(/shutting down/g) ?? [],
+    ).toHaveLength(1);
+  }, 30_000);
+
+  it("warns instead of logging 'MCP client initialized' when notifications/initialized follows a failed initialize", async () => {
+    const received: JSONRPCMessage[] = [];
+    transport.onmessage = (m) => received.push(m);
+    await transport.start();
+
+    // clientInfo is required — the SDK rejects this initialize.
+    await transport.send({
+      jsonrpc: "2.0",
+      id: 1,
+      method: "initialize",
+      params: { protocolVersion: "2025-11-25", capabilities: {} },
+    });
+    await vi.waitFor(
+      () => {
+        expect(received.some((m) => "id" in m && m.id === 1)).toBe(true);
+      },
+      { timeout: 15_000, interval: 25 },
+    );
+    const reply = received.find((m) => "id" in m && m.id === 1);
+    expect(reply !== undefined && "error" in reply).toBe(true);
+
+    await transport.send({
+      jsonrpc: "2.0",
+      method: "notifications/initialized",
+    });
+    await vi.waitFor(
+      () => {
+        expect(transport.stderrBuffer).toMatch(
+          /notifications\/initialized without a successful initialize handshake/,
+        );
+      },
+      { timeout: 5_000, interval: 25 },
+    );
+    expect(transport.stderrBuffer).not.toMatch(/MCP client initialized/);
+  }, 30_000);
 });

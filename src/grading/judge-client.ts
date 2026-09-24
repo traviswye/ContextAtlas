@@ -18,32 +18,39 @@
  * (one score set vs two).
  *
  * Temperature is set to 0 by default (ADR-19 §2 deterministic-where-
- * possible config). Note: temperature 0 is approximately-deterministic,
- * not strictly so — LLM stochasticity persists in tie-breaks. The
- * within-judge consistency check (ADR-19 §5 (a)) is the empirical
- * reliability measurement. If Anthropic adds a seed parameter before
- * Step 6 calibration, switch to seeded mode and reduce within-judge
- * regrade substrate (10 → 5) since determinism becomes guaranteed.
+ * possible config) for models that accept sampling parameters (the
+ * Sonnet 4.6 default judge). Models in
+ * MODELS_REJECTING_SAMPLING_PARAMS (Opus 4.7: non-default
+ * `temperature` / `top_p` / `top_k` return a 400) are called WITHOUT
+ * `temperature`, so the Opus 4.7 escalation path runs with the
+ * model's default sampling.
+ * Note: temperature 0 is approximately-deterministic, not strictly
+ * so — LLM stochasticity persists in tie-breaks. The within-judge
+ * consistency check (ADR-19 §5 (a)) is the empirical reliability
+ * measurement. If Anthropic adds a seed parameter before Step 6
+ * calibration, switch to seeded mode and reduce within-judge regrade
+ * substrate (10 → 5) since determinism becomes guaranteed.
+ *
+ * Retry ownership: this wrapper is the single retry layer. Every
+ * request goes out with the SDK per-request option `{ maxRetries: 0 }`
+ * so SDK-internal retries (default 2) never stack underneath the
+ * wrapper's `maxRetries`, whatever the caller's client was built with.
  *
  * This module deliberately does NOT import from src/extraction/
  * (per ADR-02 amendment intent — research-time modules independent).
  * The retry loop, classifyError, and backoff helpers are duplicated
- * locally rather than shared.
+ * locally rather than shared (`./retry-policy.ts` is the local copy
+ * of the extraction retry policy).
  */
 
 import type Anthropic from "@anthropic-ai/sdk";
-import {
-  APIConnectionError,
-  APIError,
-  AuthenticationError,
-  BadRequestError,
-  NotFoundError,
-  PermissionDeniedError,
-  RateLimitError,
-  UnprocessableEntityError,
-} from "@anthropic-ai/sdk/error.js";
 
 import { computeCostUsd } from "./pricing.js";
+import {
+  classifyApiError,
+  computeBackoffMs,
+  type RetryClassification,
+} from "./retry-policy.js";
 import type {
   AxisName,
   AxisScore,
@@ -66,30 +73,33 @@ export const DEFAULT_MAX_RETRIES = 3;
 export const DEFAULT_BASE_BACKOFF_MS = 1_000;
 export const DEFAULT_MAX_BACKOFF_MS = 30_000;
 
+/**
+ * Judge models that reject sampling parameters: the API returns a 400
+ * when `temperature`, `top_p` or `top_k` is sent (claude-api model-
+ * migration guide, Opus 4.7 breaking changes). The SDK 0.128.0
+ * typings note that `temperature` 1.0 and `top_p` >= 0.99 are still
+ * accepted for backwards compatibility; the judge's default of 0 is
+ * not. `temperature` is omitted from requests to these models.
+ */
+export const MODELS_REJECTING_SAMPLING_PARAMS: ReadonlySet<ModelId> =
+  new Set<ModelId>([OPUS_47_MODEL]);
+
 // ============================================================================
 // Error classification — local copy per ADR-02 amendment intent
 // ============================================================================
 
-export type RetryClassification = "retry" | "fail";
+export type { RetryClassification };
 
+/**
+ * Retry: 429, 408, 409, 5xx (incl. 529), connection errors/timeouts.
+ * Fail: 400/401/403/404/422 and other statuses, and anything that is
+ * not an Anthropic API error. An explicit `x-should-retry` response
+ * header overrides the status rules (as in the SDK). Errors from
+ * another copy of the SDK are classified by shape (see
+ * `./retry-policy.ts`).
+ */
 export function classifyError(err: unknown): RetryClassification {
-  if (
-    err instanceof AuthenticationError ||
-    err instanceof PermissionDeniedError ||
-    err instanceof BadRequestError ||
-    err instanceof NotFoundError ||
-    err instanceof UnprocessableEntityError
-  ) {
-    return "fail";
-  }
-  if (err instanceof RateLimitError) return "retry";
-  if (err instanceof APIConnectionError) return "retry";
-  if (err instanceof APIError) {
-    return typeof err.status === "number" && err.status >= 500
-      ? "retry"
-      : "fail";
-  }
-  return "fail";
+  return classifyApiError(err);
 }
 
 // ============================================================================
@@ -201,11 +211,22 @@ export interface JudgeClient {
 }
 
 export interface CreateJudgeClientOptions {
+  /**
+   * SDK client (or a structurally compatible one). Its own retry
+   * setting is overridden per request with `maxRetries: 0`; retries
+   * are governed solely by `maxRetries` below.
+   */
   anthropic: Anthropic;
   defaultModel?: ModelId;
+  /** Max retry attempts for retryable errors. Default: 3. */
   maxRetries?: number;
   baseBackoffMs?: number;
   maxBackoffMs?: number;
+  /**
+   * Sampling temperature. Default: 0 (ADR-19 §2). Sent only to models
+   * that accept sampling parameters; ignored (not sent) for models in
+   * MODELS_REJECTING_SAMPLING_PARAMS, e.g. Opus 4.7.
+   */
   temperature?: number;
   maxTokens?: number;
   /** For tests — inject a fake sleep. Default: real setTimeout. */
@@ -234,12 +255,19 @@ export function createJudgeClient(
     // eslint-disable-next-line no-constant-condition
     while (true) {
       try {
-        const response = await anthropic.messages.create({
-          model,
-          max_tokens: maxTokens,
-          temperature,
-          messages: [{ role: "user", content: userMessage }],
-        });
+        const response = await anthropic.messages.create(
+          {
+            model,
+            max_tokens: maxTokens,
+            ...(MODELS_REJECTING_SAMPLING_PARAMS.has(model)
+              ? {}
+              : { temperature }),
+            messages: [{ role: "user", content: userMessage }],
+          },
+          // Client-side SDK option (not sent on the wire): the wrapper
+          // owns retries — see module JSDoc.
+          { maxRetries: 0 },
+        );
         if (response.stop_reason === "max_tokens") {
           throw new JudgeParseError(
             "judge response hit max_tokens; output likely truncated",
@@ -260,7 +288,7 @@ export function createJudgeClient(
         if (classification === "fail") throw err;
         attempt++;
         if (attempt > maxRetries) throw err;
-        const backoff = computeBackoff(
+        const backoff = computeBackoffMs(
           attempt,
           baseBackoffMs,
           maxBackoffMs,
@@ -305,28 +333,6 @@ function formatSingleMessage(req: SingleGradeRequest): string {
 
 function formatPairMessage(req: PairGradeRequest): string {
   return `${req.rubricPrompt}\n\nPrompt:\n${req.prompt}\n\nAnswer A:\n${req.answerA}\n\nAnswer B:\n${req.answerB}\n`;
-}
-
-function computeBackoff(
-  attempt: number,
-  baseMs: number,
-  maxMs: number,
-  err: unknown,
-): number {
-  if (err instanceof APIError && err.headers) {
-    const retryAfter = readRetryAfter(err.headers);
-    if (retryAfter !== null) return Math.min(retryAfter * 1000, maxMs);
-  }
-  return Math.min(baseMs * Math.pow(2, attempt - 1), maxMs);
-}
-
-function readRetryAfter(headers: unknown): number | null {
-  if (!headers || typeof headers !== "object") return null;
-  const h = headers as Record<string, string | undefined>;
-  const raw = h["retry-after"] ?? h["Retry-After"];
-  if (!raw) return null;
-  const parsed = Number(raw);
-  return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
 }
 
 function defaultSleep(ms: number): Promise<void> {

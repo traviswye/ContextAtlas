@@ -77,8 +77,11 @@ describe("GENERATION_MODEL + constants (v0.7 Step 2.2.a.2)", () => {
     expect(GENERATION_MODEL).toBe("claude-opus-4-7");
   });
 
-  it("specifies generous max output tokens for 5-30 ADRs", () => {
-    expect(GENERATION_MAX_TOKENS).toBeGreaterThanOrEqual(32_000);
+  it("specifies generous max output tokens for 5-30 ADRs (>= 64k floor for effort xhigh)", () => {
+    // The CLI call runs adaptive thinking at effort "xhigh"; thinking
+    // and output share max_tokens, and the claude-api migration guide
+    // says to start xhigh/max at >= 64k.
+    expect(GENERATION_MAX_TOKENS).toBeGreaterThanOrEqual(64_000);
   });
 
   it("REFERENCE_CONTEXT_TOKEN_WARNING_THRESHOLD locked at 500k per Lock 1", () => {

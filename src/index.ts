@@ -30,8 +30,8 @@ import { existsSync, mkdirSync, readFileSync } from "node:fs";
 import { dirname, join, resolve as pathResolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { LATEST_PROTOCOL_VERSION } from "@modelcontextprotocol/sdk/types.js";
+import { LATEST_PROTOCOL_VERSION } from "@modelcontextprotocol/server";
+import { StdioServerTransport } from "@modelcontextprotocol/server/stdio";
 
 import { createAdapter } from "./adapters/registry.js";
 import { HELP_TEXT, parseArgs } from "./cli-args.js";
@@ -246,7 +246,14 @@ export async function main(): Promise<void> {
   }
 
   log.info(`ContextAtlas v${version} starting`);
-  log.info(`MCP protocol version: ${LATEST_PROTOCOL_VERSION}`);
+  // LATEST_PROTOCOL_VERSION is the SDK's ceiling for the initialize
+  // handshake, NOT the version any given client ends up on — the
+  // server echoes the client's requested version when it is supported.
+  // The negotiated value is logged per client in `oninitialized` below.
+  log.info(
+    `MCP SDK max supported protocol version: ${LATEST_PROTOCOL_VERSION} ` +
+      "(negotiated version is logged when a client initializes)",
+  );
   log.info(`Config root: ${configRoot}`);
 
   // 1. Load config. When --config is passed, loadConfig resolves it
@@ -397,14 +404,50 @@ export async function main(): Promise<void> {
 
   log.info(`Registered tools: ${TOOLS.map((t) => t.name).join(", ")}`);
 
-  const transport = new StdioServerTransport();
-  await server.connect(transport);
+  // Fires on `notifications/initialized`, i.e. once the handshake has
+  // completed and the negotiated version is fixed. getClientVersion /
+  // getNegotiatedProtocolVersion are @deprecated in SDK v2 in favour of
+  // the per-request `ctx.mcpReq.envelope` used by 2026-07-28-era
+  // requests; this hand-wired stdio server only serves the 2025-era
+  // initialize handshake, for which the SDK documents both accessors as
+  // returning the initialize-scoped values. Revisit if the entry point
+  // moves to serveStdio. Client-supplied name/version go in the
+  // JSON-encoded meta so they cannot inject raw text into the log line.
+  //
+  // The SDK dispatches `notifications/initialized` even when the
+  // preceding initialize request failed (e.g. invalid clientInfo), in
+  // which case no version was negotiated. Log that as a warning rather
+  // than a misleading success line.
+  server.oninitialized = () => {
+    const clientInfo = server.getClientVersion();
+    const clientMeta = {
+      clientName: clientInfo?.name ?? null,
+      clientVersion: clientInfo?.version ?? null,
+    };
+    const negotiated = server.getNegotiatedProtocolVersion();
+    if (negotiated === undefined) {
+      log.warn(
+        "MCP client sent notifications/initialized without a successful " +
+          "initialize handshake (no protocol version negotiated)",
+        clientMeta,
+      );
+      return;
+    }
+    log.info(
+      `MCP client initialized (negotiated protocol version: ${negotiated})`,
+      clientMeta,
+    );
+  };
 
-  log.info("Server ready — awaiting MCP client connection on stdio");
-
-  // 7. Shutdown closes the server, adapters, and DB cleanly.
-  const shutdown = (signal: string): void => {
-    log.info(`Received ${signal}, shutting down`);
+  // 7. Shutdown closes the server, adapters, and DB cleanly. Run-once:
+  //    a signal-driven shutdown calls server.close(), which closes the
+  //    transport and fires server.onclose (below) — the guard keeps
+  //    that second entry from re-running the teardown.
+  let shuttingDown = false;
+  const shutdown = (reason: string): void => {
+    if (shuttingDown) return;
+    shuttingDown = true;
+    log.info(`Received ${reason}, shutting down`);
     (async () => {
       await server
         .close()
@@ -425,6 +468,20 @@ export async function main(): Promise<void> {
   };
   process.on("SIGINT", () => shutdown("SIGINT"));
   process.on("SIGTERM", () => shutdown("SIGTERM"));
+
+  // SDK v2's StdioServerTransport closes itself when stdin reaches EOF
+  // (or a stdout write fails) and fires onclose; requests still in
+  // flight at that point are aborted and NOT answered (SDK-documented;
+  // 0.5.0 ignored EOF and answered them). Without this hook the process
+  // would linger after the client hung up — the language-server child
+  // keeps the event loop alive. Exiting here follows the MCP stdio
+  // lifecycle (client closes stdin, then waits for the server to exit).
+  server.onclose = () => shutdown("stdin EOF / transport close");
+
+  const transport = new StdioServerTransport();
+  await server.connect(transport);
+
+  log.info("Server ready — awaiting MCP client connection on stdio");
 }
 
 main().catch((err: unknown) => {

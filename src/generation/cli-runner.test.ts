@@ -78,10 +78,10 @@ describe("runGenerateAdrsSubcommand (Step 2.2.a.2 full implementation)", () => {
   });
 
   it("propagates --yes / skipConfirmation flag to generator context", async () => {
-    // With skipConfirmation: true + no real API key, the generator
-    // will reach the API call which will fail (test API key). Verify
-    // the runner doesn't try to invoke the confirmation prompt; exit
-    // code is 1 (pipeline error from invalid API key) not 2.
+    // With skipConfirmation: true + a bogus API key, the generator
+    // reaches the (real, network-hitting) API call, which fails.
+    // Verify the runner doesn't try to invoke the confirmation prompt.
+    // The exit code depends on connectivity (see the assertion below).
     await writeMinimalConfig();
     let stderrOutput = "";
     // confirmProceed deliberately throws — if runner invokes it
@@ -99,10 +99,12 @@ describe("runGenerateAdrsSubcommand (Step 2.2.a.2 full implementation)", () => {
         stderrOutput += c;
       },
     });
-    // Generator reaches API call with bogus key → mapped to error
-    // → exit code 1 (pipeline failure) per ADR-12 distinction.
-    // OR exit code 2 if Anthropic SDK throws AuthenticationError
-    // which we re-classify as GenerationSetupError.
+    // Online: the API answers 401 → SDK AuthenticationError → mapped
+    // to GenerationSetupError → exit code 2 (ADR-12 setup failure).
+    // (Before the v1.2 error-import fix the mapping never matched, so
+    // this was exit 1.) Offline: APIConnectionError after the SDK's
+    // default connect-phase retries → generic Error → exit code 1
+    // (pipeline failure).
     expect([1, 2]).toContain(result.exitCode);
     // Confirmation prompt was never invoked (no stderr message about
     // it; confirmProceed-as-throw would have surfaced as caught error).
@@ -177,27 +179,48 @@ Supporting rationale:
   the canonical constructor.
 `;
 
-describe("Step 2.4.a β-1 source content assertions (extended thinking enabled at CLI)", () => {
-  it("anthropic-api-direct.ts contains the thinking parameter literal", async () => {
-    const source = await readFile(
+/**
+ * β-1 (CLI thinking-layer equivalence with the Skill's `effort: xhigh`)
+ * re-expressed at v1.2 for SDK 0.128.0 + claude-opus-4-7: adaptive
+ * thinking + output_config.effort "xhigh" on a streaming call.
+ * `thinking.type: "enabled"` + budget_tokens returns a 400 on Opus 4.7.
+ */
+describe("Step 2.4.a β-1 source content assertions (adaptive thinking, effort xhigh, streaming)", () => {
+  // Body of the `anthropic.messages.stream({...}).finalMessage()` call,
+  // whitespace-tolerant around the `.stream(` / `.finalMessage()` chain.
+  const STREAM_CALL =
+    /anthropic\.messages\s*\.stream\(([\s\S]*?)\)\s*\.finalMessage\(\)/m;
+
+  async function readGeneratorSource(): Promise<string> {
+    return readFile(
       path.join(__dirname, "generators", "anthropic-api-direct.ts"),
       "utf8",
     );
-    expect(source).toContain('thinking: { type: "enabled"');
-    expect(source).toContain("32_000");
+  }
+
+  it("anthropic-api-direct.ts calls messages.stream(...).finalMessage()", async () => {
+    const source = await readGeneratorSource();
+    expect(source).toMatch(/anthropic\.messages\s*\.stream\(/);
+    expect(STREAM_CALL.exec(source)).not.toBeNull();
+    // Non-streaming create() with 64k max_tokens is refused client-side
+    // by SDK 0.128.0 (>10 min expected duration).
+    expect(source).not.toMatch(/anthropic\.messages\s*\.create\(/);
   });
 
-  it("anthropic-api-direct.ts thinking parameter is passed to messages.create call", async () => {
-    const source = await readFile(
-      path.join(__dirname, "generators", "anthropic-api-direct.ts"),
-      "utf8",
-    );
-    // The thinking literal appears inside the messages.create call body
-    // (between the messages: line and the closing of the create call).
-    const createMatch = /anthropic\.messages\.create\([\s\S]*?\)/m.exec(source);
-    expect(createMatch).not.toBeNull();
-    expect(createMatch![0]).toContain('thinking');
-    expect(createMatch![0]).toContain("32_000");
+  it("the stream call carries adaptive thinking + effort xhigh and no budget_tokens", async () => {
+    const source = await readGeneratorSource();
+    const match = STREAM_CALL.exec(source);
+    expect(match).not.toBeNull();
+    const callBody = match![1]!;
+    expect(callBody).toContain('thinking: { type: "adaptive" }');
+    expect(callBody).toContain('output_config: { effort: "xhigh" }');
+    expect(callBody).toContain("model: GENERATION_MODEL");
+    expect(callBody).toContain("max_tokens: GENERATION_MAX_TOKENS");
+    expect(callBody).not.toContain("budget_tokens");
+    expect(callBody).not.toContain('type: "enabled"');
+    expect(callBody).not.toContain("temperature");
+    // No type cast on the params (SDK 0.128.0 types them natively).
+    expect(callBody).not.toMatch(/\bas\s+Anthropic\./);
   });
 });
 

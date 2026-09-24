@@ -43,7 +43,17 @@ export class AnthropicAPIDirectExtractor implements Extractor {
             "per ADR-02 v0.7 amendment.",
         );
       }
-      const anthropic = new Anthropic({ apiKey });
+      // authToken: null — authenticate with the API key only. SDK
+      // 0.128.0 otherwise reads ANTHROPIC_AUTH_TOKEN from the env and
+      // sends it as a Bearer header alongside x-api-key.
+      // maxRetries: 0 — createExtractionClient owns retries (it also
+      // disables SDK retries per request); set here too so this
+      // client can never add a second retry layer.
+      const anthropic = new Anthropic({
+        apiKey,
+        authToken: null,
+        maxRetries: 0,
+      });
       client = createExtractionClient({ anthropic });
     }
 

@@ -11,11 +11,11 @@
  */
 
 import {
-  ErrorCode,
-  McpError,
+  ProtocolError,
+  ProtocolErrorCode,
   type CallToolRequest,
   type CallToolResult,
-} from "@modelcontextprotocol/sdk/types.js";
+} from "@modelcontextprotocol/server";
 
 import { renderImpactCompact } from "../../formatters/compact.js";
 import { buildImpactBundle } from "../../queries/impact-of-change.js";
@@ -112,16 +112,16 @@ const ALL_SIGNAL_VALUES: readonly BundleSignal[] = [
 
 function parseArgs(rawArgs: unknown): ParsedArgs {
   if (!rawArgs || typeof rawArgs !== "object") {
-    throw new McpError(
-      ErrorCode.InvalidParams,
+    throw new ProtocolError(
+      ProtocolErrorCode.InvalidParams,
       "impact_of_change: missing arguments. Required: 'symbol'.",
     );
   }
   const args = rawArgs as Record<string, unknown>;
 
   if (typeof args.symbol !== "string" || args.symbol.trim().length === 0) {
-    throw new McpError(
-      ErrorCode.InvalidParams,
+    throw new ProtocolError(
+      ProtocolErrorCode.InvalidParams,
       "impact_of_change: 'symbol' must be a non-empty string (full ID or plain name).",
     );
   }
@@ -144,16 +144,16 @@ function parseArgs(rawArgs: unknown): ParsedArgs {
 
 function parseInclude(v: unknown): readonly BundleSignal[] {
   if (!Array.isArray(v)) {
-    throw new McpError(
-      ErrorCode.InvalidParams,
+    throw new ProtocolError(
+      ProtocolErrorCode.InvalidParams,
       "impact_of_change: 'include' must be an array of signal names.",
     );
   }
   const out: BundleSignal[] = [];
   for (const entry of v) {
     if (!ALL_SIGNAL_VALUES.includes(entry as BundleSignal)) {
-      throw new McpError(
-        ErrorCode.InvalidParams,
+      throw new ProtocolError(
+        ProtocolErrorCode.InvalidParams,
         `impact_of_change: unknown signal '${String(entry)}'. ` +
           `Valid: ${ALL_SIGNAL_VALUES.join(", ")}.`,
       );
@@ -166,8 +166,8 @@ function parseInclude(v: unknown): readonly BundleSignal[] {
 function parseFormat(v: unknown): "compact" | "json" {
   if (v === undefined) return "compact";
   if (v === "compact" || v === "json") return v;
-  throw new McpError(
-    ErrorCode.InvalidParams,
+  throw new ProtocolError(
+    ProtocolErrorCode.InvalidParams,
     `impact_of_change: 'format' must be 'compact' or 'json'; got ${String(v)}.`,
   );
 }

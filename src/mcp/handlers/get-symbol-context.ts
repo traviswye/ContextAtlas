@@ -28,11 +28,11 @@
  */
 
 import {
-  ErrorCode,
-  McpError,
+  ProtocolError,
+  ProtocolErrorCode,
   type CallToolRequest,
   type CallToolResult,
-} from "@modelcontextprotocol/sdk/types.js";
+} from "@modelcontextprotocol/server";
 
 import { renderCompact } from "../../formatters/compact.js";
 import {
@@ -407,8 +407,8 @@ const ALL_SIGNAL_VALUES: readonly BundleSignal[] = [
 
 function parseArgs(rawArgs: unknown): ParsedArgs {
   if (!rawArgs || typeof rawArgs !== "object") {
-    throw new McpError(
-      ErrorCode.InvalidParams,
+    throw new ProtocolError(
+      ProtocolErrorCode.InvalidParams,
       "get_symbol_context: missing arguments. Required: 'symbol'.",
     );
   }
@@ -431,8 +431,8 @@ function parseArgs(rawArgs: unknown): ParsedArgs {
   let query: string | undefined;
   if (args.query !== undefined) {
     if (typeof args.query !== "string") {
-      throw new McpError(
-        ErrorCode.InvalidParams,
+      throw new ProtocolError(
+        ProtocolErrorCode.InvalidParams,
         `get_symbol_context: 'query' must be a string when provided; got ${typeof args.query}.`,
       );
     }
@@ -463,6 +463,9 @@ function parseArgs(rawArgs: unknown): ParsedArgs {
  * 11+ at the protocol layer when callers respect the schema, but a
  * non-conforming caller could ship 11+ items past the schema, so the
  * handler re-checks. ADR-15 §2: "11+ items → McpError InvalidParams".
+ * (McpError/ErrorCode are the SDK 0.x names; under SDK v2 this is
+ * ProtocolError with ProtocolErrorCode.InvalidParams — same -32602
+ * JSON-RPC error code on the wire.)
  */
 function parseSymbolInput(raw: unknown): {
   symbols: string[];
@@ -470,8 +473,8 @@ function parseSymbolInput(raw: unknown): {
 } {
   if (typeof raw === "string") {
     if (raw.trim().length === 0) {
-      throw new McpError(
-        ErrorCode.InvalidParams,
+      throw new ProtocolError(
+        ProtocolErrorCode.InvalidParams,
         "get_symbol_context: 'symbol' must be a non-empty string (full ID or plain name).",
       );
     }
@@ -480,29 +483,29 @@ function parseSymbolInput(raw: unknown): {
 
   if (Array.isArray(raw)) {
     if (raw.length === 0) {
-      throw new McpError(
-        ErrorCode.InvalidParams,
+      throw new ProtocolError(
+        ProtocolErrorCode.InvalidParams,
         "get_symbol_context: 'symbol' array must contain at least one entry.",
       );
     }
     if (raw.length > MAX_SYMBOLS_PER_CALL) {
-      throw new McpError(
-        ErrorCode.InvalidParams,
+      throw new ProtocolError(
+        ProtocolErrorCode.InvalidParams,
         `get_symbol_context: 'symbol' array exceeds ${MAX_SYMBOLS_PER_CALL}-item cap (got ${raw.length}). Split into multiple calls.`,
       );
     }
     const trimmed: string[] = [];
     for (const entry of raw) {
       if (typeof entry !== "string") {
-        throw new McpError(
-          ErrorCode.InvalidParams,
+        throw new ProtocolError(
+          ProtocolErrorCode.InvalidParams,
           "get_symbol_context: every 'symbol' array entry must be a string.",
         );
       }
       const t = entry.trim();
       if (t.length === 0) {
-        throw new McpError(
-          ErrorCode.InvalidParams,
+        throw new ProtocolError(
+          ProtocolErrorCode.InvalidParams,
           "get_symbol_context: 'symbol' array entries must be non-empty after trimming whitespace.",
         );
       }
@@ -522,8 +525,8 @@ function parseSymbolInput(raw: unknown): {
     return { symbols: deduped, inputWasArray: true };
   }
 
-  throw new McpError(
-    ErrorCode.InvalidParams,
+  throw new ProtocolError(
+    ProtocolErrorCode.InvalidParams,
     "get_symbol_context: 'symbol' must be a non-empty string or array of strings.",
   );
 }
@@ -531,8 +534,8 @@ function parseSymbolInput(raw: unknown): {
 function parseDepth(v: unknown): BundleDepth {
   if (v === undefined) return "standard";
   if (v === "summary" || v === "standard" || v === "deep") return v;
-  throw new McpError(
-    ErrorCode.InvalidParams,
+  throw new ProtocolError(
+    ProtocolErrorCode.InvalidParams,
     `get_symbol_context: 'depth' must be one of summary, standard, deep; got ${String(v)}.`,
   );
 }
@@ -540,16 +543,16 @@ function parseDepth(v: unknown): BundleDepth {
 function parseInclude(v: unknown): readonly BundleSignal[] {
   if (v === undefined) return DEFAULT_SIGNALS;
   if (!Array.isArray(v)) {
-    throw new McpError(
-      ErrorCode.InvalidParams,
+    throw new ProtocolError(
+      ProtocolErrorCode.InvalidParams,
       "get_symbol_context: 'include' must be an array of signal names.",
     );
   }
   const out: BundleSignal[] = [];
   for (const entry of v) {
     if (!ALL_SIGNAL_VALUES.includes(entry as BundleSignal)) {
-      throw new McpError(
-        ErrorCode.InvalidParams,
+      throw new ProtocolError(
+        ProtocolErrorCode.InvalidParams,
         `get_symbol_context: unknown signal '${String(entry)}'. ` +
           `Valid: ${ALL_SIGNAL_VALUES.join(", ")}.`,
       );
@@ -562,8 +565,8 @@ function parseInclude(v: unknown): readonly BundleSignal[] {
 function parseMaxRefs(v: unknown): number {
   if (v === undefined) return 20;
   if (typeof v !== "number" || !Number.isInteger(v) || v < 0) {
-    throw new McpError(
-      ErrorCode.InvalidParams,
+    throw new ProtocolError(
+      ProtocolErrorCode.InvalidParams,
       `get_symbol_context: 'max_refs' must be a non-negative integer; got ${String(v)}.`,
     );
   }
@@ -573,8 +576,8 @@ function parseMaxRefs(v: unknown): number {
 function parseFormat(v: unknown): "compact" | "json" {
   if (v === undefined) return "compact";
   if (v === "compact" || v === "json") return v;
-  throw new McpError(
-    ErrorCode.InvalidParams,
+  throw new ProtocolError(
+    ProtocolErrorCode.InvalidParams,
     `get_symbol_context: 'format' must be 'compact' or 'json'; got ${String(v)}.`,
   );
 }

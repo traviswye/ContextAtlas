@@ -30,15 +30,18 @@
  * boundary is per-cycle, not per-substep.
  */
 
-import Anthropic from "@anthropic-ai/sdk";
-import {
+// Error classes come from the package ROOT: the
+// "@anthropic-ai/sdk/error.js" subpath resolves to the CommonJS build,
+// whose classes never match (instanceof) the errors the SDK throws.
+import Anthropic, {
+  AnthropicError,
   APIConnectionError,
   APIError,
   AuthenticationError,
   BadRequestError,
   PermissionDeniedError,
   RateLimitError,
-} from "@anthropic-ai/sdk/error.js";
+} from "@anthropic-ai/sdk";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { resolve as pathResolve } from "node:path";
 
@@ -175,37 +178,57 @@ export class AnthropicAPIDirectGenerator implements Generator {
     }`;
 
     const t0 = Date.now();
-    const anthropic = new Anthropic({ apiKey });
-    let response;
+    // authToken: null keeps an ANTHROPIC_AUTH_TOKEN env var from adding
+    // a Bearer header beside x-api-key. SDK default retries (2) stay on
+    // (no retry wrapper here); they only cover failures before the
+    // stream starts. A mid-stream failure is not retried (Lock 2).
+    const anthropic = new Anthropic({ apiKey, authToken: null });
+    let response: Anthropic.Messages.Message;
     try {
-      // v0.7 Step 2.4.a β-1: extended thinking enabled per Travis
-      // Lock 3 (32k budget; substantively similar to Skill
-      // `effort: xhigh` adaptive reasoning per claude-code-guide
-      // investigation). Closes API-parameter-equivalence with
-      // Skill substrate at the thinking layer.
-      //
-      // v0.8 Step 4.1 empirical finding: SDK ^0.32.0 (LOCK E
-      // target) does NOT type the `thinking` parameter — `grep
-      // thinking node_modules/@anthropic-ai/sdk/**/*.d.ts`
-      // returns zero matches at 0.32.x. The v0.7 assumption that
-      // "thinking added in ~0.32+" did not match empirical
-      // substrate state. Cast workaround retained at LOCK E
-      // ^0.32.0 version target; thinking-native-typing migration
-      // requires higher SDK version (TBD; v0.8+ candidate at
-      // separate adjudication). Runtime API forwards the
-      // parameter; thinking blocks in response are naturally
-      // skipped by extractTextFromResponse (consumes only
-      // type === "text" blocks).
-      response = await anthropic.messages.create({
+      // Adaptive thinking at effort "xhigh" (v1.2; replaces the v0.7
+      // β-1 enabled-thinking 32k-budget form, which claude-opus-4-7
+      // rejects with a 400), matching the /generate-adrs Skill's
+      // `effort: xhigh`; SDK 0.128.0 types both params, so no cast.
+      // Streamed because SDK 0.128.0 refuses a non-streaming call whose
+      // max_tokens implies >10 min; finalMessage() yields the same
+      // Message shape (thinking blocks skipped by extractTextFromResponse).
+      response = await anthropic.messages.stream({
         model: GENERATION_MODEL,
         max_tokens: GENERATION_MAX_TOKENS,
         messages: [{ role: "user", content: fullPrompt }],
-        thinking: { type: "enabled", budget_tokens: 32_000 },
-      } as Anthropic.Messages.MessageCreateParamsNonStreaming);
+        thinking: { type: "adaptive" },
+        output_config: { effort: "xhigh" },
+      }).finalMessage();
     } catch (err) {
       throw mapAnthropicError(err);
     }
     const wallClockMs = Date.now() - t0;
+
+    // ---------------------------------------------------------------
+    // Truncation guard: a max_tokens / context-window stop means the
+    // JSON is cut off; say why instead of a generic parse failure.
+    // ---------------------------------------------------------------
+    if (
+      response.stop_reason === "max_tokens" ||
+      response.stop_reason === "model_context_window_exceeded"
+    ) {
+      const why =
+        response.stop_reason === "max_tokens"
+          ? `Adaptive thinking and the JSON output share the ` +
+            `${GENERATION_MAX_TOKENS}-token max_tokens budget. Re-run the ` +
+            `command (thinking length varies run to run), or shrink the input: `
+          : `The prompt + codebase inventory + reference context filled the ` +
+            `model's context window. Shrink the input: `;
+      throw new Error(
+        `generate-adrs: the response was truncated (stop_reason ` +
+          `"${response.stop_reason}") before the ADR JSON was complete, ` +
+          `so no ADRs were written. ${why}narrow --reference-context, or ` +
+          `add source globs under extraction.exclude_pattern in ` +
+          `.contextatlas.yml. Tokens billed for this attempt: ` +
+          `${response.usage.input_tokens} input, ` +
+          `${response.usage.output_tokens} output.`,
+      );
+    }
 
     // ---------------------------------------------------------------
     // Parse + validate JSON output. Per Lock 2 atomic discipline,
@@ -217,7 +240,8 @@ export class AnthropicAPIDirectGenerator implements Generator {
       parsed = JSON.parse(rawText) as RawAdrResponse;
     } catch (err) {
       throw new Error(
-        `generate-adrs: failed to parse JSON response from Anthropic API. ` +
+        `generate-adrs: failed to parse JSON response from Anthropic API ` +
+          `(stop_reason "${response.stop_reason}"). ` +
           `Re-run the command (LLM output non-determinism may resolve on retry). ` +
           `First 200 chars of response: ${rawText.slice(0, 200)}. ` +
           `Parse error: ${err instanceof Error ? err.message : String(err)}`,
@@ -389,13 +413,17 @@ function mapAnthropicError(err: unknown): Error {
   if (err instanceof BadRequestError) {
     // Per Lock 4 empirical verification: context-window-exceeded
     // surfaces as a BadRequestError from the SDK with a message
-    // mentioning the model limit. Surface with remediation guidance.
+    // mentioning the model limit. It is not the only 400 cause, so
+    // name both common ones and point at the underlying message.
     return new Error(
-      `generate-adrs: Anthropic API rejected the request as invalid. ` +
-        `This typically means the assembled prompt + codebase + reference ` +
-        `context exceeded the model's context window (1M tokens for ` +
-        `Opus 4.7). Try narrowing --reference-context scope OR running ` +
-        `against a smaller codebase. Underlying error: ${err.message}`,
+      `generate-adrs: Anthropic API rejected the request as invalid (400). ` +
+        `Common causes: (1) the assembled prompt + codebase inventory + ` +
+        `reference context exceeded the model's context window (1M tokens ` +
+        `for Opus 4.7) — narrow --reference-context scope or run against a ` +
+        `smaller codebase; (2) a request parameter the model does not ` +
+        `accept — check for a newer contextatlas release or report it at ` +
+        `https://github.com/traviswye/ContextAtlas/issues. The underlying ` +
+        `error says which: ${err.message}`,
     );
   }
   if (err instanceof RateLimitError) {
@@ -410,13 +438,62 @@ function mapAnthropicError(err: unknown): Error {
         `network and re-run the command. Underlying error: ${err.message}`,
     );
   }
-  if (err instanceof APIError) {
+  if (err instanceof APIError) return mapOtherApiError(err);
+  if (err instanceof AnthropicError) {
+    // Not an HTTP error: the SSE stream broke off. MessageStream wraps
+    // a transport drop (e.g. undici "terminated") in AnthropicError,
+    // and a body that ends before message_stop rejects finalMessage()
+    // with one.
     return new Error(
-      `generate-adrs: Anthropic API returned an error ` +
-        `(status ${err.status}). ${err.message}`,
+      `generate-adrs: the response stream from the Anthropic API was ` +
+        `interrupted before the message completed (${err.message}). ` +
+        `No ADRs were written. Check your network connection and re-run ` +
+        `the command.`,
     );
   }
   return err instanceof Error
     ? err
     : new Error(`generate-adrs: unexpected error: ${String(err)}`);
+}
+
+/**
+ * APIError not mapped above. Errors delivered as an SSE `error` event
+ * mid-stream (e.g. overloaded_error) have no HTTP status; `type` names
+ * them. Re-run advice is given only for transient failures.
+ */
+function mapOtherApiError(err: APIError): Error {
+  const status = err.status;
+  const statusText =
+    status === undefined
+      ? "no HTTP status; failed mid-stream"
+      : `status ${status}`;
+  const type = err.type ? `, type ${err.type}` : "";
+  let advice: string;
+  if (
+    status === undefined ||
+    status === 408 ||
+    status === 409 ||
+    status >= 500
+  ) {
+    advice =
+      "Re-run the command; transient errors such as overloaded_error " +
+      "or 5xx usually clear.";
+  } else if (status === 404) {
+    advice =
+      `Re-running will not help: check that model ${GENERATION_MODEL} is ` +
+      `available to your API key (and at ANTHROPIC_BASE_URL, if set).`;
+  } else if (status === 413) {
+    advice =
+      "Re-running will not help: the request is too large. Narrow " +
+      "--reference-context, or add source globs under " +
+      "extraction.exclude_pattern in .contextatlas.yml.";
+  } else {
+    advice =
+      "This is not a transient error; re-running the same request will " +
+      "fail the same way. See the underlying error:";
+  }
+  return new Error(
+    `generate-adrs: Anthropic API returned an error (${statusText}${type}). ` +
+      `${advice} ${err.message}`,
+  );
 }

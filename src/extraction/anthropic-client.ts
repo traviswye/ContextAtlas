@@ -14,19 +14,16 @@
  *   - Retry with exponential backoff on retryable errors
  *   - Parse and validate the model's JSON response against
  *     ExtractionResult
+ *
+ * Retry ownership: this wrapper is the single retry layer. Every
+ * request goes out with the SDK per-request option `{ maxRetries: 0 }`
+ * so the SDK's built-in retries (default 2) never stack underneath the
+ * wrapper's `maxRetries` — including for a client constructed
+ * elsewhere with SDK defaults (the benchmarks repo passes its own).
+ * Classification + backoff live in `./retry-policy.ts`.
  */
 
 import type Anthropic from "@anthropic-ai/sdk";
-import {
-  APIConnectionError,
-  APIError,
-  AuthenticationError,
-  BadRequestError,
-  NotFoundError,
-  PermissionDeniedError,
-  RateLimitError,
-  UnprocessableEntityError,
-} from "@anthropic-ai/sdk/error.js";
 
 import { log } from "../mcp/logger.js";
 
@@ -38,8 +35,13 @@ import {
   type ExtractionResult,
 } from "./prompt.js";
 import { ZERO_USAGE, type UsageInfo } from "./pricing.js";
+import {
+  classifyApiError,
+  computeBackoffMs,
+  type RetryClassification,
+} from "./retry-policy.js";
 
-export type RetryClassification = "retry" | "fail";
+export type { RetryClassification };
 
 /**
  * Canonical reasons a ParseError can surface. Each reason is
@@ -77,29 +79,19 @@ export class ParseError extends Error {
  * Classify an error as retryable or not. Exported for direct unit
  * testing — the retry-loop tests exercise the wrapper end-to-end with
  * stub clients, but this pure predicate carries the core logic.
+ *
+ * Retry: 429, 408, 409, 5xx (incl. 529), connection errors/timeouts.
+ * Fail: ParseError, 400/401/403/404/422 and other statuses, and
+ * anything that is not an Anthropic API error. An explicit
+ * `x-should-retry` response header overrides the status rules (as in
+ * the SDK). Errors from another copy of the SDK are classified by
+ * shape (see `./retry-policy.ts`).
  */
 export function classifyError(err: unknown): RetryClassification {
   // ParseError → fail (deterministic; same input → same parse failure
   // per A1 v0.8 absorption; no retry would substantively help).
   if (err instanceof ParseError) return "fail";
-  if (
-    err instanceof AuthenticationError ||
-    err instanceof PermissionDeniedError ||
-    err instanceof BadRequestError ||
-    err instanceof NotFoundError ||
-    err instanceof UnprocessableEntityError
-  ) {
-    return "fail";
-  }
-  if (err instanceof RateLimitError) return "retry";
-  if (err instanceof APIConnectionError) return "retry";
-  if (err instanceof APIError) {
-    return typeof err.status === "number" && err.status >= 500
-      ? "retry"
-      : "fail";
-  }
-  // Anything else (native Error, unknown, etc.) — fail.
-  return "fail";
+  return classifyApiError(err);
 }
 
 /**
@@ -134,6 +126,11 @@ export interface ExtractionClient {
 }
 
 export interface CreateExtractionClientOptions {
+  /**
+   * SDK client (or a structurally compatible one). Its own retry
+   * setting is overridden per request with `maxRetries: 0`; retries
+   * are governed solely by `maxRetries` below.
+   */
   anthropic: Anthropic;
   /** Max retry attempts for retryable errors. Default: 3. */
   maxRetries?: number;
@@ -164,11 +161,17 @@ export function createExtractionClient(
       while (true) {
         try {
           // NOTE per ADR-02 / prompt.ts: no `thinking` parameter.
-          const response = await anthropic.messages.create({
-            model: EXTRACTION_MODEL,
-            max_tokens: EXTRACTION_MAX_TOKENS,
-            messages: [{ role: "user", content: prompt }],
-          });
+          // Request body is frozen substrate; the second argument is
+          // a client-side SDK option (not sent on the wire) that
+          // disables SDK-internal retries — see module JSDoc.
+          const response = await anthropic.messages.create(
+            {
+              model: EXTRACTION_MODEL,
+              max_tokens: EXTRACTION_MAX_TOKENS,
+              messages: [{ role: "user", content: prompt }],
+            },
+            { maxRetries: 0 },
+          );
 
           const usage = readUsage(response);
 
@@ -195,7 +198,7 @@ export function createExtractionClient(
             });
             throw err;
           }
-          const backoff = computeBackoff(
+          const backoff = computeBackoffMs(
             attempt,
             baseBackoffMs,
             maxBackoffMs,
@@ -211,35 +214,6 @@ export function createExtractionClient(
       }
     },
   };
-}
-
-/**
- * Compute the next backoff delay. Honors a Retry-After header when the
- * error carries one; otherwise exponential (base * 2^(attempt-1)), capped.
- */
-function computeBackoff(
-  attempt: number,
-  baseMs: number,
-  maxMs: number,
-  err: unknown,
-): number {
-  if (err instanceof APIError && err.headers) {
-    const retryAfter = readRetryAfter(err.headers);
-    if (retryAfter !== null) return Math.min(retryAfter * 1000, maxMs);
-  }
-  const exp = baseMs * Math.pow(2, attempt - 1);
-  return Math.min(exp, maxMs);
-}
-
-function readRetryAfter(headers: unknown): number | null {
-  // SDK's Headers type is a plain record-ish object in practice; be
-  // defensive about the shape.
-  if (!headers || typeof headers !== "object") return null;
-  const h = headers as Record<string, string | undefined>;
-  const raw = h["retry-after"] ?? h["Retry-After"];
-  if (!raw) return null;
-  const parsed = Number(raw);
-  return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
 }
 
 function defaultSleep(ms: number): Promise<void> {

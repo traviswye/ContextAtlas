@@ -1,10 +1,13 @@
-import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
+import {
+  Client,
+  InMemoryTransport,
+  type JSONRPCMessage,
+} from "@modelcontextprotocol/client";
 import {
   CallToolResultSchema,
   ListToolsResultSchema,
-} from "@modelcontextprotocol/sdk/types.js";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+} from "@modelcontextprotocol/core";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { insertClaims } from "../storage/claims.js";
 import { openDatabase } from "../storage/db.js";
@@ -141,6 +144,88 @@ describe("MCP server skeleton", () => {
         CallToolResultSchema,
       ),
     ).rejects.toThrow(/Unknown tool/);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Protocol version negotiation (MCP SDK v2 migration regression guard).
+//
+// @modelcontextprotocol/sdk 0.5.0 answered EVERY initialize with
+// 2024-11-05 regardless of what the client requested. SDK v2 echoes the
+// requested version when it is supported. Driven over a raw in-memory
+// peer (not the SDK Client) so the assertion is on the server's actual
+// wire answer, independent of client-side negotiation logic.
+// ---------------------------------------------------------------------------
+
+describe("MCP server — protocol version negotiation (SDK v2)", () => {
+  let server: ReturnType<typeof createServer>;
+  let peer: InMemoryTransport;
+  let received: JSONRPCMessage[];
+
+  beforeEach(async () => {
+    server = createServer({ name: "ContextAtlas", version: "0.0.1-test" });
+    const [peerTransport, serverTransport] =
+      InMemoryTransport.createLinkedPair();
+    peer = peerTransport;
+    received = [];
+    peer.onmessage = (message) => {
+      received.push(message);
+    };
+    await peer.start();
+    await server.connect(serverTransport);
+  });
+
+  afterEach(async () => {
+    await server.close();
+  });
+
+  async function initialize(
+    id: number,
+    protocolVersion: string,
+  ): Promise<{ protocolVersion?: string }> {
+    await peer.send({
+      jsonrpc: "2.0",
+      id,
+      method: "initialize",
+      params: {
+        protocolVersion,
+        capabilities: {},
+        clientInfo: { name: "raw-probe", version: "9.9.9" },
+      },
+    });
+    return vi.waitFor(() => {
+      const response = received.find(
+        (m) => "id" in m && m.id === id,
+      ) as { result?: { protocolVersion?: string } } | undefined;
+      if (!response?.result) {
+        throw new Error(`no initialize result for id ${id} yet`);
+      }
+      return response.result;
+    });
+  }
+
+  it.each(["2025-11-25", "2024-11-05"])(
+    "echoes requested protocolVersion %s (0.5.0 always answered 2024-11-05)",
+    async (requested) => {
+      const result = await initialize(1, requested);
+      expect(result.protocolVersion).toBe(requested);
+    },
+  );
+
+  it("fires oninitialized with the negotiated version + client identity (used by the index.ts startup log)", async () => {
+    const initialized = vi.fn();
+    server.oninitialized = initialized;
+
+    const result = await initialize(1, "2025-11-25");
+    expect(result.protocolVersion).toBe("2025-11-25");
+    await peer.send({ jsonrpc: "2.0", method: "notifications/initialized" });
+
+    await vi.waitFor(() => expect(initialized).toHaveBeenCalledTimes(1));
+    expect(server.getNegotiatedProtocolVersion()).toBe("2025-11-25");
+    expect(server.getClientVersion()).toMatchObject({
+      name: "raw-probe",
+      version: "9.9.9",
+    });
   });
 });
 
@@ -386,7 +471,7 @@ describe("MCP server with runtime context — get_symbol_context", () => {
 //   (b) multi-symbol happy path (compact + JSON envelope)
 //   (c) partial failure with isError: false, ERR sub-bundles inlined
 //   (d) all-failed with isError: true, `ERR all_symbols_failed COUNT N` header
-//   (e) cap enforcement (11 items → McpError InvalidParams)
+//   (e) cap enforcement (11 items → ProtocolError InvalidParams, -32602)
 //   (f) dedup edge cases (whitespace trim, case sensitivity, full-ID vs name)
 //   (g) order preservation across mixed success/failure inputs
 //   (h) file_hint applied uniformly to every batch entry
@@ -689,7 +774,7 @@ describe("MCP server with runtime context — get_symbol_context multi-symbol (A
   // (e) Cap enforcement
   // -------------------------------------------------------------------------
 
-  it("(e) cap enforcement: 11-item array → McpError InvalidParams (no partial response)", async () => {
+  it("(e) cap enforcement: 11-item array → ProtocolError InvalidParams (-32602) (no partial response)", async () => {
     const eleven = Array.from({ length: 11 }, (_, i) => `Sym${i}`);
     await expect(
       client.request(
@@ -723,7 +808,7 @@ describe("MCP server with runtime context — get_symbol_context multi-symbol (A
     expect(text).toMatch(/^ERR all_symbols_failed\n  COUNT 10\n/);
   });
 
-  it("(e) empty array → McpError InvalidParams", async () => {
+  it("(e) empty array → ProtocolError InvalidParams (-32602)", async () => {
     await expect(
       client.request(
         {

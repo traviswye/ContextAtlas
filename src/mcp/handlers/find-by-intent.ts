@@ -1,7 +1,7 @@
 /**
  * Real handler for `find_by_intent` — the claims-ranked MCP tool.
  *
- * Input parsing is strict (unknown types reject with McpError;
+ * Input parsing is strict (unknown types reject with ProtocolError;
  * missing `query` rejects). Ranking and result shaping live in
  * `src/queries/find-by-intent.ts` per ADR-09. Compact rendering
  * reuses the formatters family so the output vocabulary matches
@@ -13,11 +13,11 @@
  */
 
 import {
-  ErrorCode,
-  McpError,
+  ProtocolError,
+  ProtocolErrorCode,
   type CallToolRequest,
   type CallToolResult,
-} from "@modelcontextprotocol/sdk/types.js";
+} from "@modelcontextprotocol/server";
 
 import { renderMatchesCompact } from "../../formatters/compact.js";
 import { findByIntent } from "../../queries/find-by-intent.js";
@@ -70,16 +70,16 @@ interface ParsedArgs {
 
 function parseArgs(rawArgs: unknown): ParsedArgs {
   if (!rawArgs || typeof rawArgs !== "object") {
-    throw new McpError(
-      ErrorCode.InvalidParams,
+    throw new ProtocolError(
+      ProtocolErrorCode.InvalidParams,
       "find_by_intent: missing arguments. Required: 'query'.",
     );
   }
   const args = rawArgs as Record<string, unknown>;
 
   if (typeof args.query !== "string" || args.query.trim().length === 0) {
-    throw new McpError(
-      ErrorCode.InvalidParams,
+    throw new ProtocolError(
+      ProtocolErrorCode.InvalidParams,
       "find_by_intent: 'query' must be a non-empty string.",
     );
   }
@@ -94,8 +94,8 @@ function parseArgs(rawArgs: unknown): ParsedArgs {
 function parseLimit(v: unknown): number {
   if (v === undefined) return 5;
   if (typeof v !== "number" || !Number.isInteger(v) || v < 1) {
-    throw new McpError(
-      ErrorCode.InvalidParams,
+    throw new ProtocolError(
+      ProtocolErrorCode.InvalidParams,
       `find_by_intent: 'limit' must be a positive integer; got ${String(v)}.`,
     );
   }
@@ -105,8 +105,8 @@ function parseLimit(v: unknown): number {
 function parseFormat(v: unknown): "compact" | "json" {
   if (v === undefined) return "compact";
   if (v === "compact" || v === "json") return v;
-  throw new McpError(
-    ErrorCode.InvalidParams,
+  throw new ProtocolError(
+    ProtocolErrorCode.InvalidParams,
     `find_by_intent: 'format' must be 'compact' or 'json'; got ${String(v)}.`,
   );
 }

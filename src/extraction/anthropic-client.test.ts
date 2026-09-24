@@ -10,7 +10,7 @@ import {
   PermissionDeniedError,
   RateLimitError,
   UnprocessableEntityError,
-} from "@anthropic-ai/sdk/error.js";
+} from "@anthropic-ai/sdk";
 import { describe, expect, it, vi } from "vitest";
 
 import {
@@ -26,10 +26,10 @@ import {
 
 describe("classifyError — SDK class canaries", () => {
   it("RateLimitError → retry", () => {
-    expect(classifyError(new RateLimitError(429, undefined, "rate limited", undefined))).toBe("retry");
+    expect(classifyError(new RateLimitError(429, undefined, "rate limited", new Headers()))).toBe("retry");
   });
   it("InternalServerError → retry", () => {
-    expect(classifyError(new InternalServerError(500, undefined, "oops", undefined))).toBe("retry");
+    expect(classifyError(new InternalServerError(500, undefined, "oops", new Headers()))).toBe("retry");
   });
   it("APIConnectionError → retry", () => {
     expect(classifyError(new APIConnectionError({ message: "conn dropped" }))).toBe("retry");
@@ -38,19 +38,19 @@ describe("classifyError — SDK class canaries", () => {
     expect(classifyError(new APIConnectionTimeoutError({ message: "timeout" }))).toBe("retry");
   });
   it("AuthenticationError → fail", () => {
-    expect(classifyError(new AuthenticationError(401, undefined, "bad key", undefined))).toBe("fail");
+    expect(classifyError(new AuthenticationError(401, undefined, "bad key", new Headers()))).toBe("fail");
   });
   it("PermissionDeniedError → fail", () => {
-    expect(classifyError(new PermissionDeniedError(403, undefined, "no access", undefined))).toBe("fail");
+    expect(classifyError(new PermissionDeniedError(403, undefined, "no access", new Headers()))).toBe("fail");
   });
   it("BadRequestError → fail", () => {
-    expect(classifyError(new BadRequestError(400, undefined, "bad", undefined))).toBe("fail");
+    expect(classifyError(new BadRequestError(400, undefined, "bad", new Headers()))).toBe("fail");
   });
   it("NotFoundError → fail", () => {
-    expect(classifyError(new NotFoundError(404, undefined, "nope", undefined))).toBe("fail");
+    expect(classifyError(new NotFoundError(404, undefined, "nope", new Headers()))).toBe("fail");
   });
   it("UnprocessableEntityError → fail", () => {
-    expect(classifyError(new UnprocessableEntityError(422, undefined, "bad", undefined))).toBe("fail");
+    expect(classifyError(new UnprocessableEntityError(422, undefined, "bad", new Headers()))).toBe("fail");
   });
 });
 
@@ -150,7 +150,7 @@ describe("createExtractionClient — retry loop", () => {
     let calls = 0;
     const anthropic = makeStubAnthropic(async () => {
       calls++;
-      if (calls < 2) throw new RateLimitError(429, undefined, "slow down", undefined);
+      if (calls < 2) throw new RateLimitError(429, undefined, "slow down", new Headers());
       return validResponse([]);
     });
     const sleeps: number[] = [];
@@ -172,7 +172,7 @@ describe("createExtractionClient — retry loop", () => {
     let calls = 0;
     const anthropic = makeStubAnthropic(async () => {
       calls++;
-      if (calls < 4) throw new InternalServerError(500, undefined, "oops", undefined);
+      if (calls < 4) throw new InternalServerError(500, undefined, "oops", new Headers());
       return validResponse([]);
     });
     const sleeps: number[] = [];
@@ -190,7 +190,7 @@ describe("createExtractionClient — retry loop", () => {
   });
 
   it("gives up after maxRetries and rethrows", async () => {
-    const err = new RateLimitError(429, undefined, "rate", undefined);
+    const err = new RateLimitError(429, undefined, "rate", new Headers());
     const anthropic = makeStubAnthropic(async () => {
       throw err;
     });
@@ -204,7 +204,7 @@ describe("createExtractionClient — retry loop", () => {
   });
 
   it("does not retry on AuthenticationError", async () => {
-    const err = new AuthenticationError(401, undefined, "bad key", undefined);
+    const err = new AuthenticationError(401, undefined, "bad key", new Headers());
     const anthropic = makeStubAnthropic(async () => {
       throw err;
     });
@@ -225,7 +225,7 @@ describe("createExtractionClient — retry loop", () => {
           429,
           undefined,
           "rate",
-          { "retry-after": "3" } as unknown as never,
+          new Headers({ "retry-after": "3" }),
         );
       }
       return validResponse([]);

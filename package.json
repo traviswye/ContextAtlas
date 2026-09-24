@@ -49,7 +49,7 @@
     "SECURITY.md"
   ],
   "scripts": {
-    "build": "tsc && node scripts/generate-prompt-artifacts.mjs",
+    "build": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\" && tsc && node scripts/generate-prompt-artifacts.mjs",
     "dev": "tsc --watch",
     "start": "node ./dist/index.js",
     "test": "vitest run",
@@ -61,8 +61,8 @@
     "node": ">=20.0.0"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.32.0",
-    "@modelcontextprotocol/sdk": "^0.5.0",
+    "@anthropic-ai/sdk": "^0.128.0",
+    "@modelcontextprotocol/server": "2.1.0",
     "better-sqlite3": "^11.3.0",
     "glob": "^13.0.0",
     "js-yaml": "^4.1.0"
@@ -80,6 +80,8 @@
     }
   },
   "devDependencies": {
+    "@modelcontextprotocol/client": "2.1.0",
+    "@modelcontextprotocol/core": "2.1.0",
     "@types/better-sqlite3": "^7.6.11",
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^22.0.0",

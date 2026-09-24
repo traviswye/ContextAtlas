@@ -9,13 +9,14 @@ import {
   PermissionDeniedError,
   RateLimitError,
   UnprocessableEntityError,
-} from "@anthropic-ai/sdk/error.js";
+} from "@anthropic-ai/sdk";
 import { describe, expect, it, vi } from "vitest";
 
 import {
   classifyError,
   createJudgeClient,
   JudgeParseError,
+  MODELS_REJECTING_SAMPLING_PARAMS,
   OPUS_47_MODEL,
   SONNET_46_MODEL,
 } from "./judge-client.js";
@@ -27,12 +28,12 @@ import {
 describe("classifyError — SDK class canaries", () => {
   it("RateLimitError → retry", () => {
     expect(
-      classifyError(new RateLimitError(429, undefined, "rate limited", undefined)),
+      classifyError(new RateLimitError(429, undefined, "rate limited", new Headers())),
     ).toBe("retry");
   });
   it("InternalServerError → retry", () => {
     expect(
-      classifyError(new InternalServerError(500, undefined, "oops", undefined)),
+      classifyError(new InternalServerError(500, undefined, "oops", new Headers())),
     ).toBe("retry");
   });
   it("APIConnectionError → retry", () => {
@@ -42,27 +43,27 @@ describe("classifyError — SDK class canaries", () => {
   });
   it("AuthenticationError → fail", () => {
     expect(
-      classifyError(new AuthenticationError(401, undefined, "bad key", undefined)),
+      classifyError(new AuthenticationError(401, undefined, "bad key", new Headers())),
     ).toBe("fail");
   });
   it("PermissionDeniedError → fail", () => {
     expect(
-      classifyError(new PermissionDeniedError(403, undefined, "no access", undefined)),
+      classifyError(new PermissionDeniedError(403, undefined, "no access", new Headers())),
     ).toBe("fail");
   });
   it("BadRequestError → fail", () => {
     expect(
-      classifyError(new BadRequestError(400, undefined, "bad", undefined)),
+      classifyError(new BadRequestError(400, undefined, "bad", new Headers())),
     ).toBe("fail");
   });
   it("NotFoundError → fail", () => {
     expect(
-      classifyError(new NotFoundError(404, undefined, "nope", undefined)),
+      classifyError(new NotFoundError(404, undefined, "nope", new Headers())),
     ).toBe("fail");
   });
   it("UnprocessableEntityError → fail", () => {
     expect(
-      classifyError(new UnprocessableEntityError(422, undefined, "bad", undefined)),
+      classifyError(new UnprocessableEntityError(422, undefined, "bad", new Headers())),
     ).toBe("fail");
   });
 });
@@ -189,8 +190,10 @@ describe("gradeSingle — happy paths", () => {
       model: OPUS_47_MODEL,
     });
     expect(result.model).toBe(OPUS_47_MODEL);
+    // Second arg: client-side SDK option (wrapper owns retries).
     expect(create).toHaveBeenCalledWith(
       expect.objectContaining({ model: OPUS_47_MODEL }),
+      { maxRetries: 0 },
     );
   });
 
@@ -205,6 +208,61 @@ describe("gradeSingle — happy paths", () => {
     const result = await client.gradeSingle(SAMPLE_SINGLE_REQ);
     // 1M input @ Sonnet $3/M = $3.0
     expect(result.costUsd).toBeCloseTo(3.0, 6);
+  });
+});
+
+// ===========================================================================
+// Sampling parameters — Opus 4.7 rejects temperature (400); Sonnet 4.6
+// keeps the ADR-19 §2 temperature-0 default.
+// ===========================================================================
+
+describe("temperature handling per model", () => {
+  function recordingAnthropic(respond: () => unknown) {
+    const create = vi.fn(async (..._args: unknown[]) => respond());
+    return { anthropic: { messages: { create } } as unknown as Anthropic, create };
+  }
+
+  it("Opus 4.7 is in MODELS_REJECTING_SAMPLING_PARAMS; Sonnet 4.6 is not", () => {
+    expect(MODELS_REJECTING_SAMPLING_PARAMS.has(OPUS_47_MODEL)).toBe(true);
+    expect(MODELS_REJECTING_SAMPLING_PARAMS.has(SONNET_46_MODEL)).toBe(false);
+  });
+
+  it("gradeSingle on Opus 4.7 sends no temperature key", async () => {
+    const { anthropic, create } = recordingAnthropic(() => singleScoreResponse());
+    const client = createJudgeClient({ anthropic, sleep: async () => {} });
+    await client.gradeSingle({ ...SAMPLE_SINGLE_REQ, model: OPUS_47_MODEL });
+    const body = create.mock.calls[0]![0] as Record<string, unknown>;
+    expect(body.model).toBe(OPUS_47_MODEL);
+    expect(body).not.toHaveProperty("temperature");
+  });
+
+  it("gradePair on Opus 4.7 (as default model) sends no temperature, even if one is configured", async () => {
+    const { anthropic, create } = recordingAnthropic(() => pairedScoreResponse());
+    const client = createJudgeClient({
+      anthropic,
+      defaultModel: OPUS_47_MODEL,
+      temperature: 0.5,
+      sleep: async () => {},
+    });
+    await client.gradePair(SAMPLE_PAIR_REQ);
+    const body = create.mock.calls[0]![0] as Record<string, unknown>;
+    expect(body).not.toHaveProperty("temperature");
+  });
+
+  it("Sonnet 4.6 (default) sends temperature 0 unchanged", async () => {
+    const { anthropic, create } = recordingAnthropic(() => singleScoreResponse());
+    const client = createJudgeClient({ anthropic, sleep: async () => {} });
+    await client.gradeSingle(SAMPLE_SINGLE_REQ);
+    const body = create.mock.calls[0]![0] as Record<string, unknown>;
+    expect(body.model).toBe(SONNET_46_MODEL);
+    expect(body).toHaveProperty("temperature", 0);
+  });
+
+  it("every call disables SDK-internal retries (client-side { maxRetries: 0 })", async () => {
+    const { anthropic, create } = recordingAnthropic(() => singleScoreResponse());
+    const client = createJudgeClient({ anthropic, sleep: async () => {} });
+    await client.gradeSingle(SAMPLE_SINGLE_REQ);
+    expect(create.mock.calls[0]![1]).toStrictEqual({ maxRetries: 0 });
   });
 });
 
@@ -243,7 +301,7 @@ describe("createJudgeClient — retry loop", () => {
     const anthropic = makeStubAnthropic(async () => {
       calls++;
       if (calls < 2)
-        throw new RateLimitError(429, undefined, "slow down", undefined);
+        throw new RateLimitError(429, undefined, "slow down", new Headers());
       return singleScoreResponse();
     });
     const sleeps: number[] = [];
@@ -264,7 +322,7 @@ describe("createJudgeClient — retry loop", () => {
     const anthropic = makeStubAnthropic(async () => {
       calls++;
       if (calls < 2)
-        throw new InternalServerError(500, undefined, "oops", undefined);
+        throw new InternalServerError(500, undefined, "oops", new Headers());
       return singleScoreResponse();
     });
     const client = createJudgeClient({
@@ -281,7 +339,7 @@ describe("createJudgeClient — retry loop", () => {
     const anthropic = makeStubAnthropic(async () => {
       calls++;
       if (calls < 4)
-        throw new InternalServerError(500, undefined, "oops", undefined);
+        throw new InternalServerError(500, undefined, "oops", new Headers());
       return singleScoreResponse();
     });
     const sleeps: number[] = [];
@@ -307,7 +365,7 @@ describe("createJudgeClient — retry loop", () => {
           429,
           undefined,
           "rate",
-          { "retry-after": "3" } as unknown as never,
+          new Headers({ "retry-after": "3" }),
         );
       }
       return singleScoreResponse();
@@ -325,7 +383,7 @@ describe("createJudgeClient — retry loop", () => {
   });
 
   it("retry budget exhausted throws original error", async () => {
-    const err = new RateLimitError(429, undefined, "always rate limited", undefined);
+    const err = new RateLimitError(429, undefined, "always rate limited", new Headers());
     const anthropic = makeStubAnthropic(async () => {
       throw err;
     });
@@ -339,7 +397,7 @@ describe("createJudgeClient — retry loop", () => {
 
   it("non-retryable error throws on first attempt", async () => {
     let calls = 0;
-    const err = new BadRequestError(400, undefined, "bad", undefined);
+    const err = new BadRequestError(400, undefined, "bad", new Headers());
     const anthropic = makeStubAnthropic(async () => {
       calls++;
       throw err;

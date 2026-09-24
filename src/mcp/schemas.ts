@@ -7,7 +7,7 @@
  * change; update DESIGN.md in lockstep.
  */
 
-import type { Tool } from "@modelcontextprotocol/sdk/types.js";
+import type { Tool } from "@modelcontextprotocol/server";
 
 export const TOOL_NAMES = {
   getSymbolContext: "get_symbol_context",
@@ -90,7 +90,7 @@ const getSymbolContextTool: Tool = {
       },
       include: {
         type: "array",
-        items: { type: "string", enum: SIGNAL_VALUES },
+        items: { type: "string", enum: [...SIGNAL_VALUES] },
         description:
           "Filter which signal sources to include. Omit to include all applicable.",
       },
@@ -181,7 +181,7 @@ const impactOfChangeTool: Tool = {
       },
       include: {
         type: "array",
-        items: { type: "string", enum: SIGNAL_VALUES },
+        items: { type: "string", enum: [...SIGNAL_VALUES] },
         description:
           "Filter which impact signals to include. Omit to include all.",
       },

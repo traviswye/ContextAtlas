@@ -1,12 +1,10 @@
-import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import {
-  CallToolRequestSchema,
-  ErrorCode,
-  ListToolsRequestSchema,
-  McpError,
+  ProtocolError,
+  ProtocolErrorCode,
+  Server,
   type CallToolRequest,
   type CallToolResult,
-} from "@modelcontextprotocol/sdk/types.js";
+} from "@modelcontextprotocol/server";
 
 import { getSessionId, type Observation } from "../observability/observe.js";
 import { sanitize } from "../observability/sanitize.js";
@@ -85,19 +83,19 @@ export function createServer(options: CreateServerOptions): Server {
       : serverNotInitializedHandler(TOOL_NAMES.impactOfChange),
   };
 
-  server.setRequestHandler(ListToolsRequestSchema, async () => ({
+  server.setRequestHandler("tools/list", async () => ({
     tools: [...TOOLS],
   }));
 
   const observe = options.observabilityWriter;
   const observeCwd = options.observabilityCwd ?? process.cwd();
 
-  server.setRequestHandler(CallToolRequestSchema, async (request) => {
+  server.setRequestHandler("tools/call", async (request) => {
     const name = request.params.name;
     const handler = handlers[name as ToolName];
     if (!handler) {
-      throw new McpError(
-        ErrorCode.MethodNotFound,
+      throw new ProtocolError(
+        ProtocolErrorCode.MethodNotFound,
         `Unknown tool: '${name}'. Registered tools: ${Object.keys(handlers).join(", ")}.`,
       );
     }
@@ -194,8 +192,8 @@ function extractResultSummary(
 
 function serverNotInitializedHandler(toolName: string): ToolHandler {
   return async () => {
-    throw new McpError(
-      ErrorCode.InternalError,
+    throw new ProtocolError(
+      ProtocolErrorCode.InternalError,
       `${toolName} requires the server to be initialized with storage + ` +
         "adapter context. This call path is typically only reached in " +
         "protocol-only unit tests.",
