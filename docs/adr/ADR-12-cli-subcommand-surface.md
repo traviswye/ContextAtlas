@@ -478,3 +478,186 @@ things a particular way.
 - **Uninstall / cleanup subcommands.** `contextatlas
   uninstall` or `contextatlas clean` not in v0.1. Users
   delete the `.contextatlas/` directory themselves.
+
+## Amendment (2026-09-24, v1.2 Phase 1): stream-aware deletions and stale-symbol pruning in `index`
+
+The "First-run vs. incremental behavior" spec above says an
+incremental run will "delete claims for removed files". Two defects
+in how the pipeline carried that out were found at v1.2 cycle entry
+(`docs/cycles/v1_2/v1.2-SCOPE.md` §2 F-1, F-4). They were fixed
+together, because in a three-stream atlas F-4 hid F-1.
+
+- **F-4: deletion was not stream-aware.** `source_shas` holds keys
+  for three claim streams. Prose keys are ADR/doc relPaths.
+  Docstring keys are source-file relPaths such as `src/router.ts`,
+  written even when a file yields zero claims. Commit keys come in
+  two forms (F-5): the CLI commit extractor writes `commit:<sha>`,
+  and the `/index-atlas` Skill writes the bare 40-hex sha.
+  - **What went wrong.** Stage 2 diffed every key against the prose
+    walk, so every docstring and commit key came back "deleted".
+    Stage 5 then deleted those keys' claims, their `source_shas`
+    rows, and (through `deleteSymbolsByPath`) the freshly upserted
+    symbols of each docstring key's file.
+  - **Real-data reproduction.** The reproduction used the v0.4
+    dogfood atlas at 454fcc8, with all 24 prose SHAs unchanged and
+    zero API calls:
+    - docstring claims 377 → 0;
+    - symbols 768 → 219;
+    - `source_shas` 80 → 24;
+    - ADR-claim links into the 56 docstring-keyed files 1423 → 0;
+    - injected commit claims (both key forms) 6 → 0.
+  - **Silent.** On an atlas with modern `adr:` prose sources the run
+    exited 0, and the auto-invoked `validate-extraction` reported
+    "conforms (449 claims across 24 sources)".
+- **F-1: stale symbols were never pruned.** Stage 0 re-imports the
+  committed atlas's symbols; Stage 4 only upserts the fresh
+  inventory. Symbols of deleted, renamed, moved or newly excluded
+  source files, and symbols removed from files that still exist,
+  survived every run.
+  - **Deleted file.** Deleting `src/adapters/go.ts` in a prose-only
+    fixture left its 30 symbols and 61 ADR-claim links in the atlas.
+  - **Committed dogfood atlas (generated at 751031a).** 229 of 1184
+    symbols were stale or no longer in the inventory.
+
+### Decision
+
+**1. Source-key classification** (`src/extraction/source-keys.ts`).
+Each baseline key is classified as prose, docstring or commit.
+- **Primary signal: claims.** The `source` prefix of the claims
+  stored under the key: `docstring:` → docstring, `commit:` →
+  commit, anything else → prose (`adr:` and the legacy `ADR-NN` /
+  `DESIGN` names).
+  - When a key's claims disagree, the stream whose deletion rule
+    deletes least wins: commit, then docstring, then prose.
+- **Zero-claim keys: shape fallback, in order.**
+  - A key the current prose walk produced → prose.
+  - `commit:` prefix or a bare 40-hex sha → commit.
+  - A path whose extension belongs to **any** registered language
+    adapter (not only the configured ones) → docstring.
+  - Anything else → prose.
+- **Extension list.** `REGISTERED_LANGUAGE_EXTENSIONS` is typed
+  `Record<LanguageCode, …>`, so adding a language without an entry
+  fails compilation. `src/adapters/registry.test.ts` pins each entry
+  to the adapter's own `extensions`. The copy exists because core
+  modules must not import concrete adapters.
+
+**2. Stream-aware Stage 5.** Stage 2 now diffs only the prose part of
+the baseline. Stage 5 applies one rule per stream:
+
+| Stream | A key is deleted (claims + `source_shas` row) when… |
+|---|---|
+| prose | it is absent from the prose walk. This now also holds under `--full`, which previously never deleted. |
+| docstring | its source file no longer exists under the source root. A changed file keeps its claims and baseline key, because the CLI does not re-extract docstrings until v1.2 Phase 2 (Phase 3 queues it). |
+| commit | never (the v0.8 LOCK 2.b retain discipline, which the key-based delete had silently broken). |
+
+`--full` does not change the docstring or commit rules. Stage 5 no
+longer deletes symbols: `deleteSymbolsByPath` on a prose path had
+nothing to delete, and symbol cleanup (including the A3
+`claim_symbols` cascade) moved to the prune step.
+
+**3. Stale-symbol pruning** (`src/extraction/symbol-prune.ts`, Stage
+4a, right after the Stage 4 upsert and before Stages 5–6). Stage 6
+resolves candidates against the fresh inventory, which never holds a
+pruned symbol, so no claim written in the same run can link to one.
+- **Coverage report.** `buildSymbolInventory` now reports which
+  walked files were listed and which failed (`listedPaths` /
+  `failedPaths`).
+- **Rules.** For every stored symbol path, the first matching rule
+  applies:
+  1. the file no longer exists → prune all its symbols;
+  2. the file was walked and listed → prune its symbols missing from
+     the new listing;
+  3. the file was walked but `listSymbols` threw (or no adapter
+     answered) → keep all its symbols, count it as unverified;
+  4. the file exists, was not walked, and a configured adapter owns
+     its extension (an exclude pattern now drops it) → prune;
+  5. the file exists, was not walked, and no configured adapter owns
+     its extension (language not configured this run) → keep, count
+     it as unverified.
+- **Cascade.** Pruning deletes the pruned symbols' `claim_symbols`
+  rows (`deleteSymbolsByIds`, one transaction).
+- **Claims are never deleted by pruning.** A claim whose last link
+  is removed is **orphaned**: it stays in the atlas and is reported.
+  Phase 3 queues orphaned claims' sources for Tier 1 re-extraction.
+- **Warnings.** Unverified files produce one warning with counts and
+  sample paths. Orphaned claims produce one warning listing their
+  sources.
+
+**4. Summary output.** Appended per this ADR's "new keys may be added,
+existing keys never renamed" rule. Existing keys keep their names and
+order.
+- **`key=value`.** Four keys follow `extraction_errors`:
+  `symbols_pruned`, `claims_orphaned`, `docstring_sources_deleted`,
+  `unverified_symbol_files`.
+- **`--json`.** The same four fields, plus
+  `orphaned_claims_by_source: [{source, source_path, count}]`, sorted
+  by `source` and then `source_path`.
+- **`files_deleted` now counts prose deletions only.** That was its
+  documented meaning; the F-4 bug had inflated it with docstring and
+  commit keys, for example `files_deleted=56` on the unchanged
+  reproduction atlas.
+
+**5. Export decision.** Stage 7 also re-exports when symbols were
+pruned or a docstring key was deleted. A run that changes nothing
+still leaves `atlas.json` byte-identical: the no-op contract is
+unchanged. On the reproduction fixtures, a second `index` run exported
+nothing and left the file's SHA-256 unchanged.
+
+**6. Skill-path parity (`contextatlas resolve-symbols`).**
+- **Before.** The Skill path's symbol writer rebuilt `symbols[]`
+  wholesale from the LSP walk, so stale symbols did not persist. But
+  it merged each claim's prior `symbol_ids` into the new ones, and it
+  left claims with no candidates untouched. A link to a symbol whose
+  file had been deleted therefore survived as a dangling id. The
+  importer then rejects the atlas (`FOREIGN KEY constraint failed`:
+  `claim_symbols.symbol_id` references `symbols.id`). The wholesale
+  rebuild also dropped the symbols of any file whose listing failed.
+- **Now.** It applies the same `planSymbolPrune` rules:
+  - prior symbols are kept only for unverified files;
+  - `claims[].symbol_ids` entries with no matching symbol are
+    dropped;
+  - claims left with no links are reported as orphaned. The new
+    stdout line is printed only when something changed.
+- **Unchanged:** it still walks without the configured
+  `exclude_pattern`s (see Consequences).
+
+### Pipeline-integration stage table
+
+Per CLAUDE.md "Pipeline Integration Discipline". Stage numbers follow
+`src/extraction/pipeline.ts`. Prose is the precedent stream.
+
+| Stage | prose (precedent) | docstring | commit |
+|---|---|---|---|
+| 0 import | Imported with the atlas | Symmetric to prose | Symmetric to prose |
+| 1 walk + classify | Prose walk; classified by claim source (`adr:` / legacy) | Not walked by the CLI `index`. Divergence: classified by `docstring:` claims or a registered source extension | Not walked by the CLI `index`. Divergence: classified by `commit:` claims or key shape (both F-5 forms) |
+| 2 SHA diff | Prose baseline vs prose walk | Not applicable: no CLI re-extraction until Phase 2 | Not applicable: commits are immutable |
+| 3–4a inventory, upsert, prune | Stream-independent. Symbols belong to source files, and the prune rules cover every stored symbol path whichever stream's claims link to it | Symmetric | Symmetric |
+| 5 deletions | Deleted iff absent from the prose walk (also under `--full`) | Divergence: deleted iff the file is missing on disk | Divergence: never deleted |
+| 6 extraction | Changed/added prose files | Not applicable (v1.2 Phase 2) | Not applicable (v1.2 Phase 2) |
+| 6b orphan report | Per claim source | Symmetric | Symmetric; commit claims orphan but are retained (LOCK 2.b) |
+| 7 export | `didModify` adds prunes and docstring deletions | Symmetric | Symmetric |
+| Skill `resolve-symbols` | Same prune rules via `planSymbolPrune`; dangling links dropped | Symmetric | Symmetric |
+
+### Consequences
+
+- **The first `index` after upgrading prunes accumulated stale
+  symbols.** Expect a one-time `atlas.json` diff. On the v0.4
+  reproduction atlas, 223 symbols were pruned:
+  - 4 no longer listed;
+  - 219 at test paths excluded since the v0.4 A4 exclusion (rule 4).
+
+  One claim was orphaned; 12 links went with those symbols.
+- **Rule 4 applies to test-file symbols written by
+  `resolve-symbols`.** That writer walks without `exclude_pattern`, so
+  a CLI `index` after a Skill refresh prunes those symbols again. This
+  cross-path churn is recorded as an open question for Phase 3 in the
+  v1.2 scope doc. `resolve-symbols` walk scope is unchanged here.
+- **Orphaned claims are now visible.** They stop reaching symbol
+  bundles until their source is re-extracted. `claims_orphaned` makes
+  that measurable.
+- **F-5 is not normalized here.** Both commit key forms are
+  recognized; unifying them belongs to Phase 2 (three-stream CLI).
+- **`symbol_candidates` is still lost.** The storage layer has no
+  column for `claims[].symbol_candidates` (atlas v1.4 optional field),
+  so any CLI `index` run on a Skill-built atlas drops it on re-export.
+  This predates Phase 1 and is recorded as a Phase 2/3 input.

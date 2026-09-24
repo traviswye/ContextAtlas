@@ -580,6 +580,36 @@ present:
 This is how new team members and returning contributors avoid paying
 the full first-run cost. See ADR-06 for the architectural rationale.
 
+**Per-stream baseline and structural refresh (v1.2).** `source_shas`
+holds keys for three claim streams:
+- prose: ADR/doc relPaths;
+- docstring: source-file relPaths;
+- commit: `commit:<sha>` from the CLI, the bare sha from the
+  `/index-atlas` Skill.
+
+Every `contextatlas index` run:
+- **Classifies** each baseline key by the `source` prefix of its
+  claims. Zero-claim keys fall back to the key's shape.
+- **Diffs** only the prose keys against the prose walk.
+- **Applies one deletion rule per stream:**
+  - a prose key goes when the prose walk no longer produces it;
+  - a docstring key goes when its source file is gone from disk;
+  - a commit key is never deleted.
+- **Prunes stale symbols** after upserting the fresh LSP inventory.
+  Pruned: symbols of deleted or newly excluded files, and symbols a
+  listed file no longer contains. Kept: symbols of files whose listing
+  failed, or whose language is not configured.
+- **Keeps orphaned claims.** Pruning removes the claim-symbol links; a
+  claim left with no link stays in the atlas and is reported as
+  orphaned.
+
+A run that prunes or deletes anything re-exports `atlas.json`; a run
+that changes nothing leaves it byte-identical. `contextatlas
+resolve-symbols` (Skill path) applies the same prune rules and drops
+claim links to symbols that no longer exist. See the ADR-12
+2026-09-24 amendment for the rules and the stage-by-stage stream
+table.
+
 ### Two-paths extraction architecture (v0.7+)
 
 The extraction pipeline above describes the canonical pipeline as a

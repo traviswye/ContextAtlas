@@ -21,6 +21,13 @@ load-bearing empirical findings).
   (Contributor Covenant 2.1), `SECURITY.md`, `SUPPORT.md`,
   `CHANGELOG.md` (this file), `.github/` issue + PR templates,
   minimal CI workflow (typecheck) — v0.9.1 Stream B.3.
+- `contextatlas index` summary fields (v1.2 Phase 1). The fields are
+  appended; existing keys and their order are unchanged (ADR-12).
+  - `symbols_pruned`, `claims_orphaned`, `docstring_sources_deleted`
+    and `unverified_symbol_files`, in both output formats.
+  - `orphaned_claims_by_source` (`--json` only).
+  - `files_deleted` now counts deleted ADR/doc sources only, its
+    documented meaning.
 
 ### Changed
 
@@ -154,6 +161,50 @@ load-bearing empirical findings).
   `dist/extraction/cli-show-prompt.*` and
   `dist/generation/cli-show-generate-prompt.*`. The clean build drops
   them.
+- `contextatlas index` deleted docstring and commit claims from any
+  atlas that carried them (v1.2 Phase 1, F-4).
+  - **Cause.** Every `source_shas` key was diffed against the
+    ADR/docs walk, so each docstring key (a source-file path) and
+    each commit key came back "deleted". Stage 5 then deleted those
+    claims, their `source_shas` rows, and the freshly indexed symbols
+    of every docstring-keyed file, which cut the ADR claims' links
+    into those files.
+  - **Who was affected.** Atlases built by the `/index-atlas` Skill or
+    by `scripts/dogfood-extract.mjs` — the ones that carry docstring
+    and commit claims.
+  - **Silent.** The run exited 0 and `validate-extraction` passed.
+  - **Fix.** Keys are now classified by stream. A prose key is deleted
+    when the prose walk no longer finds it (now also under `--full`).
+    A docstring key is deleted when its source file is gone. A commit
+    key is never deleted.
+  - **Reproduction numbers.** On the v0.4 dogfood atlas, with no
+    source changes, one run dropped:
+    - docstring claims 377 → 0;
+    - symbols 768 → 219;
+    - ADR-claim links into docstring files 1423 → 0.
+- `contextatlas index` never removed stale symbols (v1.2 Phase 1,
+  F-1). Symbols of deleted, renamed, moved or newly excluded source
+  files, and symbols removed from files that still exist, stayed in
+  `atlas.json` indefinitely.
+  - **Pruning.** They are now pruned after each run's inventory, and
+    the claim links to them go too. Claims themselves are never
+    deleted: a claim left with no link is kept and reported as
+    orphaned.
+  - **Kept.** Symbols of a file whose language-server listing failed,
+    or whose language is not configured for the run, stay and are
+    counted as unverified.
+  - **One-time diff.** The first run after upgrading can remove many
+    symbols at once, e.g. test-file symbols left over from before the
+    v0.4 test-file exclusion.
+- `contextatlas resolve-symbols` could leave claim links to symbols
+  that no longer exist (v1.2 Phase 1). It kept each claim's earlier
+  `symbol_ids`, so after a source file was deleted the next run wrote
+  an `atlas.json` that failed to import (`FOREIGN KEY constraint
+  failed`).
+  - Links to missing symbols are now dropped, and the claims left
+    with no link are reported as orphaned.
+  - The earlier symbols of files whose listing failed are now kept
+    instead of dropped.
 
 ### Security
 
