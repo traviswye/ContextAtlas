@@ -29,6 +29,21 @@ export interface SymbolInventory {
   allSymbols: AtlasSymbol[];
 }
 
+/**
+ * What `buildSymbolInventory` returns: the inventory plus which walked
+ * files were actually listed (v1.2 Phase 1). Stale-symbol pruning
+ * needs the difference between "this file has no symbols now" (listed,
+ * prune what is gone) and "we could not ask" (listing failed, keep
+ * what the atlas had). A separate type keeps `SymbolInventory` literals
+ * built by callers and tests valid.
+ */
+export interface SymbolInventoryWithCoverage extends SymbolInventory {
+  /** relPaths whose `listSymbols` call succeeded (possibly with zero symbols). */
+  listedPaths: Set<string>;
+  /** relPaths whose `listSymbols` call threw; their symbols are unverified. */
+  failedPaths: Set<string>;
+}
+
 export interface ResolverStats {
   resolved: number;
   unresolvedCandidates: string[];
@@ -39,14 +54,19 @@ export interface ResolverStats {
  * Build an inventory of all symbols across every active adapter.
  * For each source file found by walkSourceFiles, asks the corresponding
  * adapter (by extension) to enumerate its symbols, and stamps each
- * result with the file's SHA.
+ * result with the file's SHA. Per-file listing failures are logged and
+ * skipped (one tsserver hiccup must not abort an index run) but are
+ * recorded in `failedPaths` so callers can tell them apart from files
+ * that genuinely have no symbols.
  */
 export async function buildSymbolInventory(
   adapters: ReadonlyMap<LanguageCode, LanguageAdapter>,
   files: readonly SourceFile[],
-): Promise<SymbolInventory> {
+): Promise<SymbolInventoryWithCoverage> {
   const byName = new Map<string, AtlasSymbol[]>();
   const allSymbols: AtlasSymbol[] = [];
+  const listedPaths = new Set<string>();
+  const failedPaths = new Set<string>();
 
   for (const file of files) {
     const adapter = pickAdapter(adapters, file.absPath);
@@ -59,8 +79,10 @@ export async function buildSymbolInventory(
         path: file.relPath,
         err: String(err),
       });
+      failedPaths.add(file.relPath);
       continue;
     }
+    listedPaths.add(file.relPath);
     for (const sym of symbols) {
       const stamped: AtlasSymbol = { ...sym, fileSha: file.sha };
       allSymbols.push(stamped);
@@ -70,7 +92,7 @@ export async function buildSymbolInventory(
     }
   }
 
-  return { byName, allSymbols };
+  return { byName, allSymbols, listedPaths, failedPaths };
 }
 
 function pickAdapter(

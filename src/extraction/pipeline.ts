@@ -6,12 +6,20 @@
  *   0. Atlas-aware startup: import committed atlas.json if present,
  *      establishing the committed SHA baseline.
  *   1. Walk prose files (ADRs + docs.include globs), compute SHAs.
- *   2. Diff current SHAs against the committed baseline.
+ *      Classify the baseline's source_shas keys by stream (prose /
+ *      docstring / commit; `source-keys.ts`, v1.2 Phase 1).
+ *   2. Diff current prose SHAs against the prose part of the baseline.
  *   3. Walk source code files, build the symbol inventory via adapters.
  *   4. Upsert symbols (with file SHAs) into storage.
- *   5. Handle deletions: drop claims + source_shas for files gone from disk.
+ *   4a. Prune stale symbols (`symbol-prune.ts`, v1.2 Phase 1): symbols
+ *      of deleted / excluded files and symbols no longer listed.
+ *   4b. Git signal (ADR-11).
+ *   5. Handle deletions, stream-aware: prose keys missing from the
+ *      prose walk and docstring keys whose file is gone lose their
+ *      claims + source_shas row; commit keys are never deleted.
  *   6. Extract changed/added prose files in batches, resolve candidates,
  *      and write claims.
+ *   6b. Report claims orphaned by the prune (kept, never deleted).
  *   7. If atlas.committed, regenerate atlas.json iff any modification
  *      happened. Bump atlas_meta.generated_at on real changes only.
  *
@@ -33,13 +41,14 @@ import {
 } from "../storage/atlas-exporter.js";
 import {
   deleteClaimsBySourcePath,
+  deleteSourceSha,
   insertClaim,
   listSourceShas,
   setSourceSha,
   type NewClaim,
 } from "../storage/claims.js";
 import type { DatabaseInstance } from "../storage/db.js";
-import { deleteSymbolsByPath, upsertSymbols } from "../storage/symbols.js";
+import { upsertSymbols } from "../storage/symbols.js";
 import type {
   ContextAtlasConfig,
   LanguageAdapter,
@@ -72,6 +81,14 @@ import {
   resolveCandidates,
   type SymbolInventory,
 } from "./resolver.js";
+import { partitionSourceShas } from "./source-keys.js";
+import {
+  coverageFromInventory,
+  pruneStaleSymbols,
+  summarizeOrphanedClaims,
+  warnOrphanedClaims,
+  type OrphanedClaimSource,
+} from "./symbol-prune.js";
 import { replaceGitCommits } from "../storage/git.js";
 import { ATLAS_META_KEYS } from "../storage/atlas-importer.js";
 import { ATLAS_VERSION } from "../storage/types.js";
@@ -194,6 +211,12 @@ export interface FileUnresolvedDetail {
 export interface ExtractionPipelineResult {
   filesExtracted: number;
   filesUnchanged: number;
+  /**
+   * Prose sources (ADRs / docs) whose baseline key had no match in the
+   * prose walk and were dropped at Stage 5. Prose only: docstring
+   * deletions are `docstringSourcesDeleted`; commit keys are never
+   * deleted.
+   */
   filesDeleted: number;
   claimsWritten: number;
   symbolsIndexed: number;
@@ -244,6 +267,31 @@ export interface ExtractionPipelineResult {
    * that want per-token detail format it themselves.
    */
   unresolvedDetails: FileUnresolvedDetail[];
+  /**
+   * Stored symbols removed by the Stage 4a prune (v1.2 Phase 1):
+   * symbols of deleted or newly-excluded source files, and symbols no
+   * longer listed for a file that still exists.
+   */
+  symbolsPruned: number;
+  /**
+   * Claims that lost their last symbol link to this run's prune and
+   * still exist after Stage 6. Kept in the atlas (never deleted by
+   * pruning); v1.2 Phase 3 queues their sources for re-extraction.
+   */
+  claimsOrphaned: number;
+  /** `claimsOrphaned` broken down by claim source; sorted. */
+  orphanedClaimsBySource: OrphanedClaimSource[];
+  /**
+   * Docstring source keys dropped at Stage 5 because their source file
+   * no longer exists (their claims and source_shas row go with them).
+   */
+  docstringSourcesDeleted: number;
+  /**
+   * Source files whose stored symbols were kept without verification:
+   * `listSymbols` failed for the file, or its language is not
+   * configured for this run.
+   */
+  unverifiedSymbolFiles: number;
 }
 
 export async function runExtractionPipeline(
@@ -275,19 +323,37 @@ export async function runExtractionPipeline(
   const proseFiles = walkProseFiles(repoRoot, config, configRoot);
   log.info("pipeline: discovered prose files", { count: proseFiles.length });
 
-  // --- Stage 2: SHA diff -----------------------------------------------
+  // --- Stage 1b: split the baseline by stream (v1.2 Phase 1, F-4) -----
+  // source_shas also holds docstring keys (source-file relPaths) and
+  // commit keys (`commit:<sha>` from the CLI extractor, bare sha from
+  // the Skill). Diffing all of them against the prose walk marked every
+  // non-prose key "deleted", and Stage 5 then wiped docstring claims,
+  // commit claims and the symbols of every docstring-bearing file.
+  const baseline = partitionSourceShas(db, committedShas, {
+    knownProsePaths: new Set(proseFiles.map((f) => f.relPath)),
+  });
+  log.info("pipeline: baseline source keys by stream", {
+    prose: Object.keys(baseline.prose).length,
+    docstring: Object.keys(baseline.docstring).length,
+    commit: Object.keys(baseline.commit).length,
+  });
+
+  // --- Stage 2: SHA diff (prose stream only) ---------------------------
   // `skipShaDiff` (from `contextatlas index --full`, ADR-12) rewrites
   // every prose file into `changed` so the extraction phase treats
   // them all as dirty — the ShaDiff record is retained for the
-  // `files_unchanged=0` summary line rather than being faked.
+  // `files_unchanged=0` summary line rather than being faked. Deleted
+  // prose keys are the same under --full: a key the prose walk no
+  // longer produces is gone either way.
+  const proseDiff = diffShas(proseFiles, baseline.prose);
   const diff = deps.skipShaDiff
     ? {
         unchanged: [],
-        changed: proseFiles.filter((f) => committedShas[f.relPath] !== undefined),
-        added: proseFiles.filter((f) => committedShas[f.relPath] === undefined),
-        deleted: [] as string[],
+        changed: proseFiles.filter((f) => baseline.prose[f.relPath] !== undefined),
+        added: proseFiles.filter((f) => baseline.prose[f.relPath] === undefined),
+        deleted: proseDiff.deleted,
       }
-    : diffShas(proseFiles, committedShas);
+    : proseDiff;
   const filesToExtract = [...diff.changed, ...diff.added];
   log.info("pipeline: extraction plan", {
     unchanged: diff.unchanged.length,
@@ -312,6 +378,17 @@ export async function runExtractionPipeline(
 
   // --- Stage 4: upsert symbols ----------------------------------------
   upsertSymbols(db, inventory.allSymbols);
+
+  // --- Stage 4a: prune stale symbols (v1.2 Phase 1, F-1) ---------------
+  // Runs right after the upsert, before Stages 5-6. Stage 6 resolves
+  // candidates against the fresh in-memory `inventory`, which never
+  // contains a pruned symbol, so no claim written this run can link to
+  // one. Files whose listing failed or whose language is not
+  // configured keep their stored symbols.
+  const prune = pruneStaleSymbols(
+    db,
+    coverageFromInventory({ repoRoot, sourceFiles, inventory, adapters }),
+  );
 
   // --- Stage 4b: git signal (ADR-11) -----------------------------------
   // Full re-extract every run. `git log` is subprocess-fast, so the
@@ -338,7 +415,7 @@ export async function runExtractionPipeline(
 
   const gitChanged = gitResult.headSha !== priorHeadSha;
 
-  // --- Stage 5: handle deletions --------------------------------------
+  // --- Stage 5: handle deletions (stream-aware, v1.2 Phase 1) ---------
   // Per A3 v0.8 absorption (Step 2.2.b refined LOCK 2.a Stage 5 placement):
   // file deletion sweep now substantively cleans symbols + cascades
   // claim_symbols rows. Closes Stream C orphan claim_symbols gap per
@@ -352,10 +429,30 @@ export async function runExtractionPipeline(
   // survive with symbolIds = [] post-cascade (orphan-claim-shell);
   // bears historical-narrative substrate weight (git-history context
   // persists beyond symbol lifecycle).
+  //
+  // v1.2 Phase 1 (F-4): the sweep used to run over every baseline key
+  // the prose walk missed, which included all docstring and commit
+  // keys, so it deleted those claims outright (the LOCK 2.b retain
+  // above never held for keyed commits). Each stream now has its own
+  // rule:
+  //   - prose: deleted iff absent from the prose walk (also under --full);
+  //   - docstring: deleted iff the source file is gone from disk. A
+  //     changed file keeps its claims and baseline key — the CLI does
+  //     not re-extract docstrings yet (v1.2 Phase 2; Phase 3 queues it);
+  //   - commit: never deleted (LOCK 2.b retain).
+  // Symbol cleanup (and the claim_symbols cascade A3 added here) now
+  // lives in the Stage 4a prune, which covers every stored symbol path;
+  // `deleteSymbolsByPath` on a prose path had nothing to delete.
   for (const deletedPath of diff.deleted) {
     deleteClaimsBySourcePath(db, deletedPath);
-    deleteSymbolsByPath(db, deletedPath);
-    db.prepare("DELETE FROM source_shas WHERE source_path = ?").run(deletedPath);
+    deleteSourceSha(db, deletedPath);
+  }
+  let docstringSourcesDeleted = 0;
+  for (const key of Object.keys(baseline.docstring)) {
+    if (existsSync(pathResolve(repoRoot, key))) continue;
+    deleteClaimsBySourcePath(db, key);
+    deleteSourceSha(db, key);
+    docstringSourcesDeleted++;
   }
 
   // --- Stage 6: extract changed/added ---------------------------------
@@ -468,12 +565,25 @@ export async function runExtractionPipeline(
     );
   }
 
+  // --- Stage 6b: orphaned-claim report (v1.2 Phase 1) ------------------
+  // Counted after Stages 5-6 so claims those stages deleted or
+  // re-extracted are not reported.
+  const orphans = summarizeOrphanedClaims(db, prune.affectedClaimIds);
+  warnOrphanedClaims(orphans);
+
   // --- Stage 7: update atlas_meta + export ----------------------------
   // Git state advancing counts as a modification: the committed atlas
   // carries `extracted_at_sha` + `git_commits`, so a new HEAD SHA means
-  // the atlas is out of date even if no prose/source changed.
+  // the atlas is out of date even if no prose/source changed. A prune
+  // or a docstring-source deletion changes the exported symbols /
+  // claims, so it also counts (v1.2 Phase 1); a run that changed
+  // nothing leaves atlas.json byte-identical.
   const didModify =
-    filesToExtract.length > 0 || diff.deleted.length > 0 || gitChanged;
+    filesToExtract.length > 0 ||
+    diff.deleted.length > 0 ||
+    gitChanged ||
+    prune.symbolsPruned > 0 ||
+    docstringSourcesDeleted > 0;
   let atlasExported = false;
 
   if (didModify) {
@@ -557,6 +667,11 @@ export async function runExtractionPipeline(
     gitCommitsIndexed: gitResult.commits.length,
     extractedAtSha: gitResult.headSha,
     unresolvedDetails,
+    symbolsPruned: prune.symbolsPruned,
+    claimsOrphaned: orphans.claimsOrphaned,
+    orphanedClaimsBySource: orphans.bySource,
+    docstringSourcesDeleted,
+    unverifiedSymbolFiles: prune.unverifiedSymbolFiles,
   };
 }
 

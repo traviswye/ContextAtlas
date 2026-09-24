@@ -55,6 +55,11 @@ export class ClaudeCodeOnlyExtractor implements Extractor {
         gitCommitsIndexed: 0,
         extractedAtSha: null,
         unresolvedDetails: [],
+        symbolsPruned: 0,
+        claimsOrphaned: 0,
+        orphanedClaimsBySource: [],
+        docstringSourcesDeleted: 0,
+        unverifiedSymbolFiles: 0,
       },
       costModel: this.costModel,
     };

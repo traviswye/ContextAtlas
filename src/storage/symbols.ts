@@ -158,6 +158,46 @@ export function deleteSymbolsByPath(
   return tx();
 }
 
+/**
+ * Delete the given symbol rows and cascade their `claim_symbols` links
+ * (v1.2 Phase 1 stale-symbol pruning). Claims themselves are never
+ * touched — a claim whose last link goes away is left "orphaned" for
+ * the caller to report. Unknown IDs are ignored. Runs in one
+ * transaction; returns the number of symbol rows deleted.
+ */
+export function deleteSymbolsByIds(
+  db: DatabaseInstance,
+  ids: readonly SymbolId[],
+): number {
+  if (ids.length === 0) return 0;
+  const tx = db.transaction(() => {
+    const delLinks = db.prepare(
+      "DELETE FROM claim_symbols WHERE symbol_id = ?",
+    );
+    const delSymbol = db.prepare("DELETE FROM symbols WHERE id = ?");
+    let deleted = 0;
+    for (const id of ids) {
+      delLinks.run(id);
+      deleted += delSymbol.run(id).changes;
+    }
+    return deleted;
+  });
+  return tx();
+}
+
+/**
+ * Lightweight `{ id, path }` listing of every symbol, sorted by id.
+ * Used by stale-symbol pruning, which only needs locations and must
+ * not pay for full row hydration on large atlases.
+ */
+export function listSymbolLocations(
+  db: DatabaseInstance,
+): Array<{ id: SymbolId; path: string }> {
+  return db
+    .prepare("SELECT id, path FROM symbols ORDER BY id")
+    .all() as Array<{ id: SymbolId; path: string }>;
+}
+
 export function listAllSymbols(db: DatabaseInstance): AtlasSymbol[] {
   const rows = db
     .prepare("SELECT * FROM symbols ORDER BY id")

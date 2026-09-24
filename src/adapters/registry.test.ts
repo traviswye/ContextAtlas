@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
 
+import { REGISTERED_LANGUAGE_EXTENSIONS } from "../extraction/source-keys.js";
+import { LANG_CODES, type LanguageCode } from "../types.js";
+
 import { createAdapter } from "./registry.js";
 
 describe("createAdapter", () => {
@@ -20,4 +23,18 @@ describe("createAdapter", () => {
     expect(adapter.language).toBe("go");
     expect(adapter.extensions).toContain(".go");
   });
+});
+
+describe("REGISTERED_LANGUAGE_EXTENSIONS drift guard (v1.2 Phase 1)", () => {
+  // src/extraction/source-keys.ts keeps its own copy of every adapter's
+  // extensions (core must not import concrete adapters). This test pins
+  // the copy to the registry so a new or changed adapter extension
+  // cannot silently drift from the source-key classifier.
+  for (const lang of Object.keys(LANG_CODES) as LanguageCode[]) {
+    it(`${lang}: classifier extensions match the registered adapter`, () => {
+      expect([...REGISTERED_LANGUAGE_EXTENSIONS[lang]]).toEqual([
+        ...createAdapter(lang).extensions,
+      ]);
+    });
+  }
 });

@@ -144,6 +144,44 @@ describe("buildSymbolInventory", () => {
     ]);
     expect(inv.byName.get("Foo")?.length).toBe(1);
   });
+
+  it("reports which walked files were listed and which failed (v1.2 Phase 1 prune safety)", async () => {
+    const adapter: LanguageAdapter = {
+      language: "typescript",
+      extensions: [".ts"],
+      async initialize() {},
+      async shutdown() {},
+      async listSymbols(filePath: string) {
+        if (filePath.endsWith("bad.ts")) throw new Error("boom");
+        if (filePath.endsWith("empty.ts")) return [];
+        return [sym({ id: "sym:ts:a.ts:Foo", name: "Foo", language: "typescript", path: "a.ts" })];
+      },
+      async getSymbolDetails() {
+        return null;
+      },
+      async findReferences() {
+        return [];
+      },
+      async getDiagnostics() {
+        return [];
+      },
+      async getTypeInfo() {
+        return { extends: [], implements: [], usedByTypes: [] };
+      },
+      async getDocstring() {
+        return null;
+      },
+    };
+    const adapters = new Map<LanguageCode, LanguageAdapter>([["typescript", adapter]]);
+    const inv = await buildSymbolInventory(adapters, [
+      srcFile("bad.ts"),
+      srcFile("a.ts"),
+      srcFile("empty.ts"),
+      srcFile("notes.md"), // no adapter owns it: neither listed nor failed
+    ]);
+    expect([...inv.listedPaths].sort()).toEqual(["a.ts", "empty.ts"]);
+    expect([...inv.failedPaths]).toEqual(["bad.ts"]);
+  });
 });
 
 describe("resolveCandidate / resolveCandidates", () => {

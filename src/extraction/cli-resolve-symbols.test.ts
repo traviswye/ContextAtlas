@@ -22,9 +22,14 @@ import { join as pathJoin } from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
+import { importAtlas } from "../storage/atlas-importer.js";
+import { openDatabase } from "../storage/db.js";
 import type { AtlasFileV1 } from "../storage/types.js";
 
-import { runResolveSymbolsSubcommand } from "./cli-resolve-symbols.js";
+import {
+  reconcileAtlasSymbols,
+  runResolveSymbolsSubcommand,
+} from "./cli-resolve-symbols.js";
 
 function captureStreams() {
   const stdout: string[] = [];
@@ -324,4 +329,124 @@ describe("runResolveSymbolsSubcommand (v0.7 Step 2.3.a.1)", () => {
     },
     30_000,
   );
+
+  it(
+    "re-run after a source file is deleted: no dangling symbol_ids, orphaned claims reported, atlas stays importable (v1.2 Phase 1 D6)",
+    async () => {
+      writeFileSync(pathJoin(tmp, "extra.ts"), "export class Extra {}\n");
+      const atlas: AtlasFileV1 = {
+        ...buildStubAtlas({ withCalculatorCandidate: true }),
+      };
+      atlas.claims.push({
+        source: "adr:ADR-01.md",
+        source_path: "docs/adr/ADR-01.md",
+        source_sha: "adr-sha",
+        severity: "hard",
+        claim: "Extra stays small",
+        symbol_ids: [],
+        symbol_candidates: ["Extra"],
+      });
+      writeFileSync(
+        pathJoin(tmp, ".contextatlas", "atlas.json"),
+        JSON.stringify(atlas, null, 2),
+      );
+      const first = await runResolveSymbolsSubcommand({
+        configRoot: tmp,
+        configFile: null,
+        writeStdout: () => {},
+        writeStderr: () => {},
+      });
+      expect(first.exitCode).toBe(0);
+      const afterFirst = JSON.parse(
+        readFileSync(pathJoin(tmp, ".contextatlas", "atlas.json"), "utf8"),
+      ) as AtlasFileV1;
+      const extraId = afterFirst.symbols.find((s) => s.name === "Extra")?.id;
+      expect(extraId).toBeDefined();
+      // A preserved claim that carries the old link but no candidates
+      // (Skill refresh "carry forward unchanged").
+      afterFirst.claims.push({
+        source: "adr:ADR-02.md",
+        source_path: "docs/adr/ADR-02.md",
+        source_sha: "adr2-sha",
+        severity: "soft",
+        claim: "carried forward",
+        symbol_ids: [extraId!],
+      });
+      writeFileSync(
+        pathJoin(tmp, ".contextatlas", "atlas.json"),
+        JSON.stringify(afterFirst, null, 2),
+      );
+
+      rmSync(pathJoin(tmp, "extra.ts"));
+      const cap = captureStreams();
+      const second = await runResolveSymbolsSubcommand({
+        configRoot: tmp,
+        configFile: null,
+        writeStdout: cap.writeStdout,
+        writeStderr: cap.writeStderr,
+      });
+      expect(second.exitCode).toBe(0);
+      const final = JSON.parse(
+        readFileSync(pathJoin(tmp, ".contextatlas", "atlas.json"), "utf8"),
+      ) as AtlasFileV1;
+      const ids = new Set(final.symbols.map((s) => s.id));
+      expect(ids.has(extraId!)).toBe(false);
+      for (const c of final.claims) {
+        for (const id of c.symbol_ids) expect(ids.has(id)).toBe(true);
+      }
+      expect(second.symbolsPruned).toBeGreaterThanOrEqual(1);
+      expect(second.claimsOrphaned).toBe(2);
+      expect(cap.joinedStdout()).toContain("2 claims orphaned");
+      const db = openDatabase(":memory:");
+      try {
+        expect(() => importAtlas(db, final)).not.toThrow();
+      } finally {
+        db.close();
+      }
+    },
+    60_000,
+  );
+});
+
+describe("reconcileAtlasSymbols (v1.2 Phase 1 D6 — same prune rules as the CLI)", () => {
+  const entry = (path: string, name: string, line = 1) => ({
+    id: `sym:ts:${path}:${name}`,
+    name,
+    kind: "function" as const,
+    path,
+    line,
+    file_sha: "sha",
+  });
+
+  it("fresh symbols replace prior ones; prior symbols survive only where the run could not verify them", () => {
+    const prior = [
+      entry("src/listed.ts", "Kept", 1),
+      entry("src/listed.ts", "Removed"),
+      entry("src/flaky.ts", "Flaky"),
+      entry("src/gone.ts", "Gone"),
+      { ...entry("pkg/mod.py", "Thing"), id: "sym:py:pkg/mod.py:Thing" },
+    ];
+    const fresh = [entry("src/listed.ts", "Kept", 7)];
+    const { symbols, plan } = reconcileAtlasSymbols(prior, fresh, {
+      walkedPaths: new Set(["src/listed.ts", "src/flaky.ts"]),
+      listedPaths: new Set(["src/listed.ts"]),
+      failedPaths: new Set(["src/flaky.ts"]),
+      inventoryIds: new Set(["sym:ts:src/listed.ts:Kept"]),
+      configuredExtensions: new Set([".ts"]),
+      fileExists: (p) => p !== "src/gone.ts",
+    });
+    expect(symbols.map((s) => `${s.id}@${s.line}`).sort()).toEqual([
+      "sym:py:pkg/mod.py:Thing@1",
+      "sym:ts:src/flaky.ts:Flaky@1",
+      "sym:ts:src/listed.ts:Kept@7",
+    ]);
+    expect(plan.pruneIds).toEqual([
+      "sym:ts:src/gone.ts:Gone",
+      "sym:ts:src/listed.ts:Removed",
+    ]);
+    expect(plan.unverified.map((u) => u.reason)).toEqual([
+      "language-not-configured",
+      "listing-failed",
+    ]);
+  });
 });

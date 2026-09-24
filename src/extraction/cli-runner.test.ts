@@ -15,6 +15,7 @@ import {
   resolveContextatlasCommitSha,
   runIndexSubcommand,
 } from "./cli-runner.js";
+import { computeFileSha } from "./file-walker.js";
 
 /**
  * Integration harness for `contextatlas index` that avoids spawning
@@ -971,4 +972,150 @@ describe("runIndexSubcommand (ADR-12)", () => {
     });
     expect(result.exitCode).toBe(0);
   });
+
+  // ---------------------------------------------------------------
+  // v1.2 Phase 1 — prune/orphan/stream-aware-deletion summary fields.
+  // ADR-12 contract: new keys are appended; existing keys keep their
+  // names and their relative order.
+  // ---------------------------------------------------------------
+
+  const V01_V03_KEYS = [
+    "files_extracted",
+    "files_unchanged",
+    "files_deleted",
+    "claims_written",
+    "symbols_indexed",
+    "unresolved_candidates",
+    "unresolved_frontmatter_hints",
+    "git_commits_indexed",
+    "extracted_at_sha",
+    "atlas_exported",
+    "wall_clock_ms",
+    "api_calls",
+    "input_tokens",
+    "output_tokens",
+    "cost_usd",
+    "extraction_errors",
+  ];
+  const PHASE1_KEYS = [
+    "symbols_pruned",
+    "claims_orphaned",
+    "docstring_sources_deleted",
+    "unverified_symbol_files",
+  ];
+
+  it("key=value summary appends the v1.2 Phase 1 keys after the existing keys (order unchanged)", async () => {
+    const stdout = captureStdout();
+    const result = await runIndexSubcommand({
+      configRoot: tmp,
+      configFile: null,
+      full: false,
+      json: false,
+      contextatlasVersion: "0.0.1-test",
+      clientOverride: stubClient(async () => ({ claims: [] })),
+      writeStdout: stdout.writer,
+    });
+    expect(result.exitCode).toBe(0);
+    const keys = stdout
+      .joined()
+      .trim()
+      .split(/\r?\n/)
+      .map((line) => line.split("=")[0]);
+    expect(keys).toEqual([...V01_V03_KEYS, ...PHASE1_KEYS]);
+    expect(stdout.joined()).toMatch(/symbols_pruned=0/);
+    expect(stdout.joined()).toMatch(/claims_orphaned=0/);
+  });
+
+  it("--json summary appends the v1.2 Phase 1 fields; existing field order unchanged", async () => {
+    const stdout = captureStdout();
+    await runIndexSubcommand({
+      configRoot: tmp,
+      configFile: null,
+      full: false,
+      json: true,
+      contextatlasVersion: "0.0.1-test",
+      clientOverride: stubClient(async () => ({ claims: [] })),
+      writeStdout: stdout.writer,
+    });
+    const parsed = JSON.parse(stdout.joined()) as Record<string, unknown>;
+    const existing = [
+      ...V01_V03_KEYS.slice(0, 7),
+      "frontmatter_unresolved_by_file",
+      ...V01_V03_KEYS.slice(7),
+    ];
+    expect(Object.keys(parsed)).toEqual([
+      ...existing,
+      "symbols_pruned",
+      "claims_orphaned",
+      "orphaned_claims_by_source",
+      "docstring_sources_deleted",
+      "unverified_symbol_files",
+    ]);
+    expect(parsed.orphaned_claims_by_source).toEqual([]);
+  });
+
+  it("reports a pruned stale symbol and the claim it orphans (real tsserver, zero model calls)", async () => {
+    const adrPath = pathJoin(tmp, "docs", "adr", "ADR-01.md");
+    writeFileSync(adrPath, ["---", "id: ADR-01", "---", "Gone must stay pure.", ""].join("\n"));
+    const adrSha = computeFileSha(adrPath);
+    writeFileSync(
+      pathJoin(tmp, ".contextatlas", "atlas.json"),
+      JSON.stringify({
+        version: "1.4",
+        generated_at: "2026-09-01T00:00:00.000Z",
+        generator: {
+          contextatlas_version: "1.1.3",
+          extraction_model: "claude-opus-4-7",
+        },
+        source_shas: { "docs/adr/ADR-01.md": adrSha },
+        symbols: [
+          {
+            id: "sym:ts:src/gone.ts:Gone",
+            name: "Gone",
+            kind: "function",
+            path: "src/gone.ts",
+            line: 1,
+            file_sha: "old",
+          },
+        ],
+        claims: [
+          {
+            source: "adr:ADR-01.md",
+            source_path: "docs/adr/ADR-01.md",
+            source_sha: adrSha,
+            severity: "hard",
+            claim: "Gone must stay pure",
+            symbol_ids: ["sym:ts:src/gone.ts:Gone"],
+          },
+        ],
+      }),
+    );
+    const stdout = captureStdout();
+    const result = await runIndexSubcommand({
+      configRoot: tmp,
+      configFile: null,
+      full: false,
+      json: true,
+      contextatlasVersion: "0.0.1-test",
+      clientOverride: stubClient(async () => {
+        throw new Error("no model call expected");
+      }),
+      writeStdout: stdout.writer,
+    });
+    expect(result.exitCode).toBe(0);
+    const parsed = JSON.parse(stdout.joined()) as Record<string, unknown>;
+    expect(parsed.api_calls).toBe(0);
+    expect(parsed.files_deleted).toBe(0);
+    expect(parsed.symbols_pruned).toBe(1);
+    expect(parsed.claims_orphaned).toBe(1);
+    expect(parsed.orphaned_claims_by_source).toEqual([
+      { source: "adr:ADR-01.md", source_path: "docs/adr/ADR-01.md", count: 1 },
+    ]);
+    expect(parsed.atlas_exported).toBe(true);
+    const onDisk = JSON.parse(
+      readFileSync(pathJoin(tmp, ".contextatlas", "atlas.json"), "utf8"),
+    ) as { symbols: unknown[]; claims: Array<{ symbol_ids: string[] }> };
+    expect(onDisk.symbols).toEqual([]);
+    expect(onDisk.claims[0]?.symbol_ids).toEqual([]);
+  }, 30_000);
 });

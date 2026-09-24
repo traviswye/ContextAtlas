@@ -151,6 +151,71 @@ export function deleteClaimsBySourcePath(
   return tx();
 }
 
+/**
+ * IDs of every claim linked to at least one of the given symbols
+ * (deduplicated, ascending). v1.2 Phase 1: captured before a symbol
+ * prune so the caller can later tell which claims lost their last link.
+ */
+export function listClaimIdsLinkedToSymbols(
+  db: DatabaseInstance,
+  symbolIds: readonly SymbolId[],
+): number[] {
+  const stmt = db.prepare(
+    "SELECT claim_id FROM claim_symbols WHERE symbol_id = ?",
+  );
+  const out = new Set<number>();
+  for (const id of symbolIds) {
+    for (const row of stmt.all(id) as { claim_id: number }[]) {
+      out.add(row.claim_id);
+    }
+  }
+  return Array.from(out).sort((a, b) => a - b);
+}
+
+/**
+ * Of the given claim IDs, the ones that still exist and have no
+ * `claim_symbols` link left ("orphaned" claims). Deleted claims are
+ * skipped. Ordered by claim id.
+ */
+export function listUnlinkedClaims(
+  db: DatabaseInstance,
+  claimIds: readonly number[],
+): Array<{ id: number; source: string; sourcePath: string }> {
+  const getClaim = db.prepare(
+    "SELECT id, source, source_path FROM claims WHERE id = ?",
+  );
+  const hasLink = db.prepare(
+    "SELECT 1 FROM claim_symbols WHERE claim_id = ? LIMIT 1",
+  );
+  const out: Array<{ id: number; source: string; sourcePath: string }> = [];
+  for (const id of [...claimIds].sort((a, b) => a - b)) {
+    const row = getClaim.get(id) as
+      | { id: number; source: string; source_path: string }
+      | undefined;
+    if (!row) continue;
+    if (hasLink.get(id) !== undefined) continue;
+    out.push({ id: row.id, source: row.source, sourcePath: row.source_path });
+  }
+  return out;
+}
+
+/**
+ * Distinct `(source_path, source)` pairs across all claims. v1.2
+ * Phase 1: the primary signal for classifying source_shas keys into
+ * prose / docstring / commit streams.
+ */
+export function listClaimSourcesByPath(
+  db: DatabaseInstance,
+): Array<{ sourcePath: string; source: string }> {
+  return (
+    db
+      .prepare(
+        "SELECT DISTINCT source_path, source FROM claims ORDER BY source_path, source",
+      )
+      .all() as { source_path: string; source: string }[]
+  ).map((r) => ({ sourcePath: r.source_path, source: r.source }));
+}
+
 export function clearClaims(db: DatabaseInstance): void {
   db.exec("DELETE FROM claim_symbols; DELETE FROM claims;");
 }
@@ -179,6 +244,14 @@ export function getSourceSha(
     .prepare("SELECT source_sha FROM source_shas WHERE source_path = ?")
     .get(sourcePath) as { source_sha: string } | undefined;
   return row?.source_sha ?? null;
+}
+
+/** Remove one source_shas row (no-op when absent). */
+export function deleteSourceSha(
+  db: DatabaseInstance,
+  sourcePath: string,
+): void {
+  db.prepare("DELETE FROM source_shas WHERE source_path = ?").run(sourcePath);
 }
 
 export function listSourceShas(

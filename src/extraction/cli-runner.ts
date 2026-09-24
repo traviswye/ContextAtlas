@@ -501,6 +501,16 @@ function printSummary(
       output_tokens: result.outputTokens,
       cost_usd: Number(result.costUsd.toFixed(4)),
       extraction_errors: result.extractionErrors,
+      // v1.2 Phase 1 — appended per the ADR-12 additive-keys contract.
+      symbols_pruned: result.symbolsPruned,
+      claims_orphaned: result.claimsOrphaned,
+      orphaned_claims_by_source: result.orphanedClaimsBySource.map((o) => ({
+        source: o.source,
+        source_path: o.sourcePath,
+        count: o.count,
+      })),
+      docstring_sources_deleted: result.docstringSourcesDeleted,
+      unverified_symbol_files: result.unverifiedSymbolFiles,
     };
     writeStdout(JSON.stringify(payload, null, 2) + "\n");
     return;
@@ -522,6 +532,13 @@ function printSummary(
     `output_tokens=${result.outputTokens}`,
     `cost_usd=${result.costUsd.toFixed(4)}`,
     `extraction_errors=${result.extractionErrors.length}`,
+    // v1.2 Phase 1 — appended per the ADR-12 additive-keys contract.
+    // Per-source orphan detail is --json only (orphaned_claims_by_source)
+    // plus the pipeline's stderr warning.
+    `symbols_pruned=${result.symbolsPruned}`,
+    `claims_orphaned=${result.claimsOrphaned}`,
+    `docstring_sources_deleted=${result.docstringSourcesDeleted}`,
+    `unverified_symbol_files=${result.unverifiedSymbolFiles}`,
   ];
   writeStdout(lines.join("\n") + "\n");
 }

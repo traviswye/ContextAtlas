@@ -4,11 +4,13 @@ import type { Symbol as AtlasSymbol } from "../types.js";
 
 import { type DatabaseInstance, openDatabase } from "./db.js";
 import {
+  deleteSymbolsByIds,
   deleteSymbolsByPath,
   getSymbol,
   getSymbolsByName,
   getSymbolsByPath,
   listAllSymbols,
+  listSymbolLocations,
   upsertSymbol,
   upsertSymbols,
 } from "./symbols.js";
@@ -173,5 +175,56 @@ describe("symbols CRUD", () => {
       .prepare("SELECT COUNT(*) AS n FROM claim_symbols")
       .get() as { n: number };
     expect(links.n).toBe(0);
+  });
+
+  it("deleteSymbolsByIds removes only the named rows and cascades their claim_symbols links (v1.2 Phase 1)", () => {
+    upsertSymbols(db, [
+      makeSym({ id: "sym:ts:src/a.ts:Foo", name: "Foo", path: "src/a.ts" }),
+      makeSym({ id: "sym:ts:src/a.ts:Bar", name: "Bar", path: "src/a.ts" }),
+      makeSym({ id: "sym:ts:src/b.ts:Baz", name: "Baz", path: "src/b.ts" }),
+    ]);
+    const info = db
+      .prepare(
+        `INSERT INTO claims (source, source_path, source_sha, severity, claim)
+         VALUES ('adr:ADR.md', 'docs/ADR.md', 'sha1', 'hard', 'test claim')`,
+      )
+      .run();
+    const claimId = Number(info.lastInsertRowid);
+    const link = db.prepare(
+      "INSERT INTO claim_symbols (claim_id, symbol_id) VALUES (?, ?)",
+    );
+    link.run(claimId, "sym:ts:src/a.ts:Foo");
+    link.run(claimId, "sym:ts:src/b.ts:Baz");
+
+    const deleted = deleteSymbolsByIds(db, [
+      "sym:ts:src/a.ts:Foo",
+      "sym:ts:src/b.ts:Baz",
+      "sym:ts:src/none.ts:Unknown",
+    ]);
+    expect(deleted).toBe(2);
+    expect(listAllSymbols(db).map((s) => s.id)).toEqual([
+      "sym:ts:src/a.ts:Bar",
+    ]);
+    const links = db
+      .prepare("SELECT COUNT(*) AS n FROM claim_symbols")
+      .get() as { n: number };
+    expect(links.n).toBe(0);
+    // The claim itself is untouched.
+    const claims = db.prepare("SELECT COUNT(*) AS n FROM claims").get() as {
+      n: number;
+    };
+    expect(claims.n).toBe(1);
+    expect(deleteSymbolsByIds(db, [])).toBe(0);
+  });
+
+  it("listSymbolLocations returns id + path for every symbol, sorted by id", () => {
+    upsertSymbols(db, [
+      makeSym({ id: "sym:ts:src/b.ts:B", name: "B", path: "src/b.ts" }),
+      makeSym({ id: "sym:ts:src/a.ts:A", name: "A", path: "src/a.ts" }),
+    ]);
+    expect(listSymbolLocations(db)).toEqual([
+      { id: "sym:ts:src/a.ts:A", path: "src/a.ts" },
+      { id: "sym:ts:src/b.ts:B", path: "src/b.ts" },
+    ]);
   });
 });

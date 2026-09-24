@@ -16,6 +16,14 @@
  *     deletion (LOCK 2.b retain discipline) with symbolIds = [] post-
  *     cascade (claim_symbols rows cascade-deleted via deleteSymbolsByPath
  *     manual cascade)
+ *
+ * v1.2 Phase 1 note (2026-09-24, appended; the text above is the v0.8
+ * record): pipeline.ts Stage 5 no longer calls deleteSymbolsByPath.
+ * Symbol cleanup and the claim_symbols cascade moved to the Stage 4a
+ * prune (src/extraction/symbol-prune.ts, deleteSymbolsByIds), and
+ * Stage 5 became stream-aware, so commit claims are no longer deleted
+ * when their key is in source_shas (src/extraction/pipeline-prune.test.ts).
+ * These tests still pin the storage-level cascade they call directly.
  */
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";

@@ -42,8 +42,15 @@ import { walkSourceFiles } from "./file-walker.js";
 import {
   buildSymbolInventory,
   resolveCandidatesWithNormalization,
-  type SymbolInventory,
+  type SymbolInventoryWithCoverage,
 } from "./resolver.js";
+import {
+  coverageFromInventory,
+  planSymbolPrune,
+  warnUnverified,
+  type SymbolCoverage,
+  type SymbolPrunePlan,
+} from "./symbol-prune.js";
 
 export type ResolveSymbolsExitCode = 0 | 1 | 2;
 
@@ -64,6 +71,40 @@ export interface ResolveSymbolsCliResult {
   candidatesUnresolved?: number;
   /** Total symbols enumerated by the LSP walk. */
   symbolsEnumerated?: number;
+  /** Prior atlas symbols dropped by the v1.2 Phase 1 prune rules. */
+  symbolsPruned?: number;
+  /** Claims that had ≥1 symbol_id on input and have none after this run. */
+  claimsOrphaned?: number;
+  /** claims[].symbol_ids entries dropped because no symbol has that id. */
+  danglingLinksDropped?: number;
+  /** Files whose prior symbols were kept without verification. */
+  unverifiedSymbolFiles?: number;
+}
+
+/**
+ * Rebuild `symbols[]` for an atlas (v1.2 Phase 1 D6 parity with the
+ * CLI pipeline's Stage 4a prune). Fresh LSP symbols replace prior
+ * ones; prior symbols are kept only where the run could not verify
+ * them (listing failed, or the language is not configured) — the same
+ * `planSymbolPrune` rules the CLI applies. Before v1.2 the rebuild was
+ * wholesale: stale symbols never survived, but neither did the symbols
+ * of a file tsserver failed to list.
+ */
+export function reconcileAtlasSymbols(
+  prior: readonly AtlasSymbolEntry[],
+  fresh: readonly AtlasSymbolEntry[],
+  coverage: SymbolCoverage,
+): { symbols: AtlasSymbolEntry[]; plan: SymbolPrunePlan } {
+  const plan = planSymbolPrune(
+    prior.map((s) => ({ id: s.id, path: s.path })),
+    coverage,
+  );
+  const pruned = new Set(plan.pruneIds);
+  const freshIds = new Set(fresh.map((s) => s.id));
+  const keptPrior = prior.filter(
+    (s) => !pruned.has(s.id) && !freshIds.has(s.id),
+  );
+  return { symbols: [...fresh, ...keptPrior], plan };
 }
 
 async function shutdownAll(
@@ -177,38 +218,12 @@ export async function runResolveSymbolsSubcommand(
     }
     const sourceFiles = walkSourceFiles(sourceRoot, [...allExtensions]);
 
-    const inventory: SymbolInventory = await buildSymbolInventory(
+    const inventory: SymbolInventoryWithCoverage = await buildSymbolInventory(
       adapters,
       sourceFiles,
     );
 
-    let claimsResolved = 0;
-    let candidatesUnresolved = 0;
-    for (const claim of atlas.claims) {
-      const rawCandidates =
-        Array.isArray(claim.symbol_candidates) && claim.symbol_candidates.length > 0
-          ? claim.symbol_candidates
-          : [];
-      if (rawCandidates.length === 0) continue;
-      const { symbolIds, unresolved } = resolveCandidatesWithNormalization(
-        inventory,
-        rawCandidates,
-      );
-      if (symbolIds.length > 0) {
-        // Merge with any existing symbol_ids (covers re-run idempotence).
-        const merged = new Set<string>(claim.symbol_ids ?? []);
-        for (const id of symbolIds) merged.add(id);
-        claim.symbol_ids = [...merged];
-        claimsResolved += 1;
-      }
-      candidatesUnresolved += unresolved.length;
-    }
-
-    // Build enriched atlas envelope. Bump version to current
-    // ATLAS_VERSION (1.4) since we've populated symbols[] +
-    // claims[].symbol_ids (and the v1.4 envelope is the canonical
-    // post-Step-2.3.a.1 substrate).
-    const enrichedSymbols: AtlasSymbolEntry[] = inventory.allSymbols.map(
+    const freshSymbols: AtlasSymbolEntry[] = inventory.allSymbols.map(
       (s) => ({
         id: s.id,
         name: s.name,
@@ -220,7 +235,63 @@ export async function runResolveSymbolsSubcommand(
         file_sha: s.fileSha ?? "",
       }),
     );
+    const reconciled = reconcileAtlasSymbols(
+      Array.isArray(atlas.symbols) ? atlas.symbols : [],
+      freshSymbols,
+      coverageFromInventory({
+        repoRoot: sourceRoot,
+        sourceFiles,
+        inventory,
+        adapters,
+      }),
+    );
+    warnUnverified(reconciled.plan.unverified);
+    const enrichedSymbols = reconciled.symbols;
+    const finalIds = new Set(enrichedSymbols.map((s) => s.id));
 
+    let claimsResolved = 0;
+    let candidatesUnresolved = 0;
+    let claimsOrphaned = 0;
+    let danglingLinksDropped = 0;
+    for (const claim of atlas.claims) {
+      const before = Array.isArray(claim.symbol_ids) ? claim.symbol_ids : [];
+      let linked = before;
+      const rawCandidates =
+        Array.isArray(claim.symbol_candidates) && claim.symbol_candidates.length > 0
+          ? claim.symbol_candidates
+          : [];
+      if (rawCandidates.length > 0) {
+        const { symbolIds, unresolved } = resolveCandidatesWithNormalization(
+          inventory,
+          rawCandidates,
+        );
+        if (symbolIds.length > 0) {
+          // Merge with any existing symbol_ids (covers re-run idempotence).
+          const merged = new Set<string>(before);
+          for (const id of symbolIds) merged.add(id);
+          linked = [...merged];
+          claimsResolved += 1;
+        }
+        candidatesUnresolved += unresolved.length;
+      }
+      // v1.2 Phase 1 (D6): drop links to symbols that no longer exist.
+      // A preserved or previously-resolved claim can carry the id of a
+      // symbol whose file was deleted or renamed; left in place, that
+      // dangling id makes the atlas fail to import (claim_symbols has a
+      // foreign key on symbols). Mirrors the CLI prune's claim_symbols
+      // cascade; the claim itself is kept.
+      const kept = linked.filter((id) => finalIds.has(id));
+      danglingLinksDropped += linked.length - kept.length;
+      if (before.length > 0 && kept.length === 0) claimsOrphaned += 1;
+      if (kept.length !== before.length || linked !== before) {
+        claim.symbol_ids = kept;
+      }
+    }
+
+    // Build enriched atlas envelope. Bump version to current
+    // ATLAS_VERSION (1.4) since we've populated symbols[] +
+    // claims[].symbol_ids (and the v1.4 envelope is the canonical
+    // post-Step-2.3.a.1 substrate).
     const enrichedAtlas: AtlasFileV1 = {
       ...atlas,
       version: ATLAS_VERSION,
@@ -235,16 +306,38 @@ export async function runResolveSymbolsSubcommand(
     renameSync(tempPath, atlasPath);
 
     writeStdout(
-      `resolve-symbols: enumerated ${enrichedSymbols.length} symbols across ${sourceFiles.length} source files; ` +
+      `resolve-symbols: enumerated ${freshSymbols.length} symbols across ${sourceFiles.length} source files; ` +
         `resolved ${claimsResolved} of ${atlas.claims.length} claims; ` +
         `${candidatesUnresolved} candidate${candidatesUnresolved === 1 ? "" : "s"} unresolved (retained in symbol_candidates for diagnostic visibility).\n`,
     );
+
+    const symbolsPruned = reconciled.plan.pruneIds.length;
+    const unverifiedSymbolFiles = reconciled.plan.unverified.length;
+    if (
+      symbolsPruned > 0 ||
+      danglingLinksDropped > 0 ||
+      claimsOrphaned > 0 ||
+      unverifiedSymbolFiles > 0
+    ) {
+      // v1.2 Phase 1 (D6). Printed only when something changed, so the
+      // common cold-start output is unchanged.
+      writeStdout(
+        `resolve-symbols: pruned ${symbolsPruned} stale symbol${symbolsPruned === 1 ? "" : "s"}; ` +
+          `dropped ${danglingLinksDropped} dangling symbol link${danglingLinksDropped === 1 ? "" : "s"}; ` +
+          `${claimsOrphaned} claim${claimsOrphaned === 1 ? "" : "s"} orphaned (kept; re-extract their sources to re-attach); ` +
+          `${unverifiedSymbolFiles} file${unverifiedSymbolFiles === 1 ? "" : "s"} unverified (prior symbols kept).\n`,
+      );
+    }
 
     result = {
       exitCode: 0,
       claimsResolved,
       candidatesUnresolved,
-      symbolsEnumerated: enrichedSymbols.length,
+      symbolsEnumerated: freshSymbols.length,
+      symbolsPruned,
+      claimsOrphaned,
+      danglingLinksDropped,
+      unverifiedSymbolFiles,
     };
   } catch (err) {
     writeStderr(
