@@ -135,7 +135,11 @@ not content.
 - The Skill path honours the key too. `contextatlas
   list-extraction-sources` emits empty arrays for disabled streams and
   names them in `summary.disabled_streams`, and `/index-atlas` keeps
-  their keys frozen.
+  their keys frozen, except that it too drops the key and claims of a
+  source file that no longer exists. With a stream disabled the
+  manifest is `manifest_version: "2"`, which `/index-atlas` copies
+  from before v1.2 refuse, instead of reading the empty arrays as
+  deleted sources (ADR-12, review fixes).
 
 ### Consequences
 

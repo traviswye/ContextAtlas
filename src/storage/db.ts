@@ -13,6 +13,10 @@
  *                      extraction (prose paths, docstring source files,
  *                      `commit:<sha>` keys)
  *
+ * and two cache-only facts that are never exported: `_meta` rows
+ * beyond the schema version (`cache-meta.ts`) and `source_key_streams`
+ * (`source-key-streams.ts`).
+ *
  * Migrations are expressed as code. Adding a v2 appends one entry to
  * `MIGRATIONS`; the runner applies everything above the current version
  * inside a single transaction per migration.
@@ -264,6 +268,26 @@ const MIGRATIONS: Migration[] = [
     apply(db) {
       db.exec(`
         ALTER TABLE claims ADD COLUMN symbol_candidates TEXT;
+      `);
+    },
+  },
+  {
+    // v1.2 Phase 2 review fix: which stream (prose or docstring) last
+    // keyed each source path, and at which SHA. Both streams key a file
+    // by relPath at the same file SHA, so a key with no claims could not
+    // say which stream wrote it, and a zero-claim key from one stream
+    // made the other treat the file as unchanged forever (for example
+    // after docs.include is narrowed). Cache-only: never exported to
+    // atlas.json and never cleared by the atlas importer, so it outlives
+    // the Stage 0 re-import. `deleteSourceSha` drops a path's row.
+    version: 7,
+    apply(db) {
+      db.exec(`
+        CREATE TABLE source_key_streams (
+          source_path TEXT PRIMARY KEY,
+          stream      TEXT NOT NULL,
+          source_sha  TEXT NOT NULL
+        );
       `);
     },
   },

@@ -28,6 +28,21 @@
  * The Skill keeps a disabled stream's baseline claims frozen, as the
  * CLI does (L-11).
  *
+ * `manifest_version` is "2" exactly when a stream is disabled, "1"
+ * otherwise (v1.2 Phase 2 review fix). An `/index-atlas` copy from
+ * before v1.2 drops every baseline key the manifest does not list, so
+ * it would read a disabled stream's empty array as "every source was
+ * deleted" and drop that stream's claims; it stops on any version but
+ * "1" instead. The v1.2 SKILL.md accepts both. A stderr note names the
+ * cause when "2" is emitted.
+ *
+ * A file whose `getDocstring` fails for any symbol is left out of
+ * `sources.docstrings` entirely (review fix), matching the CLI's
+ * all-or-nothing file rule (L-10 i): listing only the symbols that
+ * read would make the Skill replace the file's claims without the
+ * failed symbol's and pin the new SHA. Left out, the file keeps its
+ * baseline key and claims (refresh rule 4) and the next walk retries.
+ *
  * Manifest is JSON to stdout. Skill workflow reads the manifest once
  * via Read tool, iterates per-source, makes one canonical-extraction-
  * prompt call per source via session tokens (matches CLI's per-source
@@ -73,7 +88,7 @@ import {
   parseCommitLog,
   type CommitMetadata,
 } from "./commit-log.js";
-import { isExportedSymbol } from "./docstring-read.js";
+import { readFileDocstrings } from "./docstring-read.js";
 import { walkProseFiles, walkSourceFiles } from "./file-walker.js";
 import { buildSymbolInventory } from "./resolver.js";
 import { commitSourceKey } from "./source-keys.js";
@@ -159,8 +174,7 @@ export interface CommitSource {
   extraction_body: string;
   /**
    * Canonical `source_shas` key and claim `source_path` for this
-   * commit: `commit:<sha>`. Added in v1.2 (additive; the manifest
-   * stays `manifest_version: "1"`).
+   * commit: `commit:<sha>`. Added in v1.2 (additive).
    */
   source_key: string;
 }
@@ -179,8 +193,15 @@ export function toCommitSource(commit: CommitMetadata): CommitSource {
   };
 }
 
+/**
+ * "1": every stream is enabled. "2": `summary.disabled_streams` is not
+ * empty, and a disabled stream's empty array means "keep frozen", not
+ * "no sources" (see the module header).
+ */
+export type ManifestVersion = "1" | "2";
+
 export interface ExtractionSourcesManifest {
-  manifest_version: "1";
+  manifest_version: ManifestVersion;
   generated_at: string;
   config_root: string;
   source_root: string;
@@ -196,7 +217,7 @@ export interface ExtractionSourcesManifest {
     /**
      * Streams turned off by `extraction.streams`, in canonical order
      * (`[]` by default). Their arrays above are empty on purpose. Added
-     * in v1.2 (additive; `manifest_version` stays "1").
+     * in v1.2; non-empty exactly when `manifest_version` is "2".
      */
     disabled_streams: ExtractionStream[];
   };
@@ -262,8 +283,18 @@ export async function runListExtractionSourcesSubcommand(
       ? collectCommitSources(sourceRoot, config)
       : [];
 
+    const manifestVersion: ManifestVersion = disabled.length > 0 ? "2" : "1";
+    if (manifestVersion === "2") {
+      writeStderr(
+        `list-extraction-sources: extraction.streams disables ` +
+          `${disabled.join(", ")}, so the manifest is manifest_version "2". ` +
+          "An /index-atlas skill installed before v1.2 stops on it rather " +
+          "than dropping the disabled streams' claims; refresh it (see the " +
+          "extraction.skills_fresh check in `contextatlas doctor`).\n",
+      );
+    }
     const manifest: ExtractionSourcesManifest = {
-      manifest_version: "1",
+      manifest_version: manifestVersion,
       generated_at: new Date().toISOString(),
       config_root: options.configRoot,
       source_root: sourceRoot,
@@ -330,9 +361,10 @@ async function collectAdrSources(
 
 /**
  * Stream B — source files + symbol inventory + per-symbol
- * exported-with-docstring filter. Mirrors the pre-API-call filter chain
- * of the CLI docstring stream (readFileDocstrings, docstring-read.ts):
- * isExportedSymbol, then a non-empty getDocstring.
+ * exported-with-docstring filter, through the CLI docstring stream's own
+ * read (`readFileDocstrings`, docstring-read.ts): isExportedSymbol, then
+ * a non-empty getDocstring. A file with any getDocstring failure is left
+ * out whole (see the module header).
  */
 async function collectDocstringSources(
   sourceRoot: string,
@@ -365,19 +397,21 @@ async function collectDocstringSources(
     // Pick the language adapter that owns this file's extension.
     const adapter = pickAdapterForPath(adapters, relPath);
     if (!adapter) continue;
-    for (const sym of fileSymbols) {
-      if (!isExportedSymbol(sym.name, sym.language)) continue;
-      let docstring: string | null;
-      try {
-        docstring = await adapter.getDocstring(sym.id);
-      } catch (err) {
-        log.warn("list-extraction-sources: getDocstring failed", {
-          symbolId: sym.id,
-          err: String(err),
-        });
-        continue;
-      }
-      if (!docstring || docstring.trim().length === 0) continue;
+    const read = await readFileDocstrings(adapter, fileSymbols);
+    if (read.errors.length > 0) {
+      log.warn(
+        `list-extraction-sources: getDocstring failed for ${relPath}; the ` +
+          "file is left out of the manifest, so /index-atlas keeps its " +
+          "existing claims and key. Re-run to retry once the language " +
+          "server answers.",
+        { relPath, errors: read.errors.map((e) => e.error) },
+      );
+      continue;
+    }
+    const byId = new Map(fileSymbols.map((sym) => [sym.id, sym]));
+    for (const { symbolId, docstring } of read.entries) {
+      const sym = byId.get(symbolId);
+      if (!sym) continue;
       docstrings.push({
         source_type: "docstring",
         symbol_id: sym.id,

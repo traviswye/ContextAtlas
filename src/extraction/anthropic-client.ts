@@ -66,13 +66,34 @@ export type ParseErrorReason =
 export class ParseError extends Error {
   readonly reason: ParseErrorReason;
   readonly preview: string;
+  /**
+   * Token usage of the response that failed to parse (v1.2 Phase 2
+   * review fix). The call was billed even though its output was
+   * unusable, so callers add this to their cost accounting. Zero when
+   * the error was constructed without a response.
+   */
+  readonly usage: UsageInfo;
 
-  constructor(reason: ParseErrorReason, preview: string, message: string) {
+  constructor(
+    reason: ParseErrorReason,
+    preview: string,
+    message: string,
+    usage: UsageInfo = ZERO_USAGE,
+  ) {
     super(message);
     this.name = "ParseError";
     this.reason = reason;
     this.preview = preview;
+    this.usage = usage;
   }
+}
+
+/**
+ * Usage of a call that threw: a {@link ParseError}'s response usage, or
+ * zero for any other error (a thrown API error has no response to read).
+ */
+export function usageOfFailedCall(err: unknown): UsageInfo {
+  return err instanceof ParseError ? err.usage : ZERO_USAGE;
 }
 
 /**
@@ -98,7 +119,9 @@ export function classifyError(err: unknown): RetryClassification {
  * Outcome of a single `extract()` call.
  *
  * - `result` — parsed claims, or `null` if the document was skippable
- *   (max-tokens stop or malformed JSON).
+ *   (max-tokens stop, or a response with no text block). Malformed
+ *   JSON is not returned here: it throws a {@link ParseError} (v0.8
+ *   A1), which carries the response's usage.
  * - `usage` — token counts from the final successful API response.
  *   Always present when `extract` resolves (even with `result: null`,
  *   the call consumed tokens). Retries that threw before we saw a
@@ -117,10 +140,12 @@ export interface ExtractionClient {
    * parsed and validated claims plus token usage. Throws on
    * irrecoverable failure.
    *
-   * A `null` `result` signals the document was skippable (malformed
-   * JSON or max-tokens stop) — the caller decides whether to log and
+   * A `null` `result` signals the document was skippable (max-tokens
+   * stop or no text block) — the caller decides whether to log and
    * move on. `usage` is still populated in that case because the API
-   * call did consume tokens.
+   * call did consume tokens. Output that is not the expected JSON
+   * throws a {@link ParseError} whose `usage` holds the call's tokens;
+   * callers treat it as an unparseable result, not an API failure.
    */
   extract(documentBody: string): Promise<ExtractionCallResult>;
 }
@@ -185,7 +210,7 @@ export function createExtractionClient(
           const text = extractText(response);
           if (text === null) return { result: null, usage };
 
-          const parsed = parseAndValidate(text);
+          const parsed = parseAndValidate(text, usage);
           return { result: parsed, usage };
         } catch (err) {
           const classification = classifyError(err);
@@ -252,7 +277,7 @@ function extractText(response: {
   return null;
 }
 
-function parseAndValidate(text: string): ExtractionResult {
+function parseAndValidate(text: string, usage: UsageInfo): ExtractionResult {
   const preview = text.slice(0, 200);
 
   let parsed: unknown;
@@ -264,6 +289,7 @@ function parseAndValidate(text: string): ExtractionResult {
       "json-parse",
       preview,
       "Model returned malformed JSON; same input is expected to produce the same parse failure deterministically (no retry).",
+      usage,
     );
   }
 
@@ -273,6 +299,7 @@ function parseAndValidate(text: string): ExtractionResult {
       "shape-invalid",
       preview,
       "JSON root is not an object (expected { claims: [...] }).",
+      usage,
     );
   }
 
@@ -285,6 +312,7 @@ function parseAndValidate(text: string): ExtractionResult {
       "claims-not-array",
       preview,
       "'claims' field missing or not an array (expected an array of claim objects).",
+      usage,
     );
   }
 

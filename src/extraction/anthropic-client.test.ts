@@ -410,3 +410,49 @@ describe("createExtractionClient — usage propagation", () => {
     expect(u3).toEqual({ inputTokens: 300, outputTokens: 30 });
   });
 });
+
+// ---------------------------------------------------------------------------
+// v1.2 Phase 2 review fix: a ParseError carries the usage of the call
+// that produced it (the response was billed even though it did not parse)
+// ---------------------------------------------------------------------------
+
+describe("createExtractionClient — ParseError usage", () => {
+  it("attaches the response's usage to a malformed-JSON ParseError", async () => {
+    const anthropic = makeStubAnthropic(async () => ({
+      stop_reason: "end_turn",
+      content: [{ type: "text", text: '```json\n{"claims":[]}\n```' }],
+      usage: { input_tokens: 1500, output_tokens: 42 },
+    }));
+    const client = createExtractionClient({ anthropic, sleep: async () => {} });
+    const err = await client.extract("doc").then(
+      () => null,
+      (e: unknown) => e,
+    );
+    expect(err).toBeInstanceOf(ParseError);
+    expect((err as ParseError).usage).toEqual({
+      inputTokens: 1500,
+      outputTokens: 42,
+    });
+  });
+
+  it("attaches usage to shape-invalid and claims-not-array ParseErrors too", async () => {
+    for (const text of ['["not","object"]', '{"claims":"nope"}']) {
+      const anthropic = makeStubAnthropic(async () => ({
+        stop_reason: "end_turn",
+        content: [{ type: "text", text }],
+        usage: { input_tokens: 7, output_tokens: 3 },
+      }));
+      const client = createExtractionClient({ anthropic, sleep: async () => {} });
+      await expect(client.extract("doc")).rejects.toMatchObject({
+        usage: { inputTokens: 7, outputTokens: 3 },
+      });
+    }
+  });
+
+  it("a directly constructed ParseError reports zero usage", () => {
+    expect(new ParseError("json-parse", "", "x").usage).toEqual({
+      inputTokens: 0,
+      outputTokens: 0,
+    });
+  });
+});

@@ -3,6 +3,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join as pathJoin } from "node:path";
 
+import type Anthropic from "@anthropic-ai/sdk";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { log } from "../mcp/logger.js";
@@ -19,8 +20,15 @@ import {
 } from "../storage/claims.js";
 import { type DatabaseInstance, openDatabase } from "./../storage/db.js";
 import { upsertSymbols } from "./../storage/symbols.js";
-import { extractCommitMessagesForRepo } from "./commit-message-extractor.js";
-import type { ExtractionClient } from "./anthropic-client.js";
+import {
+  extractCommitClaims,
+  extractCommitMessagesForRepo,
+} from "./commit-message-extractor.js";
+import {
+  createExtractionClient,
+  ParseError,
+  type ExtractionClient,
+} from "./anthropic-client.js";
 
 // Filter, git-log parsing and body-builder tests live in
 // commit-log.test.ts (collection split out at v1.2 Phase 2).
@@ -387,6 +395,68 @@ describe("extractCommitMessagesForRepo", () => {
     } finally {
       warn.mockRestore();
     }
+  });
+
+  it("malformed JSON from the real client (ParseError) is pinned like a null result, with its usage counted (L-10 iii)", async () => {
+    const warn = vi.spyOn(log, "warn").mockImplementation(() => {});
+    try {
+      commit("design: produces fenced JSON");
+      const sha = headSha();
+      let sdkCalls = 0;
+      const anthropic = {
+        messages: {
+          create: async () => {
+            sdkCalls++;
+            return {
+              stop_reason: "end_turn",
+              content: [{ type: "text", text: '```json\n{"claims":[]}\n```' }],
+              usage: { input_tokens: 1500, output_tokens: 20 },
+            };
+          },
+        },
+      } as unknown as Anthropic;
+      const client = createExtractionClient({ anthropic, sleep: async () => {} });
+
+      const first = await extractCommitMessagesForRepo(db, tmp, {}, inventory, client);
+      expect(first.errors).toEqual([]);
+      expect(first.commitsNullResult).toBe(1);
+      expect(first.commitsExtracted).toBe(1);
+      expect(first.totalUsage).toEqual({ inputTokens: 1500, outputTokens: 20 });
+      expect(listSourceShas(db)).toEqual({ [`commit:${sha}`]: sha });
+      const messages = warn.mock.calls.map(([m]) => String(m));
+      expect(messages.some((m) => m.includes(`commit:${sha}`) && /source_shas/.test(m))).toBe(true);
+
+      // Pinned: the next run does not bill it again.
+      const second = await extractCommitMessagesForRepo(db, tmp, {}, inventory, client);
+      expect(second.commitsSkippedIdempotent).toBe(1);
+      expect(sdkCalls).toBe(1);
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it("extractCommitClaims reports a ParseError as null-result with the call's usage", async () => {
+    commit("design: another unparseable one");
+    const sha = headSha();
+    const client: ExtractionClient = {
+      async extract() {
+        throw new ParseError("json-parse", "", "malformed", {
+          inputTokens: 9,
+          outputTokens: 4,
+        });
+      },
+    };
+    const outcome = await extractCommitClaims(
+      db,
+      { sha, subject: "design: another unparseable one", body: "", author: "t", date: "d" },
+      inventory,
+      client,
+    );
+    expect(outcome).toEqual({
+      status: "null-result",
+      usage: { inputTokens: 9, outputTokens: 4 },
+    });
+    expect(listSourceShas(db)).toEqual({ [`commit:${sha}`]: sha });
   });
 
   it("a thrown client error leaves the commit unkeyed so the next run retries it", async () => {

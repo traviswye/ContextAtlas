@@ -12,6 +12,8 @@ import path from "node:path";
 
 import type { DoctorCheck, DoctorResult } from "../doctor/types.js";
 import type { IndexCliResult } from "../extraction/cli-runner.js";
+import type { ExtractionPipelineResult } from "../extraction/pipeline.js";
+import { log } from "../mcp/logger.js";
 import type { LanguageCode } from "../types.js";
 import { runInitSubcommand } from "./runner.js";
 
@@ -451,6 +453,40 @@ describe("runInitSubcommand — Step 4.4 atlas + smoke + MCP behavior", () => {
       resolveBinaryPathOverride: "/synthetic/dist/index.js",
     });
     expect(result.exitCode).toBe(1);
+  });
+
+  it("index exit 1 after it saved atlas.json (a failed stream): init says to run `contextatlas index`, not just re-run init (review fix)", async () => {
+    await setupAutomatedRouteFixture(tmpRoot);
+    const errors: string[] = [];
+    const spy = vi.spyOn(log, "error").mockImplementation((msg: string) => {
+      errors.push(msg);
+    });
+    try {
+      const result = await runInitSubcommand({
+        configRoot: tmpRoot,
+        ccOnly: false,
+        detectLanguagesOverride: () => ["typescript"],
+        collectChecksOverride: async () => makeDoctorResult(PASSING_AUTOMATED_CHECKS),
+        runIndexSubcommandOverride: async () => ({
+          exitCode: 1,
+          pipelineResult: {
+            atlasExported: true,
+            failedStreams: [
+              { stream: "docstring", attemptedCalls: 3, firstError: "401" },
+            ],
+          } as unknown as ExtractionPipelineResult,
+        }),
+        resolveBinaryPathOverride: "/synthetic/dist/index.js",
+      });
+      expect(result.exitCode).toBe(1);
+    } finally {
+      spy.mockRestore();
+    }
+    const message = errors.join("\n");
+    expect(message).toMatch(/every docstring extraction call failed/);
+    expect(message).toMatch(/run `contextatlas index` to retry/);
+    expect(message).toMatch(/skip extraction/);
+    expect(message).toMatch(/then run `contextatlas init` again/);
   });
 
   it("atlas extraction setup-error (exit code 2) → init exit code 1 (Q4.4.4 pass-through)", async () => {

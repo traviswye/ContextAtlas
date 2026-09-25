@@ -151,12 +151,18 @@ proceed until the atlas validates.
     here and as the `source_shas` key. Readers accept that legacy
     form and `contextatlas index` migrates it, but always WRITE the
     canonical `commit:<sha>` form.)
-- `symbols`: empty array at the time you write the atlas. The
-  `contextatlas resolve-symbols` Phase C step populates it via
-  LSP walk.
+- `symbols`: cold start — an empty array; the `contextatlas
+  resolve-symbols` Phase C step populates it via LSP walk. Refresh
+  case — the baseline atlas's `symbols` array, carried forward
+  unchanged: every id a claim's `symbol_ids` names MUST be listed in
+  `symbols`. An atlas whose claims link unlisted symbols cannot be
+  loaded (the MCP server and `contextatlas index` fail on it), and
+  `validate-atlas` rejects it. resolve-symbols then refreshes the list
+  and drops links to symbols that no longer exist.
 - `claims[].symbol_ids`: empty array on every claim you newly
   extract. Phase C resolve-symbols populates it. Refresh case:
-  preserved baseline claims keep their existing `symbol_ids`.
+  preserved baseline claims keep their existing `symbol_ids` (the
+  baseline `symbols` they link are carried forward, see above).
 - `claims[].symbol_candidates`: the raw symbol names you extracted
   from the source document text. Phase C resolves them into the
   canonical `symbol_ids` array. For Stream B docstring claims,
@@ -174,7 +180,8 @@ proceed until the atlas validates.
   cross-checks that every ADR-shaped entry (a `.md` or `.rst` path)
   has at least one claim with that `source_path` (silent-skip
   detection). Source-file and commit entries may legitimately have
-  zero claims.
+  zero claims, and so may existing prose files that are not ADRs
+  (docs-bucket pages; see Phase C step 2).
 
 ## How extraction works
 
@@ -229,7 +236,10 @@ ADR-02 amendment).
 
 2. **Read the manifest** via Read tool against
    `.contextatlas/extraction-sources.json`. Verify shape:
-   - `manifest_version: "1"`
+   - `manifest_version: "1"` or `"2"`. It is `"2"` exactly when
+     `summary.disabled_streams` is not empty; `/index-atlas` copies
+     from before v1.2 stop on `"2"` because they would read a disabled
+     stream's empty array as deleted sources.
    - `sources.adrs` — array of ADR entries
    - `sources.docstrings` — array of symbol-with-docstring entries
    - `sources.commits` — array of filtered commit entries; each
@@ -247,8 +257,10 @@ ADR-02 amendment).
    - Total source-extraction calls = sum of all three
    - A stream listed in `manifest.summary.disabled_streams` has an
      empty array on purpose: extract nothing for it, and (refresh
-     case) carry its baseline keys and claims forward unchanged —
-     frozen, as `contextatlas index` does.
+     case) carry its baseline keys and claims forward unchanged
+     (frozen). The one exception is a source file that no longer
+     exists: its key and claims are dropped even while `docstring` is
+     disabled, as `contextatlas index` does (refresh rule 4).
 
 4. **For refresh-case** (existing `.contextatlas/atlas.json`):
    Read the existing atlas.json via Read tool; capture
@@ -330,8 +342,9 @@ ALL symbols-with-docstrings; refresh: only docstrings whose
 ### Phase B step 3 — Stream C commit-message extraction
 
 For each `commit` in `manifest.sources.commits` (cold-start: ALL
-filtered commits; refresh: only commits whose `sha` is not in
-baseline source_shas):
+filtered commits; refresh: only commits for which neither
+`commit.source_key` nor the legacy bare `commit.sha` is a key in
+baseline `source_shas`, per refresh rule 3):
 
 1. Concatenate `EXTRACTION_PROMPT + commit.extraction_body +
    "\n---\n"`. The `commit.extraction_body` is pre-built per
@@ -367,7 +380,8 @@ After all three streams complete:
      frozen and kept sources, in the form the baseline holds them) +
      newly-computed SHAs (changed + new sources); only the entries
      refresh rule 4 finds deleted are removed.
-   - `symbols: []`
+   - `symbols`: cold-start `symbols: []`; refresh — the baseline
+     atlas's `symbols` array, unchanged (see "Schema invariants")
    - `claims`: aggregate of all per-source claims emitted across
      all three streams. Refresh-case: union of preserved baseline
      claims (every source not re-extracted and not deleted) +
@@ -377,14 +391,17 @@ After all three streams complete:
 2. Persist via Write tool to `.contextatlas/atlas.json`.
 
 3. Each claim's `source_sha` field MUST match the corresponding
-   hash in `source_shas` for that source. Leave `symbols: []`, and
-   give each newly extracted claim `symbol_ids: []` (Phase C
-   resolve-symbols populates them). Preserved baseline claims
-   (refresh case) keep their `symbol_ids` and `symbol_candidates`
-   exactly as the baseline has them: resolve-symbols keeps every
-   link whose symbol still exists, and a preserved claim without
-   candidates (common in CLI-built atlases) could not be re-linked
-   if you emptied it.
+   hash in `source_shas` for that source. Give each newly extracted
+   claim `symbol_ids: []` (Phase C resolve-symbols populates them).
+   Cold-start: write `symbols: []`. Refresh: write the baseline
+   atlas's `symbols` array forward unchanged, and keep preserved
+   baseline claims' `symbol_ids` and `symbol_candidates` exactly as
+   the baseline has them. resolve-symbols keeps every link whose
+   symbol still exists (and keeps the baseline symbols of files it
+   cannot verify), and a preserved claim without candidates (common
+   in CLI-built atlases) could not be re-linked if you emptied it.
+   Never write preserved `symbol_ids` next to `symbols: []`: that
+   atlas cannot be loaded until resolve-symbols has run.
 
 Phase B complete when atlas.json contains claims from all
 extracted manifest sources (subject to refresh-case skip
@@ -457,6 +474,13 @@ v0.7.1 Step 1.1.b.0 + Q1.1.G.α substrate-equivalence closure):
   re-execute Phase B against the missing sources. Source-file and
   commit entries are exempt (most legitimately yield zero claims).
 
+Prose that is not an ADR is exempt from `adr_depth_floor` and
+`source_coverage`: an existing file the prose walk does not treat as
+an ADR, such as a docs-bucket page (`README.md`, `docs/**`) that
+`contextatlas index` extracted and refresh rule 4 keeps, or a note in
+the ADR directory whose file name is not an ADR name. Never drop kept
+keys or claims to make this gate pass.
+
 If exit code is NON-ZERO, read stderr (per-invariant remediation
 guidance). Re-execute Phase B against the failing sources;
 re-write atlas.json; re-invoke `contextatlas validate-extraction`.
@@ -473,8 +497,9 @@ resolve-symbols`. This CLI subcommand spawns LSP adapters, walks
 the codebase, resolves each claim's `symbol_candidates` into
 canonical `symbol_ids` via R8 name-form normalization, and writes
 the enriched atlas back atomically. **The atlas is INCOMPLETE
-without this step** — `symbols[]` remains empty and
-`claims[].symbol_ids` stays unpopulated; downstream MCP query
+without this step** — `symbols[]` stays empty (cold start) or
+stale (refresh) and new claims' `symbol_ids` stay unpopulated;
+downstream MCP query
 tools (get_symbol_context, find_by_intent, impact_of_change)
 cannot operate without resolved symbols. Report stdout output
 verbatim to the user — it surfaces the resolved-claim count +
@@ -584,17 +609,18 @@ atlas.json (baseline). Phase B dispatches per source per stream:
      passes the filter or is outside the walked history keeps its
      key and claims (`contextatlas index` never deletes commit keys
      either).
-   - **Keys of a stream in `manifest.summary.disabled_streams`**
-     (for example every source-file key while `docstring` is
-     disabled): NEVER drop. They stay frozen until the stream is
-     re-enabled.
    - **Source-file keys** (the docstring stream: a path with a
      source extension such as `.ts`, `.py`, `.go`, `.rb`, `.cs`):
-     the manifest lists only files that HAVE docstrings, while
-     `contextatlas index` also keys files with no docstrings. Drop
-     the key and its claims only when the file no longer exists
+     drop the key and its claims only when the file no longer exists
      (check the exact path, relative to the manifest's
-     `source_root`, with the Glob tool). Otherwise keep both.
+     `source_root`, with the Glob tool). This applies whether or not
+     `docstring` is disabled, as `contextatlas index` does. Otherwise
+     keep both: the manifest lists only files that HAVE docstrings
+     and whose docstrings could all be read, while `contextatlas
+     index` also keys files with no docstrings.
+   - **Keys of a stream in `manifest.summary.disabled_streams`**
+     (other than the deleted source files above): NEVER drop. They
+     stay frozen until the stream is re-enabled.
    - **ADR keys** (paths under `adrs.path` in `.contextatlas.yml`):
      drop the key and its claims only when the file no longer
      exists (a deleted or renamed ADR). An existing file there that
@@ -698,9 +724,9 @@ Bundled helper scripts deferred to v0.8+ per v0.7 ship scope.
   by an `/index-atlas` copy from before v1.2. Harmless (readers
   accept both forms; `contextatlas index` migrates them), and exit
   code 0. Make sure every commit YOU add uses `commit.source_key`.
-- **Manifest shape unexpected**: if the Read manifest doesn't
-  match the `manifest_version: "1"` expectation, surface the gap
-  to the user and stop. Substrate-currency between
+- **Manifest shape unexpected**: if the Read manifest's
+  `manifest_version` is neither `"1"` nor `"2"` (or its shape does
+  not match Phase A step 2), surface the gap to the user and stop. Substrate-currency between
   list-extraction-sources output and Skill consumption is load-
   bearing; manifest version mismatch indicates a deployment skew.
 - **`contextatlas validate-atlas` exits non-zero (Phase C step 1

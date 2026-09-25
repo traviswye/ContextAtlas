@@ -152,8 +152,10 @@ export function configChecks(ctx: CheckContext): DoctorCheck[] {
 /**
  * Report the enabled extraction streams, and warn when a disabled
  * stream still has claims in atlas.json. Those claims are kept as they
- * are (frozen): extraction neither refreshes nor deletes them, so they
- * go stale while still being served to queries.
+ * are (frozen): extraction does not refresh them, so they go stale
+ * while still being served to queries. The one exception, on both the
+ * CLI and the Skill path, is a source file that no longer exists: its
+ * docstring key and claims are still removed.
  *
  * Reads atlas.json the way the atlas checks do. A missing or
  * unparseable atlas only drops the claim count; `atlas.exists` and
@@ -192,9 +194,10 @@ function extractionStreamsCheck(
       `${message}; atlas still holds ${counts} claim${total === 1 ? "" : "s"} ` +
       "from disabled streams",
     detail:
-      `Claims of a disabled stream are kept frozen: extraction neither ` +
-      `refreshes nor deletes them, so they go stale as the code changes ` +
-      `but are still returned by queries. To keep them current, add ` +
+      `Claims of a disabled stream are kept frozen: extraction does not ` +
+      `refresh them, so they go stale as the code changes but are still ` +
+      `returned by queries (only the docstring claims of a source file ` +
+      `that no longer exists are still removed). To keep them current, add ` +
       `${stale.join(" and ")} back to extraction.streams in ` +
       `.contextatlas.yml (or remove the key to run all three streams) ` +
       `and re-run extraction.`,

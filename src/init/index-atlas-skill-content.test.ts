@@ -184,3 +184,48 @@ describe("/index-atlas SKILL.md — stale text fixed (brief E1)", () => {
     expect(gate).toMatch(/\.md|\.rst/);
   });
 });
+
+describe("/index-atlas SKILL.md — review fixes (v1.2 Phase 2)", () => {
+  it("Phase B step 3's refresh filter names both key forms, not the bare sha alone", () => {
+    const step3 = section("### Phase B step 3 — Stream C commit-message extraction");
+    expect(step3).not.toMatch(/only commits whose `sha` is not in\s+baseline source_shas/);
+    const intro = step3.slice(0, step3.indexOf("1. "));
+    expect(intro).toContain("commit.source_key");
+    expect(intro).toContain("commit.sha");
+  });
+
+  it("a refresh carries the baseline `symbols` forward; `symbols: []` is for a cold start", () => {
+    const invariants = section("### Schema invariants (MANDATORY)");
+    expect(invariants).toMatch(/[Rr]efresh[^\n]*\n?[^\n]*baseline[^\n]*\n?[^\n]*`symbols`/);
+    const step4 = section("### Phase B step 4 — Aggregate + write atlas.json");
+    expect(step4).toMatch(/[Cc]old-start[^\n]*`symbols: \[\]`|`symbols: \[\]`[^\n]*[Cc]old-start/);
+    expect(step4).toMatch(/baseline[^.]*`symbols`[^.]*unchanged|unchanged[^.]*baseline[^.]*`symbols`/);
+    expect(step4).not.toMatch(/Leave `symbols: \[\]`, and/);
+  });
+
+  it("the Deleted-sources rule drops a deleted source file's key even while docstring is disabled (as the CLI does)", () => {
+    const step = refreshStep(4);
+    const deletedFile = step.indexOf("no longer exists");
+    const disabled = step.indexOf("disabled_streams");
+    expect(deletedFile).toBeGreaterThanOrEqual(0);
+    expect(disabled).toBeGreaterThanOrEqual(0);
+    // The gone-file rule comes first, so it wins for a disabled stream.
+    expect(deletedFile).toBeLessThan(disabled);
+    expect(content).not.toMatch(/frozen, as `contextatlas index` does\./);
+  });
+
+  it("accepts manifest_version 1 and 2 (2 = some stream disabled)", () => {
+    const phaseA = section("### Phase A workflow steps");
+    expect(phaseA).toMatch(/manifest_version: "1"` or `"2"`|manifest_version` is `"1"` or `"2"`/);
+    const failures = section("## Failure modes");
+    expect(failures).toMatch(/"1"[^\n]*"2"|"2"[^\n]*"1"/);
+  });
+
+  it("Phase C step 2 says kept docs-bucket prose is exempt and must not be dropped to pass the gate", () => {
+    const gate = section(
+      "### Phase C step 2 — MANDATORY validate-extraction gate (v0.7.1)",
+    );
+    expect(gate).toMatch(/docs-bucket|not an ADR/);
+    expect(gate).toMatch(/[Nn]ever drop|do NOT drop|Do not drop/);
+  });
+});

@@ -22,7 +22,9 @@
  * Stage 5 of the extraction pipeline must treat each stream by its
  * own deletion rule, so it needs to know which stream a key belongs
  * to. The primary signal is the `source` prefix of the claims stored
- * under that key; zero-claim keys fall back to the key's shape.
+ * under that key; zero-claim keys use the stream this cache recorded
+ * writing them (`source_key_streams`, v1.2 Phase 2 review fix), then
+ * fall back to the prose walk and the key's shape.
  *
  * Kept small and free of pipeline state so the Phase 3 pending-source
  * queue can reuse it.
@@ -42,6 +44,7 @@ import {
   setSourceSha,
 } from "../storage/claims.js";
 import type { DatabaseInstance } from "../storage/db.js";
+import { listSourceKeyStreams } from "../storage/source-key-streams.js";
 import type { LanguageCode } from "../types.js";
 
 export type SourceStream = "prose" | "docstring" | "commit";
@@ -152,9 +155,19 @@ export function classifySourceKeyShape(
 
 export interface ClassifySourceKeysOptions extends ClassifyShapeOptions {
   /**
+   * The stream that wrote each zero-claim key, from this cache's
+   * `source_key_streams` records ({@link recordedKeyStreams}). Checked
+   * before `knownProsePaths`: the prose and docstring streams key a
+   * file by the same relPath at the same SHA, so without it a zero-claim
+   * key written by one stream looks unchanged to the other when
+   * `docs.include` changes. Claims still win.
+   */
+  recordedStreams?: ReadonlyMap<string, SourceStream>;
+  /**
    * relPaths the current prose walk produced. A zero-claim key found
    * here is prose even if its extension looks like source code (a
-   * `docs.include` glob can match a `.ts` file). Claims still win.
+   * `docs.include` glob can match a `.ts` file). Claims and recorded
+   * streams win.
    */
   knownProsePaths?: ReadonlySet<string>;
 }
@@ -162,7 +175,8 @@ export interface ClassifySourceKeysOptions extends ClassifyShapeOptions {
 /**
  * Classify each key into a stream. Keys with claims use the claims'
  * `source` prefix (the most conservative stream wins if they differ);
- * zero-claim keys use `knownProsePaths`, then the key shape.
+ * zero-claim keys use `recordedStreams`, then `knownProsePaths`, then
+ * the key shape.
  */
 export function classifySourceKeys(
   db: DatabaseInstance,
@@ -181,13 +195,32 @@ export function classifySourceKeys(
   const out = new Map<string, SourceStream>();
   for (const key of keys) {
     const claimed = fromClaims.get(key);
+    const recorded = options.recordedStreams?.get(key);
     if (claimed !== undefined) {
       out.set(key, claimed);
+    } else if (recorded !== undefined) {
+      out.set(key, recorded);
     } else if (options.knownProsePaths?.has(key)) {
       out.set(key, "prose");
     } else {
       out.set(key, classifySourceKeyShape(key, options));
     }
+  }
+  return out;
+}
+
+/**
+ * The recorded writer stream of each key that still holds the SHA it
+ * was recorded at (`source_key_streams`, cache-only). A key whose value
+ * changed since (another stream, the Skill, a pull) has no entry.
+ */
+export function recordedKeyStreams(
+  db: DatabaseInstance,
+  shas: Readonly<Record<string, string>>,
+): Map<string, SourceStream> {
+  const out = new Map<string, SourceStream>();
+  for (const [key, rec] of listSourceKeyStreams(db)) {
+    if (shas[key] === rec.sha) out.set(key, rec.stream);
   }
   return out;
 }

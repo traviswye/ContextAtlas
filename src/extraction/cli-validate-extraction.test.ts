@@ -185,6 +185,30 @@ describe("validateExtractionShape — pure function", () => {
   });
 });
 
+describe("validateExtractionShape — non-ADR prose exemption (review fix)", () => {
+  it("skips the depth floor and coverage for paths the caller says are not ADRs", () => {
+    const adrPath = "docs/adr/ADR-01-foo.md";
+    const atlas = makeAtlas({
+      source_shas: {
+        [adrPath]: "a",
+        "README.md": "r",
+        "docs/notes.md": "n",
+      },
+      claims: [
+        ...Array.from({ length: 8 }, () => makeAdrClaim(adrPath)),
+        makeAdrClaim("README.md"),
+        makeAdrClaim("README.md"),
+      ],
+    });
+    const notAdr = new Set(["README.md", "docs/notes.md"]);
+    expect(validateExtractionShape(atlas, { isNotAdr: (p) => notAdr.has(p) })).toEqual([]);
+    // Without the exemption both invariants fire (the old behaviour).
+    const errors = validateExtractionShape(atlas);
+    expect(errors.some((e) => /adr_depth_floor/.test(e) && e.includes("README.md"))).toBe(true);
+    expect(errors.some((e) => /source_coverage/.test(e) && e.includes("docs/notes.md"))).toBe(true);
+  });
+});
+
 // ---------------------------------------------------------------------------
 // Integration tests (runValidateExtractionSubcommand)
 // ---------------------------------------------------------------------------
@@ -282,6 +306,54 @@ describe("runValidateExtractionSubcommand — integration", () => {
     expect(result.errors.length).toBeGreaterThan(0);
     expect(stderr).toContain("adr_depth_floor");
     expect(stderr).toContain("Re-run extraction");
+  });
+
+  it("docs-bucket prose (existing non-ADR files) is exempt; a deleted ADR's zero-claim key still fails (review fix)", async () => {
+    const adrPath = "docs/adr/ADR-01-foo.md";
+    await writeFile(path.join(fixture.root, adrPath), "# ADR-01\n");
+    await writeFile(path.join(fixture.root, "README.md"), "# readme\n");
+    await writeFile(path.join(fixture.root, "docs", "adr", "probe-findings.md"), "notes\n");
+    await writeFile(path.join(fixture.root, "docs", "notes.md"), "notes\n");
+    const base = {
+      version: "1.4",
+      source_shas: {
+        [adrPath]: "a",
+        "README.md": "r",
+        "docs/adr/probe-findings.md": "p",
+        "docs/notes.md": "n",
+      } as Record<string, string>,
+      claims: [
+        ...Array.from({ length: 8 }, () => makeAdrClaim(adrPath)),
+        makeAdrClaim("README.md"),
+        ...Array.from({ length: 3 }, () => makeAdrClaim("docs/adr/probe-findings.md")),
+      ],
+    };
+    await writeAtlas(fixture, base);
+    const ok = await runValidateExtractionSubcommand({
+      configRoot: fixture.root,
+      configFile: null,
+      writeStdout: (c) => (stdout += c),
+      writeStderr: (c) => (stderr += c),
+    });
+    expect(stderr).toBe("");
+    expect(ok.exitCode).toBe(0);
+
+    // A deleted ADR still left in source_shas is still reported.
+    await writeAtlas(fixture, {
+      ...base,
+      source_shas: { ...base.source_shas, "docs/adr/ADR-02-gone.md": "g" },
+    });
+    const bad = await runValidateExtractionSubcommand({
+      configRoot: fixture.root,
+      configFile: null,
+      writeStdout: (c) => (stdout += c),
+      writeStderr: (c) => (stderr += c),
+    });
+    expect(bad.exitCode).toBe(2);
+    expect(stderr).toContain("docs/adr/ADR-02-gone.md");
+    expect(stderr).not.toContain("README.md");
+    expect(stderr).not.toContain("probe-findings.md");
+    expect(stderr).not.toContain("docs/notes.md");
   });
 
   it("exits 2 with actionable message when atlas missing", async () => {

@@ -33,6 +33,7 @@ describe("openDatabase", () => {
         "claim_symbols",
         "claims",
         "claims_fts",
+        "source_key_streams",
         "source_shas",
         "symbols",
       ]),
@@ -177,12 +178,13 @@ describe("openDatabase", () => {
     // Build a real v5-shaped cache on disk: open at the latest version,
     // drop the v6 column again and roll schema_version back to 5, then
     // store a claim (with its FTS row) the way a v1.1/v1.2 Phase 1
-    // binary would. Reopening must apply only migration 6.
+    // binary would. Reopening must apply only migrations 6 and 7.
     const tmp = mkdtempSync(pathJoin(tmpdir(), "contextatlas-db-"));
     const dbPath = pathJoin(tmp, "index.db");
     try {
       const db1 = openDatabase(dbPath);
       db1.exec("ALTER TABLE claims DROP COLUMN symbol_candidates;");
+      db1.exec("DROP TABLE source_key_streams;");
       db1
         .prepare("UPDATE _meta SET value = '5' WHERE key = 'schema_version'")
         .run();
@@ -199,13 +201,19 @@ describe("openDatabase", () => {
         .prepare("SELECT value FROM _meta WHERE key = 'schema_version'")
         .get() as { value: string };
       expect(parseInt(version.value, 10)).toBe(LATEST_SCHEMA_VERSION);
-      expect(LATEST_SCHEMA_VERSION).toBeGreaterThanOrEqual(6);
+      expect(LATEST_SCHEMA_VERSION).toBeGreaterThanOrEqual(7);
 
       const row = db2
         .prepare("SELECT claim, symbol_candidates FROM claims")
         .get() as { claim: string; symbol_candidates: string | null };
       expect(row.claim).toBe("payment idempotency matters");
       expect(row.symbol_candidates).toBeNull();
+
+      // Migration 7 (review fix): the cache-only writer-stream table.
+      const tables = db2
+        .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'source_key_streams'")
+        .all();
+      expect(tables).toHaveLength(1);
 
       // The FTS index built before the migration still answers.
       const hits = db2

@@ -24,7 +24,7 @@ import type {
   SymbolId,
 } from "../types.js";
 
-import type { ExtractionClient } from "./anthropic-client.js";
+import { ParseError, type ExtractionClient } from "./anthropic-client.js";
 import { isExportedSymbol, type FileDocstrings } from "./docstring-read.js";
 import {
   extractDocstringFile,
@@ -261,6 +261,7 @@ describe("extractDocstringFile", () => {
     expect(bodies).toEqual(["A doc.", "B doc."]);
     expect(outcome.apiCalls).toBe(2);
     expect(outcome.failedCalls).toBe(1);
+    expect(outcome.unparseableCalls).toBe(0);
     // A thrown call's usage is unknown; only A's is counted.
     expect(outcome.usage).toEqual({ inputTokens: 100, outputTokens: 50 });
     expect(outcome.errors).toHaveLength(1);
@@ -298,11 +299,61 @@ describe("extractDocstringFile", () => {
     if (outcome.status !== "failed") return;
     expect(outcome.phase).toBe("extract");
     expect(bodies).toEqual(["A doc."]);
-    expect(outcome.failedCalls).toBe(1);
+    // The API answered: an unparseable result is per-source noise, not a
+    // failed call for the stream-level (L-10 ii) check.
+    expect(outcome.failedCalls).toBe(0);
+    expect(outcome.unparseableCalls).toBe(1);
     // A null result still consumed tokens.
     expect(outcome.usage).toEqual({ inputTokens: 100, outputTokens: 50 });
     expect(outcome.errors[0]!.symbolId).toBe(A.id);
     expect(outcome.errors[0]!.error).toMatch(/no parseable result/);
+    expectUnchanged(db);
+  });
+
+  it("malformed JSON (ParseError) is handled like a null result, with its usage counted", async () => {
+    seedOld(db);
+    const { adapter } = stubAdapter(
+      new Map<SymbolId, DocstringBehaviour>([
+        [A.id, "A doc."],
+        [B.id, "B doc."],
+      ]),
+    );
+    const bodies: string[] = [];
+    const client: ExtractionClient = {
+      async extract(body: string) {
+        bodies.push(body);
+        if (body === "A doc.") {
+          return {
+            result: { claims: [claim("A claim")] },
+            usage: { inputTokens: 100, outputTokens: 50 },
+          };
+        }
+        throw new ParseError("json-parse", "", "Model returned malformed JSON", {
+          inputTokens: 30,
+          outputTokens: 7,
+        });
+      },
+    };
+
+    const outcome = await extractDocstringFile(
+      db,
+      adapter,
+      { relPath: REL, sha: "sha-new", symbols: [A, B] },
+      inventoryOf([A, B]),
+      client,
+    );
+
+    expect(outcome.status).toBe("failed");
+    if (outcome.status !== "failed") return;
+    expect(outcome.phase).toBe("extract");
+    expect(bodies).toEqual(["A doc.", "B doc."]);
+    expect(outcome.apiCalls).toBe(2);
+    expect(outcome.failedCalls).toBe(0);
+    expect(outcome.unparseableCalls).toBe(1);
+    // Both calls were billed, including the one that did not parse.
+    expect(outcome.usage).toEqual({ inputTokens: 130, outputTokens: 57 });
+    expect(outcome.errors[0]!.symbolId).toBe(B.id);
+    expect(outcome.errors[0]!.error).toMatch(/malformed JSON/);
     expectUnchanged(db);
   });
 

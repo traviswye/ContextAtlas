@@ -44,7 +44,7 @@ import type {
   SymbolId,
 } from "../types.js";
 
-import type { ExtractionClient } from "./anthropic-client.js";
+import { ParseError, type ExtractionClient } from "./anthropic-client.js";
 import type { CostPreview } from "./cost-preview.js";
 import { computeFileSha } from "./file-walker.js";
 import { runExtractionPipeline } from "./pipeline.js";
@@ -426,6 +426,50 @@ describe("runExtractionPipeline — v1.2 Phase 2 streams", () => {
       expect(listSourceShas(db)["src/plain.ts"]).toBeDefined();
     });
 
+    it("unparseable results on every docstring call are per-source noise: reported, retried, but the stream is not failed", async () => {
+      const f = docFixture();
+      const adapter = streamAdapter(tmp, f.listing, f.docs);
+      for (let runNo = 0; runNo < 2; runNo++) {
+        freshDb();
+        const rec = recordingClient(() => null);
+        const result = await run(adapter, rec.client);
+        // a.ts stops at its first unparseable result; it is retried each run.
+        expect(rec.bodies).toHaveLength(1);
+        expect(result.failedStreams).toEqual([]);
+        expect(result.extractionErrors).toHaveLength(1);
+        expect(result.extractionErrors[0]!.sourcePath).toBe("src/a.ts");
+        expect(result.extractionErrors[0]!.error).toMatch(/no parseable result/);
+        expect(listSourceShas(db)["src/a.ts"]).toBeUndefined();
+        // The unparseable call was billed and is counted.
+        expect(result.inputTokens).toBe(100);
+      }
+    });
+
+    it("the stream-failure firstError is the first failed call, not an earlier getDocstring read error", async () => {
+      write("src/a.ts", "export function A() {}\n");
+      write("src/b.ts", "export function B() {}\n");
+      const A = tsSym("src/a.ts", "A");
+      const B = tsSym("src/b.ts", "B");
+      const adapter = streamAdapter(
+        tmp,
+        { "src/a.ts": [A], "src/b.ts": [B] },
+        { [A.id]: new Error("hover request timed out"), [B.id]: "B doc." },
+      );
+      const rec = recordingClient(() => "throw");
+      const result = await run(adapter, rec.client);
+      expect(rec.bodies).toEqual(["B doc."]);
+      expect(result.failedStreams).toHaveLength(1);
+      const first = result.failedStreams[0]!.firstError;
+      expect(first).toContain(B.id);
+      expect(first).toMatch(/stub failure/);
+      expect(first).not.toMatch(/hover request timed out/);
+      // The read error is still reported per source.
+      expect(result.extractionErrors.map((e) => e.sourcePath).sort()).toEqual([
+        "src/a.ts",
+        "src/b.ts",
+      ]);
+    });
+
     it("library default (no deps.streams) stays prose-only: a changed docstring source keeps its claims and key (L-1 b)", async () => {
       const f = docFixture();
       const adapter = streamAdapter(tmp, f.listing, f.docs);
@@ -710,6 +754,34 @@ describe("runExtractionPipeline — v1.2 Phase 2 streams", () => {
       expect(again.bodies).toEqual([]);
     });
 
+    it("malformed JSON (ParseError) on the only pending commit pins it, counts its cost and does not fail the stream", async () => {
+      const [sha] = initGitRepo(tmp, ["design: split the router"]);
+      let calls = 0;
+      const client: ExtractionClient = {
+        async extract() {
+          calls++;
+          throw new ParseError("json-parse", "Here are the claims:", "malformed JSON", {
+            inputTokens: 1500,
+            outputTokens: 30,
+          });
+        },
+      };
+      const warnings = captureWarnings();
+      const result = await run(streamAdapter(tmp, {}), client, {
+        gitBinary: "git",
+      }).finally(() => warnings.restore());
+      expect(result.failedStreams).toEqual([]);
+      expect(result.commitsExtracted).toBe(1);
+      expect(result.extractionErrors).toEqual([]);
+      expect(result.apiCalls).toBe(1);
+      expect(result.inputTokens).toBe(1500);
+      expect(result.costUsd).toBeGreaterThan(0);
+      expect(listSourceShas(db)[`commit:${sha}`]).toBe(sha);
+      freshDb();
+      await run(streamAdapter(tmp, {}), client, { gitBinary: "git" });
+      expect(calls).toBe(1);
+    });
+
     it("every commit call failing marks the stream failed, still exports, and leaves the commits unkeyed for a retry", async () => {
       const [sha] = initGitRepo(tmp, ["design: split the router"]);
       const result = await run(streamAdapter(tmp, {}), recordingClient(() => "throw").client, {
@@ -734,6 +806,23 @@ describe("runExtractionPipeline — v1.2 Phase 2 streams", () => {
 
   describe("run level", () => {
     const budgetWarnings = (lines: string[]) => lines.filter((l) => l.includes("budget warning"));
+
+    it("a prose file whose response is malformed JSON stays an error, but its billed usage is counted", async () => {
+      write("docs/adr/ADR-01.md", "---\nid: ADR-01\n---\nADR body\n");
+      write("docs/adr/ADR-02.md", "---\nid: ADR-02\n---\nsecond body\n");
+      const client: ExtractionClient = {
+        async extract(body: string) {
+          if (body.includes("ADR body")) {
+            throw new ParseError("json-parse", "", "malformed", { inputTokens: 700, outputTokens: 9 });
+          }
+          return { result: oneClaim("second rule"), usage: { inputTokens: 100, outputTokens: 50 } };
+        },
+      };
+      const result = await run(streamAdapter(tmp, {}), client);
+      expect(result.extractionErrors.map((e) => e.sourcePath)).toEqual(["docs/adr/ADR-01.md"]);
+      expect(result.inputTokens).toBe(800);
+      expect(result.outputTokens).toBe(59);
+    });
 
     it("the budget warning fires on docstring spend alone", async () => {
       write("src/a.ts", "export function Foo() {}\n");
@@ -856,6 +945,252 @@ describe("runExtractionPipeline — v1.2 Phase 2 streams", () => {
         onCostPreview: (p2) => none.push(p2),
       });
       expect(none).toEqual([]);
+    });
+  });
+
+  // -------------------------------------------------------------------
+  // Stage 0: atlas.json vs the local cache (review fixes)
+  // -------------------------------------------------------------------
+
+  describe("Stage 0: an unfinished run and atlas.committed: false keep the cache's paid work", () => {
+    const emptyAtlas = (): void => {
+      const atlas: AtlasFileV1 = {
+        version: "1.4",
+        generated_at: "2026-09-01T00:00:00.000Z",
+        generator: { contextatlas_version: "1.1.3", extraction_model: "claude-opus-4-7" },
+        source_shas: {},
+        symbols: [],
+        claims: [],
+      };
+      writeFileSync(atlasPath(), JSON.stringify(atlas, null, 2));
+    };
+    function threeDocFiles() {
+      const listing: Record<string, AtlasSymbol[]> = {};
+      const docs: Record<SymbolId, Docstring> = {};
+      for (const n of ["a", "b", "c"]) {
+        write(`src/${n}.ts`, `export function F${n}() {}\n`);
+        const s = tsSym(`src/${n}.ts`, `F${n}`);
+        listing[`src/${n}.ts`] = [s];
+        docs[s.id] = `doc ${n}`;
+      }
+      return streamAdapter(tmp, listing, docs);
+    }
+    /** Succeeds for the first `okCalls` calls, then crashes the run. */
+    function crashingClient(okCalls: number): ExtractionClient {
+      let calls = 0;
+      return {
+        async extract(body: string) {
+          calls++;
+          if (calls <= okCalls) {
+            return { result: oneClaim(`claim for ${body}`), usage: { inputTokens: 100, outputTokens: 50 } };
+          }
+          // A result whose claims cannot be read escapes every per-unit
+          // handler: the stand-in for a kill or crash mid-run.
+          return {
+            result: {
+              get claims(): never {
+                throw new Error("simulated crash");
+              },
+            } as unknown as ExtractionResult,
+            usage: { inputTokens: 100, outputTokens: 50 },
+          };
+        },
+      };
+    }
+
+    it("a run interrupted mid-docstring stream: the next run keeps the stored files and extracts only the rest", async () => {
+      emptyAtlas();
+      const bytesBefore = readFileSync(atlasPath(), "utf8");
+      const adapter = threeDocFiles();
+      await expect(run(adapter, crashingClient(2))).rejects.toThrow(/simulated crash/);
+      // atlas.json was not written; the cache holds a.ts and b.ts.
+      expect(readFileSync(atlasPath(), "utf8")).toBe(bytesBefore);
+      expect(Object.keys(listSourceShas(db)).sort()).toEqual(["src/a.ts", "src/b.ts"]);
+
+      // Same cache (a persistent index.db), atlas.json unchanged: resume.
+      const rec = recordingClient((b) => oneClaim(`claim for ${b}`));
+      const result = await run(adapter, rec.client);
+      expect(rec.bodies).toEqual(["doc c"]);
+      expect(result.apiCalls).toBe(1);
+      expect(result.docstringFilesUnchanged).toBe(2);
+      expect(result.atlasExported).toBe(true);
+      expect(Object.keys(readAtlas().source_shas).sort()).toEqual(["src/a.ts", "src/b.ts", "src/c.ts"]);
+      expect(readAtlas().claims.map((c) => c.claim).sort()).toEqual([
+        "claim for doc a",
+        "claim for doc b",
+        "claim for doc c",
+      ]);
+
+      // Finished: the next run imports atlas.json again (and has no work).
+      const noop = recordingClient(() => "throw");
+      const third = await run(adapter, noop.client);
+      expect(noop.bodies).toEqual([]);
+      expect(third.atlasExported).toBe(false);
+    });
+
+    it("a resumed run exports even when it has nothing left to extract", async () => {
+      emptyAtlas();
+      const bytesBefore = readFileSync(atlasPath(), "utf8");
+      const adapter = threeDocFiles();
+      // All three files are stored, then the run dies before Stage 7
+      // (here: Stage 7's first atlas_meta write is made to throw).
+      const original = db.prepare.bind(db);
+      let armed = false;
+      const spy = vi.spyOn(db, "prepare").mockImplementation((sql: string) => {
+        if (armed && /INSERT INTO atlas_meta/.test(sql)) throw new Error("simulated crash before export");
+        return original(sql);
+      });
+      const client = recordingClient((b) => {
+        if (b === "doc c") armed = true;
+        return oneClaim(`claim for ${b}`);
+      });
+      await expect(run(adapter, client.client)).rejects.toThrow(/simulated crash/);
+      spy.mockRestore();
+      expect(readFileSync(atlasPath(), "utf8")).toBe(bytesBefore);
+      expect(Object.keys(listSourceShas(db)).sort()).toEqual(["src/a.ts", "src/b.ts", "src/c.ts"]);
+
+      const noop = recordingClient(() => "throw");
+      const resumed = await run(adapter, noop.client);
+      expect(noop.bodies).toEqual([]);
+      expect(resumed.atlasExported).toBe(true);
+      expect(Object.keys(readAtlas().source_shas).sort()).toEqual(["src/a.ts", "src/b.ts", "src/c.ts"]);
+    });
+
+    it("atlas.json changed since the unfinished run started: it is imported (atlas.json wins)", async () => {
+      emptyAtlas();
+      const adapter = threeDocFiles();
+      await expect(run(adapter, crashingClient(2))).rejects.toThrow(/simulated crash/);
+      // A pull rewrote atlas.json in between.
+      const atlas = JSON.parse(readFileSync(atlasPath(), "utf8")) as AtlasFileV1;
+      atlas.generated_at = "2026-09-02T00:00:00.000Z";
+      writeFileSync(atlasPath(), JSON.stringify(atlas, null, 2));
+      const warnings = captureWarnings();
+      const rec = recordingClient((b) => oneClaim(`claim for ${b}`));
+      await run(adapter, rec.client).finally(() => warnings.restore());
+      expect([...rec.bodies].sort()).toEqual(["doc a", "doc b", "doc c"]);
+      expect(warnings.lines.some((l) => /did not finish/.test(l))).toBe(true);
+    });
+
+    it("atlas.committed: false: a leftover atlas.json seeds an empty cache once, then is ignored, so nothing is re-billed", async () => {
+      initGitRepo(tmp, ["design: split the router", "arch: move auth"]);
+      const seedSha = write("docs/adr/ADR-00.md", "seed\n");
+      const atlas: AtlasFileV1 = {
+        version: "1.4",
+        generated_at: "2026-09-01T00:00:00.000Z",
+        generator: { contextatlas_version: "1.1.3", extraction_model: "claude-opus-4-7" },
+        source_shas: { "docs/adr/ADR-00.md": seedSha },
+        symbols: [],
+        claims: [
+          {
+            source: "adr:ADR-00.md",
+            source_path: "docs/adr/ADR-00.md",
+            source_sha: seedSha,
+            severity: "hard",
+            claim: "seeded claim",
+            symbol_ids: [],
+          },
+        ],
+      };
+      writeFileSync(atlasPath(), JSON.stringify(atlas, null, 2));
+      const bytes = readFileSync(atlasPath(), "utf8");
+      const uncommitted = baseConfig({
+        atlas: { committed: false, path: ".contextatlas/atlas.json", localCache: ".contextatlas/index.db" },
+      });
+
+      const first = recordingClient(() => ({ claims: [] }));
+      const r1 = await run(streamAdapter(tmp, {}), first.client, { config: uncommitted, gitBinary: "git" });
+      expect(first.bodies).toHaveLength(2);
+      expect(r1.commitsExtracted).toBe(2);
+      expect(r1.atlasExported).toBe(false);
+      // Seeded from the leftover file (the cache was empty).
+      expect(claimTexts()).toEqual(["seeded claim"]);
+
+      for (let i = 0; i < 2; i++) {
+        const warnings = captureWarnings();
+        const again = recordingClient(() => ({ claims: [] }));
+        const r = await run(streamAdapter(tmp, {}), again.client, {
+          config: uncommitted,
+          gitBinary: "git",
+        }).finally(() => warnings.restore());
+        expect(again.bodies).toEqual([]);
+        expect(r.commitsSkipped).toBe(2);
+        expect(warnings.lines.some((l) => /atlas\.committed is false/.test(l) && /ignoring/.test(l))).toBe(true);
+      }
+      expect(readFileSync(atlasPath(), "utf8")).toBe(bytes);
+    });
+
+    it("the unfinished-run mark is cleared by a finished run and is never exported", async () => {
+      emptyAtlas();
+      await run(threeDocFiles(), recordingClient((b) => oneClaim(b)).client);
+      const row = db
+        .prepare("SELECT value FROM _meta WHERE key = ?")
+        .get("index.unfinished_run_atlas_sha256");
+      expect(row).toBeUndefined();
+      expect(readFileSync(atlasPath(), "utf8")).not.toContain("unfinished");
+    });
+  });
+
+  // -------------------------------------------------------------------
+  // Zero-claim keys crossing between the prose and docstring streams
+  // (review fix): both streams key a file by relPath at the same SHA
+  // -------------------------------------------------------------------
+
+  describe("a zero-claim key written by one stream does not mask the file from the other", () => {
+    const withDocs = (include: string[]) => baseConfig({ docs: { include } });
+
+    it("docs.include narrowed after prose keyed a code file with zero claims: its docstrings are extracted, once", async () => {
+      write("src/a.ts", "export function Foo() {}\n");
+      const Foo = tsSym("src/a.ts", "Foo");
+      const adapter = streamAdapter(tmp, { "src/a.ts": [Foo] }, { [Foo.id]: "Foo doc." });
+
+      // Run 1: docs.include matches the code file; prose finds no claims.
+      const prose = recordingClient(() => ({ claims: [] }));
+      const warnings = captureWarnings();
+      await run(adapter, prose.client, { config: withDocs(["src/a.ts"]) }).finally(() =>
+        warnings.restore(),
+      );
+      expect(prose.bodies).toHaveLength(1);
+      expect(listSourceShas(db)["src/a.ts"]).toBeDefined();
+      expect(claimTexts()).toEqual([]);
+
+      // Run 2 (same local cache), glob narrowed as the collision warning
+      // advises: the docstring stream now extracts the file.
+      const doc = recordingClient((b) => (b === "Foo doc." ? oneClaim("foo is pure") : "throw"));
+      const r2 = await run(adapter, doc.client, { config: withDocs([]) });
+      expect(doc.bodies).toEqual(["Foo doc."]);
+      expect(r2.docstringFilesExtracted).toBe(1);
+      expect(claimTexts()).toEqual(["foo is pure"]);
+
+      // Run 3: nothing to do.
+      const noop = recordingClient(() => "throw");
+      await run(adapter, noop.client, { config: withDocs([]) });
+      expect(noop.bodies).toEqual([]);
+    });
+
+    it("docs.include widened over a zero-docstring file the docstring stream keyed: prose extracts it, once", async () => {
+      write("src/a.ts", "export const x = 1;\n");
+      const adapter = streamAdapter(tmp, { "src/a.ts": [tsSym("src/a.ts", "x")] });
+
+      // Run 1: no docstrings; the docstring stream keys the file anyway.
+      const first = recordingClient(() => "throw");
+      await run(adapter, first.client, { config: withDocs([]) });
+      expect(first.bodies).toEqual([]);
+      expect(listSourceShas(db)["src/a.ts"]).toBeDefined();
+
+      // Run 2: docs.include now matches it, so prose must extract it.
+      const prose = recordingClient(() => oneClaim("x is a constant"));
+      const warnings = captureWarnings();
+      await run(adapter, prose.client, { config: withDocs(["src/a.ts"]) }).finally(() =>
+        warnings.restore(),
+      );
+      expect(prose.bodies).toHaveLength(1);
+      expect(claimTexts()).toEqual(["x is a constant"]);
+
+      // Run 3: nothing to do.
+      const noop = recordingClient(() => "throw");
+      const w3 = captureWarnings();
+      await run(adapter, noop.client, { config: withDocs(["src/a.ts"]) }).finally(() => w3.restore());
+      expect(noop.bodies).toEqual([]);
     });
   });
 });

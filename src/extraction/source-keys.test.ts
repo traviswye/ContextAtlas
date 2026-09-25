@@ -8,6 +8,7 @@ import {
   setSourceSha,
 } from "../storage/claims.js";
 import { type DatabaseInstance, openDatabase } from "../storage/db.js";
+import { recordSourceKeyStream } from "../storage/source-key-streams.js";
 import { upsertSymbols } from "../storage/symbols.js";
 import { LANG_CODES } from "../types.js";
 
@@ -18,6 +19,7 @@ import {
   hasCommitKey,
   normalizeCommitKeys,
   partitionSourceShas,
+  recordedKeyStreams,
   REGISTERED_LANGUAGE_EXTENSIONS,
   streamFromClaimSource,
 } from "./source-keys.js";
@@ -149,6 +151,32 @@ describe("classifySourceKeys (claims first, shape fallback)", () => {
     });
     expect(out.get("src/a.ts")).toBe("docstring");
     expect(out.get("src/b.ts")).toBe("prose");
+  });
+
+  it("recorded writer streams win over knownProsePaths and shape, but not over claims (review fix)", () => {
+    add("adr:c.ts", "src/c.ts");
+    const out = classifySourceKeys(db, ["src/a.ts", "src/b.ts", "src/c.ts"], {
+      recordedStreams: new Map([
+        ["src/a.ts", "prose"],
+        ["src/b.ts", "docstring"],
+        ["src/c.ts", "docstring"],
+      ]),
+      knownProsePaths: new Set(["src/b.ts"]),
+    });
+    expect(out.get("src/a.ts")).toBe("prose"); // shape alone says docstring
+    expect(out.get("src/b.ts")).toBe("docstring"); // the prose walk alone says prose
+    expect(out.get("src/c.ts")).toBe("prose"); // claims win
+  });
+
+  it("recordedKeyStreams keeps only keys still at their recorded SHA", () => {
+    setSourceSha(db, "src/a.ts", "sha-1");
+    setSourceSha(db, "src/b.ts", "sha-new");
+    recordSourceKeyStream(db, "src/a.ts", "prose", "sha-1");
+    recordSourceKeyStream(db, "src/b.ts", "prose", "sha-old");
+    recordSourceKeyStream(db, "src/gone.ts", "docstring", "sha-x");
+    expect(recordedKeyStreams(db, listSourceShas(db))).toEqual(
+      new Map([["src/a.ts", "prose"]]),
+    );
   });
 
   it("mixed claim streams at one key resolve to the most conservative stream", () => {

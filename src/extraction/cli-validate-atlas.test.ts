@@ -568,7 +568,31 @@ describe("runValidateAtlasSubcommand (v0.7 Step 2.3.b.0)", () => {
       expect(r.warnings.filter((w) => /bare-sha/.test(w))).toEqual([]);
     });
 
-    it("does not treat a 40-hex prose path or a docstring claim as a commit", async () => {
+    it("does not treat a bare 40-hex key holding prose or docstring claims as a commit", async () => {
+      // A real bare-sha-shaped key (exactly 40 hex characters) whose
+      // claims are an ADR claim and a docstring claim: the stream check,
+      // not the key's shape, keeps it out of the count.
+      const OTHER = "fedcba9876543210fedcba9876543210fedcba98";
+      writeAtlas({
+        ...CANONICAL_ATLAS,
+        generated_at: recent(),
+        source_shas: {
+          ...CANONICAL_ATLAS.source_shas,
+          [SHA]: "abc",
+          [OTHER]: "def",
+        },
+        claims: [
+          ...CANONICAL_ATLAS.claims,
+          { ...commitClaim(SHA), source: "adr:odd.md" },
+          { ...commitClaim(OTHER), source: `docstring:${OTHER}` },
+        ],
+      });
+      const r = await run();
+      expect(r.exitCode).toBe(0);
+      expect(r.warnings.filter((w) => /bare-sha/.test(w))).toEqual([]);
+    });
+
+    it("a 40-hex path inside a longer path is not a bare commit key", async () => {
       writeAtlas({
         ...CANONICAL_ATLAS,
         generated_at: recent(),
@@ -580,6 +604,51 @@ describe("runValidateAtlasSubcommand (v0.7 Step 2.3.b.0)", () => {
       const r = await run();
       expect(r.exitCode).toBe(0);
       expect(r.warnings.filter((w) => /bare-sha/.test(w))).toEqual([]);
+    });
+  });
+
+  describe("claim links to symbols the atlas does not list (review fix)", () => {
+    const recent = () => new Date(Date.now() - 60 * 60 * 1000).toISOString();
+    const SYMBOL = {
+      id: "sym:ts:src/x.ts:Foo",
+      name: "Foo",
+      kind: "class",
+      path: "src/x.ts",
+      line: 1,
+      file_sha: "sha-x",
+    };
+    const linked = (ids: string[]) => ({
+      ...CANONICAL_ATLAS.claims[0]!,
+      symbol_ids: ids,
+    });
+
+    it("FAIL when a claim's symbol_ids names a symbol missing from symbols[] (unimportable atlas)", async () => {
+      writeAtlas({
+        ...CANONICAL_ATLAS,
+        generated_at: recent(),
+        symbols: [],
+        claims: [linked(["sym:ts:src/x.ts:Foo"]), linked(["sym:ts:src/x.ts:Foo", "sym:ts:src/y.ts:Bar"])],
+      });
+      const r = await run();
+      expect(r.exitCode).toBe(2);
+      const err = r.errors.find((e) => /symbol_ids/.test(e) && /symbols/.test(e));
+      expect(err).toBeDefined();
+      expect(err).toContain("sym:ts:src/x.ts:Foo");
+      expect(err).toContain("2 claims");
+      expect(err).toMatch(/carry the baseline atlas's `symbols`/);
+      expect(err).toMatch(/resolve-symbols/);
+    });
+
+    it("PASS when every linked symbol is listed", async () => {
+      writeAtlas({
+        ...CANONICAL_ATLAS,
+        generated_at: recent(),
+        symbols: [SYMBOL],
+        claims: [linked([SYMBOL.id])],
+      });
+      const r = await run();
+      expect(r.errors).toEqual([]);
+      expect(r.exitCode).toBe(0);
     });
   });
 });

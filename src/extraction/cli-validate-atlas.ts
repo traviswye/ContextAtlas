@@ -506,6 +506,15 @@ function validateAtlasShape(
     }
   }
 
+  // 6b. Claim links must name listed symbols (v1.2 Phase 2 review fix).
+  //    The importer links claims through a foreign key to `symbols`, so
+  //    an atlas whose claims link symbols it does not list cannot be
+  //    loaded: the MCP server and `contextatlas index` fail on it. A
+  //    Skill refresh that keeps preserved claims' symbol_ids must keep
+  //    the baseline `symbols` too.
+  const dangling = danglingSymbolLinks(atlas);
+  if (dangling !== null) errors.push(dangling);
+
   // 7. Surface non-canonical top-level fields the Skill agent invented
   //    at Step 2.3 Checkpoint 3 (cost_usd, cost_model, repo, sources).
   //    These don't break parsing but signal substantive deviation from
@@ -521,6 +530,53 @@ function validateAtlasShape(
   }
 
   return errors;
+}
+
+/**
+ * The error for claims whose `symbol_ids` name symbols absent from
+ * `symbols[]`, or null when there are none (or the arrays are too
+ * malformed to check; the shape errors cover that).
+ */
+function danglingSymbolLinks(atlas: Record<string, unknown>): string | null {
+  if (!Array.isArray(atlas.symbols) || !Array.isArray(atlas.claims)) {
+    return null;
+  }
+  const listed = new Set<string>();
+  for (const s of atlas.symbols) {
+    if (s !== null && typeof s === "object") {
+      const id = (s as Record<string, unknown>).id;
+      if (typeof id === "string") listed.add(id);
+    }
+  }
+  const missing = new Set<string>();
+  let claimsAffected = 0;
+  for (const claim of atlas.claims) {
+    if (claim === null || typeof claim !== "object") continue;
+    const ids = (claim as Record<string, unknown>).symbol_ids;
+    if (!Array.isArray(ids)) continue;
+    let affected = false;
+    for (const id of ids) {
+      if (typeof id === "string" && !listed.has(id)) {
+        missing.add(id);
+        affected = true;
+      }
+    }
+    if (affected) claimsAffected++;
+  }
+  if (missing.size === 0) return null;
+  const examples = [...missing].sort().slice(0, 5).join(", ");
+  const more = missing.size > 5 ? `, and ${missing.size - 5} more` : "";
+  const claimWord = claimsAffected === 1 ? "claim" : "claims";
+  return (
+    `${claimsAffected} ${claimWord} link symbols that \`symbols\` does not ` +
+    `list (${examples}${more}). The atlas cannot be loaded like this: ` +
+    `claims link symbols through a foreign key, so the MCP server and ` +
+    `\`contextatlas index\` fail on it. /index-atlas refresh: carry the ` +
+    `baseline atlas's \`symbols\` array forward unchanged (write ` +
+    `\`symbols: []\` only on a cold start), or give those claims ` +
+    `\`symbol_ids: []\`; then run \`contextatlas resolve-symbols\`, which ` +
+    `drops links to symbols that no longer exist.`
+  );
 }
 
 function describe(value: unknown): string {

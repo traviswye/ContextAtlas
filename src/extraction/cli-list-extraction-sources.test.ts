@@ -414,7 +414,55 @@ describe("runListExtractionSourcesSubcommand — extraction.streams", () => {
     ]);
     expect(manifest.sources.commits).toHaveLength(1);
     expect(manifest.summary.disabled_streams).toEqual([]);
+    expect(manifest.manifest_version).toBe("1");
+    expect(stderr).not.toMatch(/manifest_version/);
     expect(fake.calls.initialize).toBe(1);
+  });
+
+  it("a getDocstring failure omits the whole file, so the Skill keeps its baseline claims and key (review fix)", async () => {
+    await mkdir(path.join(fixture.root, "src"), { recursive: true });
+    await writeFile(path.join(fixture.root, "src", "two.ts"), "export class A {}\nexport class B {}\n");
+    const A: AtlasSymbol = {
+      id: "sym:ts:src/two.ts:A",
+      name: "A",
+      kind: "class",
+      path: "src/two.ts",
+      line: 1,
+      language: "typescript",
+    };
+    const B: AtlasSymbol = { ...A, id: "sym:ts:src/two.ts:B", name: "B", line: 2 };
+    const fake = fakeAdapter(fixture.root);
+    const base = fake.adapter;
+    const adapter: LanguageAdapter = {
+      ...base,
+      async listSymbols(p: string) {
+        const rel = path.relative(fixture.root, p).split(path.sep).join("/");
+        return rel === "src/two.ts" ? [A, B] : base.listSymbols(p);
+      },
+      async getDocstring(id: string) {
+        if (id === A.id) return "A doc.";
+        if (id === B.id) throw new Error("LSP request 'textDocument/hover' timed out");
+        return base.getDocstring(id);
+      },
+    };
+
+    const result = await runListExtractionSourcesSubcommand({
+      configRoot: fixture.root,
+      configFile: null,
+      writeStdout: (c) => (stdout += c),
+      writeStderr: (c) => (stderr += c),
+      createAdapterOverride: () => adapter,
+    });
+
+    expect(result.exitCode).toBe(0);
+    const manifest = JSON.parse(stdout) as ExtractionSourcesManifest;
+    // A's entry is withheld too: listing A alone would make the Skill
+    // replace the file's claims without B's and pin the new SHA.
+    expect(manifest.sources.docstrings.map((d) => d.source_path)).not.toContain("src/two.ts");
+    expect(manifest.sources.docstrings.map((d) => d.symbol_id)).toEqual([
+      "sym:ts:src/foo.ts:Foo",
+    ]);
+    expect(manifest.summary.symbols_with_docstrings).toBe(1);
   });
 
   it("emits empty docstring and commit arrays when only adr is enabled, without starting the LSP walk", async () => {
@@ -426,7 +474,12 @@ describe("runListExtractionSourcesSubcommand — extraction.streams", () => {
 
     expect(result.exitCode).toBe(0);
     const manifest = JSON.parse(stdout) as ExtractionSourcesManifest;
-    expect(manifest.manifest_version).toBe("1");
+    // "2" whenever a stream is disabled (review fix): an /index-atlas
+    // copy from before v1.2 reads empty arrays as deleted sources, and
+    // stops on any version but "1" instead.
+    expect(manifest.manifest_version).toBe("2");
+    expect(stderr).toMatch(/manifest_version "2"/);
+    expect(stderr).toMatch(/extraction\.skills_fresh/);
     expect(manifest.sources.adrs).toHaveLength(1);
     expect(manifest.sources.docstrings).toEqual([]);
     expect(manifest.sources.commits).toEqual([]);

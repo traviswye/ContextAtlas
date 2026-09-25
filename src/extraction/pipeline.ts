@@ -4,8 +4,11 @@
  * orchestration; each stage's logic lives in its own module.
  *
  * Stages (per DESIGN.md's extraction pipeline section):
- *   0. Atlas-aware startup: import committed atlas.json if present,
- *      establishing the committed SHA baseline.
+ *   0. Atlas-aware startup (`atlas-baseline.ts`): import committed
+ *      atlas.json if present, establishing the committed SHA baseline —
+ *      unless the previous run did not finish and atlas.json is unchanged
+ *      since (resume from the cache), or atlas.committed is false (the
+ *      cache is authoritative; atlas.json only seeds an empty cache).
  *   0.5 F-5 commit-key migration (v1.2 Phase 2, `source-keys.ts`): bare-
  *      sha commit keys and claim paths (the pre-v1.2 Skill form) become
  *      `commit:<sha>`. Every run, whatever streams are enabled.
@@ -34,8 +37,9 @@
  *   6b. Report claims orphaned by the prune (kept, never deleted); after
  *      6c/6d so re-extracted claims are not reported.
  *   7. If atlas.committed, regenerate atlas.json iff any modification
- *      happened (`atlas-export-stage.ts`). Bump atlas_meta.generated_at
- *      on real changes only.
+ *      happened, or the run resumed an unfinished one
+ *      (`atlas-export-stage.ts`). Bump atlas_meta.generated_at on real
+ *      changes only. Then clear the unfinished-run mark.
  *
  * Streams run in the fixed order prose → docstring → commit (lead
  * decision L-6), sharing one cost tracker and budget check. Which
@@ -46,13 +50,11 @@
  * caller inspects storage for those.
  */
 
-import { existsSync } from "node:fs";
 import { resolve as pathResolve } from "node:path";
 
 import { computeExcludePatterns } from "../config/exclude-patterns.js";
 import { DEFAULT_EXTRACTION_STREAMS } from "../config/defaults.js";
 import { log } from "../mcp/logger.js";
-import { importAtlasFile } from "../storage/atlas-importer.js";
 import { exportAtlas, serializeAtlas } from "../storage/atlas-exporter.js";
 import {
   deleteClaimsBySourcePath,
@@ -65,6 +67,7 @@ import { replaceGitCommits } from "../storage/git.js";
 import { ATLAS_META_KEYS } from "../storage/atlas-importer.js";
 import type { ExtractionStream } from "../types.js";
 
+import { loadAtlasBaseline, markRunFinished } from "./atlas-baseline.js";
 import { finalizeAtlas } from "./atlas-export-stage.js";
 import { buildCostPreview } from "./cost-preview.js";
 import {
@@ -84,7 +87,11 @@ import type {
 import { runProseStage, warnUnresolvedFrontmatter } from "./prose-stream.js";
 import { buildSymbolInventory } from "./resolver.js";
 import { RunCostTracker } from "./run-cost.js";
-import { normalizeCommitKeys, partitionSourceShas } from "./source-keys.js";
+import {
+  normalizeCommitKeys,
+  partitionSourceShas,
+  recordedKeyStreams,
+} from "./source-keys.js";
 import {
   runCommitStage,
   runDocstringStage,
@@ -131,11 +138,17 @@ export async function runExtractionPipeline(
   // files), so it resolves against configRoot, not repoRoot. In the
   // common case these are identical; in the external-ADRs setup
   // (ADR-08) the committed atlas belongs with the config.
+  //
+  // atlas.json replaces the cache unless the previous run did not finish
+  // and atlas.json is unchanged since it started (resume: the cache holds
+  // that run's stored work), or `atlas.committed` is false (the cache is
+  // authoritative; atlas.json only seeds an empty cache). See
+  // `atlas-baseline.ts`.
   const atlasAbsPath = pathResolve(configRoot, config.atlas.path);
-  if (existsSync(atlasAbsPath)) {
-    log.info("pipeline: importing committed atlas.json", { path: atlasAbsPath });
-    importAtlasFile(db, atlasAbsPath);
-  }
+  const atlasBaseline = loadAtlasBaseline(db, {
+    atlasAbsPath,
+    committed: config.atlas.committed,
+  });
 
   // --- Stage 0.5: F-5 commit-key migration (v1.2 Phase 2, L-2) ---------
   // Before the baseline is read, so Stage 1b and the commit plan see
@@ -159,7 +172,11 @@ export async function runExtractionPipeline(
   // Diffing all of them against the prose walk marked every non-prose
   // key "deleted", and Stage 5 then wiped docstring claims, commit
   // claims and the symbols of every docstring-bearing file.
+  // A zero-claim key is classified by the stream this cache recorded
+  // writing it, when it still holds that SHA (review fix: prose and
+  // docstring keys share relPaths and SHAs).
   const baseline = partitionSourceShas(db, committedShas, {
+    recordedStreams: recordedKeyStreams(db, committedShas),
     knownProsePaths: prosePaths,
   });
   log.info("pipeline: baseline source keys by stream", {
@@ -376,8 +393,10 @@ export async function runExtractionPipeline(
   // a docstring-source deletion, a commit-key migration, a stored
   // docstring file and a keyed commit all change the exported symbols,
   // claims or keys, so each counts too; a run that changed nothing
-  // leaves atlas.json byte-identical.
+  // leaves atlas.json byte-identical. A resumed run always exports: the
+  // cache holds the unfinished run's work, which atlas.json lacks.
   const didModify =
+    atlasBaseline.resumed ||
     plan.prose.length > 0 ||
     diff.deleted.length > 0 ||
     gitChanged ||
@@ -398,6 +417,9 @@ export async function runExtractionPipeline(
   } else {
     log.info("pipeline: no changes detected; atlas.json untouched");
   }
+  // Only a run that reaches this point clears the mark; an interrupted
+  // or throwing run leaves it, so the next run keeps the stored work.
+  markRunFinished(db);
 
   return {
     filesExtracted: plan.prose.length - prose.errors.length,

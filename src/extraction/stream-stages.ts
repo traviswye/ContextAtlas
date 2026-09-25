@@ -11,8 +11,14 @@
  *     and is retried next run.
  *   - 6d runs `extractCommitClaims` (`commit-message-extractor.ts`) per
  *     pending commit: canonical `commit:<sha>` key, one transaction per
- *     commit, a null result pinned with zero claims (L-10 iii), a thrown
- *     call left unkeyed for a retry.
+ *     commit, a null result or malformed JSON pinned with zero claims
+ *     (L-10 iii), a call that threw an API or network error left unkeyed
+ *     for a retry.
+ *
+ * The L-10 (ii) stream-level check ({@link streamFailure}) counts only
+ * calls that threw an API or network error (and, for commits, failed
+ * writes). An unparseable result is reported per source and retried
+ * (docstring) or pinned (commit), but never fails the stream.
  *
  * Errors keep the `extraction_errors` shape `{sourcePath, error}`:
  * docstring entries use the file's relPath (the symbol id is in the
@@ -38,9 +44,21 @@ type SourceError = { sourcePath: string; error: string };
 interface StreamCallCounts {
   /** Model calls attempted (including ones that threw). */
   attemptedCalls: number;
-  /** Calls that failed: threw, or (docstring) returned no parseable result. */
+  /**
+   * Calls that failed: threw an API or network error, or (commit) whose
+   * write failed. A call the API answered with no parseable result
+   * (null result, malformed JSON) is not a failed call: it is per-source
+   * noise, not the key, quota or network problem L-10 (ii) looks for.
+   */
   failedCalls: number;
+  /** Every per-source error, including read errors and unparseable results. */
   errors: SourceError[];
+  /**
+   * The first failed call's error, for the stream-failure message. A
+   * read error or an unparseable result listed earlier in `errors` is
+   * not quoted there.
+   */
+  firstFailedCallError?: string;
 }
 
 export interface DocstringStageResult extends StreamCallCounts {
@@ -88,6 +106,9 @@ export async function runDocstringStage(
       out.unresolvedCandidates += outcome.unresolvedCandidates;
     } else {
       out.failedCalls += outcome.failedCalls;
+      if (outcome.failedCalls > 0 && out.firstFailedCallError === undefined) {
+        out.firstFailedCallError = outcome.errors[0]?.error;
+      }
       for (const e of outcome.errors) {
         out.errors.push({ sourcePath: file.relPath, error: e.error });
       }
@@ -130,6 +151,7 @@ export async function runCommitStage(
     cost.addUsage(outcome.usage);
     if (outcome.status === "failed") {
       out.failedCalls++;
+      out.firstFailedCallError ??= outcome.error;
       out.errors.push({ sourcePath: commitSourceKey(commit.sha), error: outcome.error });
     } else {
       out.commitsKeyed++;
@@ -158,6 +180,7 @@ export function streamFailure(
   return {
     stream,
     attemptedCalls: counts.attemptedCalls,
-    firstError: counts.errors[0]?.error ?? "unknown error",
+    firstError:
+      counts.firstFailedCallError ?? counts.errors[0]?.error ?? "unknown error",
   };
 }

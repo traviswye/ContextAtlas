@@ -47,6 +47,7 @@ import {
   type NewClaim,
 } from "../storage/claims.js";
 import type { DatabaseInstance } from "../storage/db.js";
+import { recordSourceKeyStream } from "../storage/source-key-streams.js";
 import { getSymbol } from "../storage/symbols.js";
 import type {
   LanguageAdapter,
@@ -54,9 +55,10 @@ import type {
   SymbolId,
 } from "../types.js";
 
-import type {
-  ExtractionCallResult,
-  ExtractionClient,
+import {
+  ParseError,
+  type ExtractionCallResult,
+  type ExtractionClient,
 } from "./anthropic-client.js";
 import {
   readFileDocstrings,
@@ -91,11 +93,11 @@ interface DocstringFileOutcomeBase {
  *     its SHA pinned, in one transaction.
  *   - `failed` — nothing was written; the file keeps its previous claims
  *     and key. `read`: a docstring could not be read (no model call is
- *     made). `extract`: a call threw or returned no parseable result
- *     (max_tokens or malformed JSON); later calls for the file are not
- *     made. `store`: a documented symbol is missing from the symbols
- *     table (checked before any call), or the write failed and was
- *     rolled back.
+ *     made). `extract`: a call threw, or returned no parseable result
+ *     (max_tokens, no text block, or malformed JSON as a `ParseError`);
+ *     later calls for the file are not made. `store`: a documented
+ *     symbol is missing from the symbols table (checked before any
+ *     call), or the write failed and was rolled back.
  */
 export type DocstringFileOutcome =
   | (DocstringFileOutcomeBase & {
@@ -107,8 +109,18 @@ export type DocstringFileOutcome =
   | (DocstringFileOutcomeBase & {
       readonly status: "failed";
       readonly phase: "read" | "extract" | "store";
-      /** Calls that threw or returned no parseable result (0 or 1). */
+      /**
+       * Calls that threw an API or network error (0 or 1): the failures
+       * the stream-level L-10 (ii) check counts.
+       */
       readonly failedCalls: number;
+      /**
+       * Calls the API answered with no parseable result (0 or 1): a null
+       * result (max_tokens, no text block) or malformed JSON (a
+       * `ParseError`). Per-source noise: the file is retried, but these
+       * never make a stream "failed".
+       */
+      readonly unparseableCalls: number;
       readonly errors: readonly DocstringSymbolError[];
     });
 
@@ -134,14 +146,15 @@ export async function extractDocstringFile(
   const fail = (
     phase: "read" | "extract" | "store",
     errors: readonly DocstringSymbolError[],
-    failedCalls = 0,
+    calls: { failedCalls?: number; unparseableCalls?: number } = {},
   ): DocstringFileOutcome => ({
     status: "failed",
     phase,
     docstrings: read,
     apiCalls,
     usage,
-    failedCalls,
+    failedCalls: calls.failedCalls ?? 0,
+    unparseableCalls: calls.unparseableCalls ?? 0,
     errors: errors.map((e) => ({ ...e, error: `${e.error}. ${keep}` })),
   });
 
@@ -171,16 +184,24 @@ export async function extractDocstringFile(
     try {
       extracted = await client.extract(docstring);
     } catch (err) {
+      if (err instanceof ParseError) {
+        // Malformed JSON: the API answered and billed the call.
+        usage = addUsage(usage, err.usage);
+        const error =
+          `docstring extraction for ${symbolId} returned no parseable ` +
+          `result (malformed JSON: ${err.reason}): ${err.message}`;
+        return fail("extract", [{ symbolId, error }], { unparseableCalls: 1 });
+      }
       const error = `docstring extraction failed for ${symbolId}: ${String(err)}`;
-      return fail("extract", [{ symbolId, error }], 1);
+      return fail("extract", [{ symbolId, error }], { failedCalls: 1 });
     }
-    // A null result (max_tokens or malformed JSON) still consumed tokens.
+    // A null result (max_tokens, no text block) still consumed tokens.
     usage = addUsage(usage, extracted.usage);
     if (!extracted.result) {
       const error =
         `docstring extraction for ${symbolId} returned no parseable ` +
-        "result (max_tokens or malformed JSON)";
-      return fail("extract", [{ symbolId, error }], 1);
+        "result (max_tokens or no text block)";
+      return fail("extract", [{ symbolId, error }], { unparseableCalls: 1 });
     }
     for (const ec of extracted.result.claims) {
       const resolved = resolveCandidates(inventory, ec.symbol_candidates);
@@ -222,6 +243,9 @@ export async function extractDocstringFile(
       }
       progress.symbolId = null;
       setSourceSha(db, file.relPath, file.sha);
+      // Cache-only: lets a zero-claim key be told apart from a prose key
+      // at the same path (`source-key-streams.ts`).
+      recordSourceKeyStream(db, file.relPath, "docstring", file.sha);
     })();
   } catch (err) {
     const from = progress.symbolId;

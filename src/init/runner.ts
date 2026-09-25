@@ -379,6 +379,28 @@ export async function runInitSubcommand(
     // Q4.4.4 lock: any non-zero from runIndexSubcommand → init exit
     // code 1 (pass-through with init pipeline-failure semantics).
     if (indexResult.exitCode !== 0) {
+      const pipeline = indexResult.pipelineResult;
+      if (pipeline?.atlasExported) {
+        // index saved atlas.json at HEAD and then exited 1 (a stream
+        // whose every call failed, L-10 ii, or a failed
+        // validate-extraction). A plain init re-run would now find the
+        // atlas current and skip extraction, so the failed work would
+        // never be retried: point at `contextatlas index` first.
+        const failed = pipeline.failedStreams.map((f) => f.stream);
+        log.error(
+          `init: \`contextatlas index\` saved atlas.json but exited ` +
+            `${indexResult.exitCode}` +
+            (failed.length > 0
+              ? ` (every ${failed.join(" and ")} extraction call failed)`
+              : "") +
+            "; see the messages above. Re-running `contextatlas init` " +
+            "alone would skip extraction now that atlas.json matches HEAD. " +
+            "Fix the cause, run `contextatlas index` to retry, then run " +
+            "`contextatlas init` again to finish setup (smoke test and MCP " +
+            "registration).",
+        );
+        return { exitCode: 1 };
+      }
       log.error(
         `init: atlas extraction failed (runIndexSubcommand exit code ` +
           `${indexResult.exitCode}); see error messages above; resolve ` +

@@ -6,9 +6,11 @@
  *
  * Files are extracted in concurrent batches (default 3). A file whose
  * call returned a parseable result has its claims replaced (delete by
- * path, then insert) and its SHA pinned; a null result (max_tokens or
- * malformed JSON) leaves the file unkeyed so the next run retries it;
- * a thrown call is recorded in `errors`.
+ * path, then insert) and its SHA pinned; a null result (max_tokens)
+ * leaves the file unkeyed so the next run retries it; a thrown call is
+ * recorded in `errors` and also left unkeyed. Malformed JSON throws a
+ * `ParseError` (so it is an error here, as before), and its usage is
+ * still counted (v1.2 Phase 2 review fix).
  */
 
 import { readFileSync } from "node:fs";
@@ -23,8 +25,9 @@ import {
   type NewClaim,
 } from "../storage/claims.js";
 import type { DatabaseInstance } from "../storage/db.js";
+import { recordSourceKeyStream } from "../storage/source-key-streams.js";
 
-import type { ExtractionClient } from "./anthropic-client.js";
+import { usageOfFailedCall, type ExtractionClient } from "./anthropic-client.js";
 import type { ProseFile } from "./file-walker.js";
 import { parseFrontmatterSymbols } from "./frontmatter.js";
 import type {
@@ -98,6 +101,8 @@ export async function runProseStage(
           const extracted = await client.extract(body);
           return { file, extracted };
         } catch (err) {
+          // Malformed JSON (ParseError) was still billed: count its usage.
+          cost.addUsage(usageOfFailedCall(err));
           out.errors.push({ sourcePath: file.relPath, error: String(err) });
           return { file, extracted: null };
         }
@@ -122,6 +127,9 @@ export async function runProseStage(
       out.unresolvedFrontmatterHints += outcome.frontmatterHintsUnresolved;
       if (outcome.detail) out.unresolvedDetails.push(outcome.detail);
       setSourceSha(db, file.relPath, file.sha);
+      // Cache-only: lets a zero-claim key be told apart from a docstring
+      // key at the same path (`source-key-streams.ts`).
+      recordSourceKeyStream(db, file.relPath, "prose", file.sha);
     }
 
     // Budget warning at most once per run, checked after each batch.

@@ -685,8 +685,9 @@ stream's paid work.
   `deps.streams`. When the field is omitted it extracts prose only,
   the pre-Phase-2 library behaviour. `AnthropicAPIDirectExtractor`
   passes `resolveExtractionStreams(config)`. Library callers such as
-  the benchmarks driver therefore keep their current substrate until
-  they opt in.
+  the benchmarks driver therefore keep the prose-only stream set until
+  they opt in. Their atlas substrate still changes (see "Library
+  callers" under Consequences).
 - **Stages 1, 1b and 2 always run.** Only the Stage 6 prose extraction
   depends on `adr` being enabled. Skipping the prose walk would make
   Stage 5 treat every prose key as deleted.
@@ -770,9 +771,10 @@ orchestration only).
   stream attempted at least one call and all of them failed, the run
   still finishes the remaining streams and Stage 7. `index` then prints
   the summary, writes an actionable message to stderr, and exits 1.
-  Throwing mid-run would lose the run's other paid work, because the
-  next run's Stage 0 re-imports `atlas.json` over the cache. The prose
-  all-fail throw is unchanged (exit 1, before export).
+  Throwing mid-run would skip the remaining streams and Stage 7 for
+  no benefit. The prose all-fail throw is unchanged (exit 1, before
+  export). Only calls that threw an API or network error (and, for
+  commits, failed writes) count as failed; see "Review fixes" below.
 
 **4. `--full`** (L-7). It re-extracts every prose file and, while the
 docstring stream runs, every listed docstring file. Commits stay gated
@@ -822,7 +824,7 @@ never renamed" rule holds. Existing keys keep their names and order.
 
   | Key | Meaning |
   |---|---|
-  | `streams_enabled` | Streams this run extracted, in canonical order. Comma-joined in `key=value`; an array in `--json`. |
+  | `streams_enabled` | Streams enabled for this run (`extraction.streams`), in canonical order. An enabled stream can still be skipped, such as the commit stream without a git tree (`commits_extracted=0`). Comma-joined in `key=value`; an array in `--json`. |
   | `docstring_files_extracted` | Docstring files stored this run, including zero-docstring files keyed with no claims. |
   | `docstring_files_unchanged` | Walked, listed source files the docstring SHA gate skipped. |
   | `docstring_symbols_extracted` | Calls behind the stored docstring files (one per documented symbol). |
@@ -874,10 +876,10 @@ commit columns for stages 1, 2 and 6.
 
 | Stage [DESIGN] | prose (precedent) | docstring | commit |
 |---|---|---|---|
-| 0 import [Stage 0] | Imported with the atlas | Symmetric to prose | Symmetric to prose |
+| 0 import [Stage 0] | Imported with the atlas, except over an unfinished run's cache or, with `atlas.committed: false`, over a non-empty cache (review fixes) | Symmetric to prose | Symmetric to prose |
 | 0.5 key migration | Not applicable | Not applicable | Divergent: bare-sha keys and claim paths become `commit:<sha>`, because two paths wrote two forms; counts as a modification |
 | 1 collect [Stage 1] | `walkProseFiles` | Divergent: reuses the Stage 3 source walk (`walkSourceFiles` + exclude patterns); no second walker | Divergent: `git log --no-merges` + commit filter (`parseCommitLog`), because commits live in git history, not the filesystem; skipped without a git HEAD |
-| 1b classify | By claim source, key shape as fallback | Symmetric to prose (Phase 1) | Symmetric to prose (Phase 1; both key forms recognized) |
+| 1b classify | By claim source; a zero-claim key by the stream this cache recorded writing it, then the prose walk and key shape (review fixes) | Symmetric to prose | Symmetric to prose (Phase 1; both key forms recognized; never recorded) |
 | 2 SHA gate [Stage 6] | Per-file SHA vs the prose baseline; `--full` forces | Same rule against the docstring baseline, evaluated in the plan after Stage 3; files whose listing failed and files `docs.include` also matches are skipped; `--full` forces | Divergent: key presence in either form (commits are immutable); `--full` does not force |
 | 3–4a inventory, upsert, prune [Stage 2] | Stream-independent | Symmetric; also consumes the Stage 3 inventory (no re-listing) | Symmetric; candidates resolve against the same inventory |
 | 4b git signal (ADR-11) | Not applicable | Not applicable | Related: its HEAD gates the stream; the stream's own `git log` is uncapped, the signal's is capped at 500 |
@@ -934,9 +936,102 @@ These correct statements above without rewriting them (Pattern 3).
 - **Library callers.** A caller that omits `deps.streams` stays prose
   only. Stage 0.5 still runs for it; on an atlas that already uses
   canonical keys it changes nothing. The result object gains the
-  per-stream fields above.
+  per-stream fields above. The atlases library callers produce still
+  change, so benchmark atlases regenerated with this dist are an
+  atlas-substrate change to tag and control for in the benchmarks
+  methodology log (F1/F9 tag-and-control):
+  - every claim the library writes carries `symbol_candidates`
+    (Decision 9): prose through `runExtractionPipeline`, and the
+    driver's own `extractDocstringsForFile` and
+    `extractCommitMessagesForRepo` passes;
+  - `extractDocstringsForFile` stores a file only when every call for
+    it succeeded (Decision 3), so a failing call now leaves that file
+    with its previous claims (or none) instead of the other symbols'
+    new claims;
+  - `extractCommitMessagesForRepo` pins a commit whose response does
+    not parse (null result or malformed JSON) instead of retrying it.
 - **Skill path.** `/index-atlas` writes canonical commit keys and no
   longer drops keys its manifest does not enumerate. `doctor` gains
   `extraction.skills_fresh`, which flags installed skill copies that
   differ from the package's. See `docs/cycles/v1_2/v1.2-SCOPE.md`
   Phase 2 outcome.
+
+### Review fixes (2026-09-25)
+
+A review of Phase 2 before release found these defects; the fixes
+below are part of Phase 2.
+
+- **Unfinished runs keep their work.** Docstring files and commits are
+  stored in the local cache one at a time, but `atlas.json` is written
+  only at Stage 7, and Stage 0 used to import `atlas.json` over the
+  cache on every run. An interrupted run (Ctrl-C, a crash, a closed
+  terminal) therefore lost all of its paid work, and the next run
+  billed it again. Now each run records in the cache-only `_meta`
+  table the SHA-256 of the `atlas.json` it started from, and Stage 7
+  clears the record. When the next run finds the record and
+  `atlas.json` is byte-identical, it keeps the cache (resume) and
+  always exports. When `atlas.json` changed since (a pull, a branch
+  switch, a Skill run), it is imported as before, with a warning.
+  (`atlas-baseline.ts`.)
+- **`atlas.committed: false`.** The pipeline imported a leftover
+  `atlas.json` on every run but never exported, so every run re-billed
+  everything newer than the leftover file. With `committed: false` the
+  cache is the source of truth: `atlas.json` only seeds an empty
+  cache (as the MCP server does) and is otherwise ignored with a
+  warning.
+- **Malformed JSON.** The extraction client throws `ParseError` for
+  output that is not the expected JSON; it never returned
+  `result: null` for it. A commit whose response does not parse is
+  now pinned with zero claims, as Decision 3 and L-10 (iii) state
+  (before, it stayed unkeyed and was re-billed on every run). In every
+  stream the tokens of such a response are now counted in `cost_usd`
+  and the budget check (`ParseError.usage`).
+- **What fails a stream (L-10 ii).** Only calls that threw an API or
+  network error, and failed commit writes, count. A call the API
+  answered with no parseable result (null result, malformed JSON) is
+  reported in `extraction_errors` and retried (docstring) or pinned
+  (commit), but never fails the stream, so one unparseable docstring
+  no longer makes every later `index` exit 1. The exit message quotes
+  the first failed call's error, not an earlier docstring read error.
+- **Zero-claim keys across prose and docstring.** Both streams key a
+  file by relPath at the same SHA, so a zero-claim key written by one
+  stream looked unchanged to the other after `docs.include` changed,
+  and the file was never extracted again. Local cache migration 7 adds
+  a cache-only `source_key_streams` table: the prose and docstring
+  writers record which stream keyed each path at which SHA, and Stage
+  1b classifies a zero-claim key by that record while the key still
+  holds the SHA. The table is never exported and survives the Stage 0
+  import; a fresh clone has no records and falls back as before.
+- **`validate-extraction` and non-ADR prose.** `adr_depth_floor` and
+  `source_coverage` now skip a path whose file exists and that the
+  prose walk does not put in the ADR bucket (`docs.include` pages, a
+  note in the ADR directory without an ADR file name). Before, `index`
+  exited 1 on them after every exporting run, and an `/index-atlas`
+  refresh that kept them could never pass its gate. A missing file is
+  still checked. The failure remediation no longer offers only
+  `index --full`: it says `--full` also re-extracts every docstring
+  file and gives an ADR-only route (`extraction.streams: [adr]` for
+  one run).
+- **`init` after an `index` that exported and exited 1** now says to
+  run `contextatlas index` to retry, then `init` again. Re-running
+  `init` alone skips extraction once `atlas.json` matches HEAD.
+- **`list-extraction-sources`.** `manifest_version` is `"2"` exactly
+  when `extraction.streams` disables a stream, `"1"` otherwise, with a
+  stderr note when it is `"2"`. An `/index-atlas` copy from before
+  v1.2 stops on any version but `"1"`; before, it read a disabled
+  stream's empty array as deleted sources and dropped that stream's
+  claims. A file whose `getDocstring` fails for any symbol is left out
+  of the manifest whole, so the Skill keeps its claims and key (the
+  CLI's all-or-nothing file rule), instead of listing the symbols that
+  read and dropping the failed symbol's claims.
+- **`validate-atlas`** fails (exit 2) when a claim's `symbol_ids`
+  names a symbol that `symbols` does not list. Such an atlas cannot be
+  imported (claim links are a foreign key), so the MCP server and
+  `index` failed on it with a raw SQLite error.
+- **`/index-atlas` SKILL.md.** A refresh carries the baseline
+  `symbols` forward instead of writing `symbols: []` next to preserved
+  `symbol_ids`; the Phase B commit filter names both key forms; a
+  deleted source file's key and claims are dropped even while the
+  docstring stream is disabled, as CLI Stage 5 does; manifest
+  versions `"1"` and `"2"` are accepted; the validate-extraction gate
+  says kept non-ADR prose is exempt and must not be dropped to pass.

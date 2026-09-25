@@ -9,6 +9,7 @@
 import type { Claim, Severity, SymbolId } from "../types.js";
 
 import type { DatabaseInstance } from "./db.js";
+import { deleteSourceKeyStream } from "./source-key-streams.js";
 
 interface ClaimRow {
   id: number;
@@ -331,12 +332,16 @@ export function getSourceSha(
   return row?.source_sha ?? null;
 }
 
-/** Remove one source_shas row (no-op when absent). */
+/**
+ * Remove one source_shas row (no-op when absent), and the cache-only
+ * record of which stream wrote it (`source-key-streams.ts`).
+ */
 export function deleteSourceSha(
   db: DatabaseInstance,
   sourcePath: string,
 ): void {
   db.prepare("DELETE FROM source_shas WHERE source_path = ?").run(sourcePath);
+  deleteSourceKeyStream(db, sourcePath);
 }
 
 export function listSourceShas(
@@ -350,6 +355,11 @@ export function listSourceShas(
   return out;
 }
 
+/**
+ * Remove every source_shas row (the atlas import). The cache-only
+ * `source_key_streams` records stay: they must outlive the Stage 0
+ * re-import of atlas.json.
+ */
 export function clearSourceShas(db: DatabaseInstance): void {
   db.exec("DELETE FROM source_shas;");
 }

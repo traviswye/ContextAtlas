@@ -3,7 +3,8 @@
  * `config.extraction_streams` (v1.2 Phase 2; SCOPE D-1, lead
  * decision L-11): it reports the enabled streams, marks the default,
  * and warns when a disabled stream still has claims in atlas.json
- * (kept frozen: extraction neither refreshes nor deletes them).
+ * (kept frozen: extraction does not refresh them; only claims of a
+ * source file that no longer exists are still removed).
  */
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -134,6 +135,9 @@ describe("configChecks — config.extraction_streams", () => {
     );
     expect(check.detail).toMatch(/frozen/);
     expect(check.detail).toMatch(/extraction\.streams/);
+    // Review fix: the CLI still removes a deleted source file's claims.
+    expect(check.detail).not.toMatch(/neither refreshes nor deletes/);
+    expect(check.detail).toMatch(/no longer exists/);
   });
 
   it("only the disabled stream with claims is counted", async () => {

@@ -47,6 +47,15 @@
  *      A reliably produces claims per source by design (extraction
  *      prompt against substantive ADR prose).
  *
+ * Non-ADR prose is exempt from invariants 2 and 3 (v1.2 Phase 2 review
+ * fix): a path whose file exists but that the prose walk does not put
+ * in the ADR bucket (`docs.include` pages such as README.md, or a note
+ * in the ADR directory without an ADR file name). The CLI extracts those
+ * with the same prompt and `adr:` prefix, the `/index-atlas` Skill keeps
+ * them without re-extracting, and neither can be held to an ADR's depth.
+ * Before the fix, a Skill refresh that kept them could never pass this
+ * gate, and CLI `index` exited 1 on them after every exporting run.
+ *
  * Per-stream coverage at Phase B iteration is the SKILL.md substrate
  * concern (not validator domain) — if Phase A skips a stream
  * entirely, source_shas reflects the skip and source_coverage check
@@ -67,10 +76,13 @@
  *       stderr with per-invariant guidance
  */
 
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { resolve as pathResolve } from "node:path";
 
 import { loadConfig } from "../config/parser.js";
+import type { ContextAtlasConfig } from "../types.js";
+
+import { walkProseFiles } from "./file-walker.js";
 
 export type ValidateExtractionExitCode = 0 | 2;
 
@@ -117,6 +129,49 @@ export interface AtlasForValidation {
   }>;
 }
 
+/** Options for {@link validateExtractionShape}. */
+export interface ValidateExtractionShapeOptions {
+  /**
+   * True for a source path that is prose but not an ADR (a
+   * `docs.include` page such as README.md, or a note in the ADR
+   * directory that does not follow an ADR naming convention). Such
+   * paths are exempt from `adr_depth_floor` and `source_coverage`: the
+   * CLI extracts them with the same prompt and `adr:` source prefix,
+   * but nothing says a README yields 8 claims, and the `/index-atlas`
+   * Skill keeps them without re-extracting them (v1.2 Phase 2 review
+   * fix). Omitted: every `adr:` claim and `.md`/`.rst` key is checked.
+   */
+  isNotAdr?: (sourcePath: string) => boolean;
+}
+
+/**
+ * The exemption the subcommand applies: a path is not an ADR when the
+ * file exists (relative to the source root) and the current prose walk
+ * does not put it in the ADR bucket. A missing file is still checked,
+ * so a deleted ADR left in `source_shas` keeps failing coverage. Null
+ * when the walk fails (then nothing is exempt).
+ */
+function nonAdrProsePredicate(
+  config: ContextAtlasConfig,
+  configRoot: string,
+): ((sourcePath: string) => boolean) | null {
+  const sourceRoot = config.source?.root
+    ? pathResolve(configRoot, config.source.root)
+    : configRoot;
+  let adrPaths: Set<string>;
+  try {
+    adrPaths = new Set(
+      walkProseFiles(sourceRoot, config, configRoot)
+        .filter((f) => f.bucket === "adr")
+        .map((f) => f.relPath),
+    );
+  } catch {
+    return null;
+  }
+  return (sourcePath) =>
+    !adrPaths.has(sourcePath) && existsSync(pathResolve(sourceRoot, sourcePath));
+}
+
 /**
  * Run the validate-extraction subcommand. Never throws — all error
  * paths map to exit codes + structured remediation.
@@ -156,7 +211,11 @@ export async function runValidateExtractionSubcommand(
     return { exitCode: 2, errors: [] };
   }
 
-  const errors = validateExtractionShape(atlas);
+  const isNotAdr = nonAdrProsePredicate(config, options.configRoot);
+  const errors = validateExtractionShape(
+    atlas,
+    isNotAdr !== null ? { isNotAdr } : {},
+  );
   if (errors.length === 0) {
     const claimsCount = atlas.claims?.length ?? 0;
     const sourcesCount = atlas.source_shas
@@ -198,10 +257,12 @@ export async function runValidateExtractionSubcommand(
  */
 export function validateExtractionShape(
   atlas: AtlasForValidation,
+  options: ValidateExtractionShapeOptions = {},
 ): string[] {
   const errors: string[] = [];
   const claims = atlas.claims ?? [];
   const sourceShas = atlas.source_shas ?? {};
+  const isNotAdr = options.isNotAdr ?? (() => false);
 
   // Invariant 1: adr_claims_present
   const adrClaims = claims.filter(
@@ -221,6 +282,7 @@ export function validateExtractionShape(
     const claimsPerAdr = new Map<string, number>();
     for (const claim of adrClaims) {
       const path = claim.source_path ?? claim.source ?? "<unknown>";
+      if (isNotAdr(path)) continue;
       claimsPerAdr.set(path, (claimsPerAdr.get(path) ?? 0) + 1);
     }
     const shallowAdrs: Array<{ path: string; count: number }> = [];
@@ -257,6 +319,7 @@ export function validateExtractionShape(
   const adrSourcesWithoutClaims: string[] = [];
   for (const sourcePath of Object.keys(sourceShas)) {
     if (!isAdrSourcePath(sourcePath)) continue;
+    if (isNotAdr(sourcePath)) continue;
     if (!sourcePathsInClaims.has(sourcePath)) {
       adrSourcesWithoutClaims.push(sourcePath);
     }

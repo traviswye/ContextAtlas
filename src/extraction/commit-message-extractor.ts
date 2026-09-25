@@ -29,11 +29,11 @@
  * Storage (v1.2 Phase 2): each commit's delete-before-insert, claim
  * inserts and key write run in ONE transaction, so a re-extraction
  * can never duplicate claims and a failed write leaves the prior
- * state intact. A null result (max_tokens or malformed JSON) pins the
- * key with zero claims and logs a warning (L-10 iii): the commit is
- * immutable and the failure likely deterministic, so it is not
- * re-billed on every run. A thrown client error leaves the commit
- * unkeyed, so the next run retries it.
+ * state intact. A null result or malformed JSON (a `ParseError` from
+ * the client) pins the key with zero claims and logs a warning (L-10
+ * iii): the commit is immutable and the failure likely deterministic,
+ * so it is not re-billed on every run. Any other thrown client error
+ * (API, network) leaves the commit unkeyed, so the next run retries it.
  *
  * Still not implemented: an `extraction.commit_message_max` cap for
  * huge histories, and a force-re-extract flag.
@@ -59,6 +59,7 @@ import type { DatabaseInstance } from "../storage/db.js";
 import type { ContextAtlasConfig } from "../types.js";
 
 import {
+  ParseError,
   type ExtractionCallResult,
   type ExtractionClient,
 } from "./anthropic-client.js";
@@ -107,13 +108,15 @@ export {
  *
  *   - `stored` — claims (possibly zero) replaced the commit's previous
  *     claims in either key form, and `commit:<sha>` was keyed.
- *   - `null-result` — the call returned no parseable result (max_tokens
- *     or malformed JSON). The key is pinned with zero claims (L-10 iii);
- *     existing claims under the key are left as they were.
- *   - `failed` — `extract`: the client threw after its retries, so the
- *     usage of that call is unknown (zero here). `store`: the call
- *     returned but the write failed and was rolled back. Either way the
- *     commit is not keyed, so the next run retries it.
+ *   - `null-result` — the call returned no parseable result: a null
+ *     result (max_tokens, no text block) or a `ParseError` (malformed
+ *     JSON; its usage is kept). The key is pinned with zero claims
+ *     (L-10 iii); existing claims under the key are left as they were.
+ *   - `failed` — `extract`: the client threw an API or network error
+ *     after its retries, so the usage of that call is unknown (zero
+ *     here). `store`: the call returned but the write failed and was
+ *     rolled back. Either way the commit is not keyed, so the next run
+ *     retries it.
  */
 export type CommitClaimsOutcome =
   | {
@@ -156,15 +159,25 @@ export async function extractCommitClaims(
   const key = commitSourceKey(commit.sha);
 
   let extracted: ExtractionCallResult;
+  let unparseable = "max_tokens or no text block";
   try {
     extracted = await anthropicClient.extract(buildCommitExtractionBody(commit));
   } catch (err) {
-    return {
-      status: "failed",
-      phase: "extract",
-      usage: ZERO_USAGE,
-      error: String(err),
-    };
+    // Malformed JSON throws ParseError from the client (v0.8 A1). The API
+    // answered and billed the call, and the failure is expected to repeat
+    // for the same input, so it takes the null-result path (L-10 iii) with
+    // the response's usage rather than staying unkeyed and re-billed.
+    if (err instanceof ParseError) {
+      extracted = { result: null, usage: err.usage };
+      unparseable = `malformed JSON: ${err.reason}`;
+    } else {
+      return {
+        status: "failed",
+        phase: "extract",
+        usage: ZERO_USAGE,
+        error: String(err),
+      };
+    }
   }
   const usage = extracted.usage;
 
@@ -179,7 +192,7 @@ export async function extractCommitClaims(
     }
     log.warn(
       `commit-message-extractor: extraction returned no parseable result ` +
-        `for ${key} (max_tokens or malformed JSON). Recorded it as ` +
+        `for ${key} (${unparseable}). Recorded it as ` +
         `extracted with zero claims so it is not re-billed on every run. ` +
         `To retry it, remove the "${key}" entry from source_shas in ` +
         `atlas.json and re-run extraction.`,
@@ -258,8 +271,9 @@ export interface CommitExtractionResult {
   readonly commitsFiltered: number;
   /**
    * Commits whose extraction call returned a response: stored, null
-   * result, or a write that then failed. Excludes idempotent skips and
-   * calls that threw.
+   * result or malformed JSON (pinned), or a write that then failed.
+   * Excludes idempotent skips and calls that threw an API or network
+   * error.
    */
   readonly commitsExtracted: number;
   /** Commits skipped because they were already keyed (either key form). */
@@ -271,8 +285,9 @@ export interface CommitExtractionResult {
   /** Cumulative API usage across all extraction calls. */
   readonly totalUsage: UsageInfo;
   /**
-   * Per-commit errors: client throws after retries, and writes that
-   * failed and were rolled back. The commit stays unkeyed.
+   * Per-commit errors: API or network errors the client threw after
+   * its retries, and writes that failed and were rolled back. The
+   * commit stays unkeyed.
    */
   readonly errors: ReadonlyArray<{ readonly sha: string; readonly error: string }>;
   /** v1.2: extraction calls attempted, including ones that threw. */
@@ -280,8 +295,9 @@ export interface CommitExtractionResult {
   /** v1.2: unresolved `symbol_candidates` summed across written claims. */
   readonly unresolvedCandidates: number;
   /**
-   * v1.2: commits whose call returned no parseable result; keyed with
-   * zero claims (L-10 iii) and counted in `commitsExtracted` too.
+   * v1.2: commits whose call returned no parseable result (a null
+   * result, or malformed JSON thrown as `ParseError`); keyed with zero
+   * claims (L-10 iii) and counted in `commitsExtracted` too.
    */
   readonly commitsNullResult: number;
 }

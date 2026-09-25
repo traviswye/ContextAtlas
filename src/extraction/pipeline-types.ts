@@ -153,14 +153,19 @@ export interface FileUnresolvedDetail {
 /**
  * A docstring or commit stream in which every attempted model call
  * failed (lead decision L-10 ii) — usually an API key, quota or network
- * problem rather than per-source noise. The run still finishes and
- * exports; `contextatlas index` then exits 1.
+ * problem rather than per-source noise. A call the API answered with no
+ * parseable result (null result, malformed JSON) does not count as
+ * failed. The run still finishes and exports; `contextatlas index` then
+ * exits 1.
  */
 export interface StreamFailure {
   stream: ExtractionStream;
   /** Model calls attempted in the stream (all of them failed). */
   attemptedCalls: number;
-  /** The first failure's message, for the exit message. */
+  /**
+   * The first failed call's message, for the exit message (never a
+   * docstring read error or an unparseable result).
+   */
   firstError: string;
 }
 
@@ -266,7 +271,12 @@ export interface ExtractionPipelineResult {
 
   // --- v1.2 Phase 2 (appended) -------------------------------------------
 
-  /** Streams this run extracted, canonical order, config names. */
+  /**
+   * Streams enabled for this run (`deps.streams`; the CLI passes
+   * `extraction.streams`), canonical order, config names. An enabled
+   * stream can still be skipped: the commit stream without a git tree
+   * or a working git (`commits_extracted` is then 0).
+   */
   streamsEnabled: ExtractionStream[];
   /**
    * Docstring files whose claims were replaced and key pinned this run,

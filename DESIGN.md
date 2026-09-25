@@ -491,7 +491,9 @@ Pipeline knobs surfaced after v0.2 reference runs.
 - **`exclude_pattern`** (v0.4 Step 2, A4). Glob patterns (minimatch,
   repo-relative) added to the per-language default excludes when the
   source tree is walked; the defaults always apply (augment-only).
-  Excluded files get no symbols and no docstring claims.
+  Excluded files get no symbols. Their docstring keys and claims are
+  removed while the docstring stream is enabled, and kept frozen while
+  it is disabled (see `streams` below).
 - **`commit_message_filter`** (v0.4 Stream A). Regex patterns
   (case-insensitive) added to the default commit filter. They are
   tested against the subject plus the first 200 characters of the
@@ -613,6 +615,18 @@ present:
 This is how new team members and returning contributors avoid paying
 the full first-run cost. See ADR-06 for the architectural rationale.
 
+Two exceptions (v1.2 Phase 2 review fixes; `atlas-baseline.ts`):
+- **An unfinished run.** Each run records, in the local cache only,
+  the SHA-256 of the atlas.json it started from and clears the record
+  when it finishes. If a run was interrupted (its docstring files and
+  commits are stored in the cache one at a time, but atlas.json is
+  written only at the end) and atlas.json has not changed since, the
+  next run keeps the cache, extracts only what is left, and exports.
+  If atlas.json changed meanwhile, it is imported as usual.
+- **`atlas.committed: false`.** The cache is the source of truth, so a
+  leftover atlas.json only seeds an empty cache and is otherwise
+  ignored with a warning.
+
 **Per-stream baseline and structural refresh (v1.2).** `source_shas`
 holds keys for three claim streams:
 - prose: ADR/doc relPaths;
@@ -624,7 +638,10 @@ holds keys for three claim streams:
 
 Every `contextatlas index` run:
 - **Classifies** each baseline key by the `source` prefix of its
-  claims. Zero-claim keys fall back to the key's shape.
+  claims. A zero-claim key uses the stream this cache recorded writing
+  it (prose or docstring, while the key still holds that SHA; a
+  cache-only record, v1.2 Phase 2 review fix), then the prose walk,
+  then the key's shape.
 - **Diffs** only the prose keys against the prose walk.
 - **Applies one deletion rule per stream:**
   - a prose key goes when the prose walk no longer produces it;
@@ -851,9 +868,13 @@ Key properties of atlas.json:
     via `extraction.commit_message_filter` config array. Historical
     note: v0.4 gated per-repo integration of this stream on a "Q3"
     threshold (≥30 claims/repo on at least 2 of 3 repos AND any
-    single repo above 50). Only `scripts/dogfood-extract.mjs` acted
-    on it, by deleting a repo's commit claims below 30; the
-    benchmarks driver only reports it. v1.2 Phase 2 dropped it: the CLI
+    single repo above 50). `scripts/dogfood-extract.mjs` acted on it
+    by deleting a repo's commit claims below 30, and so did a one-off
+    benchmarks-repo script at v0.4 Step 5.7
+    (`scripts/v0.4-step5-q3-bifurcated-drop.mjs`), which removed the
+    commit claims from the committed cobra and httpx atlases; the
+    benchmarks driver (`extract-benchmark-atlas.mjs`) only reports
+    it. v1.2 Phase 2 dropped it: the CLI
     `index` extracts filtered commits whenever the `commit` stream
     is enabled, and `extraction.streams` is the off switch.
 
@@ -975,6 +996,11 @@ internal-only codebases, and teams with other preferences may set
 - Every team member runs full extraction independently
 - No cross-developer consistency guarantees
 - No zero-cost onboarding
+- The local cache is the baseline. An atlas.json left over from
+  `committed: true` seeds an empty cache once and is otherwise
+  ignored, with a warning to delete it (v1.2 Phase 2 review fix;
+  before, `index` imported it on every run and re-extracted everything
+  newer than it)
 
 This is the degraded mode, but it's a supported degraded mode. The
 system must work correctly under both settings.
