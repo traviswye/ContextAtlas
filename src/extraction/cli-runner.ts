@@ -6,7 +6,8 @@
  *   - API-key discovery (env var only in v0.1, explicit error if absent)
  *   - Anthropic client construction and retry-wrapper setup
  *   - Adapter lifecycle (spawn, initialize, shutdown on any exit path)
- *   - Summary printing in `key=value` or `--json` shape
+ *   - The pre-run cost preview (stderr) and summary printing in
+ *     `key=value` or `--json` shape (stdout)
  *   - Exit-code mapping per ADR-12 (0 success, 1 extraction failure, 2 setup error)
  *
  * Extracted into its own module so `src/index.ts` stays focused on
@@ -26,6 +27,7 @@ import { openDatabase } from "../storage/db.js";
 import type { LanguageAdapter, LanguageCode } from "../types.js";
 
 import type { ExtractionClient } from "./anthropic-client.js";
+import { formatCostPreview } from "./cost-preview.js";
 import {
   ExtractionSetupError,
   type ExtractorContext,
@@ -34,6 +36,7 @@ import { getExtractor } from "./factory.js";
 import type {
   ExtractionPipelineResult,
   FileUnresolvedDetail,
+  StreamFailure,
 } from "./pipeline.js";
 import { runValidateExtractionSubcommand } from "./cli-validate-extraction.js";
 
@@ -89,12 +92,18 @@ export interface IndexCliOptions {
    */
   readEnv?: (name: string) => string | undefined;
   /**
+   * Test seam — git binary for the git signal and the commit stream.
+   * Defaults to `"git"` on PATH.
+   */
+  gitBinary?: string;
+  /**
    * Test seam — where summary output goes. Defaults to
    * `process.stdout.write`.
    */
   writeStdout?: (chunk: string) => void;
   /**
-   * Test seam — where verbose diagnostic output goes. Defaults to
+   * Test seam — where diagnostic output goes: the cost preview,
+   * frontmatter / --verbose detail and failure messages. Defaults to
    * `process.stderr.write`. Separate from `writeStdout` so tests
    * can assert on the two channels independently.
    */
@@ -104,7 +113,9 @@ export interface IndexCliOptions {
 /**
  * Exit-code contract (ADR-12): per-subcommand semantics.
  *   0 — success (pipeline ran cleanly, atlas written if modifications)
- *   1 — extraction failure (pipeline threw, or every document errored)
+ *   1 — extraction failure (pipeline threw, every prose document errored,
+ *       every call of the docstring or commit stream failed — after the
+ *       run's other work was exported — or validate-extraction failed)
  *   2 — setup error (missing API key, config invalid, adapter init failed)
  */
 export type IndexExitCode = 0 | 1 | 2;
@@ -224,6 +235,10 @@ export async function runIndexSubcommand(
       contextatlasVersion: options.contextatlasVersion,
       contextatlasCommitSha,
       readEnv,
+      // Cost preview (v1.2 Phase 2, L-8): informational, stderr only, so
+      // stdout (and --json) carries nothing but the summary.
+      onCostPreview: (preview) => writeStderr(formatCostPreview(preview)),
+      ...(options.gitBinary !== undefined ? { gitBinary: options.gitBinary } : {}),
       ...(budgetWarnUsd !== undefined ? { budgetWarnUsd } : {}),
       ...(narrowAttribution !== undefined ? { narrowAttribution } : {}),
       ...(options.clientOverride !== undefined
@@ -260,6 +275,19 @@ export async function runIndexSubcommand(
       printVerboseUnresolved(pipelineResult.unresolvedDetails, writeStderr);
     }
     printSummary(pipelineResult, options.json, writeStdout);
+
+    // A docstring or commit stream whose every call failed (L-10 ii):
+    // the pipeline finished the other streams and exported, so the
+    // summary above is complete; the run still exits 1.
+    const streamFailed = pipelineResult.failedStreams.length > 0;
+    if (streamFailed) {
+      writeStderr(
+        formatStreamFailures(
+          pipelineResult.failedStreams,
+          pipelineResult.atlasExported,
+        ),
+      );
+    }
 
     // v0.7.1 Step 1.1.b.0 + Q1.1.G.α: auto-invoke validate-extraction
     // post-pipeline per Path D substrate-equivalence closure pattern
@@ -317,7 +345,7 @@ export async function runIndexSubcommand(
       }
     }
 
-    return { exitCode: 0, pipelineResult };
+    return { exitCode: streamFailed ? 1 : 0, pipelineResult };
   } finally {
     await shutdownAll(adapters);
     db.close();
@@ -382,6 +410,35 @@ export function resolveContextatlasCommitSha(): string | null {
   } catch {
     return null;
   }
+}
+
+/**
+ * The exit-1 message for streams whose every call failed. Names what
+ * was kept and what to do next.
+ */
+function formatStreamFailures(
+  failures: readonly StreamFailure[],
+  atlasExported: boolean,
+): string {
+  const saved = atlasExported
+    ? "The run's other work was saved and atlas.json was exported."
+    : "The run's other work was saved to the local cache.";
+  const lines = [""];
+  for (const f of failures) {
+    const unit = f.stream === "commit" ? "commits" : "docstring files";
+    lines.push(
+      `contextatlas index: every ${f.stream} extraction call failed ` +
+        `(${f.attemptedCalls} of ${f.attemptedCalls}). First error: ${f.firstError}`,
+      `  ${saved} Nothing new was recorded for the failed ${unit}: they ` +
+        "keep their previous claims, and the next run retries them.",
+    );
+  }
+  lines.push(
+    "This usually means an API key, quota or network problem rather than " +
+      "per-source noise. Fix the cause, then re-run `contextatlas index`.",
+    "",
+  );
+  return lines.join("\n");
 }
 
 /**
@@ -514,6 +571,19 @@ function printSummary(
       })),
       docstring_sources_deleted: result.docstringSourcesDeleted,
       unverified_symbol_files: result.unverifiedSymbolFiles,
+      // v1.2 Phase 2 — appended per the ADR-12 additive-keys contract
+      // (L-9). api_calls, the token totals, cost_usd, claims_written,
+      // unresolved_candidates and extraction_errors above now cover all
+      // streams; files_* stay prose-only.
+      streams_enabled: result.streamsEnabled,
+      docstring_files_extracted: result.docstringFilesExtracted,
+      docstring_files_unchanged: result.docstringFilesUnchanged,
+      docstring_symbols_extracted: result.docstringSymbolsExtracted,
+      docstring_claims_written: result.docstringClaimsWritten,
+      commits_extracted: result.commitsExtracted,
+      commits_skipped: result.commitsSkipped,
+      commit_claims_written: result.commitClaimsWritten,
+      commit_keys_migrated: result.commitKeysMigrated,
     };
     writeStdout(JSON.stringify(payload, null, 2) + "\n");
     return;
@@ -542,6 +612,16 @@ function printSummary(
     `claims_orphaned=${result.claimsOrphaned}`,
     `docstring_sources_deleted=${result.docstringSourcesDeleted}`,
     `unverified_symbol_files=${result.unverifiedSymbolFiles}`,
+    // v1.2 Phase 2 — appended per the ADR-12 additive-keys contract (L-9).
+    `streams_enabled=${result.streamsEnabled.join(",")}`,
+    `docstring_files_extracted=${result.docstringFilesExtracted}`,
+    `docstring_files_unchanged=${result.docstringFilesUnchanged}`,
+    `docstring_symbols_extracted=${result.docstringSymbolsExtracted}`,
+    `docstring_claims_written=${result.docstringClaimsWritten}`,
+    `commits_extracted=${result.commitsExtracted}`,
+    `commits_skipped=${result.commitsSkipped}`,
+    `commit_claims_written=${result.commitClaimsWritten}`,
+    `commit_keys_migrated=${result.commitKeysMigrated}`,
   ];
   writeStdout(lines.join("\n") + "\n");
 }

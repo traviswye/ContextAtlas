@@ -59,3 +59,23 @@ export function computeCostUsd(usage: UsageInfo): number {
     (usage.outputTokens / 1_000_000) * OPUS_47_OUTPUT_USD_PER_MTOKEN
   );
 }
+
+/**
+ * Characters per input token assumed by the pre-run cost estimate
+ * (v1.2 Phase 2 `index` cost preview). Deliberately conservative: the
+ * v0.4 hono extraction log (benchmarks repo `hono-extraction.log`,
+ * claude-opus-4-7) shows the cheapest docstring calls — the ~3,400-char
+ * `EXTRACTION_PROMPT` plus a one-line docstring — billing about 1,080
+ * input tokens, i.e. ~3.2 characters per token, so the common 4-per-token
+ * rule would under-estimate input by about a fifth.
+ */
+export const CHARS_PER_TOKEN_ESTIMATE = 3;
+
+/**
+ * Estimated input tokens for `chars` characters of request text. An
+ * estimate for the cost preview only; actual usage comes from the API
+ * response.
+ */
+export function estimateTokensFromChars(chars: number): number {
+  return Math.ceil(chars / CHARS_PER_TOKEN_ESTIMATE);
+}

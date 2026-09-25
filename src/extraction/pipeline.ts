@@ -1,10 +1,14 @@
 /**
  * The extraction pipeline — composes config, adapters, storage, and
- * anthropic-client into an end-to-end indexer.
+ * anthropic-client into an end-to-end indexer. This module is the
+ * orchestration; each stage's logic lives in its own module.
  *
  * Stages (per DESIGN.md's extraction pipeline section):
  *   0. Atlas-aware startup: import committed atlas.json if present,
  *      establishing the committed SHA baseline.
+ *   0.5 F-5 commit-key migration (v1.2 Phase 2, `source-keys.ts`): bare-
+ *      sha commit keys and claim paths (the pre-v1.2 Skill form) become
+ *      `commit:<sha>`. Every run, whatever streams are enabled.
  *   1. Walk prose files (ADRs + docs.include globs), compute SHAs.
  *      Classify the baseline's source_shas keys by stream (prose /
  *      docstring / commit; `source-keys.ts`, v1.2 Phase 1).
@@ -15,283 +19,101 @@
  *      of deleted / excluded files and symbols no longer listed.
  *   4b. Git signal (ADR-11).
  *   5. Handle deletions, stream-aware: prose keys missing from the
- *      prose walk and docstring keys whose file is gone lose their
- *      claims + source_shas row; commit keys are never deleted.
- *   6. Extract changed/added prose files in batches, resolve candidates,
- *      and write claims.
- *   6b. Report claims orphaned by the prune (kept, never deleted).
+ *      prose walk and docstring keys whose file is gone (or, when the
+ *      docstring stream runs, excluded) lose their claims + source_shas
+ *      row; commit keys are never deleted.
+ *   Plan (v1.2 Phase 2, `extraction-plan.ts`): the work of every enabled
+ *      stream, including the zero-API docstring read and the pending
+ *      commits; then the cost preview (`cost-preview.ts`) when any
+ *      model call is planned.
+ *   6. Prose stream (`adr`, `prose-stream.ts`): extract changed/added
+ *      prose files in batches, resolve candidates, write claims. Throws
+ *      when every attempted prose file failed.
+ *   6c. Docstring stream (`stream-stages.ts` → `docstring-stream.ts`).
+ *   6d. Commit stream (`stream-stages.ts` → `commit-message-extractor.ts`).
+ *   6b. Report claims orphaned by the prune (kept, never deleted); after
+ *      6c/6d so re-extracted claims are not reported.
  *   7. If atlas.committed, regenerate atlas.json iff any modification
- *      happened. Bump atlas_meta.generated_at on real changes only.
+ *      happened (`atlas-export-stage.ts`). Bump atlas_meta.generated_at
+ *      on real changes only.
+ *
+ * Streams run in the fixed order prose → docstring → commit (lead
+ * decision L-6), sharing one cost tracker and budget check. Which
+ * streams run is `deps.streams` (library default: prose only; the CLI
+ * passes `extraction.streams`, default all three).
  *
  * Result is summary stats, NOT the extracted claims themselves — the
  * caller inspects storage for those.
  */
 
-import { existsSync, readFileSync } from "node:fs";
-import { basename } from "node:path";
+import { existsSync } from "node:fs";
 import { resolve as pathResolve } from "node:path";
 
 import { computeExcludePatterns } from "../config/exclude-patterns.js";
+import { DEFAULT_EXTRACTION_STREAMS } from "../config/defaults.js";
 import { log } from "../mcp/logger.js";
 import { importAtlasFile } from "../storage/atlas-importer.js";
-import {
-  exportAtlasToFile,
-  serializeAtlas,
-  exportAtlas,
-} from "../storage/atlas-exporter.js";
+import { exportAtlas, serializeAtlas } from "../storage/atlas-exporter.js";
 import {
   deleteClaimsBySourcePath,
   deleteSourceSha,
-  insertClaim,
   listSourceShas,
-  setSourceSha,
-  type NewClaim,
 } from "../storage/claims.js";
 import type { DatabaseInstance } from "../storage/db.js";
 import { upsertSymbols } from "../storage/symbols.js";
-import type {
-  ContextAtlasConfig,
-  LanguageAdapter,
-  LanguageCode,
-} from "../types.js";
+import { replaceGitCommits } from "../storage/git.js";
+import { ATLAS_META_KEYS } from "../storage/atlas-importer.js";
+import type { ExtractionStream } from "../types.js";
 
-import { type ExtractionClient } from "./anthropic-client.js";
+import { finalizeAtlas } from "./atlas-export-stage.js";
+import { buildCostPreview } from "./cost-preview.js";
 import {
-  addUsage,
-  computeCostUsd,
-  ZERO_USAGE,
-  type UsageInfo,
-} from "./pricing.js";
+  planCommitWork,
+  planDocstringWork,
+  plannedCallCount,
+  staleDocstringKeys,
+  type ExtractionPlan,
+} from "./extraction-plan.js";
+import { diffShas, walkProseFiles, walkSourceFiles } from "./file-walker.js";
+import { DEFAULT_COMMIT_LIMIT, extractGitSignal } from "./git-extractor.js";
+import type {
+  ExtractionPipelineDeps,
+  ExtractionPipelineResult,
+  StreamFailure,
+} from "./pipeline-types.js";
+import { runProseStage, warnUnresolvedFrontmatter } from "./prose-stream.js";
+import { buildSymbolInventory } from "./resolver.js";
+import { RunCostTracker } from "./run-cost.js";
+import { normalizeCommitKeys, partitionSourceShas } from "./source-keys.js";
 import {
-  diffShas,
-  walkProseFiles,
-  walkSourceFiles,
-  type ProseFile,
-} from "./file-walker.js";
-import { parseFrontmatterSymbols } from "./frontmatter.js";
-import { parseRstSymbols } from "../parsing/rst-parser.js";
-import {
-  DEFAULT_COMMIT_LIMIT,
-  extractGitSignal,
-} from "./git-extractor.js";
-import { EXTRACTION_MODEL, stripFrontmatter } from "./prompt.js";
-import {
-  buildSymbolInventory,
-  resolveCandidates,
-  type SymbolInventory,
-} from "./resolver.js";
-import { partitionSourceShas } from "./source-keys.js";
+  runCommitStage,
+  runDocstringStage,
+  streamFailure,
+  type CommitStageResult,
+  type DocstringStageResult,
+} from "./stream-stages.js";
 import {
   coverageFromInventory,
   pruneStaleSymbols,
   summarizeOrphanedClaims,
   warnOrphanedClaims,
-  type OrphanedClaimSource,
 } from "./symbol-prune.js";
-import { replaceGitCommits } from "../storage/git.js";
-import { ATLAS_META_KEYS } from "../storage/atlas-importer.js";
-import { ATLAS_VERSION } from "../storage/types.js";
 
-export interface ExtractionPipelineDeps {
-  /**
-   * Source code root. Passed to the language adapter's `initialize`.
-   * `walkSourceFiles` indexes from here. Source files must stay under
-   * this root — ADR-01's security/ID-stability invariant.
-   */
-  repoRoot: string;
-  /**
-   * Directory containing `.contextatlas.yml`. Resolution base for
-   * `adrs.path` and `docs.include` glob patterns. Defaults to
-   * `repoRoot`, preserving current behavior when config lives
-   * alongside source (the common case).
-   *
-   * Diverges from `repoRoot` in setups where config + ADRs live
-   * separately from source — e.g., a benchmarks project whose ADRs
-   * describe a cloned external source tree. See ADR-08.
-   */
-  configRoot?: string;
-  config: ContextAtlasConfig;
-  db: DatabaseInstance;
-  anthropicClient: ExtractionClient;
-  adapters: ReadonlyMap<LanguageCode, LanguageAdapter>;
-  /** Batch size for concurrent extraction calls. Default: 3. */
-  batchSize?: number;
-  /** Provided by caller when a real run should bump generated_at. */
-  contextatlasVersion?: string;
-  /**
-   * Git HEAD SHA of the contextatlas binary that produced the atlas
-   * (atlas schema v1.3+, v0.3 Theme 1.3). Resolved by the CLI runner
-   * at startup; passed through to atlas_meta + the exported atlas.
-   * Pass `null` to explicitly omit (e.g., binary not in a git
-   * checkout). Pass `undefined` to fall back to the stored meta
-   * value (lossless round-trip path for imported atlases).
-   */
-  contextatlasCommitSha?: string | null;
-  /**
-   * Override the git `log` window. Defaults to the ADR-11 constant.
-   * Primarily a test knob — production runs take the default.
-   */
-  gitCommitLimit?: number;
-  /**
-   * Override the git binary path. Defaults to `"git"` on PATH. Test
-   * harnesses that want to avoid spawning the real binary pass a
-   * script path or a non-existent path (triggering the "no git"
-   * branch).
-   */
-  gitBinary?: string;
-  /**
-   * When true, bypass SHA-diff gating and re-extract every prose
-   * file regardless of whether its content matches the committed
-   * baseline. Used by `contextatlas index --full` (ADR-12) for
-   * rebuild cases — prompt changes, model changes, suspected
-   * extraction quality issues. Default: false.
-   */
-  skipShaDiff?: boolean;
-  /**
-   * Optional USD ceiling. When set and cumulative extraction cost
-   * exceeds this value during a run, a single warning is logged to
-   * stderr and no further warnings fire for the rest of the run.
-   * Not a hard cap — the run continues regardless. v0.2 Stream A #2.
-   */
-  budgetWarnUsd?: number;
-  /**
-   * Claim-attribution narrowing rule (v0.3 Theme 1.2 Fix 2).
-   * Targets the muddy-bundle mechanism documented in Phase 6 §5.1
-   * (atlas-claim-attribution-ranking.md): frontmatter symbols
-   * inherited as a per-claim baseline dominate per-symbol ranking
-   * when many claims share the same baseline.
-   *
-   * Three states:
-   *   - `undefined` (default): baseline behavior — frontmatter
-   *     symbols merge into every claim's candidates as authoritative
-   *     leading entries. v0.2 behavior; preserves byte-equivalence
-   *     with pre-Step-5 atlases.
-   *   - `"drop"`: drop frontmatter inheritance entirely. Claims
-   *     attach only to model-extracted candidates. Cleanest
-   *     experimental knob; isolates Phase 6 §5.1's mechanism check.
-   *     Regression risk: claims where the model didn't surface
-   *     specific candidates may attach to ZERO symbols, becoming
-   *     invisible to get_symbol_context lookups.
-   *   - `"drop-with-fallback"`: drop, but recover when a claim
-   *     would otherwise resolve to zero symbols by falling back to
-   *     frontmatter inheritance for that claim only. Addresses the
-   *     "drop" regression risk; cheap insurance.
-   *
-   * Step 5 ships flag opt-in only; Step 7 reads spot-check evidence
-   * + decides the v0.3 ship default. Stream D (Step 15) re-measures
-   * the chosen configuration.
-   */
-  narrowAttribution?: "drop" | "drop-with-fallback";
-}
+export type {
+  ExtractionPipelineDeps,
+  ExtractionPipelineResult,
+  FileUnresolvedDetail,
+  StreamFailure,
+  UnresolvedClaimDetail,
+} from "./pipeline-types.js";
 
 /**
- * Per-file breakdown of unresolved symbol candidates and frontmatter
- * hints, accumulated during Stage 6 of the pipeline. Surfaces via the
- * `--verbose` flag on `contextatlas index` (v0.2 Stream A #3). Empty
- * cases are *not* pushed onto `ExtractionPipelineResult.unresolvedDetails`;
- * the array contains only files that had ≥1 unresolved token.
+ * Streams when `deps.streams` is omitted: prose only, the library
+ * behaviour before v1.2 Phase 2 (lead decision L-1 (b)).
  */
-export interface UnresolvedClaimDetail {
-  /** Full claim text. Truncation for display is the caller's concern. */
-  claim: string;
-  severity: "hard" | "soft" | "context";
-  /** Candidate names that did not resolve to any symbol. */
-  unresolved: string[];
-}
-
-export interface FileUnresolvedDetail {
-  sourcePath: string;
-  /** Frontmatter `symbols:` hints that did not resolve. */
-  frontmatterUnresolved: string[];
-  /** Per-claim unresolved candidates, in claim order. */
-  claimUnresolved: UnresolvedClaimDetail[];
-}
-
-export interface ExtractionPipelineResult {
-  filesExtracted: number;
-  filesUnchanged: number;
-  /**
-   * Prose sources (ADRs / docs) whose baseline key had no match in the
-   * prose walk and were dropped at Stage 5. Prose only: docstring
-   * deletions are `docstringSourcesDeleted`; commit keys are never
-   * deleted.
-   */
-  filesDeleted: number;
-  claimsWritten: number;
-  symbolsIndexed: number;
-  unresolvedCandidates: number;
-  /**
-   * Frontmatter `symbols:` hints that didn't resolve to any symbol in
-   * the codebase. Aspirational misses — logged at debug, surfaced here
-   * as a summary stat for visibility. A non-zero value is not an error;
-   * it may indicate an ADR references code that was renamed or hasn't
-   * been written yet.
-   */
-  unresolvedFrontmatterHints: number;
-  extractionErrors: Array<{ sourcePath: string; error: string }>;
-  atlasExported: boolean;
-  wallClockMs: number;
-  apiCalls: number;
-  /**
-   * Cumulative `input_tokens` across successful Anthropic API calls
-   * (v0.2 Stream A #2). Failed-retry tokens are invisible to us and
-   * not included. Null-result calls (max_tokens, malformed JSON)
-   * still count — those API calls consumed tokens even if we
-   * couldn't use the response body.
-   */
-  inputTokens: number;
-  /** Cumulative `output_tokens`. Same inclusion rules as `inputTokens`. */
-  outputTokens: number;
-  /**
-   * USD cost computed from `inputTokens` and `outputTokens` under
-   * Opus 4.7 pricing (see `pricing.ts`). Full precision; formatting
-   * is the caller's concern.
-   */
-  costUsd: number;
-  /**
-   * Number of git commits captured during the run (ADR-11). Zero when
-   * the repo is not a git working tree.
-   */
-  gitCommitsIndexed: number;
-  /**
-   * HEAD SHA at extraction time, or null when the repo is not a git
-   * tree. Echoes what lands in `atlas.extracted_at_sha`.
-   */
-  extractedAtSha: string | null;
-  /**
-   * Per-file detail of unresolved tokens — frontmatter `symbols:` hints
-   * plus per-claim unresolved candidates. Only files with ≥1 unresolved
-   * appear. Surfaces via `--verbose` on `contextatlas index` (v0.2
-   * Stream A #3). Default summary output does not use this; callers
-   * that want per-token detail format it themselves.
-   */
-  unresolvedDetails: FileUnresolvedDetail[];
-  /**
-   * Stored symbols removed by the Stage 4a prune (v1.2 Phase 1):
-   * symbols of deleted or newly-excluded source files, and symbols no
-   * longer listed for a file that still exists.
-   */
-  symbolsPruned: number;
-  /**
-   * Claims that lost their last symbol link to this run's prune and
-   * still exist after Stage 6. Kept in the atlas (never deleted by
-   * pruning); v1.2 Phase 3 queues their sources for re-extraction.
-   */
-  claimsOrphaned: number;
-  /** `claimsOrphaned` broken down by claim source; sorted. */
-  orphanedClaimsBySource: OrphanedClaimSource[];
-  /**
-   * Docstring source keys dropped at Stage 5 because their source file
-   * no longer exists (their claims and source_shas row go with them).
-   */
-  docstringSourcesDeleted: number;
-  /**
-   * Source files whose stored symbols were kept without verification:
-   * `listSymbols` failed for the file, or its language is not
-   * configured for this run.
-   */
-  unverifiedSymbolFiles: number;
-}
+const LIBRARY_DEFAULT_STREAMS: ReadonlySet<ExtractionStream> = new Set([
+  "adr",
+]);
 
 export async function runExtractionPipeline(
   deps: ExtractionPipelineDeps,
@@ -300,6 +122,8 @@ export async function runExtractionPipeline(
   const { repoRoot, config, db, anthropicClient, adapters } = deps;
   const configRoot = deps.configRoot ?? repoRoot;
   const batchSize = deps.batchSize ?? 3;
+  const streams = deps.streams ?? LIBRARY_DEFAULT_STREAMS;
+  const full = deps.skipShaDiff === true;
 
   // --- Stage 0: atlas-aware startup ------------------------------------
   // atlas.path is a config-file-relative path (it names where the
@@ -313,23 +137,30 @@ export async function runExtractionPipeline(
     importAtlasFile(db, atlasAbsPath);
   }
 
+  // --- Stage 0.5: F-5 commit-key migration (v1.2 Phase 2, L-2) ---------
+  // Before the baseline is read, so Stage 1b and the commit plan see
+  // only canonical `commit:<sha>` keys. Idempotent; a migration counts
+  // as a modification (Stage 7) so the canonical form reaches atlas.json.
+  const commitKeys = normalizeCommitKeys(db);
+
   const committedShas = listSourceShas(db);
 
   // --- Stage 1: walk prose files ---------------------------------------
   // Pass both roots so prose files outside repoRoot (external ADRs per
-  // ADR-08) resolve correctly. When configRoot === repoRoot, behavior
-  // is identical to the single-root case.
+  // ADR-08) resolve correctly. Runs even when `adr` is disabled: without
+  // the walk, Stage 5 would treat every prose key as deleted.
   const proseFiles = walkProseFiles(repoRoot, config, configRoot);
   log.info("pipeline: discovered prose files", { count: proseFiles.length });
+  const prosePaths = new Set(proseFiles.map((f) => f.relPath));
 
   // --- Stage 1b: split the baseline by stream (v1.2 Phase 1, F-4) -----
   // source_shas also holds docstring keys (source-file relPaths) and
-  // commit keys (`commit:<sha>` from the CLI extractor, bare sha from
-  // the Skill). Diffing all of them against the prose walk marked every
-  // non-prose key "deleted", and Stage 5 then wiped docstring claims,
-  // commit claims and the symbols of every docstring-bearing file.
+  // commit keys (`commit:<sha>`; Stage 0.5 migrated any bare-sha ones).
+  // Diffing all of them against the prose walk marked every non-prose
+  // key "deleted", and Stage 5 then wiped docstring claims, commit
+  // claims and the symbols of every docstring-bearing file.
   const baseline = partitionSourceShas(db, committedShas, {
-    knownProsePaths: new Set(proseFiles.map((f) => f.relPath)),
+    knownProsePaths: prosePaths,
   });
   log.info("pipeline: baseline source keys by stream", {
     prose: Object.keys(baseline.prose).length,
@@ -345,7 +176,7 @@ export async function runExtractionPipeline(
   // prose keys are the same under --full: a key the prose walk no
   // longer produces is gone either way.
   const proseDiff = diffShas(proseFiles, baseline.prose);
-  const diff = deps.skipShaDiff
+  const diff = full
     ? {
         unchanged: [],
         changed: proseFiles.filter((f) => baseline.prose[f.relPath] !== undefined),
@@ -353,13 +184,14 @@ export async function runExtractionPipeline(
         deleted: proseDiff.deleted,
       }
     : proseDiff;
-  const filesToExtract = [...diff.changed, ...diff.added];
-  log.info("pipeline: extraction plan", {
+  const proseToExtract = streams.has("adr") ? [...diff.changed, ...diff.added] : [];
+  log.info("pipeline: prose extraction plan", {
     unchanged: diff.unchanged.length,
     changed: diff.changed.length,
     added: diff.added.length,
     deleted: diff.deleted.length,
-    fullRebuild: deps.skipShaDiff === true,
+    fullRebuild: full,
+    enabled: streams.has("adr"),
   });
 
   // --- Stage 3: walk source + build symbol inventory -------------------
@@ -379,15 +211,13 @@ export async function runExtractionPipeline(
   upsertSymbols(db, inventory.allSymbols);
 
   // --- Stage 4a: prune stale symbols (v1.2 Phase 1, F-1) ---------------
-  // Runs right after the upsert, before Stages 5-6. Stage 6 resolves
-  // candidates against the fresh in-memory `inventory`, which never
-  // contains a pruned symbol, so no claim written this run can link to
-  // one. Files whose listing failed or whose language is not
+  // Runs right after the upsert, before Stages 5-6. Every stream
+  // resolves candidates against the fresh in-memory `inventory`, which
+  // never contains a pruned symbol, so no claim written this run can
+  // link to one. Files whose listing failed or whose language is not
   // configured keep their stored symbols.
-  const prune = pruneStaleSymbols(
-    db,
-    coverageFromInventory({ repoRoot, sourceFiles, inventory, adapters }),
-  );
+  const coverage = coverageFromInventory({ repoRoot, sourceFiles, inventory, adapters });
+  const prune = pruneStaleSymbols(db, coverage);
 
   // --- Stage 4b: git signal (ADR-11) -----------------------------------
   // Full re-extract every run. `git log` is subprocess-fast, so the
@@ -414,158 +244,127 @@ export async function runExtractionPipeline(
 
   const gitChanged = gitResult.headSha !== priorHeadSha;
 
-  // --- Stage 5: handle deletions (stream-aware, v1.2 Phase 1) ---------
-  // Per A3 v0.8 absorption (Step 2.2.b refined LOCK 2.a Stage 5 placement):
-  // file deletion sweep now substantively cleans symbols + cascades
-  // claim_symbols rows. Closes Stream C orphan claim_symbols gap per
-  // research/v0.5-candidates.md #3 framing (pre-A3 fix, commit claims
-  // at source_path "commit:<sha>" survived Stage 5 file-path-based
-  // claim delete + retained claim_symbols rows referencing symbols in
-  // deleted files; A3 fix cascades those orphan rows via
-  // deleteSymbolsByPath).
-  //
-  // LOCK 2.b retain discipline preserved: commit claims themselves
-  // survive with symbolIds = [] post-cascade (orphan-claim-shell);
-  // bears historical-narrative substrate weight (git-history context
-  // persists beyond symbol lifecycle).
-  //
-  // v1.2 Phase 1 (F-4): the sweep used to run over every baseline key
-  // the prose walk missed, which included all docstring and commit
-  // keys, so it deleted those claims outright (the LOCK 2.b retain
-  // above never held for keyed commits). Each stream now has its own
-  // rule:
+  // --- Stage 5: handle deletions (stream-aware, v1.2 Phase 1 + 2) -----
+  // Each stream has its own rule (v1.2 Phase 1, F-4; the sweep used to
+  // run over every baseline key the prose walk missed, deleting all
+  // docstring and commit claims):
   //   - prose: deleted iff absent from the prose walk (also under --full);
-  //   - docstring: deleted iff the source file is gone from disk. A
-  //     changed file keeps its claims and baseline key — the CLI does
-  //     not re-extract docstrings yet (v1.2 Phase 2; Phase 3 queues it);
-  //   - commit: never deleted (LOCK 2.b retain).
-  // Symbol cleanup (and the claim_symbols cascade A3 added here) now
-  // lives in the Stage 4a prune, which covers every stored symbol path;
-  // `deleteSymbolsByPath` on a prose path had nothing to delete.
+  //   - docstring: deleted iff the source file is gone, or — when the
+  //     docstring stream runs — it exists but is no longer walked while a
+  //     configured adapter owns its extension (L-11, prune rule 4). A
+  //     changed file keeps its claims and key here; Stage 6c replaces
+  //     them once its re-extraction fully succeeds;
+  //   - commit: never deleted (LOCK 2.b retain: commit claims survive as
+  //     orphan shells when their symbols go; git-history context persists
+  //     beyond symbol lifecycle).
+  // Symbol cleanup (and the claim_symbols cascade A3 added here) lives
+  // in the Stage 4a prune, which covers every stored symbol path.
   for (const deletedPath of diff.deleted) {
     deleteClaimsBySourcePath(db, deletedPath);
     deleteSourceSha(db, deletedPath);
   }
-  let docstringSourcesDeleted = 0;
-  for (const key of Object.keys(baseline.docstring)) {
-    if (existsSync(pathResolve(repoRoot, key))) continue;
+  const staleDocstring = staleDocstringKeys(baseline.docstring, {
+    fileExists: coverage.fileExists,
+    walkedPaths: coverage.walkedPaths,
+    configuredExtensions: coverage.configuredExtensions,
+    includeUnwalked: streams.has("docstring"),
+  });
+  for (const key of staleDocstring) {
     deleteClaimsBySourcePath(db, key);
     deleteSourceSha(db, key);
-    docstringSourcesDeleted++;
   }
 
-  // --- Stage 6: extract changed/added ---------------------------------
-  let claimsWritten = 0;
-  let unresolvedCandidates = 0;
-  let unresolvedFrontmatterHints = 0;
-  let apiCalls = 0;
-  let totalUsage: UsageInfo = ZERO_USAGE;
-  let budgetWarningFired = false;
-  const unresolvedDetails: FileUnresolvedDetail[] = [];
-  const extractionErrors: Array<{ sourcePath: string; error: string }> = [];
-
-  for (let i = 0; i < filesToExtract.length; i += batchSize) {
-    const batch = filesToExtract.slice(i, i + batchSize);
-    const results = await Promise.all(
-      batch.map(async (file) => {
-        apiCalls++;
-        try {
-          const body = stripFrontmatter(
-            readFileSync(file.absPath, "utf8"),
-          );
-          const extracted = await anthropicClient.extract(body);
-          return { file, extracted };
-        } catch (err) {
-          extractionErrors.push({
-            sourcePath: file.relPath,
-            error: String(err),
-          });
-          return { file, extracted: null };
-        }
-      }),
-    );
-
-    for (const { file, extracted } of results) {
-      if (!extracted) continue;
-      // Accumulate usage regardless of whether result is null — a
-      // max_tokens or malformed-JSON response still consumed tokens.
-      totalUsage = addUsage(totalUsage, extracted.usage);
-      if (!extracted.result) continue;
-      const outcome = writeClaimsForFile(
-        db,
-        file,
-        extracted.result.claims,
-        inventory,
-        deps.narrowAttribution,
-      );
-      claimsWritten += outcome.claimsWritten;
-      unresolvedCandidates += outcome.unresolved;
-      unresolvedFrontmatterHints += outcome.frontmatterHintsUnresolved;
-      if (outcome.detail) unresolvedDetails.push(outcome.detail);
-      setSourceSha(db, file.relPath, file.sha);
-    }
-
-    // Fire the budget warning at most once per run, after each batch.
-    // Threshold comparison uses raw USD (full precision), independent
-    // of the summary's display formatting.
-    if (
-      deps.budgetWarnUsd !== undefined &&
-      !budgetWarningFired
-    ) {
-      const cumulativeCostUsd = computeCostUsd(totalUsage);
-      if (cumulativeCostUsd > deps.budgetWarnUsd) {
-        log.warn(
-          "extraction: budget warning — cumulative cost exceeds configured budget. Run continues.",
-          {
-            cumulativeCostUsd: Number(cumulativeCostUsd.toFixed(4)),
-            budgetUsd: deps.budgetWarnUsd,
-          },
-        );
-        budgetWarningFired = true;
-      }
-    }
+  // --- Plan + cost preview (v1.2 Phase 2) ------------------------------
+  const plan: ExtractionPlan = {
+    streams,
+    prose: proseToExtract,
+    docstring: streams.has("docstring")
+      ? await planDocstringWork({
+          sourceFiles,
+          inventory,
+          adapters,
+          baseline: baseline.docstring,
+          full,
+          prosePaths,
+        })
+      : null,
+    commit: streams.has("commit")
+      ? planCommitWork({
+          db,
+          repoRoot,
+          headSha: gitResult.headSha,
+          commitMessageFilter: config.extraction?.commitMessageFilter ?? [],
+          ...(deps.gitBinary !== undefined ? { gitBinary: deps.gitBinary } : {}),
+        })
+      : null,
+  };
+  log.info("pipeline: extraction plan", {
+    streams: [...streams],
+    proseFiles: plan.prose.length,
+    docstringFiles: plan.docstring?.files.length ?? 0,
+    docstringCalls: plan.docstring?.calls ?? 0,
+    pendingCommits: plan.commit?.status === "planned" ? plan.commit.pending.length : 0,
+  });
+  if (deps.onCostPreview && plannedCallCount(plan) > 0) {
+    deps.onCostPreview(buildCostPreview(plan));
   }
 
-  // Fail loud if every attempted document failed — usually a config/key
-  // issue rather than per-document noise.
-  if (
-    filesToExtract.length > 0 &&
-    extractionErrors.length === filesToExtract.length
-  ) {
+  const cost = new RunCostTracker(deps.budgetWarnUsd);
+
+  // --- Stage 6: prose stream (`adr`) -----------------------------------
+  const prose = await runProseStage({
+    db,
+    files: plan.prose,
+    inventory,
+    client: anthropicClient,
+    batchSize,
+    narrowAttribution: deps.narrowAttribution,
+    cost,
+  });
+
+  // Fail loud if every attempted prose document failed — usually a
+  // config/key issue rather than per-document noise. Prose runs first,
+  // so this can never discard another stream's paid work.
+  if (plan.prose.length > 0 && prose.errors.length === plan.prose.length) {
     throw new Error(
-      `Extraction failed for all ${filesToExtract.length} document(s). ` +
+      `Extraction failed for all ${plan.prose.length} document(s). ` +
         "This usually indicates an auth/config problem, not per-document noise. " +
-        `First error: ${extractionErrors[0]?.error}`,
+        `First error: ${prose.errors[0]?.error}`,
     );
   }
+  warnUnresolvedFrontmatter(prose);
 
-  // ADR authoring validation (v0.3 Theme 1.2 Fix 1). Surface a single
-  // warning summarizing files with unresolved frontmatter symbols.
-  // Per-symbol detail stays at debug level; per-file breakdown lands at
-  // the cli-runner display layer (see cli-runner.ts
-  // printFrontmatterWarnings) so callers see the concrete list without
-  // needing --verbose. The warn-not-error stance is deliberate: ADRs
-  // can legitimately reference forward-declared symbols (ADR-13's
-  // PyrightAdapter / ADR-14's GoAdapter placeholders during their
-  // ADR-drafting commits are precedent).
-  if (unresolvedFrontmatterHints > 0) {
-    const fileCount = unresolvedDetails.filter(
-      (d) => d.frontmatterUnresolved.length > 0,
-    ).length;
-    log.warn(
-      "extraction: ADR authoring validation — " +
-        `${unresolvedFrontmatterHints} unresolved frontmatter symbol(s) ` +
-        `detected across ${fileCount} file(s). Authors: confirm each ` +
-        "unresolved symbol is intentional (e.g., placeholder for " +
-        "unimplemented future work) or update the ADR to match current " +
-        "source. See per-file detail in extraction summary or run with " +
-        "--verbose.",
-      { unresolvedFrontmatterHints, fileCount },
+  // --- Stage 6c: docstring stream --------------------------------------
+  const docstring: DocstringStageResult | null =
+    plan.docstring !== null
+      ? await runDocstringStage(db, plan.docstring, inventory, anthropicClient, cost)
+      : null;
+
+  // --- Stage 6d: commit stream -----------------------------------------
+  const commit: CommitStageResult | null =
+    plan.commit?.status === "planned"
+      ? await runCommitStage(db, plan.commit.pending, inventory, anthropicClient, cost)
+      : null;
+
+  // A docstring or commit stream whose every call failed does not stop
+  // the run (L-10 ii): the other streams' paid work is exported below,
+  // and `contextatlas index` exits 1 afterwards.
+  const failedStreams: StreamFailure[] = [];
+  for (const failure of [
+    docstring ? streamFailure("docstring", docstring) : null,
+    commit ? streamFailure("commit", commit) : null,
+  ]) {
+    if (failure === null) continue;
+    failedStreams.push(failure);
+    log.error(
+      `pipeline: every ${failure.stream} extraction call failed ` +
+        `(${failure.attemptedCalls}); finishing the run so completed work is saved`,
+      { firstError: failure.firstError },
     );
   }
 
   // --- Stage 6b: orphaned-claim report (v1.2 Phase 1) ------------------
-  // Counted after Stages 5-6 so claims those stages deleted or
+  // Counted after Stages 5-6d so claims those stages deleted or
   // re-extracted are not reported.
   const orphans = summarizeOrphanedClaims(db, prune.affectedClaimIds);
   warnOrphanedClaims(orphans);
@@ -573,273 +372,77 @@ export async function runExtractionPipeline(
   // --- Stage 7: update atlas_meta + export ----------------------------
   // Git state advancing counts as a modification: the committed atlas
   // carries `extracted_at_sha` + `git_commits`, so a new HEAD SHA means
-  // the atlas is out of date even if no prose/source changed. A prune
-  // or a docstring-source deletion changes the exported symbols /
-  // claims, so it also counts (v1.2 Phase 1); a run that changed
-  // nothing leaves atlas.json byte-identical.
+  // the atlas is out of date even if no prose/source changed. A prune,
+  // a docstring-source deletion, a commit-key migration, a stored
+  // docstring file and a keyed commit all change the exported symbols,
+  // claims or keys, so each counts too; a run that changed nothing
+  // leaves atlas.json byte-identical.
   const didModify =
-    filesToExtract.length > 0 ||
+    plan.prose.length > 0 ||
     diff.deleted.length > 0 ||
     gitChanged ||
     prune.symbolsPruned > 0 ||
-    docstringSourcesDeleted > 0;
+    staleDocstring.length > 0 ||
+    commitKeys.shasNormalized > 0 ||
+    (docstring?.filesStored ?? 0) > 0 ||
+    (commit?.commitsKeyed ?? 0) > 0;
   let atlasExported = false;
-
   if (didModify) {
-    const newGeneratedAt = new Date().toISOString();
-    // Use EXTRACTION_MODEL (the model the extraction client actually
-    // called) rather than config.index.model (which is forward-compat
-    // config that today isn't consulted by the client). Atlas metadata
-    // should reflect what code did, not what config declared.
-    const extractionModel = EXTRACTION_MODEL;
-    const contextatlasVer = deps.contextatlasVersion ?? "0.0.0";
-
-    // Persist ALL generator + staleness fields to atlas_meta. Without
-    // this, exportAtlas would fall back to "unknown"/"0.0.0"/missing —
-    // which is exactly the bug dogfooding caught for v1.0.
-    const setMeta = db.prepare(
-      "INSERT INTO atlas_meta (key, value) VALUES (?, ?) " +
-        "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
-    );
-    setMeta.run(ATLAS_META_KEYS.version, ATLAS_VERSION);
-    setMeta.run(ATLAS_META_KEYS.generatedAt, newGeneratedAt);
-    setMeta.run(ATLAS_META_KEYS.generatorExtractionModel, extractionModel);
-    setMeta.run(
-      ATLAS_META_KEYS.generatorContextatlasVersion,
-      contextatlasVer,
-    );
-    // contextatlas_commit_sha (atlas v1.3+) — null sentinel from the
-    // caller means "explicitly absent" (e.g., binary not in a git
-    // checkout); undefined means "fall back to stored value", matching
-    // the exporter's null/undefined convention.
-    if (
-      deps.contextatlasCommitSha !== undefined &&
-      deps.contextatlasCommitSha !== null
-    ) {
-      setMeta.run(
-        ATLAS_META_KEYS.generatorContextatlasCommitSha,
-        deps.contextatlasCommitSha,
-      );
-    } else if (deps.contextatlasCommitSha === null) {
-      db.prepare("DELETE FROM atlas_meta WHERE key = ?").run(
-        ATLAS_META_KEYS.generatorContextatlasCommitSha,
-      );
-    }
-    if (gitResult.headSha !== null) {
-      setMeta.run(ATLAS_META_KEYS.extractedAtSha, gitResult.headSha);
-    } else {
-      db.prepare("DELETE FROM atlas_meta WHERE key = ?").run(
-        ATLAS_META_KEYS.extractedAtSha,
-      );
-    }
-
-    if (config.atlas.committed) {
-      exportAtlasToFile(db, atlasAbsPath, {
-        generatedAt: newGeneratedAt,
-        contextatlasVersion: contextatlasVer,
-        contextatlasCommitSha: deps.contextatlasCommitSha ?? null,
-        extractionModel,
-        extractedAtSha: gitResult.headSha ?? null,
-      });
-      atlasExported = true;
-      log.info("pipeline: atlas.json written", { path: atlasAbsPath });
-    }
+    atlasExported = finalizeAtlas(db, {
+      atlasAbsPath,
+      committed: config.atlas.committed,
+      contextatlasVersion: deps.contextatlasVersion,
+      contextatlasCommitSha: deps.contextatlasCommitSha,
+      headSha: gitResult.headSha,
+    });
   } else {
     log.info("pipeline: no changes detected; atlas.json untouched");
   }
 
   return {
-    filesExtracted: filesToExtract.length - extractionErrors.length,
+    filesExtracted: plan.prose.length - prose.errors.length,
     filesUnchanged: diff.unchanged.length,
     filesDeleted: diff.deleted.length,
-    claimsWritten,
+    claimsWritten:
+      prose.claimsWritten +
+      (docstring?.claimsWritten ?? 0) +
+      (commit?.claimsWritten ?? 0),
     symbolsIndexed: inventory.allSymbols.length,
-    unresolvedCandidates,
-    unresolvedFrontmatterHints,
-    extractionErrors,
+    unresolvedCandidates:
+      prose.unresolvedCandidates +
+      (docstring?.unresolvedCandidates ?? 0) +
+      (commit?.unresolvedCandidates ?? 0),
+    unresolvedFrontmatterHints: prose.unresolvedFrontmatterHints,
+    extractionErrors: [
+      ...prose.errors,
+      ...(docstring?.errors ?? []),
+      ...(commit?.errors ?? []),
+    ],
     atlasExported,
     wallClockMs: Date.now() - start,
-    apiCalls,
-    inputTokens: totalUsage.inputTokens,
-    outputTokens: totalUsage.outputTokens,
-    costUsd: computeCostUsd(totalUsage),
+    apiCalls: cost.apiCalls,
+    inputTokens: cost.usage.inputTokens,
+    outputTokens: cost.usage.outputTokens,
+    costUsd: cost.costUsd,
     gitCommitsIndexed: gitResult.commits.length,
     extractedAtSha: gitResult.headSha,
-    unresolvedDetails,
+    unresolvedDetails: prose.unresolvedDetails,
     symbolsPruned: prune.symbolsPruned,
     claimsOrphaned: orphans.claimsOrphaned,
     orphanedClaimsBySource: orphans.bySource,
-    docstringSourcesDeleted,
+    docstringSourcesDeleted: staleDocstring.length,
     unverifiedSymbolFiles: prune.unverifiedSymbolFiles,
-  };
-}
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-/**
- * Derive the `source` field value for a prose file. Preference order:
- *   1. YAML frontmatter `id:` field (our ADRs use this — `id: ADR-03`).
- *   2. Filename regex `ADR-\d+` (case-insensitive, to catch `adr-01.md`).
- *   3. Basename without extension.
- */
-/**
- * v0.7.2 substrate-currency migration: emit modern `adr:<basename>`
- * convention matching Skill `/index-atlas` SKILL.md spec +
- * `validate-extraction` canonical source-field format invariant.
- *
- * Pre-v0.7.2 emitted frontmatter `id` field (ADR-NN) which was the
- * substrate-currency outlier — Skill substrate at v0.7 Step 2.3.b.0
- * adopted prefix convention but CLI `deriveSourceName` preserved
- * pre-v0.5 era identifier-only format unchanged through cycle
- * boundaries. Empirically surfaced at v0.7.1 first-run mechanical-
- * floor verification (validate-extraction `adr_claims_present`
- * invariant failure on CLI atlases despite legitimate ADR claims).
- *
- * Post-v0.7.2 substrate-convention alignment: CLI + Skill + validator
- * all emit/expect `adr:<basename>` for ADR-source claims.
- */
-export function deriveSourceName(absPath: string): string {
-  return `adr:${basename(absPath)}`;
-}
-
-function writeClaimsForFile(
-  db: DatabaseInstance,
-  file: ProseFile,
-  extracted: readonly {
-    symbol_candidates: string[];
-    claim: string;
-    severity: "hard" | "soft" | "context";
-    rationale: string;
-    excerpt: string;
-  }[],
-  inventory: SymbolInventory,
-  narrowAttribution: "drop" | "drop-with-fallback" | undefined,
-): {
-  claimsWritten: number;
-  unresolved: number;
-  frontmatterHintsUnresolved: number;
-  /**
-   * Per-file unresolved-token detail. Null when this file had zero
-   * unresolved tokens of either kind — keeps the pipeline's
-   * `unresolvedDetails` array tight (only files that matter).
-   */
-  detail: FileUnresolvedDetail | null;
-} {
-  // Drop any claims already associated with this source path so
-  // re-extraction is idempotent at file granularity.
-  deleteClaimsBySourcePath(db, file.relPath);
-
-  const rawContents = readFileSync(file.absPath, "utf8");
-  const source = deriveSourceName(file.absPath);
-
-  // Author-declared frontmatter symbols are merged into every claim's
-  // candidates as the authoritative leading entries (author intent ranks
-  // ahead of model inference). Unresolved ones are excluded from the
-  // merge so they don't inflate the claim-level unresolved count; they
-  // are tracked separately as a per-file summary stat.
-  //
-  // Format dispatch (v0.7 Step 2.1.a Scope γ' substrate): ADR-bucket
-  // files carry a `format` tag from the unified ADR enumeration
-  // module. `.rst` ADRs use rST field-list parsing; `.md` ADRs +
-  // doc-bucket files use YAML frontmatter parsing.
-  const frontmatterSymbols =
-    file.format === "rst"
-      ? parseRstSymbols(rawContents)
-      : parseFrontmatterSymbols(rawContents, file.relPath);
-  const frontmatterResolvable: string[] = [];
-  const frontmatterUnresolvedNames: string[] = [];
-  for (const fmSym of frontmatterSymbols) {
-    const matches = inventory.byName.get(fmSym);
-    if (matches && matches.length > 0) {
-      frontmatterResolvable.push(fmSym);
-    } else {
-      frontmatterUnresolvedNames.push(fmSym);
-      log.debug("pipeline: frontmatter symbol did not resolve", {
-        sourcePath: file.relPath,
-        symbol: fmSym,
-      });
-    }
-  }
-
-  let claimsWritten = 0;
-  let unresolved = 0;
-  const claimUnresolved: UnresolvedClaimDetail[] = [];
-  for (const ec of extracted) {
-    // Attribution narrowing per v0.3 Step 7 A1 ship default
-    // (drop-with-fallback). Two effective modes:
-    //   - undefined / "drop-with-fallback" (default): claim-specific
-    //     candidates only; if that resolves to zero symbols AND
-    //     frontmatter has resolvable entries, fall back to
-    //     frontmatter (preserves get_symbol_context visibility for
-    //     vague claims).
-    //   - "drop": claim-specific candidates only; no fallback. Pure
-    //     narrowing; zero-symbol claims stay invisible to
-    //     get_symbol_context (Option A regression risk).
-    // The legacy v0.2 baseline (frontmatter merged into every claim
-    // from the same file) is no longer reachable via this API —
-    // Pattern 2 retention applies to the "drop" vs "drop-with-fallback"
-    // axis, not to a config-level v0.2 baseline. Rollback to v0.2
-    // baseline is at the version-pin / codepath level.
-    // resolveCandidates dedupes within its result, so shared names
-    // don't double-resolve.
-    const merged = ec.symbol_candidates;
-    const resolved = resolveCandidates(inventory, merged);
-    let symbolIds = resolved.symbolIds;
-    const unres = resolved.unresolved;
-    // Zero-symbol fallback fires for both undefined (new default)
-    // AND explicit "drop-with-fallback". Only "drop" suppresses the
-    // fallback — that's the pure-narrowing mode where zero-symbol
-    // claims stay invisible. Fallback symbols are already resolved
-    // upstream, so unres is unaffected.
-    if (
-      narrowAttribution !== "drop" &&
-      symbolIds.length === 0 &&
-      frontmatterResolvable.length > 0
-    ) {
-      const fallback = resolveCandidates(inventory, frontmatterResolvable);
-      symbolIds = fallback.symbolIds;
-    }
-    unresolved += unres.length;
-    if (unres.length > 0) {
-      claimUnresolved.push({
-        claim: ec.claim,
-        severity: ec.severity,
-        unresolved: unres,
-      });
-    }
-    const claim: NewClaim = {
-      source,
-      sourcePath: file.relPath,
-      sourceSha: file.sha,
-      severity: ec.severity,
-      claim: ec.claim,
-      rationale: ec.rationale,
-      excerpt: ec.excerpt,
-      symbolIds,
-      // F-7: the model's raw candidates, verbatim (frontmatter fallback
-      // symbols are not candidates), for atlas export only.
-      symbolCandidates: ec.symbol_candidates,
-    };
-    insertClaim(db, claim);
-    claimsWritten++;
-  }
-
-  const detail: FileUnresolvedDetail | null =
-    frontmatterUnresolvedNames.length > 0 || claimUnresolved.length > 0
-      ? {
-          sourcePath: file.relPath,
-          frontmatterUnresolved: frontmatterUnresolvedNames,
-          claimUnresolved,
-        }
-      : null;
-
-  return {
-    claimsWritten,
-    unresolved,
-    frontmatterHintsUnresolved: frontmatterUnresolvedNames.length,
-    detail,
+    streamsEnabled: DEFAULT_EXTRACTION_STREAMS.filter((s) => streams.has(s)),
+    docstringFilesExtracted: docstring?.filesStored ?? 0,
+    docstringFilesUnchanged: plan.docstring?.filesUnchanged ?? 0,
+    docstringSymbolsExtracted: docstring?.symbolsExtracted ?? 0,
+    docstringClaimsWritten: docstring?.claimsWritten ?? 0,
+    commitsExtracted: commit?.commitsKeyed ?? 0,
+    commitsSkipped:
+      plan.commit?.status === "planned" ? plan.commit.skippedIdempotent : 0,
+    commitClaimsWritten: commit?.claimsWritten ?? 0,
+    commitKeysMigrated: commitKeys.shasNormalized,
+    failedStreams,
   };
 }
 
@@ -855,6 +458,9 @@ export function roundTripAtlas(db: DatabaseInstance): string {
  * Re-export for caller convenience when constructing a mock client.
  */
 export type { ExtractionClient } from "./anthropic-client.js";
+
+// Prose-stream helper, re-exported for existing importers.
+export { deriveSourceName } from "./prose-stream.js";
 
 // Docstring stream (v0.3 Stream B): lives in docstring-stream.ts and
 // docstring-read.ts since v1.2 Phase 2. Re-exported because the

@@ -1,3 +1,4 @@
+import { spawnSync } from "node:child_process";
 import {
   mkdirSync,
   mkdtempSync,
@@ -1013,8 +1014,20 @@ describe("runIndexSubcommand (ADR-12)", () => {
     "docstring_sources_deleted",
     "unverified_symbol_files",
   ];
+  // v1.2 Phase 2 (L-9) — appended after the Phase 1 keys.
+  const PHASE2_KEYS = [
+    "streams_enabled",
+    "docstring_files_extracted",
+    "docstring_files_unchanged",
+    "docstring_symbols_extracted",
+    "docstring_claims_written",
+    "commits_extracted",
+    "commits_skipped",
+    "commit_claims_written",
+    "commit_keys_migrated",
+  ];
 
-  it("key=value summary appends the v1.2 Phase 1 keys after the existing keys (order unchanged)", async () => {
+  it("key=value summary appends the v1.2 Phase 1 then Phase 2 keys after the existing keys (order unchanged)", async () => {
     const stdout = captureStdout();
     const result = await runIndexSubcommand({
       configRoot: tmp,
@@ -1031,12 +1044,15 @@ describe("runIndexSubcommand (ADR-12)", () => {
       .trim()
       .split(/\r?\n/)
       .map((line) => line.split("=")[0]);
-    expect(keys).toEqual([...V01_V03_KEYS, ...PHASE1_KEYS]);
+    expect(keys).toEqual([...V01_V03_KEYS, ...PHASE1_KEYS, ...PHASE2_KEYS]);
     expect(stdout.joined()).toMatch(/symbols_pruned=0/);
     expect(stdout.joined()).toMatch(/claims_orphaned=0/);
+    // Default config: all three streams, canonical order.
+    expect(stdout.joined()).toMatch(/^streams_enabled=adr,docstring,commit$/m);
+    expect(stdout.joined()).toMatch(/^commit_keys_migrated=0$/m);
   });
 
-  it("--json summary appends the v1.2 Phase 1 fields; existing field order unchanged", async () => {
+  it("--json summary appends the v1.2 Phase 1 then Phase 2 fields; existing field order unchanged", async () => {
     const stdout = captureStdout();
     await runIndexSubcommand({
       configRoot: tmp,
@@ -1060,9 +1076,134 @@ describe("runIndexSubcommand (ADR-12)", () => {
       "orphaned_claims_by_source",
       "docstring_sources_deleted",
       "unverified_symbol_files",
+      ...PHASE2_KEYS,
     ]);
     expect(parsed.orphaned_claims_by_source).toEqual([]);
+    expect(parsed.streams_enabled).toEqual(["adr", "docstring", "commit"]);
+    expect(parsed.commits_extracted).toBe(0);
   });
+
+  it("streams_enabled reflects extraction.streams (canonical order)", async () => {
+    writeFileSync(
+      pathJoin(tmp, ".contextatlas.yml"),
+      readFileSync(pathJoin(tmp, ".contextatlas.yml"), "utf8") +
+        "extraction:\n  streams: [commit, adr]\n",
+    );
+    const stdout = captureStdout();
+    const result = await runIndexSubcommand({
+      configRoot: tmp,
+      configFile: null,
+      full: false,
+      json: true,
+      contextatlasVersion: "0.0.1-test",
+      clientOverride: stubClient(async () => ({ claims: [] })),
+      writeStdout: stdout.writer,
+    });
+    expect(result.exitCode).toBe(0);
+    const parsed = JSON.parse(stdout.joined()) as Record<string, unknown>;
+    expect(parsed.streams_enabled).toEqual(["adr", "commit"]);
+  });
+
+  // ---------------------------------------------------------------
+  // v1.2 Phase 2 — cost preview (L-8) and per-stream failure (L-10 ii)
+  // ---------------------------------------------------------------
+
+  it("cost preview goes to stderr only, before the summary; --json stdout stays exactly one JSON object", async () => {
+    writeFileSync(
+      pathJoin(tmp, "docs", "adr", "ADR-01.md"),
+      "---\nid: ADR-01\n---\nbody\n",
+    );
+    const stdout = captureStdout();
+    const stderr = captureStderr();
+    const result = await runIndexSubcommand({
+      configRoot: tmp,
+      configFile: null,
+      full: false,
+      json: true,
+      contextatlasVersion: "0.0.1-test",
+      clientOverride: stubClient(async () => ({ claims: [] })),
+      writeStdout: stdout.writer,
+      writeStderr: stderr.writer,
+    });
+    expect(result.exitCode).toBe(0);
+    const parsed = JSON.parse(stdout.joined()) as Record<string, unknown>;
+    expect(parsed.api_calls).toBe(1);
+    expect(stdout.joined()).not.toMatch(/estimate/i);
+    const err = stderr.joined();
+    expect(err).toMatch(/extraction plan/i);
+    expect(err).toMatch(/adr\s+1 file\s+1 call/);
+    expect(err).toMatch(/\$\d+\.\d{2} to \$\d+\.\d{2}/);
+  });
+
+  it("no cost preview when nothing needs a model call", async () => {
+    const stderr = captureStderr();
+    const result = await runIndexSubcommand({
+      configRoot: tmp,
+      configFile: null,
+      full: false,
+      json: false,
+      contextatlasVersion: "0.0.1-test",
+      clientOverride: stubClient(async () => {
+        throw new Error("no model call expected");
+      }),
+      writeStdout: captureStdout().writer,
+      writeStderr: stderr.writer,
+    });
+    expect(result.exitCode).toBe(0);
+    expect(stderr.joined()).not.toMatch(/extraction plan/i);
+  });
+
+  it("a stream whose every call failed: summary + export still happen, then exit 1 with an actionable message (L-10 ii)", async () => {
+    const git = (args: string[]) => {
+      const r = spawnSync("git", ["-c", "commit.gpgsign=false", ...args], {
+        cwd: tmp,
+        encoding: "utf8",
+        env: {
+          ...process.env,
+          GIT_AUTHOR_NAME: "Tester",
+          GIT_AUTHOR_EMAIL: "tester@example.com",
+          GIT_COMMITTER_NAME: "Tester",
+          GIT_COMMITTER_EMAIL: "tester@example.com",
+        },
+      });
+      if (r.status !== 0) throw new Error(`git ${args.join(" ")}: ${r.stderr}`);
+      return r.stdout.trim();
+    };
+    git(["init", "-q"]);
+    git(["commit", "-q", "--allow-empty", "-m", "design: split the router"]);
+    const sha = git(["rev-parse", "HEAD"]);
+
+    const stdout = captureStdout();
+    const stderr = captureStderr();
+    const result = await runIndexSubcommand({
+      configRoot: tmp,
+      configFile: null,
+      full: false,
+      json: true,
+      contextatlasVersion: "0.0.1-test",
+      clientOverride: stubClient(async () => {
+        throw new Error("401 invalid x-api-key");
+      }),
+      writeStdout: stdout.writer,
+      writeStderr: stderr.writer,
+    });
+    expect(result.exitCode).toBe(1);
+    const parsed = JSON.parse(stdout.joined()) as Record<string, unknown>;
+    expect(parsed.api_calls).toBe(1);
+    expect(parsed.atlas_exported).toBe(true);
+    expect(parsed.extraction_errors).toEqual([
+      { sourcePath: `commit:${sha}`, error: expect.stringContaining("401") },
+    ]);
+    const err = stderr.joined();
+    expect(err).toMatch(/every commit extraction call failed \(1 of 1\)/);
+    expect(err).toContain("401 invalid x-api-key");
+    expect(err).toMatch(/re-run `contextatlas index`/);
+    const atlas = JSON.parse(
+      readFileSync(pathJoin(tmp, ".contextatlas", "atlas.json"), "utf8"),
+    ) as { extracted_at_sha?: string; source_shas: Record<string, string> };
+    expect(atlas.extracted_at_sha).toBe(sha);
+    expect(atlas.source_shas[`commit:${sha}`]).toBeUndefined();
+  }, 30_000);
 
   // ---------------------------------------------------------------
   // ADR-12 --json contract: stdout carries exactly one JSON object,

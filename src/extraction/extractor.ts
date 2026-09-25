@@ -36,6 +36,7 @@ import type {
 } from "../types.js";
 
 import type { ExtractionClient } from "./anthropic-client.js";
+import type { CostPreview } from "./cost-preview.js";
 import type { ExtractionPipelineResult } from "./pipeline.js";
 
 /**
@@ -96,6 +97,16 @@ export interface ExtractorContext {
   clientOverride?: ExtractionClient;
   /** Env-var reader (defaults to process.env access; test seam). */
   readEnv: (name: string) => string | undefined;
+  /**
+   * Sink for the pre-run cost preview (v1.2 Phase 2, L-8): the CLI
+   * formats it to stderr. Omitted: no preview.
+   */
+  onCostPreview?: (preview: CostPreview) => void;
+  /**
+   * Test seam: git binary for the git signal and the commit stream.
+   * Default `"git"` on PATH.
+   */
+  gitBinary?: string;
 }
 
 /**

@@ -35,8 +35,9 @@
  *     `scripts/` import it from `pipeline.js` (re-exported there), so its
  *     positional signature and result field names are stable.
  *
- * `runExtractionPipeline` (`contextatlas index`) does not call this
- * module yet; v1.2 Phase 2 wires the core in as the docstring stream.
+ * `runExtractionPipeline` (`contextatlas index`) runs the core as Stage
+ * 6c since v1.2 Phase 2 (`stream-stages.ts`), with the planning pass's
+ * cached read (`extraction-plan.ts`).
  */
 
 import {

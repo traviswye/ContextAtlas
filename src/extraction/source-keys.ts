@@ -7,8 +7,9 @@
  *     (`docs/adr/ADR-06.md`). Written by the CLI pipeline (Stage 6)
  *     and the Skill Stream A.
  *   - **docstring** — one key per source file, keyed by the source
- *     relPath (`src/router.ts`). Written by `extractDocstringsForFile`
- *     (even when the file yields zero claims) and the Skill Stream B.
+ *     relPath (`src/router.ts`). Written by the CLI pipeline (Stage 6c,
+ *     `extractDocstringFile`; also the legacy `extractDocstringsForFile`)
+ *     even when the file yields zero claims, and by the Skill Stream B.
  *   - **commit** — one key per extracted commit. The canonical key is
  *     `commit:<sha>` (v1.2 Phase 2, F-5 / lead decision L-2), used for
  *     both the `source_shas` key and `claims.source_path`, so

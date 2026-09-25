@@ -19,7 +19,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { join as pathJoin, relative, sep } from "node:path";
+import { isAbsolute, join as pathJoin, relative, sep } from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -34,6 +34,7 @@ import type {
 } from "../storage/types.js";
 import type {
   ContextAtlasConfig,
+  ExtractionStream,
   LanguageAdapter,
   LanguageCode,
   Symbol as AtlasSymbol,
@@ -45,6 +46,12 @@ import { runExtractionPipeline } from "./pipeline.js";
 
 const SHA_CLI = "a".repeat(40);
 const SHA_SKILL = "b".repeat(40);
+
+const ALL_STREAMS: ReadonlySet<ExtractionStream> = new Set<ExtractionStream>([
+  "adr",
+  "docstring",
+  "commit",
+]);
 
 /** Extraction client that fails the test if the pipeline calls it. */
 const noCallClient: ExtractionClient = {
@@ -67,6 +74,8 @@ function tsSym(rel: string, name: string, line = 1): AtlasSymbol {
 /**
  * Stub TS adapter. `listing` maps repo-relative path → symbols; files
  * in `throwing` make listSymbols throw (simulated tsserver hiccup).
+ * Absolute and relative request paths both resolve: an unnormalized
+ * relative path would silently list nothing (a false green).
  */
 function stubAdapter(
   root: string,
@@ -78,8 +87,8 @@ function stubAdapter(
     extensions: [".ts"],
     async initialize() {},
     async shutdown() {},
-    async listSymbols(absPath: string) {
-      const rel = relative(root, absPath).split(sep).join("/");
+    async listSymbols(p: string) {
+      const rel = (isAbsolute(p) ? relative(root, p) : p).split(sep).join("/");
       if (throwing.has(rel)) throw new Error(`simulated LSP failure: ${rel}`);
       return listing[rel] ?? [];
     },
@@ -249,7 +258,6 @@ describe("runExtractionPipeline — v1.2 Phase 1 stream-aware Stage 5 + symbol p
 
   it("F-4: docstring claims, their source_shas keys, docstring-file symbols and ADR links all survive an unchanged run", async () => {
     const { adapter, Router, route, helper } = threeStreamFixture();
-    const before = readFileSync(atlasPath(), "utf8");
 
     const result = await run(adapter);
 
@@ -258,8 +266,9 @@ describe("runExtractionPipeline — v1.2 Phase 1 stream-aware Stage 5 + symbol p
     expect(result.docstringSourcesDeleted).toBe(0);
     expect(result.symbolsPruned).toBe(0);
     expect(result.claimsOrphaned).toBe(0);
+    // The Skill's bare-sha commit key is migrated to `commit:<sha>` (F-5).
     expect(Object.keys(listSourceShas(db)).sort()).toEqual(
-      ["docs/adr/ADR-01.md", "src/router.ts", "src/util.ts", `commit:${SHA_CLI}`, SHA_SKILL].sort(),
+      ["docs/adr/ADR-01.md", "src/router.ts", "src/util.ts", `commit:${SHA_CLI}`, `commit:${SHA_SKILL}`].sort(),
     );
     expect(listAllClaims(db).map((c) => c.claim).sort()).toEqual(
       ["adr rule", "cli commit", "router doc", "skill commit"],
@@ -269,31 +278,59 @@ describe("runExtractionPipeline — v1.2 Phase 1 stream-aware Stage 5 + symbol p
     );
     expect(linksOf("adr rule").sort()).toEqual([Router.id, helper.id].sort());
     expect(linksOf("router doc")).toEqual([Router.id]);
-    // Nothing changed → no re-export (D5).
-    expect(result.atlasExported).toBe(false);
-    expect(readFileSync(atlasPath(), "utf8")).toBe(before);
+    // The F-5 migration alone re-exports the atlas…
+    expect(result.commitKeysMigrated).toBe(1);
+    expect(result.atlasExported).toBe(true);
+    const migrated = readFileSync(atlasPath(), "utf8");
+    // …after which an unchanged rerun is a no-op (D5).
+    db.close();
+    db = openDatabase(":memory:");
+    const again = await run(adapter);
+    expect(again.commitKeysMigrated).toBe(0);
+    expect(again.atlasExported).toBe(false);
+    expect(readFileSync(atlasPath(), "utf8")).toBe(migrated);
   });
 
-  it("F-4: commit claims keyed 'commit:<sha>' (CLI) and bare-sha (Skill) survive with their links", async () => {
+  it("F-4: commit claims keyed 'commit:<sha>' (CLI) and bare-sha (Skill) survive with their links; the bare form is migrated (F-5)", async () => {
     const { adapter, Router, route } = threeStreamFixture();
     await run(adapter);
     const shas = listSourceShas(db);
     expect(shas[`commit:${SHA_CLI}`]).toBe(SHA_CLI);
-    expect(shas[SHA_SKILL]).toBe(SHA_SKILL);
+    expect(shas[`commit:${SHA_SKILL}`]).toBe(SHA_SKILL);
+    expect(shas[SHA_SKILL]).toBeUndefined();
     expect(linksOf("cli commit")).toEqual([route.id]);
     expect(linksOf("skill commit")).toEqual([Router.id]);
+    const skill = listAllClaims(db).find((c) => c.claim === "skill commit");
+    expect(skill?.sourcePath).toBe(`commit:${SHA_SKILL}`);
   });
 
-  it("F-4: a changed docstring source keeps its claims and baseline key (CLI cannot re-extract docstrings yet)", async () => {
+  it("F-4 + L-1: without deps.streams (library default, prose only) a changed docstring source keeps its claims and baseline key", async () => {
     const { adapter, routerSha } = threeStreamFixture();
     write("src/router.ts", "export class Router {}\n// edited\n");
     const result = await run(adapter);
     expect(result.docstringSourcesDeleted).toBe(0);
+    expect(result.docstringFilesExtracted).toBe(0);
     expect(listSourceShas(db)["src/router.ts"]).toBe(routerSha);
     expect(listAllClaims(db).some((c) => c.claim === "router doc")).toBe(true);
   });
 
-  it("F-4: --full (skipShaDiff) keeps docstring + commit keys and claims", async () => {
+  it("with the docstring stream enabled, a changed docstring source is re-extracted: stale claims replaced, key moved to the new SHA", async () => {
+    const { adapter, utilSha } = threeStreamFixture();
+    const newSha = write("src/router.ts", "export class Router {}\n// edited\n");
+    // The stub adapter documents nothing, so the re-extraction makes no
+    // model call and leaves the file with zero claims.
+    const result = await run(adapter, { streams: ALL_STREAMS });
+    expect(result.apiCalls).toBe(0);
+    expect(result.docstringFilesExtracted).toBe(1);
+    expect(result.docstringFilesUnchanged).toBe(1);
+    const shas = listSourceShas(db);
+    expect(shas["src/router.ts"]).toBe(newSha);
+    expect(shas["src/util.ts"]).toBe(utilSha);
+    expect(listAllClaims(db).some((c) => c.claim === "router doc")).toBe(false);
+    expect(result.atlasExported).toBe(true);
+  });
+
+  it("F-4: --full (skipShaDiff) keeps docstring + commit keys and claims (library default, prose only)", async () => {
     const { adapter } = threeStreamFixture();
     const client: ExtractionClient = {
       async extract() {
@@ -309,9 +346,31 @@ describe("runExtractionPipeline — v1.2 Phase 1 stream-aware Stage 5 + symbol p
     expect(Object.keys(shas)).toContain("src/router.ts");
     expect(Object.keys(shas)).toContain("src/util.ts");
     expect(Object.keys(shas)).toContain(`commit:${SHA_CLI}`);
-    expect(Object.keys(shas)).toContain(SHA_SKILL);
+    expect(Object.keys(shas)).toContain(`commit:${SHA_SKILL}`);
     const texts = listAllClaims(db).map((c) => c.claim).sort();
     expect(texts).toEqual(["cli commit", "router doc", "skill commit"]);
+  });
+
+  it("--full with every stream re-extracts docstring files but leaves commits key-gated with their claims (L-7)", async () => {
+    const { adapter } = threeStreamFixture();
+    const client: ExtractionClient = {
+      async extract() {
+        return { result: { claims: [] }, usage: { inputTokens: 1, outputTokens: 1 } };
+      },
+    };
+    const result = await run(adapter, {
+      skipShaDiff: true,
+      anthropicClient: client,
+      streams: ALL_STREAMS,
+    });
+    expect(result.apiCalls).toBe(1); // the ADR; the stub documents no symbol
+    expect(result.docstringFilesExtracted).toBe(2);
+    expect(result.docstringFilesUnchanged).toBe(0);
+    const texts = listAllClaims(db).map((c) => c.claim).sort();
+    expect(texts).toEqual(["cli commit", "skill commit"]);
+    const shas = listSourceShas(db);
+    expect(Object.keys(shas)).toContain(`commit:${SHA_CLI}`);
+    expect(Object.keys(shas)).toContain(`commit:${SHA_SKILL}`);
   });
 
   it("F-4: a docstring key whose source file was deleted loses its claims + key; its symbols are pruned; linked claims orphan but survive", async () => {
@@ -337,7 +396,7 @@ describe("runExtractionPipeline — v1.2 Phase 1 stream-aware Stage 5 + symbol p
     expect(result.claimsOrphaned).toBe(2);
     expect(result.orphanedClaimsBySource).toEqual([
       { source: `commit:${SHA_CLI}`, sourcePath: `commit:${SHA_CLI}`, count: 1 },
-      { source: `commit:${SHA_SKILL}`, sourcePath: SHA_SKILL, count: 1 },
+      { source: `commit:${SHA_SKILL}`, sourcePath: `commit:${SHA_SKILL}`, count: 1 },
     ]);
     expect(result.atlasExported).toBe(true);
   });

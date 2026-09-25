@@ -13,6 +13,7 @@
 
 import Anthropic from "@anthropic-ai/sdk";
 
+import { resolveExtractionStreams } from "../../config/streams.js";
 import { createExtractionClient } from "../anthropic-client.js";
 import type { ExtractionClient } from "../anthropic-client.js";
 import {
@@ -66,6 +67,13 @@ export class AnthropicAPIDirectExtractor implements Extractor {
       adapters: context.adapters,
       contextatlasVersion: context.contextatlasVersion,
       contextatlasCommitSha: context.contextatlasCommitSha,
+      // v1.2 Phase 2: `extraction.streams` (default: all three). The
+      // pipeline's own default stays prose-only for library callers.
+      streams: resolveExtractionStreams(context.config),
+      ...(context.gitBinary !== undefined ? { gitBinary: context.gitBinary } : {}),
+      ...(context.onCostPreview !== undefined
+        ? { onCostPreview: context.onCostPreview }
+        : {}),
       ...(context.full ? { skipShaDiff: true } : {}),
       ...(context.budgetWarnUsd !== undefined
         ? { budgetWarnUsd: context.budgetWarnUsd }
