@@ -23,7 +23,7 @@ import {
   rmSync,
   writeFileSync,
 } from "node:fs";
-import { tmpdir } from "node:os";
+import { hostname, tmpdir } from "node:os";
 import { join as pathJoin, resolve as pathResolve } from "node:path";
 
 import {
@@ -46,6 +46,9 @@ import {
   vi,
 } from "vitest";
 
+import { RUN_IN_PROGRESS_KEY } from "./extraction/atlas-baseline.js";
+import { RUN_OWNER_KEY } from "./extraction/run-owner.js";
+import { getCacheMeta, setCacheMeta } from "./storage/cache-meta.js";
 import { insertClaim, listAllClaims, setSourceSha } from "./storage/claims.js";
 import { openDatabase } from "./storage/db.js";
 
@@ -749,10 +752,34 @@ describe("MCP server binary: loading atlas.json into a cache that has content", 
       readFileSync(cfgPath, "utf8").replace("committed: true", "committed: false"),
       "utf8",
     );
-    const claims = await startAndStop(/Using existing local cache/);
+    // atlas.json differs from what the cache holds (an /index-atlas
+    // refresh, or a leftover): kept, with a warning naming the way to
+    // load it (review round 2.3).
+    const claims = await startAndStop(/atlas\.json, which differs from it, is not loaded/);
+    expect(transport.stderrBuffer).toMatch(/delete the local cache \(.*index\.db\)/);
     expect(transport.stderrBuffer).not.toMatch(/Importing atlas\.json into fresh cache/);
     expect(transport.stderrBuffer).not.toMatch(/re-imported/);
     expect(claims).toEqual(["claim only the cache holds"]);
+  }, 30_000);
+
+  it("atlas.committed: true: a mark left by an `index` run that died does not keep a changed atlas.json out (review round 2.3)", async () => {
+    const dead = spawnSync(process.execPath, ["-e", ""]).pid;
+    const cachePath = pathJoin(fixtureRoot, ".contextatlas", "index.db");
+    const db = openDatabase(cachePath);
+    setCacheMeta(db, RUN_IN_PROGRESS_KEY, "hash-of-the-atlas-that-run-started-from");
+    setCacheMeta(db, RUN_OWNER_KEY, JSON.stringify({ pid: dead, host: hostname() }));
+    db.close();
+    const claims = await startAndStop(/atlas\.json changed since the local cache last imported or wrote it/);
+    expect(transport.stderrBuffer).toMatch(/stopped before it finished \(process \d+ is gone\)/);
+    expect(claims).toEqual([
+      "SmokeTestSymbol exists so the binary smoke test can validate end-to-end query serving",
+    ]);
+    const after = openDatabase(cachePath);
+    try {
+      expect(getCacheMeta(after, RUN_IN_PROGRESS_KEY)).toBeUndefined();
+    } finally {
+      after.close();
+    }
   }, 30_000);
 
   it("atlas.committed: true re-imports an atlas.json the cache does not hold (a pull, a Skill refresh)", async () => {

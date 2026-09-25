@@ -240,16 +240,22 @@ load-bearing empirical findings).
   warning to delete it. The MCP server and `init`'s smoke test use the
   same rule: they import `atlas.json` only into a cache with no
   symbols, claims or source keys (before, into any cache without
-  symbols).
+  symbols). The server warns when `atlas.json` differs from what the
+  cache holds, and names the way to load it (delete the local cache,
+  then restart): an `/index-atlas` refresh in this mode reaches the
+  server only that way (review round 2.3).
 - `validate-extraction` (v1.2 Phase 2 review) no longer holds prose
   that is not an ADR to the ADR depth floor and coverage checks: a
   path the prose walk puts in the docs bucket (`docs.include` pages
   such as README.md, wherever they are stored relative to), an
   existing file the walk does not return, or a deleted page. Only a
   missing file whose path names an ADR under `adrs.path` is still
-  checked, and not when the path, read relative to the config root,
-  lies outside `source.root` and matches a `docs.include` glob (a
-  deleted `docs/rfcs/0001-x.md` in the ADR-08 layout is a docs page).
+  checked. In the ADR-08 layout (ADRs outside `source.root`) that
+  excludes a path that, read relative to the config root, lies outside
+  `source.root` and matches a `docs.include` glob (a deleted
+  `docs/rfcs/0001-x.md` is a docs page); with the ADR directory inside
+  `source.root` (e.g. `source.root: packages/core`) a deleted ADR is
+  always checked (review round 2.3).
 - `validate-atlas` (v1.2 Phase 2 review) warns (exit code unchanged)
   when a claim's `symbol_ids` names a symbol `symbols` does not list.
   Such an atlas cannot be loaded until `contextatlas resolve-symbols`
@@ -263,8 +269,12 @@ load-bearing empirical findings).
   looked unchanged to the other once `docs.include` changed.
   Classification of such keys now uses the record, which counts only
   while `atlas.json` is the file this cache last imported or wrote, and
-  is rolled back with an interrupted run's work. A fresh clone has no
-  records and classifies as before.
+  is rolled back with an interrupted run's work. An `index` run that
+  changes the cache without writing `atlas.json` (`atlas.committed:
+  false`, or no `atlas.json` yet) ends that claim (review round 2.3):
+  records written in local mode no longer survive a switch back to the
+  committed atlas, where one deleted a zero-claim docstring key as a
+  prose key. A fresh clone has no records and classifies as before.
 - `list-extraction-sources` (v1.2 Phase 2 review) leaves a source file
   out of the manifest when `getDocstring` fails for any of its
   symbols, so `/index-atlas` keeps that file's claims and key and the
@@ -284,7 +294,12 @@ load-bearing empirical findings).
   - recognises an ADR key the way it is stored (relative to
     `source_root`, or to the ADR directory when ADRs live outside
     `source.root`), not by an `adrs.path` prefix, so a deleted or
-    renamed ADR's key is dropped in those layouts too.
+    renamed ADR's key is dropped in those layouts too;
+  - ends by telling the user that the running MCP server serves the
+    refresh only after a restart or an `/mcp` reconnect (with
+    `atlas.committed: false`, only after the local cache is deleted),
+    and `/prime-atlas` gives the same advice for a stale sentinel
+    (review round 2.3).
 
 ### Removed
 
@@ -444,7 +459,10 @@ load-bearing empirical findings).
   nor exported. Nothing the interrupted run deleted or pruned is
   carried: the run recomputes that against the current tree and config
   and reports the orphans itself. A changed `atlas.json` is imported
-  without carrying anything.
+  without carrying anything. Only sources whose content differs from
+  what `atlas.json` records (changed or new files, new commits) are
+  carried: an interrupted `index --full` re-extraction of files that
+  had not changed is not kept, and a second `--full` bills it again.
 - With `atlas.committed: false` and an `atlas.json` left over from the
   committed workflow, every `index` re-extracted everything newer
   than that file (v1.2 Phase 2 review). See "Changed".
@@ -460,7 +478,10 @@ load-bearing empirical findings).
 - `init` told users to re-run `init` after an `index` that exported
   and then exited 1 (v1.2 Phase 2 review). A re-run skips extraction
   once `atlas.json` matches HEAD, so the failed work was never
-  retried. `init` now says to run `contextatlas index` first.
+  retried. `init` now says to run `contextatlas index` first after a
+  stream failure, and after a failed `validate-extraction` to fix the
+  failing ADRs (or run `index --full`) until `index` exits 0 (review
+  round 2.3).
 - A `getDocstring` failure in `list-extraction-sources` made an
   `/index-atlas` refresh drop that symbol's claims and pin the file's
   new SHA (v1.2 Phase 2 review). See "Changed".
@@ -494,16 +515,41 @@ load-bearing empirical findings).
   only way to refresh it was deleting `index.db`. It now imports
   `atlas.json` at startup whenever the file differs from the one the
   cache last imported or wrote (a cache from an earlier release
-  re-imports once), except while a `contextatlas index` run over the
-  cache is unfinished, when it serves the cache with a warning. An
-  `atlas.json` that cannot be imported (a merge conflict) leaves the
-  cache in service, with a warning. With `atlas.committed: false` a
-  non-empty cache is kept, as before.
+  re-imports once; a cache an `index` run changed with
+  `atlas.committed: false`, or with no `atlas.json`, holds none),
+  except while a `contextatlas index` run over the cache is still
+  running, when it serves the cache with a warning. The run records
+  its process, so a run that died (Ctrl-C, a crash) no longer holds
+  the import off; its unsaved work, which `index` would not carry over
+  a changed `atlas.json` either, is dropped. A run on another machine
+  sharing the cache counts as running, and the warning names the way
+  out (delete the local cache). An `atlas.json` that cannot be
+  imported (a merge conflict) leaves the cache in service, with a
+  warning. With `atlas.committed: false` a non-empty cache is kept, as
+  before.
 - An `atlas.json` whose claims link symbols its `symbols` array does
   not list failed to load with a bare `FOREIGN KEY constraint failed`
   (in the MCP server, `index` and `init`). The error now says how
   many claims are affected and to run `contextatlas resolve-symbols`
   (v1.2 Phase 2 review).
+- `contextatlas index` ran `validate-extraction` only when it wrote
+  `atlas.json` (since v0.7.1). After a run that wrote it and failed
+  the check (exit 1), the next run with nothing to extract exited 0 on
+  the same failing atlas, and `init` then reported setup success. With
+  `atlas.committed: true` it now checks on every run (locally, no API
+  call), so the exit code does not flip on an unchanged atlas (v1.2
+  Phase 2 review round 2.3).
+- After `index --full`, an ADR or docs page whose extraction failed
+  kept its key, which already matched its content, so the next plain
+  `index` never retried it; since v1.2 Phase 2 the same held for
+  docstring files, while the error message promised a retry. A prose
+  or docstring file that is not stored is now recorded in the local
+  cache (cache-only) and extracted again by the next run until it
+  succeeds (v1.2 Phase 2 review round 2.3).
+- `list-extraction-sources` ignored `lsp.initialize_timeout_ms`, so
+  on a slow language server the `/index-atlas` Phase A step timed out
+  (or left files out) where `index` and `resolve-symbols` succeeded
+  (v1.2 Phase 2 review round 2.3).
 
 ### Security
 

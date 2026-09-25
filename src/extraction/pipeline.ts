@@ -95,6 +95,7 @@ import type {
 } from "./pipeline-types.js";
 import { runProseStage, warnUnresolvedFrontmatter } from "./prose-stream.js";
 import { buildSymbolInventory } from "./resolver.js";
+import { listRetryKeys, pruneRetryKeys, withRetries } from "./retry-keys.js";
 import { RunCostTracker } from "./run-cost.js";
 import { sourceKeyMatcher } from "./source-key-files.js";
 import {
@@ -208,8 +209,11 @@ export async function runExtractionPipeline(
   // them all as dirty — the ShaDiff record is retained for the
   // `files_unchanged=0` summary line rather than being faked. Deleted
   // prose keys are the same under --full: a key the prose walk no
-  // longer produces is gone either way.
-  const proseDiff = diffShas(proseFiles, baseline.prose);
+  // longer produces is gone either way. A file whose extraction failed
+  // on an earlier run is extracted again even when its key names its
+  // current SHA (the retry list, `retry-keys.ts`, review round 2.3).
+  const retryKeys = listRetryKeys(db);
+  const proseDiff = withRetries(diffShas(proseFiles, baseline.prose), retryKeys);
   const diff = full
     ? {
         unchanged: [],
@@ -235,6 +239,8 @@ export async function runExtractionPipeline(
   const excludePatterns = computeExcludePatterns(deps.config);
   const sourceFiles = walkSourceFiles(repoRoot, extensions, excludePatterns);
   const inventory = await buildSymbolInventory(adapters, sourceFiles);
+  const walkedSourcePaths = new Set(sourceFiles.map((f) => f.relPath));
+  pruneRetryKeys(db, (key) => prosePaths.has(key) || walkedSourcePaths.has(key));
   log.info("pipeline: symbol inventory built", {
     sourceFiles: sourceFiles.length,
     symbols: inventory.allSymbols.length,
@@ -319,6 +325,7 @@ export async function runExtractionPipeline(
           adapters,
           baseline: baseline.docstring,
           full,
+          retry: retryKeys,
           prosePaths,
         })
       : null,

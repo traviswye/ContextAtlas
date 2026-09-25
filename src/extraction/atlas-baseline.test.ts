@@ -7,9 +7,9 @@
  * this cache wrote or imported last.
  */
 
-import { mkdtempSync, writeFileSync } from "node:fs";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { rm } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { hostname, tmpdir } from "node:os";
 import { join as pathJoin } from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -41,6 +41,7 @@ import {
   RUN_IN_PROGRESS_KEY,
   RUN_START_KEY_STREAMS_KEY,
 } from "./atlas-baseline.js";
+import { RUN_OWNER_KEY } from "./run-owner.js";
 
 function atlasWith(
   sourceShas: Record<string, string>,
@@ -428,6 +429,51 @@ describe("loadAtlasBaseline", () => {
       const r = loadAtlasBaseline(db, { atlasAbsPath: atlasPath, committed: false });
       expect(r).toEqual({ imported: false, resumed: false, mustExport: false });
       expect(warn).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("review round 2.3", () => {
+    it("the unfinished-run mark names this process, and is cleared with it", () => {
+      writeAtlas({ "docs/a.md": "s1" });
+      load();
+      expect(JSON.parse(getCacheMeta(db, RUN_OWNER_KEY) ?? "null")).toEqual({
+        pid: process.pid,
+        host: hostname(),
+      });
+      markRunFinished(db);
+      expect(getCacheMeta(db, RUN_OWNER_KEY)).toBeUndefined();
+    });
+
+    it("atlas.committed: false: the run no longer claims the cache holds the atlas.json it imported last", () => {
+      const text = writeAtlas({ "src/a.ts": "S" });
+      load();
+      recordAtlasWritten(db, text);
+      recordSourceKeyStream(db, "src/a.ts", "docstring", "S");
+      markRunFinished(db);
+      loadAtlasBaseline(db, { atlasAbsPath: atlasPath, committed: false });
+      expect(getCacheMeta(db, KEY_STREAMS_ATLAS_KEY)).toBeUndefined();
+      // The records this cache writes from now on describe the cache: the
+      // next committed import of the same file drops them.
+      recordSourceKeyStream(db, "src/a.ts", "prose", "S");
+      load();
+      expect(listSourceKeyStreams(db).size).toBe(0);
+    });
+
+    it("atlas.committed: false: a seeded cache does not claim to hold the seed either", () => {
+      writeAtlas({ "docs/a.md": "s1" });
+      loadAtlasBaseline(db, { atlasAbsPath: atlasPath, committed: false });
+      expect(listSourceShas(db)).toEqual({ "docs/a.md": "s1" });
+      expect(getCacheMeta(db, KEY_STREAMS_ATLAS_KEY)).toBeUndefined();
+    });
+
+    it("atlas.committed: true without atlas.json: the cache holds no atlas.json until Stage 7 writes one", () => {
+      const text = writeAtlas({ "docs/a.md": "s1" });
+      load();
+      recordAtlasWritten(db, text);
+      markRunFinished(db);
+      rmSync(atlasPath);
+      load();
+      expect(getCacheMeta(db, KEY_STREAMS_ATLAS_KEY)).toBeUndefined();
     });
   });
 });

@@ -526,3 +526,100 @@ describe("runValidateExtractionSubcommand — default layout keeps checking dele
     expect(stderr).toContain("docs/adr/ADR-02-gone.md: 3 claims");
   });
 });
+
+describe("runValidateExtractionSubcommand — source.root holding the ADR directory (review round 2.3)", () => {
+  // SKILL refresh rule 4's second example: config at the repo root,
+  // `source.root: packages/core`, `adrs.path: packages/core/docs/adr`.
+  // ADR keys are stored relative to the source root (`docs/adr/...`),
+  // which, read from the config root, also matches `docs/**/*.md`.
+  let root: string;
+  let stderr: string;
+
+  beforeEach(async () => {
+    root = await mkdtemp(path.join(tmpdir(), "ca-validate-extraction-sub-"));
+    stderr = "";
+    await mkdir(path.join(root, "packages", "core", "docs", "adr"), { recursive: true });
+    await mkdir(path.join(root, ".contextatlas"), { recursive: true });
+    await writeFile(path.join(root, "packages", "core", "docs", "adr", "ADR-01-foo.md"), "# ADR-01\n");
+    await writeFile(path.join(root, "README.md"), "# readme\n");
+    await writeFile(
+      path.join(root, ".contextatlas.yml"),
+      [
+        "version: 1",
+        "languages: [typescript]",
+        "source:",
+        "  root: packages/core",
+        "adrs:",
+        "  path: packages/core/docs/adr",
+        "docs:",
+        "  include: [README.md, docs/**/*.md]",
+        "atlas:",
+        "  committed: true",
+        "  path: .contextatlas/atlas.json",
+        "  local_cache: .contextatlas/index.db",
+        "",
+      ].join("\n"),
+    );
+  });
+  afterEach(async () => {
+    await rm(root, { recursive: true, force: true });
+  });
+
+  const validate = async (atlas: AtlasForValidation) => {
+    await writeFile(path.join(root, ".contextatlas", "atlas.json"), JSON.stringify(atlas, null, 2));
+    return runValidateExtractionSubcommand({
+      configRoot: root,
+      configFile: null,
+      writeStdout: () => {},
+      writeStderr: (c) => (stderr += c),
+    });
+  };
+  const base: AtlasForValidation = {
+    version: "1.4",
+    source_shas: { "docs/adr/ADR-01-foo.md": "a", "README.md": "r" },
+    claims: [
+      ...Array.from({ length: 9 }, () => makeAdrClaim("docs/adr/ADR-01-foo.md")),
+      makeAdrClaim("README.md"),
+    ],
+  };
+
+  it("passes with the existing ADR and a docs page", async () => {
+    expect((await validate(base)).exitCode).toBe(0);
+    expect(stderr).toBe("");
+  });
+
+  it("a deleted ADR's zero-claim key is still checked", async () => {
+    const result = await validate({
+      ...base,
+      source_shas: { ...base.source_shas, "docs/adr/ADR-02-gone.md": "g" },
+    });
+    expect(result.exitCode).toBe(2);
+    expect(stderr).toContain("docs/adr/ADR-02-gone.md");
+  });
+
+  it("a deleted ADR left with a few stale claims is still held to the depth floor", async () => {
+    const result = await validate({
+      ...base,
+      source_shas: { ...base.source_shas, "docs/adr/ADR-02-gone.md": "g" },
+      claims: [
+        ...base.claims!,
+        ...Array.from({ length: 3 }, () => makeAdrClaim("docs/adr/ADR-02-gone.md")),
+      ],
+    });
+    expect(result.exitCode).toBe(2);
+    expect(stderr).toContain("docs/adr/ADR-02-gone.md: 3 claims");
+  });
+
+  it("a deleted config-root docs page outside the ADR directory stays exempt", async () => {
+    const result = await validate({
+      ...base,
+      source_shas: { ...base.source_shas, "docs/rfcs/0001-first-rfc.md": "r1" },
+      claims: [
+        ...base.claims!,
+        ...Array.from({ length: 2 }, () => makeAdrClaim("docs/rfcs/0001-first-rfc.md")),
+      ],
+    });
+    expect(stderr).toBe("");
+    expect(result.exitCode).toBe(0);
+  });
+});

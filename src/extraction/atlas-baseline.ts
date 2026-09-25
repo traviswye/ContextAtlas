@@ -31,7 +31,14 @@
  * Every import of an atlas.json this cache did not write or import last
  * also drops the cache-only `source_key_streams` records (round 2): they
  * describe keys this cache wrote, and another writer may have re-keyed a
- * path at the same SHA.
+ * path at the same SHA. A run that changes the cache without importing
+ * atlas.json (`committed: false`, or no atlas.json) drops the record of
+ * which atlas.json the cache holds (round 2.3), so the next import, and
+ * the MCP server's startup check, treat the cache as holding none.
+ *
+ * The unfinished-run mark names the process that set it
+ * (`run-owner.ts`, round 2.3), so the MCP server can tell a live run
+ * from a dead one.
  */
 
 import { createHash } from "node:crypto";
@@ -56,6 +63,7 @@ import type { AtlasFileV1 } from "../storage/types.js";
 
 import { dropUnreachableCommits } from "./foreign-commits.js";
 import type { CommitReachability } from "./git-extractor.js";
+import { clearRunOwner, recordRunOwner } from "./run-owner.js";
 import { restoreUnsavedWork, snapshotUnsavedWork } from "./unsaved-work.js";
 
 /**
@@ -129,8 +137,8 @@ export function loadAtlasBaseline(
   if (!input.committed) {
     // The cache is authoritative; the resume mark is not used.
     clearRunMark(db);
-    if (!exists) return { imported: false, resumed: false, mustExport: false };
-    if (isCacheEmpty(db)) {
+    const seeded = exists && isCacheEmpty(db);
+    if (seeded) {
       log.info(
         "pipeline: atlas.committed is false; seeding the empty local cache from atlas.json",
         { path: atlasAbsPath },
@@ -140,24 +148,29 @@ export function loadAtlasBaseline(
         importAtlas(db, parseAtlas(raw));
         adoptAtlas(db, atlasFileSha256(raw));
       })();
-      return { imported: true, resumed: false, mustExport: false };
+    } else if (exists) {
+      log.warn(
+        `pipeline: atlas.committed is false, so the local cache is the source ` +
+          `of truth; ignoring ${atlasAbsPath}. It is not updated by this run. ` +
+          "Delete it if it is left over from atlas.committed: true, or set " +
+          "atlas.committed: true to work from the committed atlas again.",
+        { path: atlasAbsPath },
+      );
     }
-    log.warn(
-      `pipeline: atlas.committed is false, so the local cache is the source ` +
-        `of truth; ignoring ${atlasAbsPath}. It is not updated by this run. ` +
-        "Delete it if it is left over from atlas.committed: true, or set " +
-        "atlas.committed: true to work from the committed atlas again.",
-      { path: atlasAbsPath },
-    );
-    return { imported: false, resumed: false, mustExport: false };
+    // This run changes the cache and writes no atlas.json (round 2.3).
+    deleteCacheMeta(db, KEY_STREAMS_ATLAS_KEY);
+    return { imported: seeded, resumed: false, mustExport: false };
   }
 
   if (!exists) {
     // No committed baseline: the cache is the baseline, as always, and
     // this run writes atlas.json. The cache outlives a branch switch, so
     // it can hold commits of another branch; those must not reach this
-    // branch's atlas.json (round 2.2).
+    // branch's atlas.json (round 2.2). Until Stage 7 writes it, the
+    // cache holds no atlas.json (round 2.3: a crashed run followed by a
+    // checkout of the old file must not look in sync).
     clearRunMark(db);
+    deleteCacheMeta(db, KEY_STREAMS_ATLAS_KEY);
     const dropped = dropUnreachableCommits(db, reachability);
     if (dropped > 0) {
       log.info(
@@ -208,6 +221,7 @@ export function loadAtlasBaseline(
       setCacheMeta(db, RUN_START_KEY_STREAMS_KEY, hash);
     }
     setCacheMeta(db, RUN_IN_PROGRESS_KEY, hash);
+    recordRunOwner(db);
   })();
 
   const resumed = unsaved !== null && unsaved.units.length > 0;
@@ -238,7 +252,9 @@ export function loadAtlasBaseline(
 
 /**
  * Mark the run finished: atlas.json (when committed) now holds
- * everything the cache does, so the next run imports it again.
+ * everything the cache does, so the next run imports it again. The MCP
+ * server also uses it to drop a dead run's mark when it re-imports a
+ * changed atlas.json over that run's work (round 2.3).
  */
 export function markRunFinished(db: DatabaseInstance): void {
   clearRunMark(db);
@@ -274,6 +290,7 @@ export function atlasFileSha256(raw: Buffer): string {
 
 function clearRunMark(db: DatabaseInstance): void {
   deleteCacheMeta(db, RUN_IN_PROGRESS_KEY);
+  clearRunOwner(db);
   deleteCacheMeta(db, RUN_START_KEY_STREAMS_KEY);
   clearRunStartKeyStreams(db);
 }

@@ -169,13 +169,19 @@ export interface ValidateExtractionShapeOptions {
  *     missing, so a deleted ADR left in `source_shas` keeps failing
  *     coverage. A deleted docs page is exempt (review round 2): the
  *     `/index-atlas` Skill cannot re-extract it and must not be stuck.
- *     That includes a docs page stored relative to the config root
- *     (outside `source.root`) whose file name looks like an ADR's, such
- *     as `docs/rfcs/0001-x.md`: when the path, read relative to the
- *     config root, lies outside the source root and matches a
- *     `docs.include` glob, it is a docs page (review round 2.2). In the
- *     default layout (source root = config root) that reading never
- *     applies, so a deleted ADR there is still checked.
+ *     That includes, in the ADR-08 layout (the ADR directory outside
+ *     `source.root`), a docs page stored relative to the config root
+ *     whose file name looks like an ADR's, such as `docs/rfcs/0001-x.md`:
+ *     when the path, read relative to the config root, lies outside the
+ *     source root and matches a `docs.include` glob, it is a docs page
+ *     (review round 2.2). When the ADR directory is inside the source
+ *     root (the default layout, or `source.root: packages/core` with
+ *     `adrs.path: packages/core/docs/adr`), every ADR key is stored
+ *     relative to the source root, so that reading does not apply and a
+ *     deleted ADR is still checked (review round 2.3: in the
+ *     `packages/core` layout the config-root reading of
+ *     `docs/adr/ADR-02-x.md` matched `docs/**` and exempted it), as
+ *     SKILL refresh rule 4 classifies it.
  *
  * Null when the walk fails (then nothing is exempt).
  */
@@ -198,11 +204,15 @@ function nonAdrProsePredicate(
   }
   // An ADR's stored path is relative to the source root when the file is
   // inside it, else relative to the ADR directory (file-walker.ts).
-  const adrBases = isInside(adrDir, sourceRoot) ? [sourceRoot] : [sourceRoot, adrDir];
+  const adrsInsideSourceRoot = isInside(adrDir, sourceRoot);
+  const adrBases = adrsInsideSourceRoot ? [sourceRoot] : [sourceRoot, adrDir];
   // A docs page outside the source root is stored relative to the config
   // root, and `docs.include` globs are evaluated there (file-walker.ts).
+  // Only the ADR-08 layout needs that reading to tell such a page from an
+  // ADR stored relative to the ADR directory (round 2.3).
   const matchesDocsInclude = docsIncludeMatcher(config.docs.include);
   const isConfigRootDocsPage = (sourcePath: string): boolean => {
+    if (adrsInsideSourceRoot) return false;
     const abs = pathResolve(configRoot, sourcePath);
     if (isInside(abs, sourceRoot)) return false;
     return matchesDocsInclude(relative(configRoot, abs).split(sep).join("/"));

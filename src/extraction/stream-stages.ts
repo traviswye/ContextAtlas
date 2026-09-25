@@ -8,7 +8,10 @@
  *     file with the planning pass's cached docstring read. A file's
  *     claims are replaced and its SHA pinned only when every call for it
  *     succeeded (L-10 i); otherwise it keeps its previous claims and key
- *     and is retried next run.
+ *     and is retried next run: it is recorded in the cache-only retry
+ *     list (`retry-keys.ts`, review round 2.3), which the next plan
+ *     honours even when the key already names the file's current SHA
+ *     (a `--full` run).
  *   - 6d runs `extractCommitClaims` (`commit-message-extractor.ts`) per
  *     pending commit: canonical `commit:<sha>` key, one transaction per
  *     commit, a null result or malformed JSON pinned with zero claims
@@ -41,6 +44,7 @@ import { extractDocstringFile } from "./docstring-stream.js";
 import type { DocstringWorkPlan } from "./extraction-plan.js";
 import type { StreamFailure } from "./pipeline-types.js";
 import type { SymbolInventory } from "./resolver.js";
+import { clearRetry, markForRetry } from "./retry-keys.js";
 import type { RunCostTracker } from "./run-cost.js";
 import { commitSourceKey } from "./source-keys.js";
 
@@ -110,11 +114,13 @@ export async function runDocstringStage(
     cost.addUsage(outcome.usage);
     out.attemptedCalls += outcome.apiCalls;
     if (outcome.status === "stored") {
+      clearRetry(db, file.relPath);
       out.filesStored++;
       out.symbolsExtracted += outcome.apiCalls;
       out.claimsWritten += outcome.claimsWritten;
       out.unresolvedCandidates += outcome.unresolvedCandidates;
     } else {
+      markForRetry(db, file.relPath);
       out.failedCalls += outcome.failedCalls;
       if (outcome.failedCalls > 0 && out.firstFailedCallError === undefined) {
         out.firstFailedCallError = outcome.errors[0]?.error;

@@ -753,9 +753,11 @@ orchestration only).
   by path, insert, set the key). A call that throws, a result that
   does not parse, a failed docstring read, or a failed write leaves
   the file's previous claims and key untouched. The error is recorded
-  and the next run retries the whole file. Once one call for a file
-  fails, the file's remaining calls are not made. A planned file with
-  no documented exported symbol is keyed with zero claims.
+  and the next run retries the whole file (after `--full` too, through
+  a cache-only retry list; see "Review fixes, round 2.3"). Once one
+  call for a file fails, the file's remaining calls are not made. A
+  planned file with no documented exported symbol is keyed with zero
+  claims.
 - **Commit.** One transaction deletes the commit's claims in both key
   forms, drops a bare key, inserts the new claims and sets
   `commit:<sha>` → sha. A call that throws leaves the commit unkeyed,
@@ -841,7 +843,8 @@ never renamed" rule holds. Existing keys keep their names and order.
   and the stderr message carry it.
 
 **7. `--json` prints exactly one JSON object on stdout.** When the
-run exported, `index` runs `validate-extraction`, which printed its
+run exported (since round 2.3, on every `atlas.committed: true` run),
+`index` runs `validate-extraction`, which printed its
 one-line result to stdout after the JSON object. That broke the
 single-object contract above. Under `--json` the validator's line now
 goes to stderr. `key=value` output is unchanged: the line still
@@ -1237,3 +1240,104 @@ also part of Phase 2.
   does not apply) and the assumption behind the L-14 parity bar; the
   CHANGELOG "Fixed" section lists only fixes of released behaviour; the
   README privacy note says `generate-adrs` sends member names too.
+
+### Review fixes, round 2.3 (2026-09-25)
+
+A review of the round-2.2 fixes found these defects; the fixes below are
+also part of Phase 2.
+
+- **A mark left by a dead `index` run blocked the MCP server's re-import
+  for good.** Stage 0 sets the unfinished-run mark before any model
+  call, and only a run that reaches Stage 7 clears it, so a Ctrl-C after
+  the cost preview, a crash or the prose all-failed throw left it. Once
+  `atlas.json` changed (a pull, an `/index-atlas` refresh), every server
+  start served the old cache and said to run `contextatlas index`. That
+  fails at setup without an API key and only prints a pointer under
+  `architecture: claude-code-only`; with a key, Stage 0 imports the
+  changed `atlas.json` and carries nothing, so the hold protected
+  nothing. Stage 0 now records the process that set the mark (`_meta`
+  `index.unfinished_run_owner`, `{pid, host}`; `run-owner.ts`). The
+  server holds the import off only while that process exists on this
+  host (`process.kill(pid, 0)`); a mark from another host, or one with
+  no owner record, still counts as running. For a dead run it imports
+  `atlas.json` and drops the mark in the same transaction: the cache no
+  longer holds that run's work, and `index` would not have carried it
+  over a changed `atlas.json` either. The warning for a running (or
+  uncheckable) run names the process and the way out that needs no key:
+  delete the local cache and restart. A recycled pid can make a dead run
+  look alive; the same warning covers it.
+- **A run that changed the cache without importing `atlas.json` left
+  the cache claiming to hold it.** `index.key_streams_atlas_sha256`
+  names the `atlas.json` the cache last imported or wrote; the
+  key-stream records and the server's startup check read it as "the
+  cache holds this file". An `atlas.committed: false` run (also one that
+  seeded the cache) and a committed run with no `atlas.json` change the
+  cache and write no `atlas.json`, but left the value. After switching
+  back to `committed: true` (as the `committed: false` warning suggests)
+  with `atlas.json` unchanged, the server kept serving the local-mode
+  claims, including those of a reverted ADR edit, and the next `index`
+  kept the local-mode records over the import: a zero-claim docstring
+  key the prose stream had re-keyed at the same SHA was deleted as a
+  prose key (dropped from `atlas.json` with the docstring stream off,
+  billed again with it on). A committed run that crashed with no
+  `atlas.json`, followed by a checkout of the old file, did the same.
+  Stage 0 of such runs now deletes the value; Stage 7 sets it again when
+  it writes `atlas.json`.
+- **`validate-extraction` ran only on runs that exported** (since
+  v0.7.1). After a run that exported and failed the check (exit 1), the
+  next run with nothing to extract exited 0 on the same failing atlas,
+  and `init`, told by round 1 to point at a plain `index`, then found
+  the atlas current and reported setup success. `index` now runs it on
+  every `atlas.committed: true` run with an `atlas.json` on disk (local,
+  no API call), so exit 1 persists until the atlas passes. `init`'s
+  message after an exit 1 now depends on the cause: a failed stream
+  still says to run `contextatlas index` to retry; a failed
+  `validate-extraction` says to fix the failing ADRs and run `index` (or
+  `index --full`) until it exits 0, then `init`.
+- **`validate-extraction` exempted a deleted ADR when `source.root`
+  holds the ADR directory.** Round 2.2's config-root reading of a
+  missing path applied whenever the source root was not the config
+  root. With `source.root: packages/core` and `adrs.path:
+  packages/core/docs/adr` (SKILL refresh rule 4's example), ADR keys are
+  stored as `docs/adr/ADR-NN-x.md`; read from the config root, a deleted
+  one matched the default `docs/**/*.md` and was exempt from both
+  checks, with zero claims or with stale ones. The reading now applies
+  only in the ADR-08 layout (ADR directory outside the source root), as
+  rule 4 says.
+- **A failure under `--full` was not retried.** `--full` re-extracts
+  files whose key already names their current SHA, so a file whose
+  re-extraction failed (an API error, an unparseable response) kept a
+  key the next plain run's SHA gate took as unchanged: that run made no
+  call and exited 0, while the error and the exit-1 message promised a
+  retry, and the only way back was another `--full` over every file.
+  Every prose or docstring file that is not stored is now recorded in a
+  cache-only retry list (`_meta` `index.retry_source_keys`;
+  `retry-keys.ts`), and the next run extracts it whatever its key says;
+  a stored file leaves the list, and a file no longer walked is pruned.
+  Like the other cache-only state, a fresh clone does not see another
+  machine's list. The prose half predates Phase 2.
+- **`/index-atlas` never said the running MCP server keeps the old
+  atlas.** The server loads `atlas.json` only at startup. The Skill's
+  new Phase C step 5 tells the user to restart Claude Code or reconnect
+  the server with `/mcp`, and, with `atlas.committed: false`, to delete
+  the local cache first; `/prime-atlas`'s stale-sentinel row says the
+  same.
+- **With `atlas.committed: false` an `/index-atlas` refresh never
+  reached the server.** The server kept a non-empty cache whatever
+  `atlas.json` held, with an info line only. The rule stands (the cache
+  is the source of truth in that mode; the lead flag in v1.2-SCOPE
+  records the alternative), but the server now warns at startup when
+  `atlas.json` differs from what the cache holds and names the way to
+  load it, and the Skill says so (above).
+- **`list-extraction-sources` ignored `lsp.initialize_timeout_ms`**
+  (before Phase 2 too; a v1.2-SCOPE loose end). On a slow language
+  server the Skill's Phase A step timed out at the adapter default, or,
+  with round 1's omit-on-read-error rule, left whole files out, where
+  `index` and `resolve-symbols` succeeded. It now passes the setting to
+  the adapters as they do.
+- **Documentation.** The README privacy section says that a
+  `docs.include` glob matching source files sends them whole and that
+  the Skill does not extract `docs.include` pages; CHANGELOG and
+  DESIGN.md say that a resume does not keep an interrupted `--full`
+  re-extraction of unchanged files; the v1.2-SCOPE outcome covers
+  rounds 2.2 and 2.3.

@@ -302,21 +302,28 @@ export async function runIndexSubcommand(
     // failure semantics — extraction succeeded but downstream
     // extraction-quality verification failed).
     //
-    // Atlas-export gating: validate-extraction is meaningful only
-    // when the pipeline modified the atlas. If atlasExported is
-    // false (no changes detected per Phase 4 SHA-diff incremental;
-    // unchanged source_shas), the existing atlas already passed
-    // validate-extraction at a prior run; re-validating doesn't
-    // add signal. Test-mode gate: clientOverride is the documented
-    // test-seam signal; stub clients produce minimal atlas content
-    // that cannot satisfy realistic per-ADR depth invariants, so
-    // skip the validator under test mode.
+    // It runs on every run that leaves a committed atlas.json on disk,
+    // whether or not this run exported it (v1.2 Phase 2 review round
+    // 2.3). It used to run only when the run exported, on the premise
+    // that an unchanged atlas had passed at a prior run. It had not
+    // when that run exported and then failed validation: the next run
+    // with nothing to extract exited 0 on the same failing atlas, and
+    // `init` then reported setup success. The check is local (no API
+    // call). With atlas.committed: false no atlas.json is written, so
+    // there is nothing to check. Test-mode gate: clientOverride is the
+    // documented test-seam signal; stub clients produce minimal atlas
+    // content that cannot satisfy realistic per-ADR depth invariants,
+    // so skip the validator under test mode.
     //
     // Under --json the validator's stdout (its one-line PASS message)
     // goes to stderr, so stdout carries exactly the single JSON
     // summary object ADR-12 promises. Key=value mode keeps it on
     // stdout after the summary.
-    if (pipelineResult.atlasExported && options.clientOverride === undefined) {
+    const committedAtlasOnDisk =
+      pipelineResult.atlasExported ||
+      (config.atlas.committed &&
+        existsSync(pathResolve(options.configRoot, config.atlas.path)));
+    if (committedAtlasOnDisk && options.clientOverride === undefined) {
       const validateResult = await runValidateExtractionSubcommand({
         configRoot: options.configRoot,
         configFile: options.configFile,

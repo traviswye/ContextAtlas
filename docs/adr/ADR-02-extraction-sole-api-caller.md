@@ -980,7 +980,10 @@ historical record per v0.5 + v0.6 + v0.7 inheritance discipline.
   generation cli-runner). Closes CLI-vs-Skill mechanical-floor-
   enforcement substrate equivalence at /index-atlas surface.
   atlasExported guard prevents re-validation on SHA-diff
-  incremental skips; clientOverride guard skips under test mode
+  incremental skips (removed at v1.2 Phase 2 review round 2.3: an
+  atlas that failed on the exporting run then passed silently on the
+  next; see the ADR-12 2026-09-25 amendment); clientOverride guard
+  skips under test mode
   (stub clients produce minimal atlas content that cannot
   satisfy realistic per-ADR depth invariants).
 

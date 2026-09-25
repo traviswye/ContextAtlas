@@ -1366,6 +1366,49 @@ describe("runIndexSubcommand (ADR-12)", () => {
     expect(err).toMatch(/extraction\.streams: \[adr\]/);
   }, 30_000);
 
+  it("validate-extraction failure: the next run with nothing to extract still validates and exits 1 (review round 2.3)", async () => {
+    seedExportingAtlasWithoutModelCalls();
+    const atlasFile = pathJoin(tmp, ".contextatlas", "atlas.json");
+    const atlas = JSON.parse(readFileSync(atlasFile, "utf8")) as {
+      claims: Array<{ source_path: string }>;
+    };
+    let kept = 0;
+    atlas.claims = atlas.claims.filter(
+      (c) => c.source_path !== "docs/adr/ADR-01.md" || kept++ < 3,
+    );
+    writeFileSync(atlasFile, JSON.stringify(atlas));
+    const requests = stubFetchNeverCalled();
+    const runOnce = async () => {
+      const stderr = captureStderr();
+      const result = await runIndexSubcommand({
+        configRoot: tmp,
+        configFile: null,
+        full: false,
+        json: false,
+        contextatlasVersion: "0.0.1-test",
+        contextatlasCommitSha: null,
+        readEnv: (name) =>
+          name === "ANTHROPIC_API_KEY" ? "sk-ant-test-never-used" : undefined,
+        writeStdout: captureStdout().writer,
+        writeStderr: stderr.writer,
+      });
+      return { result, err: stderr.joined() };
+    };
+    try {
+      const first = await runOnce();
+      expect(first.result.exitCode).toBe(1);
+      expect(first.result.pipelineResult?.atlasExported).toBe(true);
+      // Nothing changed: no export, but the same failing atlas is on disk.
+      const second = await runOnce();
+      expect(second.result.pipelineResult?.atlasExported).toBe(false);
+      expect(second.err).toContain("adr_depth_floor");
+      expect(second.result.exitCode).toBe(1);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+    expect(requests).toEqual([]);
+  }, 60_000);
+
   it("reports a pruned stale symbol and the claim it orphans (real tsserver, zero model calls)", async () => {
     const adrPath = pathJoin(tmp, "docs", "adr", "ADR-01.md");
     writeFileSync(adrPath, ["---", "id: ADR-01", "---", "Gone must stay pure.", ""].join("\n"));

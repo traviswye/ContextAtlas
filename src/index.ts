@@ -309,10 +309,12 @@ export async function main(): Promise<void> {
   //    cache (no symbols, claims or source keys) is seeded from it. With
   //    atlas.committed: true atlas.json is the source of truth (ADR-06),
   //    so a changed one (a pull, an /index-atlas refresh) is imported
-  //    again, unless an `index` run over this cache has not finished.
-  //    With atlas.committed: false a non-empty cache is authoritative
-  //    and kept (v1.2 Phase 2 review round 2.2). atlas.path resolves
-  //    against configRoot same as local_cache.
+  //    again, unless an `index` run over this cache is still running
+  //    (a dead run's mark does not hold it off, round 2.3). With
+  //    atlas.committed: false a non-empty cache is authoritative and
+  //    kept, with a warning when atlas.json differs from it (v1.2
+  //    Phase 2 review rounds 2.2 and 2.3). atlas.path resolves against
+  //    configRoot same as local_cache.
   const atlasPath = pathResolve(configRoot, config.atlas.path);
   const symbolCount = (): number =>
     (db.prepare("SELECT COUNT(*) AS n FROM symbols").get() as { n: number }).n;
@@ -326,18 +328,48 @@ export async function main(): Promise<void> {
       log.info(`Atlas imported: ${symbolCount()} symbols`);
       break;
     case "reimported":
+      if (load.abandonedRun !== undefined) {
+        log.info(
+          "a `contextatlas index` run over the local cache stopped before it " +
+            `finished (process ${load.abandonedRun.pid} is gone), and ` +
+            "atlas.json has changed since it started; that run's unsaved " +
+            "work is dropped (`index` would not carry it over a changed " +
+            "atlas.json either)",
+          { path: atlasPath },
+        );
+      }
       log.info(
         "atlas.json changed since the local cache last imported or wrote it; " +
           `re-imported it (atlas.committed: true): ${symbolCount()} symbols`,
         { path: atlasPath },
       );
       break;
-    case "kept-unfinished-run":
+    case "kept-unfinished-run": {
+      const who =
+        load.owner === null
+          ? "a `contextatlas index` run over this cache has not finished"
+          : `a \`contextatlas index\` run over this cache (process ${load.owner.pid} ` +
+            `on ${load.owner.host}) has not finished`;
       log.warn(
-        "atlas.json differs from the local cache, but a `contextatlas index` " +
-          "run over this cache has not finished (or is running); serving the " +
-          "local cache as it stands. Run `contextatlas index` to finish it, " +
-          "then restart the server.",
+        `atlas.json differs from the local cache, but ${who}; serving the ` +
+          "local cache as it stands. When that run finishes, restart the " +
+          "server. If no `contextatlas index` run is in progress (the " +
+          "process id was reused, or the run was on another machine sharing " +
+          `this cache), delete the local cache (${cachePath}) and restart ` +
+          "the server: it is rebuilt from atlas.json with no API calls.",
+        { path: atlasPath },
+      );
+      break;
+    }
+    case "kept-uncommitted":
+      log.warn(
+        "atlas.committed is false, so the local cache is the source of truth " +
+          "and atlas.json, which differs from it, is not loaded. If " +
+          "`/index-atlas` wrote atlas.json, delete the local cache " +
+          `(${cachePath}) and restart the server to load it; this discards ` +
+          "anything only the cache holds (work of `contextatlas index` runs " +
+          "in this mode). If atlas.json is left over from atlas.committed: " +
+          `true, delete it. Using the local cache (${symbolCount()} symbols).`,
         { path: atlasPath },
       );
       break;

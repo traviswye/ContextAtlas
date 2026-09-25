@@ -465,6 +465,26 @@ describe("runListExtractionSourcesSubcommand — extraction.streams", () => {
     expect(manifest.summary.symbols_with_docstrings).toBe(1);
   });
 
+  it("passes lsp.initialize_timeout_ms to the adapters, as index and resolve-symbols do (review round 2.3)", async () => {
+    await writeStreamsConfig(fixture.root, null);
+    const cfg = path.join(fixture.root, ".contextatlas.yml");
+    await writeFile(cfg, (await readFile(cfg, "utf8")) + "lsp:\n  initialize_timeout_ms: 90000\n");
+    const fake = fakeAdapter(fixture.root);
+    const seen: unknown[] = [];
+    const result = await runListExtractionSourcesSubcommand({
+      configRoot: fixture.root,
+      configFile: null,
+      writeStdout: (c) => (stdout += c),
+      writeStderr: (c) => (stderr += c),
+      createAdapterOverride: (_lang, options) => {
+        seen.push(options);
+        return fake.adapter;
+      },
+    });
+    expect(result.exitCode).toBe(0);
+    expect(seen).toEqual([{ initializeTimeoutMs: 90000 }]);
+  });
+
   it("emits empty docstring and commit arrays when only adr is enabled, without starting the LSP walk", async () => {
     await writeStreamsConfig(fixture.root, ["adr"]);
     gitCommitAll(fixture.root, "design: introduce Foo");

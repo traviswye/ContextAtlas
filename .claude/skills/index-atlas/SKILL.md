@@ -523,8 +523,11 @@ ADR name. Only a missing file whose path names an ADR under
 `adrs.path` is still checked (refresh rule 4 drops those); a missing
 path that, read relative to the config root, lies outside `source_root`
 and matches a `docs.include` glob is a docs page, even when its file
-name looks like an ADR's (`docs/rfcs/0001-x.md`). Never drop kept keys
-or claims to make this gate pass.
+name looks like an ADR's (`docs/rfcs/0001-x.md`) — in the ADR-08
+layout only (ADR directory outside `source_root`; refresh rule 4).
+When the ADR directory is inside `source_root`, a missing path that
+names an ADR there is checked even if a `docs.include` glob also
+matches it. Never drop kept keys or claims to make this gate pass.
 
 If exit code is NON-ZERO, read stderr (per-invariant remediation
 guidance). Re-execute Phase B against the failing sources;
@@ -573,6 +576,27 @@ If `atlas.has_symbols` is FAIL, the workflow did NOT complete
 successfully — go back and identify which step (resolve-symbols
 likely) was skipped or failed; do not report success to the user
 until doctor confirms the atlas substrate is canonical.
+
+### Phase C step 5 — Tell the user how the MCP server picks up the refresh
+
+The running `contextatlas` MCP server loaded the atlas when this
+Claude Code session started and does not reload it: until it
+restarts, `get_symbol_context`, `find_by_intent` and
+`impact_of_change` keep returning what it loaded (or `ERR not_found`
+on a first build). When you report success, tell the user:
+
+- With `atlas.committed: true` (the default; check `.contextatlas.yml`):
+  restart Claude Code, or reconnect the `contextatlas` server with
+  `/mcp`. At startup the server imports an `atlas.json` that differs
+  from what its local cache holds.
+- With `atlas.committed: false`: the local cache is the source of
+  truth, and once it has content the server does not load
+  `atlas.json` at all. To serve this refresh, the user deletes the
+  local cache file (`atlas.local_cache` in `.contextatlas.yml`,
+  default `.contextatlas/index.db`) and then restarts or reconnects;
+  the cache is rebuilt from `atlas.json` with no API calls. Say that
+  this discards anything only that cache holds (work of `contextatlas
+  index` runs in that mode). Do not delete it yourself.
 
 ### Substantive bash invocation rationale
 
@@ -764,6 +788,9 @@ This skill uses Claude Code session tools to perform extraction:
     — LSP bridge; atlas is INCOMPLETE without this step
   - **Phase C step 4 (MANDATORY)**: `contextatlas doctor` — final
     verification; atlas.has_symbols PASS required
+  - Phase C step 5 runs no command: it tells the user to restart or
+    reconnect the MCP server (and, with `atlas.committed: false`, to
+    delete the local cache first) so the refresh is served
 
 The `Bash(contextatlas:*)` allowlist covers all five invocations.
 Bundled helper scripts deferred to v0.8+ per v0.7 ship scope.

@@ -82,7 +82,7 @@ If user is asking how to use ContextAtlas tools in this session:
 |---|---|---|
 | Tool call succeeds + returns symbol bundle | ✓ MCP connected; atlas substrate aligned | Session ready; surface tools-introduction prompt + report success |
 | Tool not found / "unknown tool" error | ✗ MCP server not connected | Instruct user to verify `.mcp.json` contains `contextatlas` server entry + restart Claude Code (MCP config loads at session start) |
-| Tool returns ERR not_found for sentinel symbol | ⚠ MCP connected but atlas substrate stale | Suggest `/index-atlas` refresh; substrate may not reflect current code/ADR state |
+| Tool returns ERR not_found for sentinel symbol | ⚠ MCP connected but atlas substrate stale | The server loads `atlas.json` only when it starts. If `atlas.json` was written after this session started (an `/index-atlas` run in this session), a refresh cannot help: suggest restarting Claude Code or reconnecting `contextatlas` with `/mcp`; with `atlas.committed: false` the server keeps its local cache once it has content, so the user deletes the local cache file (`atlas.local_cache`, default `.contextatlas/index.db`) first, which discards anything only that cache holds. Otherwise suggest `/index-atlas` refresh; substrate may not reflect current code/ADR state |
 | Atlas.json missing | ✗ Substrate not built | Instruct user: run `contextatlas init` + `/index-atlas` (or `contextatlas index` CLI) first |
 | Atlas.json present but `symbols` array empty | ⚠ Atlas built but no symbols indexed | Suggest `/index-atlas` re-run; substrate empty (possibly extraction did not complete) |
 | Atlas.json malformed JSON | ✗ Substrate corrupt | Suggest fresh `/index-atlas` (or `contextatlas index --full`) to rebuild substrate |

@@ -380,24 +380,41 @@ export async function runInitSubcommand(
     // code 1 (pass-through with init pipeline-failure semantics).
     if (indexResult.exitCode !== 0) {
       const pipeline = indexResult.pipelineResult;
+      const failed = pipeline?.failedStreams.map((f) => f.stream) ?? [];
+      if (pipeline !== undefined && failed.length === 0) {
+        // The pipeline finished and no stream failed, so the exit 1 is
+        // the auto-invoked validate-extraction (review round 2.3). A
+        // plain retry re-extracts nothing unless a file changed, and an
+        // init re-run skips extraction once atlas.json matches HEAD:
+        // point at the validator's remediation instead.
+        log.error(
+          `init: \`contextatlas index\` finished extraction but exited ` +
+            `${indexResult.exitCode}: the extraction-quality check ` +
+            "(`contextatlas validate-extraction`) failed; see its remediation " +
+            "above. Re-running `contextatlas index` without changes re-extracts " +
+            "nothing, and re-running `contextatlas init` alone would skip " +
+            "extraction now that atlas.json matches HEAD. Edit the failing " +
+            "ADRs and run `contextatlas index` (or run `contextatlas index " +
+            "--full`) until it exits 0 (`contextatlas validate-extraction` " +
+            "checks without extracting), then run `contextatlas init` again " +
+            "to finish setup (smoke test and MCP registration).",
+        );
+        return { exitCode: 1 };
+      }
       if (pipeline?.atlasExported) {
-        // index saved atlas.json at HEAD and then exited 1 (a stream
-        // whose every call failed, L-10 ii, or a failed
-        // validate-extraction). A plain init re-run would now find the
-        // atlas current and skip extraction, so the failed work would
-        // never be retried: point at `contextatlas index` first.
-        const failed = pipeline.failedStreams.map((f) => f.stream);
+        // index saved atlas.json at HEAD and then exited 1 because a
+        // stream's every call failed (L-10 ii). A plain init re-run
+        // would now find the atlas current and skip extraction, so the
+        // failed work would never be retried: point at `contextatlas
+        // index` first, which retries the failed units.
         log.error(
           `init: \`contextatlas index\` saved atlas.json but exited ` +
-            `${indexResult.exitCode}` +
-            (failed.length > 0
-              ? ` (every ${failed.join(" and ")} extraction call failed)`
-              : "") +
-            "; see the messages above. Re-running `contextatlas init` " +
-            "alone would skip extraction now that atlas.json matches HEAD. " +
-            "Fix the cause, run `contextatlas index` to retry, then run " +
-            "`contextatlas init` again to finish setup (smoke test and MCP " +
-            "registration).",
+            `${indexResult.exitCode} (every ${failed.join(" and ")} ` +
+            "extraction call failed); see the messages above. Re-running " +
+            "`contextatlas init` alone would skip extraction now that " +
+            "atlas.json matches HEAD. Fix the cause, run `contextatlas index` " +
+            "to retry, then run `contextatlas init` again to finish setup " +
+            "(smoke test and MCP registration).",
         );
         return { exitCode: 1 };
       }

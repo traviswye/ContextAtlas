@@ -14,6 +14,11 @@
  * pipeline's all-failed check (`failedCalls`), which would otherwise
  * stop the docstring and commit streams on every run while one
  * unparseable file was the only prose work (review round 2).
+ *
+ * A file that is not stored (thrown call, null result) is recorded for
+ * a retry (`retry-keys.ts`, review round 2.3): under `--full` its key
+ * already names its current content, so the SHA diff alone would never
+ * retry it. A stored file is removed from that list.
  */
 
 import { readFileSync } from "node:fs";
@@ -37,6 +42,7 @@ import {
 } from "./anthropic-client.js";
 import type { ProseFile } from "./file-walker.js";
 import { parseFrontmatterSymbols } from "./frontmatter.js";
+import { clearRetry, markForRetry } from "./retry-keys.js";
 import type {
   FileUnresolvedDetail,
   UnresolvedClaimDetail,
@@ -121,6 +127,7 @@ export async function runProseStage(
           // Malformed JSON (ParseError) was still billed: count its usage.
           cost.addUsage(usageOfFailedCall(err));
           out.errors.push({ sourcePath: file.relPath, error: String(err) });
+          markForRetry(db, file.relPath);
           if (!(err instanceof ParseError)) {
             out.failedCalls++;
             out.firstFailedCallError ??= String(err);
@@ -135,7 +142,10 @@ export async function runProseStage(
       // Accumulate usage regardless of whether result is null — a
       // max_tokens or malformed-JSON response still consumed tokens.
       cost.addUsage(extracted.usage);
-      if (!extracted.result) continue;
+      if (!extracted.result) {
+        markForRetry(db, file.relPath);
+        continue;
+      }
       const outcome = writeClaimsForFile(
         db,
         file,
@@ -151,6 +161,7 @@ export async function runProseStage(
       // Cache-only: lets a zero-claim key be told apart from a docstring
       // key at the same path (`source-key-streams.ts`).
       recordSourceKeyStream(db, file.relPath, "prose", file.sha);
+      clearRetry(db, file.relPath);
     }
 
     // Budget warning at most once per run, checked after each batch.

@@ -361,8 +361,11 @@ Full design in [DESIGN.md](DESIGN.md).
 What ContextAtlas does and doesn't send off your machine:
 
 **Sent to Anthropic's API (at index time only):**
-- Text contents of ADRs, READMEs, and other markdown docs configured
-  via `.contextatlas.yml` (`adrs.path` and `docs.include`)
+- The full text of every file `adrs.path` and `docs.include` in
+  `.contextatlas.yml` match: by default ADRs, READMEs and other
+  markdown docs. A `docs.include` glob that matches source files (for
+  example `docs/**` over `docs/examples/*.ts`) sends those files whole,
+  code included; narrow the globs to documentation files to avoid it
 - The docstring text of exported symbols in your source files (the
   comment text only, not the code), one symbol per request
 - Messages of commits that pass the commit filter (subject and body;
@@ -372,8 +375,9 @@ What ContextAtlas does and doesn't send off your machine:
   sent once.
 - `contextatlas index` sends all three by default (v1.2+). Set
   `extraction.streams: [adr]` in `.contextatlas.yml` to send ADRs and
-  docs only. The `/index-atlas` Skill processes the same sources
-  inside your Claude Code session.
+  docs only. The `/index-atlas` Skill processes ADRs, docstrings and
+  commit messages the same way inside your Claude Code session; it
+  does not extract `docs.include` pages.
 - `contextatlas generate-adrs` (CLI) sends a structural inventory
   instead: source file paths and the symbol names the language server
   lists for each file (top-level declarations plus class, interface
@@ -382,7 +386,8 @@ What ContextAtlas does and doesn't send off your machine:
   documents.
 
 **Never sent anywhere:**
-- Your source code, apart from the docstring text above
+- Your source code, apart from the docstring text above and any
+  source file a `docs.include` glob matches (sent whole, as above)
 - Your git history, apart from the filtered commit messages above
 - LSP reference and type data
 - Query contents at runtime

@@ -67,7 +67,7 @@ import { writeFileSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { resolve as pathResolve } from "node:path";
 
-import { createAdapter } from "../adapters/registry.js";
+import { createAdapter, type CreateAdapterOptions } from "../adapters/registry.js";
 import { computeExcludePatterns } from "../config/exclude-patterns.js";
 import { loadConfig } from "../config/parser.js";
 import {
@@ -111,9 +111,13 @@ export interface ListExtractionSourcesCliOptions {
   writeStderr?: (chunk: string) => void;
   /**
    * Test seam: build the language adapter for `lang` (default
-   * `createAdapter` from the adapter registry).
+   * `createAdapter` from the adapter registry). Receives the options
+   * built from `.contextatlas.yml` (`lsp.initialize_timeout_ms`).
    */
-  createAdapterOverride?: (lang: LanguageCode) => LanguageAdapter;
+  createAdapterOverride?: (
+    lang: LanguageCode,
+    options?: CreateAdapterOptions,
+  ) => LanguageAdapter;
 }
 
 export interface ListExtractionSourcesCliResult {
@@ -253,6 +257,14 @@ export async function runListExtractionSourcesSubcommand(
   const streams = resolveExtractionStreams(config);
   const disabled = disabledExtractionStreams(streams);
   const makeAdapter = options.createAdapterOverride ?? createAdapter;
+  // Same LSP timeout as `index` and resolve-symbols (review round 2.3):
+  // without it a slow language server timed out here at the default and
+  // the Skill's Phase A gate failed, or dropped files, where the CLI
+  // succeeded.
+  const adapterOptions =
+    config.lsp?.initializeTimeoutMs !== undefined
+      ? { initializeTimeoutMs: config.lsp.initializeTimeoutMs }
+      : undefined;
 
   const adapters = new Map<LanguageCode, LanguageAdapter>();
   try {
@@ -260,7 +272,7 @@ export async function runListExtractionSourcesSubcommand(
     // language server starts.
     if (streams.has("docstring")) {
       for (const lang of config.languages) {
-        const adapter = makeAdapter(lang);
+        const adapter = makeAdapter(lang, adapterOptions);
         try {
           await adapter.initialize(sourceRoot);
         } catch (err) {

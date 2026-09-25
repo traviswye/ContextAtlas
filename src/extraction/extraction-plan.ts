@@ -12,9 +12,11 @@
  *   - prose (`adr`): Stage 2's changed + added files (planned in
  *     `pipeline.ts`, unchanged since v0.1).
  *   - docstring: walked source files whose SHA differs from the
- *     baseline key (or every listed file under `--full`, L-7). A file
- *     whose `listSymbols` failed this run is skipped: its stored
- *     symbols and claims are unverified, and its key is kept.
+ *     baseline key (or every listed file under `--full`, L-7), plus
+ *     files on the retry list (`retry-keys.ts`: a failure the SHA gate
+ *     would not retry, review round 2.3). A file whose `listSymbols`
+ *     failed this run is skipped: its stored symbols and claims are
+ *     unverified, and its key is kept.
  *   - commit: filter-passing commits from `git log --no-merges` minus
  *     those already keyed in either form, only when the git signal
  *     found a HEAD (L-10 iv). `--full` does not re-extract commits.
@@ -110,6 +112,8 @@ export interface PlanDocstringInput {
   baseline: Readonly<Record<string, string>>;
   /** `--full`: plan every listed file whatever its key says. */
   full: boolean;
+  /** Files to plan whatever their key says (the retry list). */
+  retry?: ReadonlySet<string>;
   /**
    * relPaths the prose walk produced. A source file that is also a
    * prose file (a `docs.include` glob matching code) is not a docstring
@@ -141,7 +145,11 @@ export async function planDocstringWork(
       proseCollisions++;
       continue;
     }
-    if (!input.full && input.baseline[file.relPath] === file.sha) {
+    if (
+      !input.full &&
+      input.baseline[file.relPath] === file.sha &&
+      input.retry?.has(file.relPath) !== true
+    ) {
       filesUnchanged++;
       continue;
     }

@@ -279,5 +279,18 @@ describe("/index-atlas SKILL.md — review fixes (v1.2 Phase 2)", () => {
     // Round 2: a deleted docs page stays exempt; only a missing ADR is checked.
     expect(gate).toMatch(/even after the page was\s+deleted/);
     expect(gate).toMatch(/missing file whose path names an ADR/);
+    // Round 2.3: the config-root docs reading is for the ADR-08 layout only.
+    expect(gate).toMatch(/in the ADR-08\s+layout only/);
+  });
+
+  it("Phase C step 5 tells the user to restart or reconnect the MCP server, and the committed: false way (review round 2.3)", () => {
+    const step5 = section(
+      "### Phase C step 5 — Tell the user how the MCP server picks up the refresh",
+    );
+    expect(step5).toMatch(/does not reload it/);
+    expect(step5).toMatch(/restart Claude Code, or reconnect the `contextatlas` server with\s+`\/mcp`/);
+    expect(step5).toMatch(/atlas\.committed: false/);
+    expect(step5).toMatch(/deletes the\s+local cache file/);
+    expect(step5).toMatch(/Do not delete it yourself/);
   });
 });

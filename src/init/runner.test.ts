@@ -489,6 +489,39 @@ describe("runInitSubcommand — Step 4.4 atlas + smoke + MCP behavior", () => {
     expect(message).toMatch(/then run `contextatlas init` again/);
   });
 
+  it("index exit 1 from a failed validate-extraction: init points at the validator's remediation, not a plain retry (review round 2.3)", async () => {
+    await setupAutomatedRouteFixture(tmpRoot);
+    const errors: string[] = [];
+    const spy = vi.spyOn(log, "error").mockImplementation((msg: string) => {
+      errors.push(msg);
+    });
+    try {
+      const result = await runInitSubcommand({
+        configRoot: tmpRoot,
+        ccOnly: false,
+        detectLanguagesOverride: () => ["typescript"],
+        collectChecksOverride: async () => makeDoctorResult(PASSING_AUTOMATED_CHECKS),
+        runIndexSubcommandOverride: async () => ({
+          exitCode: 1,
+          pipelineResult: {
+            atlasExported: true,
+            failedStreams: [],
+          } as unknown as ExtractionPipelineResult,
+        }),
+        resolveBinaryPathOverride: "/synthetic/dist/index.js",
+      });
+      expect(result.exitCode).toBe(1);
+    } finally {
+      spy.mockRestore();
+    }
+    const message = errors.join("\n");
+    expect(message).toMatch(/validate-extraction/);
+    expect(message).toMatch(/Edit the failing ADRs/);
+    expect(message).toMatch(/--full/);
+    expect(message).not.toMatch(/to retry/);
+    expect(message).toMatch(/then run `contextatlas init` again/);
+  });
+
   it("atlas extraction setup-error (exit code 2) → init exit code 1 (Q4.4.4 pass-through)", async () => {
     await setupAutomatedRouteFixture(tmpRoot);
     const result = await runInitSubcommand({
