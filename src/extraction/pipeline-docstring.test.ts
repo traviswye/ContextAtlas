@@ -27,8 +27,11 @@ import {
 } from "../adapters/pyright.js";
 import { parseDocstringFromTsserverHover } from "../adapters/typescript.js";
 import {
+  getSourceSha,
+  insertClaim,
   listAllClaims,
   listClaimSymbolCandidates,
+  setSourceSha,
 } from "../storage/claims.js";
 import { type DatabaseInstance, openDatabase } from "../storage/db.js";
 import { upsertSymbols } from "../storage/symbols.js";
@@ -1757,5 +1760,271 @@ describe("extractDocstringsForFile (TypeScript behavioral)", () => {
     expect(claims[0]!.symbolIds).toContain(sym.id);     // Channel A present
     expect(claims[0]!.symbolIds).toHaveLength(1);       // Channel B empty
     expect(claims[0]!.symbolIds).not.toContain(otherInInventory.id);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Section 6: extractDocstringsForFile retry-safe writes (v1.2 Phase 2, L-10 i)
+// ---------------------------------------------------------------------------
+//
+// The legacy entry point (benchmarks repo + scripts) keeps its positional
+// signature and result field names, but no longer deletes a file's
+// claims before extracting or pins its SHA after a failure: the file's
+// claims are replaced and its SHA pinned only when every step for the
+// file succeeded. Otherwise the previous claims and key stay, and the
+// next run retries the whole file.
+
+describe("extractDocstringsForFile retry-safe writes (v1.2 Phase 2)", () => {
+  const REL = "src/lib.go";
+  let db: DatabaseInstance;
+  const symA = makeSymbol("FuncA", REL, "sha-new");
+  const symB = makeSymbol("FuncB", REL, "sha-new");
+
+  function seedOld(): void {
+    insertClaim(db, {
+      source: `docstring:${REL}`,
+      sourcePath: REL,
+      sourceSha: "sha-old",
+      severity: "context",
+      claim: "old claim",
+      symbolIds: [symA.id],
+    });
+    setSourceSha(db, REL, "sha-old");
+  }
+
+  function expectUnchanged(): void {
+    expect(
+      listAllClaims(db)
+        .filter((c) => c.sourcePath === REL)
+        .map((c) => c.claim),
+    ).toEqual(["old claim"]);
+    expect(getSourceSha(db, REL)).toBe("sha-old");
+  }
+
+  /** Body-keyed client whose entries may throw. */
+  function throwingClient(
+    responses: Map<string, ExtractionResult | null | Error>,
+  ): ExtractionClient {
+    return {
+      async extract(body: string) {
+        const r = responses.get(body) ?? null;
+        if (r instanceof Error) throw r;
+        return { result: r, usage: { inputTokens: 100, outputTokens: 50 } };
+      },
+    };
+  }
+
+  const ok = (text: string): ExtractionResult => ({
+    claims: [
+      {
+        symbol_candidates: [],
+        claim: text,
+        severity: "context",
+        rationale: "r",
+        excerpt: "e",
+      },
+    ],
+  });
+
+  beforeEach(() => {
+    db = openDatabase(":memory:");
+    upsertSymbols(db, [symA, symB]);
+  });
+
+  afterEach(() => {
+    db.close();
+  });
+
+  it("success replaces the previous claims and pins the new SHA", async () => {
+    seedOld();
+    const adapter = makeStubAdapter({
+      language: "go",
+      extensions: [".go"],
+      symbolsByPath: new Map([[REL, [symA]]]),
+      docstringsBySymbolId: new Map([[symA.id, "A doc."]]),
+    });
+
+    const result = await extractDocstringsForFile(
+      db,
+      adapter,
+      REL,
+      "sha-new",
+      makeInventory([symA, symB]),
+      throwingClient(new Map([["A doc.", ok("A claim")]])),
+    );
+
+    expect(result.claimsWritten).toBe(1);
+    expect(result.errors).toEqual([]);
+    expect(
+      listAllClaims(db)
+        .filter((c) => c.sourcePath === REL)
+        .map((c) => c.claim),
+    ).toEqual(["A claim"]);
+    expect(getSourceSha(db, REL)).toBe("sha-new");
+  });
+
+  it("a failed call keeps the file's old claims and SHA", async () => {
+    seedOld();
+    const adapter = makeStubAdapter({
+      language: "go",
+      extensions: [".go"],
+      symbolsByPath: new Map([[REL, [symA, symB]]]),
+      docstringsBySymbolId: new Map([
+        [symA.id, "A doc."],
+        [symB.id, "B doc."],
+      ]),
+    });
+
+    const result = await extractDocstringsForFile(
+      db,
+      adapter,
+      REL,
+      "sha-new",
+      makeInventory([symA, symB]),
+      throwingClient(
+        new Map<string, ExtractionResult | null | Error>([
+          ["A doc.", ok("A claim")],
+          ["B doc.", new Error("rate limited")],
+        ]),
+      ),
+    );
+
+    expect(result.claimsWritten).toBe(0);
+    expect(result.apiCalls).toBe(2);
+    expect(result.symbolsWithDocstring).toBe(2);
+    expect(result.errors).toHaveLength(1);
+    expect(result.errors[0]!.symbolId).toBe(symB.id);
+    expect(result.errors[0]!.error).toMatch(/rate limited/);
+    expectUnchanged();
+  });
+
+  it("a null result keeps the old claims and SHA and is reported as an error", async () => {
+    seedOld();
+    const adapter = makeStubAdapter({
+      language: "go",
+      extensions: [".go"],
+      symbolsByPath: new Map([[REL, [symA]]]),
+      docstringsBySymbolId: new Map([[symA.id, "A doc."]]),
+    });
+
+    const result = await extractDocstringsForFile(
+      db,
+      adapter,
+      REL,
+      "sha-new",
+      makeInventory([symA]),
+      throwingClient(new Map([["A doc.", null]])),
+    );
+
+    expect(result.claimsWritten).toBe(0);
+    expect(result.apiCalls).toBe(1);
+    expect(result.totalUsage).toEqual({ inputTokens: 100, outputTokens: 50 });
+    expect(result.errors).toHaveLength(1);
+    expect(result.errors[0]!.error).toMatch(/no parseable result/);
+    expectUnchanged();
+  });
+
+  it("a getDocstring failure keeps the old claims and SHA without calling the model", async () => {
+    seedOld();
+    const adapter: LanguageAdapter = {
+      ...makeStubAdapter({
+        language: "go",
+        extensions: [".go"],
+        symbolsByPath: new Map([[REL, [symA, symB]]]),
+        docstringsBySymbolId: new Map(),
+      }),
+      async getDocstring(id: SymbolId) {
+        if (id === symB.id) throw new Error("hover timed out");
+        return "A doc.";
+      },
+    };
+
+    const result = await extractDocstringsForFile(
+      db,
+      adapter,
+      REL,
+      "sha-new",
+      makeInventory([symA, symB]),
+      throwingClient(new Map([["A doc.", ok("A claim")]])),
+    );
+
+    expect(result.apiCalls).toBe(0);
+    expect(result.errors).toHaveLength(1);
+    expect(result.errors[0]!.symbolId).toBe(symB.id);
+    expectUnchanged();
+  });
+
+  it("a listSymbols failure rejects without touching the file's claims or SHA", async () => {
+    seedOld();
+    const adapter: LanguageAdapter = {
+      ...makeStubAdapter({
+        language: "go",
+        extensions: [".go"],
+        symbolsByPath: new Map(),
+        docstringsBySymbolId: new Map(),
+      }),
+      async listSymbols() {
+        throw new Error("gopls crashed");
+      },
+    };
+
+    await expect(
+      extractDocstringsForFile(
+        db,
+        adapter,
+        REL,
+        "sha-new",
+        makeInventory([symA]),
+        throwingClient(new Map()),
+      ),
+    ).rejects.toThrow(/listSymbols failed for src\/lib\.go.*gopls crashed/s);
+    expectUnchanged();
+  });
+
+  it("a file with no docstrings is keyed at its SHA", async () => {
+    const adapter = makeStubAdapter({
+      language: "go",
+      extensions: [".go"],
+      symbolsByPath: new Map([[REL, [symA]]]),
+      docstringsBySymbolId: new Map([[symA.id, null]]),
+    });
+
+    const result = await extractDocstringsForFile(
+      db,
+      adapter,
+      REL,
+      "sha-new",
+      makeInventory([symA]),
+      throwingClient(new Map()),
+    );
+
+    expect(result.apiCalls).toBe(0);
+    expect(result.errors).toEqual([]);
+    expect(getSourceSha(db, REL)).toBe("sha-new");
+  });
+
+  it("FK: a documented symbol missing from the symbols table is an error, not a throw", async () => {
+    seedOld();
+    const orphan = makeSymbol("NotUpserted", REL, "sha-new");
+    const adapter = makeStubAdapter({
+      language: "go",
+      extensions: [".go"],
+      symbolsByPath: new Map([[REL, [orphan]]]),
+      docstringsBySymbolId: new Map([[orphan.id, "Orphan doc."]]),
+    });
+
+    const result = await extractDocstringsForFile(
+      db,
+      adapter,
+      REL,
+      "sha-new",
+      makeInventory([orphan]),
+      throwingClient(new Map([["Orphan doc.", ok("orphan claim")]])),
+    );
+
+    expect(result.apiCalls).toBe(0);
+    expect(result.errors).toHaveLength(1);
+    expect(result.errors[0]!.symbolId).toBe(orphan.id);
+    expectUnchanged();
   });
 });

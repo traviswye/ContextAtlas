@@ -55,8 +55,8 @@ import {
   parseCommitLog,
   type CommitMetadata,
 } from "./commit-log.js";
+import { isExportedSymbol } from "./docstring-read.js";
 import { walkProseFiles, walkSourceFiles } from "./file-walker.js";
-import { isExportedSymbol } from "./pipeline.js";
 import { buildSymbolInventory } from "./resolver.js";
 import { commitSourceKey } from "./source-keys.js";
 
@@ -247,8 +247,8 @@ export async function runListExtractionSourcesSubcommand(
 
     // Stream B — source files + symbol inventory + per-symbol
     // exported-with-docstring filter. Mirrors the pre-API-call filter
-    // chain of extractDocstringsForFile (pipeline.ts): isExportedSymbol,
-    // then a non-empty getDocstring.
+    // chain of the CLI docstring stream (readFileDocstrings,
+    // docstring-read.ts): isExportedSymbol, then a non-empty getDocstring.
     const excludePatterns = computeExcludePatterns(config);
     const allExtensions = new Set<string>();
     for (const adapter of adapters.values()) {
