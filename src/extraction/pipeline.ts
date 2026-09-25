@@ -392,12 +392,20 @@ export async function runExtractionPipeline(
   // JSON response is not a failed call here (review round 2): the file
   // is reported in extraction_errors and retried, but when it was the
   // only prose work it used to stop the docstring and commit streams on
-  // every run.
-  if (plan.prose.length > 0 && prose.failedCalls === plan.prose.length) {
+  // every run. A file that could not be read made no call, so it is not
+  // attempted. Under --full the error says to re-run --full: the files
+  // it re-extracted keep keys that already match their content, and the
+  // docstring stream never ran, so a plain run would find nothing to do.
+  if (prose.attemptedCalls > 0 && prose.failedCalls === prose.attemptedCalls) {
     throw new Error(
-      `Extraction failed for all ${plan.prose.length} document(s). ` +
+      `Extraction failed for all ${prose.attemptedCalls} document(s). ` +
         "This usually indicates an auth/config problem, not per-document noise. " +
-        `First error: ${prose.firstFailedCallError ?? prose.errors[0]?.error}`,
+        `First error: ${prose.firstFailedCallError ?? prose.errors[0]?.error}` +
+        (full
+          ? " This was an `index --full` run: files whose key already matches " +
+            "their content keep that key, so a plain `contextatlas index` does " +
+            "not retry them; after fixing the cause, re-run `contextatlas index --full`."
+          : ""),
     );
   }
   warnUnresolvedFrontmatter(prose);
@@ -509,6 +517,9 @@ export async function runExtractionPipeline(
       contextatlasCommitSha: deps.contextatlasCommitSha,
       headSha: gitResult.headSha,
     });
+    // Logged here, not in finalizeAtlas, so a checkpoint logs only its
+    // own line (ADR-12 Decision 10).
+    if (atlasExported) log.info("pipeline: atlas.json written", { path: atlasAbsPath });
   } else {
     log.info("pipeline: no changes detected; atlas.json untouched");
   }

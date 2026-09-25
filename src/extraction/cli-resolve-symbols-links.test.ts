@@ -134,6 +134,9 @@ describe("resolve-symbols on a `symbols: []` refresh atlas (lead decision F2)", 
     const r = await resolve();
     expect(r.exitCode).toBe(0);
     expect(r.unverifiedSymbolFiles).toBe(2);
+    expect(r.filesNotListed).toBe(1);
+    expect(out).toMatch(/2 files unverified \(prior symbols kept\)/);
+    expect(out).toMatch(/1 file could not be listed \(src\/big\.ts\)/);
     const final = JSON.parse(readFileSync(atlasPath(), "utf8")) as AtlasFileV1;
     expect(final.claims.map((c) => c.symbol_ids)).toEqual([[ALPHA.id], [ROUTER.id], [HELPER.id]]);
   });
@@ -145,6 +148,12 @@ describe("resolve-symbols on a `symbols: []` refresh atlas (lead decision F2)", 
     expect(r.danglingLinksDropped).toBe(2);
     expect(r.claimsOrphaned).toBe(2);
     expect(out).toMatch(/dropped 2 dangling symbol links; 2 claims orphaned/);
+    // The listing failure behind the loss is in the summary the Skill
+    // reads; with no prior symbols, "unverified (prior symbols kept)" would
+    // read as full coverage, so it is not printed.
+    expect(r.filesNotListed).toBe(1);
+    expect(out).toMatch(/1 file could not be listed \(src\/big\.ts\)/);
+    expect(out).not.toMatch(/unverified/);
     const final = JSON.parse(readFileSync(atlasPath(), "utf8")) as AtlasFileV1;
     expect(final.claims.map((c) => c.symbol_ids)).toEqual([[ALPHA.id], [], []]);
     expect(final.symbols.map((s) => s.id)).toEqual([ALPHA.id]);

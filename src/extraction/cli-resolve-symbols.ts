@@ -80,7 +80,16 @@ export interface ResolveSymbolsCliResult {
   danglingLinksDropped?: number;
   /** Files whose prior symbols were kept without verification. */
   unverifiedSymbolFiles?: number;
+  /**
+   * Walked source files whose `listSymbols` failed in this run. A link
+   * into such a file survives only when the atlas's `symbols` listed its
+   * symbol, so on a `symbols: []` refresh their links are dropped.
+   */
+  filesNotListed?: number;
 }
+
+/** How many not-listed paths the summary line names. */
+const NOT_LISTED_SAMPLE = 5;
 
 /**
  * Rebuild `symbols[]` for an atlas (v1.2 Phase 1 D6 parity with the
@@ -236,8 +245,9 @@ export async function runResolveSymbolsSubcommand(
         file_sha: s.fileSha ?? "",
       }),
     );
+    const priorSymbols = Array.isArray(atlas.symbols) ? atlas.symbols : [];
     const reconciled = reconcileAtlasSymbols(
-      Array.isArray(atlas.symbols) ? atlas.symbols : [],
+      priorSymbols,
       freshSymbols,
       coverageFromInventory({
         repoRoot: sourceRoot,
@@ -312,20 +322,39 @@ export async function runResolveSymbolsSubcommand(
 
     const symbolsPruned = reconciled.plan.pruneIds.length;
     const unverifiedSymbolFiles = reconciled.plan.unverified.length;
+    const notListed = [...inventory.failedPaths].sort();
     if (
       symbolsPruned > 0 ||
       danglingLinksDropped > 0 ||
       claimsOrphaned > 0 ||
-      unverifiedSymbolFiles > 0
+      unverifiedSymbolFiles > 0 ||
+      notListed.length > 0
     ) {
       // v1.2 Phase 1 (D6). Printed only when something changed, so the
-      // common cold-start output is unchanged.
-      writeStdout(
-        `resolve-symbols: pruned ${symbolsPruned} stale symbol${symbolsPruned === 1 ? "" : "s"}; ` +
-          `dropped ${danglingLinksDropped} dangling symbol link${danglingLinksDropped === 1 ? "" : "s"}; ` +
-          `${claimsOrphaned} claim${claimsOrphaned === 1 ? "" : "s"} orphaned (kept; re-extract their sources to re-attach); ` +
-          `${unverifiedSymbolFiles} file${unverifiedSymbolFiles === 1 ? "" : "s"} unverified (prior symbols kept).\n`,
-      );
+      // common cold-start output is unchanged. The unverified count is
+      // about prior symbols, so it is left out when the atlas had none
+      // (an `/index-atlas` refresh writes `symbols: []`), where "0 files
+      // unverified" would read as full coverage. Files whose listing
+      // failed are named: on such a refresh they are where links were
+      // lost (the `/index-atlas` Failure modes key on this).
+      const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
+      const parts = [
+        `pruned ${plural(symbolsPruned, "stale symbol")}`,
+        `dropped ${plural(danglingLinksDropped, "dangling symbol link")}`,
+        `${plural(claimsOrphaned, "claim")} orphaned (kept; re-extract their sources to re-attach)`,
+      ];
+      if (priorSymbols.length > 0) {
+        parts.push(`${plural(unverifiedSymbolFiles, "file")} unverified (prior symbols kept)`);
+      }
+      if (notListed.length > 0) {
+        const more = notListed.length - NOT_LISTED_SAMPLE;
+        parts.push(
+          `${plural(notListed.length, "file")} could not be listed ` +
+            `(${notListed.slice(0, NOT_LISTED_SAMPLE).join(", ")}${more > 0 ? `, and ${more} more` : ""}); ` +
+            "a link into such a file is kept only when `symbols` already listed its symbol",
+        );
+      }
+      writeStdout(`resolve-symbols: ${parts.join("; ")}.\n`);
     }
 
     result = {
@@ -337,6 +366,7 @@ export async function runResolveSymbolsSubcommand(
       claimsOrphaned,
       danglingLinksDropped,
       unverifiedSymbolFiles,
+      filesNotListed: notListed.length,
     };
   } catch (err) {
     writeStderr(

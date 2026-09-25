@@ -662,8 +662,9 @@ soon as it is stored. Differences from a completed run:
 **`--full` (v1.2 Phase 2).** A file `--full` re-extracted whose call
 fails keeps its claims and a key that already names its content, so a
 plain run does not retry it: only another `--full` does, and `index`
-warns with the list. The same holds for the unchanged files an
-interrupted `--full` did not reach.
+warns with the list (when every ADR/docs call fails, the run stops
+before that warning, and its error says to re-run `--full`). The same
+holds for the unchanged files an interrupted `--full` did not reach.
 
 **Per-stream baseline and structural refresh (v1.2).** `source_shas`
 holds keys for three claim streams:

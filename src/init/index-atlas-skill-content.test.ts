@@ -283,7 +283,14 @@ describe("/index-atlas SKILL.md — review fixes (v1.2 Phase 2)", () => {
 
   it("failure modes document the `symbols: []` loss: links into files resolve-symbols cannot list are dropped", () => {
     const failures = section("## Failure modes");
-    expect(failures).toMatch(/reports dropped links or orphaned\s+claims next to unverified files/);
+    // Keyed on what resolve-symbols prints on a `symbols: []` refresh: it
+    // has no prior symbols there, so no "unverified" count to wait for.
+    expect(failures).toMatch(/reports dropped links, orphaned\s+claims, or files it could not list/);
+    expect(failures).toMatch(/"could not be\s+listed"/);
+    expect(failures).not.toMatch(/next to unverified files/);
+    const step1 = section("### Phase C step 1 — MANDATORY validate-atlas gate");
+    expect(step1).toMatch(/if it dropped links, orphaned claims, or\s+could not list files, see "Failure modes"/);
+    expect(step1).not.toMatch(/next\s+to unverified files/);
     expect(failures).toMatch(/only\s+the claim's `symbol_candidates` can restore it/);
     expect(failures).toMatch(/`contextatlas index` docstring provenance links/);
     expect(failures).toMatch(/frontmatter-fallback links/);

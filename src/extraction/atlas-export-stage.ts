@@ -90,7 +90,8 @@ export function finalizeAtlas(
     extractionModel,
     extractedAtSha: input.headSha ?? null,
   });
-  log.info("pipeline: atlas.json written", { path: input.atlasAbsPath });
+  // The caller logs the write: Stage 7 "atlas.json written", a checkpoint
+  // its own line, so each export logs one info line.
   return true;
 }
 

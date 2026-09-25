@@ -1496,5 +1496,22 @@ describe("formatStreamFailures (the exit-1 message of a failed stream)", () => {
     expect(text).toMatch(/re-run `contextatlas index --full` to retry them/);
     expect(text).not.toMatch(/docstring files: they keep their previous claims, and the next run retries them/);
     expect(text).toMatch(/commits: they keep their previous claims, and the next run retries them/);
+    // The closing instruction names --full too, not the plain run that
+    // skips the docstring files whose key already matches.
+    const closing = text.trim().split("\n").at(-1)!;
+    expect(closing).toMatch(/Fix the cause, then re-run `contextatlas index --full`\.$/);
+    expect(closing).not.toMatch(/re-run `contextatlas index`\./);
+  });
+
+  it("after --full with only the commit stream failed: the closing line keeps the plain re-run (commits are retried by any run)", () => {
+    const text = formatStreamFailures([commit], true, true);
+    const closing = text.trim().split("\n").at(-1)!;
+    expect(closing).toMatch(/Fix the cause, then re-run `contextatlas index`\.$/);
+    expect(text).not.toMatch(/--full/);
+  });
+
+  it("a plain run: the closing line says to re-run `contextatlas index`", () => {
+    const closing = formatStreamFailures([docstring], false, false).trim().split("\n").at(-1)!;
+    expect(closing).toMatch(/Fix the cause, then re-run `contextatlas index`\.$/);
   });
 });

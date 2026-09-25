@@ -28,7 +28,13 @@
  * exports as an absent key; both mean "no candidates".
  */
 
-import { renameSync, rmSync, writeFileSync } from "node:fs";
+import {
+  lstatSync,
+  realpathSync,
+  renameSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 
 import {
   listAllClaims,
@@ -299,6 +305,22 @@ export function atlasTempPath(filePath: string): string {
   return `${filePath}.tmp`;
 }
 
+/**
+ * The file an atlas write replaces: `filePath`, or, when `filePath` is a
+ * symbolic link (a shared or monorepo-level atlas), the file it points
+ * to. A rename onto the link itself would replace the link with a
+ * regular file and leave its target stale; 1.1.3's direct write went
+ * through the link. A dangling link, or any error reading it, gives
+ * `filePath` unchanged.
+ */
+function atlasWriteTarget(filePath: string): string {
+  try {
+    return lstatSync(filePath).isSymbolicLink() ? realpathSync(filePath) : filePath;
+  } catch {
+    return filePath;
+  }
+}
+
 /** Error codes a rename onto a file another process holds open gives. */
 const RENAME_RETRY_CODES: ReadonlySet<string> = new Set(["EPERM", "EACCES", "EBUSY"]);
 const RENAME_ATTEMPTS = 4;
@@ -311,19 +333,24 @@ const RENAME_RETRY_DELAY_MS = 50;
  * atlas files (`contextatlas index` export and checkpoints,
  * `resolve-symbols`). The directory must exist.
  *
+ * A symlinked `filePath` is written through: the temporary file goes
+ * beside the link's target, which the rename replaces.
+ *
  * On Windows a rename onto a file another process has open (an editor,
  * antivirus, the search indexer) fails with EPERM, EACCES or EBUSY,
  * often only briefly: the rename is retried a few times 50 ms apart,
  * then the target is written directly (the behaviour before v1.2
- * Phase 2; not atomic) and the temporary file removed. Any other error
- * removes the temporary file and is rethrown.
+ * Phase 2; not atomic) and the temporary file removed, also when that
+ * write fails too (a read-only atlas.json), whose error is rethrown.
+ * Any other rename error removes the temporary file and is rethrown.
  */
 export function writeAtlasFileAtomic(filePath: string, text: string): void {
-  const tmp = atlasTempPath(filePath);
+  const target = atlasWriteTarget(filePath);
+  const tmp = atlasTempPath(target);
   writeFileSync(tmp, text, "utf8");
   for (let attempt = 1; ; attempt++) {
     try {
-      renameSync(tmp, filePath);
+      renameSync(tmp, target);
       return;
     } catch (err) {
       const code = (err as NodeJS.ErrnoException).code;
@@ -335,8 +362,11 @@ export function writeAtlasFileAtomic(filePath: string, text: string): void {
         sleepSync(RENAME_RETRY_DELAY_MS);
         continue;
       }
-      writeFileSync(filePath, text, "utf8");
-      removeQuietly(tmp);
+      try {
+        writeFileSync(target, text, "utf8");
+      } finally {
+        removeQuietly(tmp);
+      }
       return;
     }
   }
@@ -344,11 +374,12 @@ export function writeAtlasFileAtomic(filePath: string, text: string): void {
 
 /**
  * Remove a `<path>.tmp` left by a write that was killed between writing
- * it and the rename (`contextatlas index` Stage 0). Returns whether one
- * was removed. Never throws.
+ * it and the rename (`contextatlas index` Stage 0), beside the link's
+ * target when `filePath` is a symlink. Returns whether one was removed.
+ * Never throws.
  */
 export function removeStaleAtlasTemp(filePath: string): boolean {
-  const tmp = atlasTempPath(filePath);
+  const tmp = atlasTempPath(atlasWriteTarget(filePath));
   try {
     rmSync(tmp);
     return true;

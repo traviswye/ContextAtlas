@@ -792,8 +792,11 @@ its own explicit flag.
   SHA gate of a plain run does not retry it; only another `--full`
   does, and that re-extracts every file again. `index` lists those
   files in a warning, and the docstring `extraction_errors` entry and
-  the exit-1 message say the same (review fixes). A changed or new
-  file that fails under `--full` is retried by a plain run.
+  the exit-1 message, closing line included, say the same (review
+  fixes). When every prose call fails, the run throws before that
+  warning and before the docstring stream, and the thrown error says
+  to re-run `--full`. A changed or new file that fails under `--full`
+  is retried by a plain run.
 - **An interrupted `--full`** keeps the re-extractions it completed
   (checkpoints, Decision 10). The unchanged files it did not reach
   keep keys that match their content, so again only another `--full`
@@ -889,9 +892,12 @@ so `source_path == source`.
 `createCheckpointer` in `atlas-export-stage.ts`). With
 `atlas.committed: true`, `index` also writes `atlas.json` while it
 extracts, so an interrupted run (Ctrl-C, a crash, a closed terminal)
-keeps the units it stored. Before, `atlas.json` was written only at
-Stage 7 and the next run's Stage 0 imported it over the cache, so the
-interrupted run's paid work was billed again (in 1.1.3 for prose).
+keeps the units it stored. Before, when `atlas.json` existed at the
+start of the run, it was written only at Stage 7 and the next run's
+Stage 0 imported it over the cache, so the interrupted run's paid work
+was billed again (in 1.1.3 for prose). A run that starts without
+`atlas.json` is the exception, where 1.1.3 lost nothing: see "Known
+limitations" under "Review fixes (2026-09-25)".
 - **When.** After a stored unit, once `checkpointIntervalMs` has
   passed since the last export, or since the checkpointer was created
   (after the cost preview, just before Stage 6). A unit is a prose file
@@ -945,7 +951,9 @@ interrupted run's paid work was billed again (in 1.1.3 for prose).
   pipeline (Decision 7), not per checkpoint, so the run after an
   interruption validates the atlas. The cost preview, the summary and
   `atlasExported` (the Stage 7 export) are unchanged; each checkpoint
-  logs one info line to stderr.
+  logs one info line to stderr ("checkpoint: atlas.json holds the work
+  stored so far"), and only the Stage 7 export logs "atlas.json
+  written".
 - **Library callers** of `runExtractionPipeline` with
   `atlas.committed: true` checkpoint too (`deps.checkpointIntervalMs`,
   default 30 s); the final `atlas.json` is the same.
@@ -1083,7 +1091,13 @@ The lead decisions F1 to F7 named below are recorded in
   when it was the only prose work, made `index` throw before the
   docstring and commit streams on every run, blaming the API key. The
   exit message quotes the first failed call's error, not an earlier
-  docstring read error.
+  docstring read error. A prose file that cannot be read when its turn
+  comes (deleted or locked since the Stage 1 walk) makes no call, as a
+  docstring file that cannot be read makes none: it is reported in
+  `extraction_errors` but is not in `api_calls`, and the prose throw
+  fires only when every call the stream made failed. In 1.1.3 it counted
+  as a failed call, so such a race with one changed ADR threw the
+  auth/config error.
 - **One transaction per prose file.** A prose file's claims and key are
   written in one transaction, as a docstring file's (S5) and a
   commit's (S3) are. Before, a kill between the delete and the key
@@ -1094,8 +1108,9 @@ The lead decisions F1 to F7 named below are recorded in
   (`atlas.local_cache`, table `source_shas`) with `false`.
 - **`--full` failures.** `index` lists the files `--full` re-extracted
   that failed and whose key already matched their content, and the
-  docstring error and the exit-1 message say that only another
-  `--full` retries them (Decision 4).
+  docstring error and the exit-1 message (its closing line too) say
+  that only another `--full` retries them; when every prose call fails,
+  the thrown error says so (Decision 4).
 
 *Stage 0, exports and the local cache*
 - **An interrupted run keeps its work:** checkpoint exports
@@ -1129,10 +1144,15 @@ The lead decisions F1 to F7 named below are recorded in
   On Windows a rename onto a file another process holds open fails with
   EPERM, EACCES or EBUSY, often only briefly: the rename is tried 4
   times, 50 ms apart, then the file is written directly (the 1.1.3
-  behaviour, not atomic) and the temporary file removed. Every `index`
-  run removes a `<atlas>.tmp` left by a killed write at Stage 0, in both
-  `atlas.committed` modes (`init` does not gitignore that file, so a
-  leftover could otherwise be committed).
+  behaviour, not atomic) and the temporary file removed, also when that
+  write fails too (a read-only `atlas.json`; its error is rethrown).
+  When `atlas.json` is a symbolic link (a shared atlas), the temporary
+  file goes beside the link's target and the rename replaces the
+  target, so the link stays and the shared file is updated, as 1.1.3's
+  direct write did (a rename onto the link would replace the link with
+  a regular file). Every `index` run removes a `<atlas>.tmp` left by a
+  killed write at Stage 0, in both `atlas.committed` modes (`init` does
+  not gitignore that file, so a leftover could otherwise be committed).
 - **A torn or conflicted `atlas.json`** fails to import with a message
   naming the file and the way back (`git checkout -- <path>`), not a
   bare `SyntaxError` (`importAtlasFile`; `index`, the MCP server and
@@ -1224,7 +1244,11 @@ The lead decisions F1 to F7 named below are recorded in
   `validate-atlas` again) right after the `validate-atlas` warning,
   before `validate-extraction`, so the atlas does not stay unloadable
   while extraction depth is fixed; step 3 runs it again. The link loss
-  this can cause is under "Known limitations".
+  this can cause is under "Known limitations". Its Failure modes key on
+  what `resolve-symbols` reports on such a refresh: dropped links,
+  orphaned claims, or files it could not list. `resolve-symbols` names
+  those files, and leaves out its "unverified (prior symbols kept)"
+  count when the atlas had no `symbols`, where it is always 0.
 - A refresh carries the baseline's `extracted_at_sha` and `git_commits`
   forward. Before, a refresh of a CLI-built atlas dropped the git
   signal the MCP tools serve, and `--check` reported staleness as
@@ -1247,6 +1271,13 @@ The lead decisions F1 to F7 named below are recorded in
   with `false` this discards anything only the cache holds; on a first
   build, while the cache is still empty, a restart or reconnect is
   enough.
+- `/prime-atlas`'s malformed-`atlas.json` row says to restore the file
+  first (`git checkout -- <atlas.path>`, or resolve the merge conflict),
+  then refresh, matching the importer's message. It used to suggest
+  `contextatlas index --full` to rebuild, which stops at an invalid
+  `atlas.json` (also in 1.1.3); with `atlas.committed: false`, `index`
+  never rewrites the file, so the row says to delete it when it cannot
+  be restored.
 
 *Documentation*
 - ADR-02's 2026-09-25 entry names the second CLI/Skill difference (the
@@ -1278,6 +1309,17 @@ Documented, not fixed.
   other branch then imports the first branch's commit keys and claims,
   which LOCK 2.b keeps. Re-run `index` to finish, or
   `git checkout -- <atlas.path>`, before switching.
+- **An interrupted run that started without `atlas.json`** (a first
+  `index` or `init`, a regeneration after deleting it, or the switch
+  from `atlas.committed: false` that the Stage 0 warning describes).
+  Its first checkpoint creates `atlas.json`, so after an interruption
+  the next run imports it over the cache and extracts again the units
+  stored since the last checkpoint: at most one interval (30 s) of work
+  plus the calls in flight. 1.1.3 lost nothing here: without
+  `atlas.json` the next run used the cache, which held every stored
+  unit. Skipping checkpoints while Stage 0 found no `atlas.json` would
+  restore that, at the cost of Decision 10's "a fresh cache gives the
+  same run" for such runs; that is a lead decision, not taken here.
 - **No second orphan report.** The next run keeps the claims an
   interrupted run's prune orphaned but does not report them again (a
   doctor orphaned-claims check is Phase 8).
@@ -1307,7 +1349,8 @@ Documented, not fixed.
   each claim's `symbol_candidates`. With `symbols: []` there is no such
   record, so a link into a file it cannot list in that run (its listing
   failed, or its language is not configured) is dropped, and reported
-  as dropped links and orphaned claims. A later run restores it only
+  as dropped links and orphaned claims; the summary names the files
+  whose listing failed. A later run restores it only
   from the claim's candidates. Links no candidate names (claims without
   candidates, `contextatlas index` docstring provenance links, ADR
   frontmatter-fallback links) come back only when their source is

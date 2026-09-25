@@ -475,8 +475,8 @@ contextatlas validate-atlas
 ```
 
 The second validate-atlas must exit 0 without that warning. Report
-resolve-symbols' output: if it dropped links or orphaned claims next
-to unverified files, see "Failure modes". Step 3 runs resolve-symbols
+resolve-symbols' output: if it dropped links, orphaned claims, or
+could not list files, see "Failure modes". Step 3 runs resolve-symbols
 again, which links any claims you re-extract after step 2; running it
 twice is harmless.
 
@@ -829,11 +829,14 @@ Bundled helper scripts deferred to v0.8+ per v0.7 ship scope.
   validate-atlas); config invalid (run `contextatlas doctor` to
   diagnose). User can re-invoke `contextatlas resolve-symbols`
   manually after fixing the issue.
-- **`contextatlas resolve-symbols` reports dropped links or orphaned
-  claims next to unverified files** (a refresh wrote `symbols: []`):
-  a link into a file it could not list in that run (its listing
-  failed, or its language is not configured) is dropped, and only
-  the claim's `symbol_candidates` can restore it on a later run.
+- **`contextatlas resolve-symbols` reports dropped links, orphaned
+  claims, or files it could not list** (a refresh wrote `symbols: []`,
+  so its summary has no "unverified" count): a link into a file it
+  could not list in that run (named in its summary as "could not be
+  listed", or a file in a language `languages` does not configure) is
+  dropped, and only the claim's `symbol_candidates` can restore it on a
+  later run. A link to a symbol that was deleted or renamed is dropped
+  too; that is not a loss.
   Links no candidate names (claims without `symbol_candidates`,
   `contextatlas index` docstring provenance links, ADR
   frontmatter-fallback links) come back only when their source is

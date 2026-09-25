@@ -279,13 +279,17 @@ load-bearing empirical findings).
   On Windows a rename that another process blocks (EPERM, EACCES,
   EBUSY) is retried a few times, then the file is written directly,
   as before. `index` removes a leftover `<atlas>.tmp` when it starts.
+  A symlinked `atlas.json` is written through, as `index` did before:
+  the link stays and the file it points to is replaced.
 - After `index --full` (v1.2 Phase 2 review), a file whose
   re-extraction failed keeps its previous claims and a key that
   already names its content, so a plain `index` does not retry it
   (for ADRs/docs, as in 1.1.3). `index` now lists such files in a
   warning, and the docstring error and the exit-1 message say to
-  re-run `--full`. The unchanged files an interrupted `--full` did
-  not reach likewise wait for another `--full`.
+  re-run `--full`; when every ADR/docs call fails, the run stops
+  before that warning, and its error says so. The unchanged files an
+  interrupted `--full` did not reach likewise wait for another
+  `--full`.
 - A local cache whose schema version is above the one this build
   knows is used with a warning (v1.2 Phase 2 review): a later
   release would skip its own migrations up to that version on it.
@@ -302,11 +306,12 @@ load-bearing empirical findings).
   - with `symbols: []`, a link from a preserved claim into a file the
     language server cannot list during that `resolve-symbols` run (its
     listing failed, or its language is not configured) is dropped, and
-    reported. A later run restores it only from the claim's
-    `symbol_candidates`; links no candidate names (claims without
-    candidates, `index` docstring provenance links, ADR
-    frontmatter-fallback links) come back only when their source is
-    re-extracted. With `atlas.committed: true`, restoring the
+    reported (`resolve-symbols` names the files it could not list, and
+    the Skill's failure modes key on that). A later run restores the
+    link only from the claim's `symbol_candidates`; links no candidate
+    names (claims without candidates, `index` docstring provenance
+    links, ADR frontmatter-fallback links) come back only when their
+    source is re-extracted. With `atlas.committed: true`, restoring the
     committed `atlas.json` (`git checkout -- <atlas.path>`) and
     re-running once those files list avoids the loss;
   - carries the baseline's `extracted_at_sha` and `git_commits`
@@ -466,9 +471,10 @@ load-bearing empirical findings).
   Phase 2). It re-extracts ADRs/docs and docstrings; commits stay
   key-gated.
 - An interrupted `contextatlas index` lost the work it had paid for
-  (v1.2 Phase 2 review): `atlas.json` was written only at the end,
-  and the next run imported it over the local cache and paid for
-  everything again. With `atlas.committed: true`, `index` now also
+  (v1.2 Phase 2 review): when `atlas.json` existed at the start of the
+  run, it was written only at the end, and the next run imported it
+  over the local cache and paid for everything again. With
+  `atlas.committed: true`, `index` now also
   writes `atlas.json` while it extracts: after a stored file or
   commit once 30 seconds have passed since the last write, and at
   the end of the ADR/docs and docstring stages. Each file and commit
@@ -489,6 +495,12 @@ load-bearing empirical findings).
     work.
   - With `atlas.committed: false`, every file and commit stays in
     the local cache as it finishes, and there is nothing to write.
+  - A run that starts without `atlas.json` (a first run, or after
+    deleting it) is the exception. 1.1.3 kept such a run's finished
+    work in the local cache, and the next run used it. Now the first
+    write creates `atlas.json`, which the next run imports over the
+    cache, so the work since the last write (at most about 30 seconds
+    of it, plus the calls in flight) is extracted and paid for again.
 - A kill while `index` wrote an ADR or docs page's claims could leave
   part of them under a key that already matched the file (under
   `--full` with `atlas.committed: false`), and the file was never
@@ -558,6 +570,19 @@ load-bearing empirical findings).
   on a slow language server the `/index-atlas` Phase A step timed out
   (or left files out) where `index` and `resolve-symbols` succeeded
   (v1.2 Phase 2 review).
+- An ADR or docs page deleted, renamed or locked between the start of
+  `contextatlas index` and its extraction counted as a failed model
+  call: it was added to `api_calls` though no call was made, and when
+  it was the only changed page `index` failed with "Extraction failed
+  for all 1 document(s)", blaming the API key (v1.2 Phase 2 review).
+  It is now reported in `extraction_errors` only, as a docstring file
+  that cannot be read is.
+- `/prime-atlas` suggested `contextatlas index --full` to rebuild a
+  malformed `atlas.json`, but `index` stops at an invalid `atlas.json`
+  (v1.2 Phase 2 review). It now says to restore the file first
+  (`git checkout -- <atlas.path>`, or resolve the merge conflict), then
+  refresh; with `atlas.committed: false`, to delete it if it cannot be
+  restored.
 
 ### Security
 

@@ -433,8 +433,9 @@ export function resolveContextatlasCommitSha(): string | null {
  * The exit-1 message for streams whose every call failed. Names what
  * was kept and what to do next. After `--full`, a docstring file whose
  * key already matched its content keeps that key, so only another
- * `--full` retries it (v1.2 Phase 2); failed commits stay unkeyed and
- * are retried by any run. Exported for tests.
+ * `--full` retries it (v1.2 Phase 2), and the closing line says to
+ * re-run `--full`; failed commits stay unkeyed and are retried by any
+ * run. Exported for tests.
  */
 export function formatStreamFailures(
   failures: readonly StreamFailure[],
@@ -461,9 +462,15 @@ export function formatStreamFailures(
       `  ${saved} Nothing new was recorded for the failed ${unit}: they ${retry}`,
     );
   }
+  // After --full, a plain run would skip the failed docstring files whose
+  // key already matches, so the closing instruction names --full too.
+  const rerun =
+    full && failures.some((f) => f.stream === "docstring")
+      ? "contextatlas index --full"
+      : "contextatlas index";
   lines.push(
     "This usually means an API key, quota or network problem rather than " +
-      "per-source noise. Fix the cause, then re-run `contextatlas index`.",
+      `per-source noise. Fix the cause, then re-run \`${rerun}\`.`,
     "",
   );
   return lines.join("\n");

@@ -170,6 +170,18 @@ describe("/prime-atlas SKILL.md canonical content (v0.8 Step 3.1)", () => {
       expect(row).toMatch(/With `atlas\.committed: true` nothing is lost; with `false` this discards/);
       expect(row).not.toMatch(/restarting Claude Code or reconnecting `contextatlas` with `\/mcp`;/);
     });
+
+    it("the malformed-atlas row restores atlas.json first; `index --full` stops at an invalid file, so it is not the rebuild", () => {
+      const row = content
+        .split("\n")
+        .find((line) => line.startsWith("| Atlas.json malformed JSON"));
+      expect(row).toBeDefined();
+      expect(row).toMatch(/Restore `atlas\.json` first: `git checkout -- <atlas\.path>`/);
+      expect(row).toMatch(/merge conflict/);
+      expect(row).toMatch(/even with `--full`, does not rebuild an invalid `atlas\.json`/);
+      expect(row).toMatch(/With `atlas\.committed: false`, `contextatlas index` never rewrites `atlas\.json`/);
+      expect(row).not.toMatch(/`contextatlas index --full`\) to rebuild/);
+    });
   });
 
   // -------------------------------------------------------------------------

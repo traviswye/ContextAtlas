@@ -1034,6 +1034,56 @@ describe("runExtractionPipeline — v1.2 Phase 2 streams", () => {
       expect(rec.bodies).toEqual(["doc a", "doc b", "doc c"]);
     });
 
+    it("the checkpoint at the end of the docstring stream saves the docstring files before the commit stream starts (long interval)", async () => {
+      initGitRepo(tmp, ["design: split the router"]);
+      const adapter = threeDocFiles();
+      // Calls 1-3 are the docstring files; call 4, the commit, crashes.
+      await expect(
+        run(adapter, crashingClient(3), { checkpointIntervalMs: 3_600_000, gitBinary: "git" }),
+      ).rejects.toThrow(/simulated crash/);
+      expect(Object.keys(readAtlas().source_shas).sort()).toEqual(["src/a.ts", "src/b.ts", "src/c.ts"]);
+
+      freshDb();
+      const rec = recordingClient((b) => oneClaim(`claim for ${b}`));
+      await run(adapter, rec.client, { gitBinary: "git" });
+      expect(rec.bodies).toEqual(["design: split the router"]);
+    });
+
+    it("a keyed commit is a checkpoint unit: a run killed mid-commit stream keeps the commits it keyed, and the next run bills only the rest", async () => {
+      initGitRepo(tmp, ["design: split the router", "arch: move auth"]);
+      const adapter = streamAdapter(tmp, {});
+      await expect(
+        run(adapter, crashingClient(1), { ...EVERY_UNIT, gitBinary: "git" }),
+      ).rejects.toThrow(/simulated crash/);
+      const keys = Object.keys(readAtlas().source_shas);
+      expect(keys).toHaveLength(1);
+      expect(keys[0]).toMatch(/^commit:[0-9a-f]{40}$/);
+
+      freshDb();
+      const rec = recordingClient((b) => oneClaim(`claim for ${b}`));
+      const result = await run(adapter, rec.client, { ...EVERY_UNIT, gitBinary: "git" });
+      expect(rec.bodies).toHaveLength(1);
+      expect(result.commitsSkipped).toBe(1);
+      expect(Object.keys(readAtlas().source_shas)).toHaveLength(2);
+    });
+
+    it("each checkpoint logs one info line; only the final export logs `atlas.json written`", async () => {
+      const adapter = threeDocFiles();
+      const infos: string[] = [];
+      const spy = vi.spyOn(process.stderr, "write").mockImplementation((chunk: unknown): boolean => {
+        const text = String(chunk);
+        if (text.includes("[info]")) infos.push(text);
+        return true;
+      });
+      try {
+        await run(adapter, recordingClient((b) => oneClaim(`claim for ${b}`)).client, EVERY_UNIT);
+      } finally {
+        spy.mockRestore();
+      }
+      expect(infos.filter((l) => /pipeline: checkpoint: atlas\.json holds/.test(l))).toHaveLength(3);
+      expect(infos.filter((l) => /pipeline: atlas\.json written/.test(l))).toHaveLength(1);
+    });
+
     it("killed after the last unit, before Stage 7: atlas.json already holds every unit, and the next run makes no call", async () => {
       const adapter = threeDocFiles();
       // Checkpoints and Stage 7 both go through finalizeAtlas; the fourth
@@ -1251,6 +1301,36 @@ describe("runExtractionPipeline — v1.2 Phase 2 streams", () => {
       await run(adapter, plain.client);
       expect(plain.bodies).toEqual(["doc c"]);
       expect(claimTexts()).toEqual(["v1 doc a", "v2 doc b", "v3 doc c"]);
+    });
+
+    it("--full with every prose call failing: the thrown error says to re-run --full, because a plain run finds every key current", async () => {
+      write("docs/adr/ADR-01.md", "---\nid: ADR-01\n---\nThe router stays pure.\n");
+      const adapter = threeDocFiles();
+      await run(adapter, recordingClient((b) => oneClaim(`v1 ${b}`)).client);
+
+      const revoked = recordingClient(() => "throw");
+      const thrown = await run(adapter, revoked.client, { skipShaDiff: true }).then(
+        () => null,
+        (err: unknown) => String(err),
+      );
+      expect(thrown).toMatch(/Extraction failed for all 1 document\(s\)/);
+      expect(thrown).toMatch(/re-run `contextatlas index --full`/);
+      // Only the ADR was attempted: the throw comes before the docstring stream.
+      expect(revoked.bodies).toHaveLength(1);
+
+      // The plain run the rebuild would otherwise be left to does nothing.
+      const plain = recordingClient((b) => oneClaim(`v2 ${b}`));
+      await run(adapter, plain.client);
+      expect(plain.bodies).toEqual([]);
+
+      // Without --full the error does not mention it.
+      write("docs/adr/ADR-01.md", "---\nid: ADR-01\n---\nThe router stays pure, v2.\n");
+      const plainThrown = await run(adapter, revoked.client).then(
+        () => null,
+        (err: unknown) => String(err),
+      );
+      expect(plainThrown).toMatch(/Extraction failed for all 1 document\(s\)/);
+      expect(plainThrown).not.toMatch(/--full/);
     });
 
     it("documented limitation: after docs.include narrows, a code file prose keyed with no claims needs --full (or its key removed) for its docstrings", async () => {

@@ -1,9 +1,12 @@
 import {
   existsSync,
+  lstatSync,
+  mkdirSync,
   mkdtempSync,
   readFileSync,
   readdirSync,
   rmSync,
+  symlinkSync,
   writeFileSync,
   type PathLike,
 } from "node:fs";
@@ -787,6 +790,54 @@ describe("atlas file writes are atomic (v1.2 Phase 2 checkpoints)", () => {
     expect(() => writeAtlasFileAtomic(target(), "new\n")).toThrow(/simulated EXDEV/);
     expect(readFileSync(target(), "utf8")).toBe("old\n");
     expect(readdirSync(tmp)).toEqual(["atlas.json"]);
+  });
+
+  it("when the direct-write fallback fails too, its error is rethrown and the temporary file is still removed", () => {
+    // A directory at the target: every rename fails with EPERM (a
+    // read-only or share-locked atlas.json on Windows), then the direct
+    // write fails (EISDIR here; EPERM or EBUSY there).
+    mkdirSync(target());
+    renameFailures.push("EPERM", "EPERM", "EPERM", "EPERM");
+    expect(() => writeAtlasFileAtomic(target(), "new\n")).toThrow(/EISDIR|EPERM|EACCES/);
+    expect(renameFailures).toEqual([]);
+    expect(readdirSync(tmp)).toEqual(["atlas.json"]);
+  });
+
+  it("exportAtlasToFile goes through the temporary file and the rename: a failed rename leaves the old atlas.json byte-identical", () => {
+    importAtlasFile(db, FIXTURE_PATH);
+    writeFileSync(target(), "old content");
+    renameFailures.push("EXDEV");
+    expect(() => exportAtlasToFile(db, target(), opts)).toThrow(/simulated EXDEV/);
+    expect(readFileSync(target(), "utf8")).toBe("old content");
+    expect(readdirSync(tmp)).toEqual(["atlas.json"]);
+  });
+
+  it("a symlinked atlas.json is written through: the link stays and its target gets the new text (1.1.3 behaviour)", (ctx) => {
+    const shared = pathJoin(tmp, "shared");
+    const linkDir = pathJoin(tmp, "repo");
+    mkdirSync(shared);
+    mkdirSync(linkDir);
+    const real = pathJoin(shared, "atlas.json");
+    const link = pathJoin(linkDir, "atlas.json");
+    writeFileSync(real, "old\n");
+    try {
+      symlinkSync(real, link, "file");
+    } catch (err) {
+      // Windows without the symlink privilege (no Developer Mode).
+      if ((err as NodeJS.ErrnoException).code === "EPERM") ctx.skip();
+      throw err;
+    }
+    writeAtlasFileAtomic(link, "new\n");
+    expect(lstatSync(link).isSymbolicLink()).toBe(true);
+    expect(readFileSync(real, "utf8")).toBe("new\n");
+    expect(readdirSync(shared)).toEqual(["atlas.json"]);
+    expect(readdirSync(linkDir)).toEqual(["atlas.json"]);
+
+    // A leftover temporary file lies beside the link's target, and Stage 0
+    // finds it there.
+    writeFileSync(`${real}.tmp`, "half a write");
+    expect(removeStaleAtlasTemp(link)).toBe(true);
+    expect(existsSync(`${real}.tmp`)).toBe(false);
   });
 
   it("removeStaleAtlasTemp removes a leftover <path>.tmp and reports whether there was one", () => {

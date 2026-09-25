@@ -4,7 +4,10 @@
  * pinned-commit retry hint.
  *
  *   - `atlas.committed: true` with no atlas.json always writes one.
+ *   - Stage 0 removes a leftover `<atlas>.tmp`, also on a no-op run.
  *   - One unparseable prose file does not stop the other streams.
+ *   - A prose file that cannot be read makes no call and is not a failed
+ *     call; the all-failed check counts attempted calls only.
  *   - A prose call failing with an API error on every file still throws.
  *   - The pin warning names both places a pinned key can live.
  *
@@ -221,6 +224,19 @@ describe("runExtractionPipeline — Stage 0 and baseline (review fixes)", () => 
     expect(readAtlas().claims.map((c) => c.claim)).toEqual(before.claims.map((c) => c.claim));
   });
 
+  it("Stage 0 removes a <atlas>.tmp an interrupted write left, also on a run that exports nothing", async () => {
+    write("docs/adr/ADR-01.md", "---\nid: ADR-01\n---\nbody\n");
+    const adapter = adapterFor(tmp, {});
+    await run(adapter, recordingClient(() => oneClaim("rule")).client);
+    const bytes = readFileSync(atlasPath(), "utf8");
+    writeFileSync(`${atlasPath()}.tmp`, "half a write");
+
+    const result = await run(adapter, recordingClient(() => oneClaim("never")).client);
+    expect(result.atlasExported).toBe(false);
+    expect(existsSync(`${atlasPath()}.tmp`)).toBe(false);
+    expect(readFileSync(atlasPath(), "utf8")).toBe(bytes);
+  });
+
   // -------------------------------------------------------------------
   // One unparseable prose file
   // -------------------------------------------------------------------
@@ -252,6 +268,52 @@ describe("runExtractionPipeline — Stage 0 and baseline (review fixes)", () => 
       "claim for Foo doc.",
       "claim for design: split the router",
     ]);
+  });
+
+  it("a prose file that cannot be read when its turn comes is not a failed call: no call is counted, and the other streams still run", async () => {
+    write("docs/adr/ADR-01.md", "---\nid: ADR-01\n---\nbody\n");
+    write("src/a.ts", "export function Foo() {}\n");
+    const Foo = tsSym("src/a.ts", "Foo");
+    const inner = adapterFor(tmp, { "src/a.ts": [Foo] }, { [Foo.id]: "Foo doc." });
+    // The ADR is walked and hashed at Stage 1, then deleted while Stage 3
+    // lists symbols (a rename, a branch switch, a lock on Windows).
+    const adapter: LanguageAdapter = {
+      ...inner,
+      async listSymbols(p: string) {
+        rmSync(pathJoin(tmp, "docs", "adr", "ADR-01.md"), { force: true });
+        return inner.listSymbols(p);
+      },
+    };
+    const rec = recordingClient((b) => oneClaim(`claim for ${b}`));
+    const result = await run(adapter, rec.client);
+    expect(rec.bodies).toEqual(["Foo doc."]);
+    expect(result.apiCalls).toBe(1);
+    expect(result.extractionErrors.map((e) => e.sourcePath)).toEqual(["docs/adr/ADR-01.md"]);
+    expect(result.extractionErrors[0]?.error).toMatch(/ENOENT/);
+    expect(result.docstringFilesExtracted).toBe(1);
+    expect(result.failedStreams).toEqual([]);
+  });
+
+  it("the prose all-failed error counts only attempted calls: an unreadable file next to an API failure still throws", async () => {
+    write("docs/adr/ADR-01.md", "---\nid: ADR-01\n---\nfirst\n");
+    write("docs/adr/ADR-02.md", "---\nid: ADR-02\n---\nsecond\n");
+    write("src/a.ts", "export function Foo() {}\n");
+    const inner = adapterFor(tmp, {});
+    const adapter: LanguageAdapter = {
+      ...inner,
+      async listSymbols(p: string) {
+        rmSync(pathJoin(tmp, "docs", "adr", "ADR-01.md"), { force: true });
+        return inner.listSymbols(p);
+      },
+    };
+    const client: ExtractionClient = {
+      async extract() {
+        throw new Error("401 invalid x-api-key");
+      },
+    };
+    await expect(run(adapter, client)).rejects.toThrow(
+      /Extraction failed for all 1 document\(s\).*401 invalid x-api-key/,
+    );
   });
 
   it("a prose call that throws an API error on every file still fails the run loudly", async () => {

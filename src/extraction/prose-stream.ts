@@ -8,7 +8,10 @@
  * call returned a parseable result has its claims replaced (delete by
  * path, then insert) and its SHA pinned; a null result (max_tokens)
  * leaves the file unkeyed so the next run retries it; a thrown call is
- * recorded in `errors` and also left unkeyed. Malformed JSON throws a
+ * recorded in `errors` and also left unkeyed. A file that cannot be read
+ * when its turn comes (deleted or locked since the Stage 1 walk) is
+ * recorded in `errors` too, but makes no call: it is not in `api_calls`
+ * or `failedCalls` (as a docstring read error). Malformed JSON throws a
  * `ParseError` (so it is an error here, as before), and its usage is
  * still counted (v1.2 Phase 2 review fix). It does not count toward the
  * pipeline's all-failed check (`failedCalls`), which would otherwise
@@ -78,8 +81,14 @@ export interface ProseStageResult {
   unresolvedCandidates: number;
   unresolvedFrontmatterHints: number;
   unresolvedDetails: FileUnresolvedDetail[];
-  /** One entry per file whose call threw. */
+  /** One entry per file whose read or call threw. */
   errors: Array<{ sourcePath: string; error: string }>;
+  /**
+   * Model calls made: one per planned file that could be read. A file
+   * that cannot be read (deleted or locked after the Stage 1 walk) is in
+   * `errors` but makes no call, as a docstring read error does.
+   */
+  attemptedCalls: number;
   /**
    * Files whose call threw an API or network error. A malformed-JSON
    * response (`ParseError`) is in `errors` but not counted here: the API
@@ -119,6 +128,7 @@ export async function runProseStage(
     unresolvedFrontmatterHints: 0,
     unresolvedDetails: [],
     errors: [],
+    attemptedCalls: 0,
     failedCalls: 0,
     unstoredPaths: [],
   };
@@ -127,11 +137,22 @@ export async function runProseStage(
     const batch = files.slice(i, i + batchSize);
     const results = await Promise.all(
       batch.map(async (file) => {
-        cost.addCalls(1);
+        // Read before the call is counted: a file deleted or locked since
+        // the Stage 1 walk makes no call, so it is neither in `api_calls`
+        // nor a failed call for the all-failed check.
+        let rawContents: string;
         try {
-          const body = stripFrontmatter(readFileSync(file.absPath, "utf8"));
-          const extracted = await client.extract(body);
-          return { file, extracted };
+          rawContents = readFileSync(file.absPath, "utf8");
+        } catch (err) {
+          out.errors.push({ sourcePath: file.relPath, error: String(err) });
+          out.unstoredPaths.push(file.relPath);
+          return { file, rawContents: "", extracted: null };
+        }
+        cost.addCalls(1);
+        out.attemptedCalls++;
+        try {
+          const extracted = await client.extract(stripFrontmatter(rawContents));
+          return { file, rawContents, extracted };
         } catch (err) {
           // Malformed JSON (ParseError) was still billed: count its usage.
           cost.addUsage(usageOfFailedCall(err));
@@ -141,12 +162,12 @@ export async function runProseStage(
             out.failedCalls++;
             out.firstFailedCallError ??= String(err);
           }
-          return { file, extracted: null };
+          return { file, rawContents, extracted: null };
         }
       }),
     );
 
-    for (const { file, extracted } of results) {
+    for (const { file, rawContents, extracted } of results) {
       if (!extracted) continue;
       // Accumulate usage regardless of whether result is null — a
       // max_tokens or malformed-JSON response still consumed tokens.
@@ -161,6 +182,7 @@ export async function runProseStage(
         const written = writeClaimsForFile(
           db,
           file,
+          rawContents,
           claims,
           inventory,
           input.narrowAttribution,
@@ -209,9 +231,15 @@ export function warnUnresolvedFrontmatter(result: ProseStageResult): void {
   );
 }
 
+/**
+ * `rawContents` is the text the extraction call was made from (read
+ * once, before the call), so the frontmatter symbols match the claims,
+ * and a file deleted after its call cannot fail the write.
+ */
 function writeClaimsForFile(
   db: DatabaseInstance,
   file: ProseFile,
+  rawContents: string,
   extracted: readonly ExtractedClaim[],
   inventory: SymbolInventory,
   narrowAttribution: "drop" | "drop-with-fallback" | undefined,
@@ -230,7 +258,6 @@ function writeClaimsForFile(
   // re-extraction is idempotent at file granularity.
   deleteClaimsBySourcePath(db, file.relPath);
 
-  const rawContents = readFileSync(file.absPath, "utf8");
   const source = deriveSourceName(file.absPath);
 
   // Author-declared frontmatter symbols are merged into every claim's
