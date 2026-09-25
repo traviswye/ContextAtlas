@@ -95,6 +95,10 @@ load-bearing empirical findings).
     `src/extraction/commit-log.ts`, and the docstring functions to
     `docstring-stream.ts` / `docstring-read.ts`. The old modules
     re-export every name they exported before.
+  - `runExtractionPipeline` takes `checkpointIntervalMs` (default
+    30 s; `0` checkpoints after every stored unit). With
+    `atlas.committed: true` it now also writes `atlas.json` during
+    the run (see "Fixed"); the final `atlas.json` is the same.
 
 ### Changed
 
@@ -221,9 +225,10 @@ load-bearing empirical findings).
 - A commit whose extraction returns no parseable result (max_tokens
   or malformed JSON) is now keyed with zero claims and a warning, so it
   is not billed again on every run (v1.2 Phase 2). The warning names
-  the key to delete to retry: in `atlas.json`, or, with
-  `atlas.committed: false`, in the local cache file (it gives the
-  path and the row). ADRs/docs and docstrings still retry.
+  the key to remove from `source_shas` to retry it: in `atlas.json`
+  with `atlas.committed: true`, or in the local cache
+  (`atlas.local_cache`) with `false`. ADRs/docs and docstrings still
+  retry.
 - `contextatlas index` exits 1 when every call of the docstring or
   commit stream failed (v1.2 Phase 2). The rest of the run is saved
   and exported first, the summary is printed, and a stderr message
@@ -231,75 +236,92 @@ load-bearing empirical findings).
   failed commit writes) count. A response that does not parse never
   fails the stream: for a docstring file it is reported in
   `extraction_errors` and the file is retried; for a commit it is
-  pinned with only a warning, and no summary field reports it. The
-  message quotes the first failed call's error. The ADR/docs stream's
-  all-failed error follows the same rule (review).
+  pinned with a warning and counted in `commits_extracted`, with no
+  claims. The message quotes the first failed call's error. The
+  ADR/docs stream's all-failed error follows the same rule (review).
 - `atlas.committed: false` (v1.2 Phase 2 review): `index` no longer
   imports a leftover `atlas.json` over a non-empty local cache. The
-  file only seeds an empty cache, and is otherwise ignored with a
-  warning to delete it. The MCP server and `init`'s smoke test use the
-  same rule: they import `atlas.json` only into a cache with no
-  symbols, claims or source keys (before, into any cache without
-  symbols). The server warns when `atlas.json` differs from what the
-  cache holds, and names the way to load it (delete the local cache,
-  then restart): an `/index-atlas` refresh in this mode reaches the
-  server only that way (review round 2.3).
-- `validate-extraction` (v1.2 Phase 2 review) no longer holds prose
-  that is not an ADR to the ADR depth floor and coverage checks: a
-  path the prose walk puts in the docs bucket (`docs.include` pages
-  such as README.md, wherever they are stored relative to), an
-  existing file the walk does not return, or a deleted page. Only a
-  missing file whose path names an ADR under `adrs.path` is still
-  checked. In the ADR-08 layout (ADRs outside `source.root`) that
-  excludes a path that, read relative to the config root, lies outside
-  `source.root` and matches a `docs.include` glob (a deleted
-  `docs/rfcs/0001-x.md` is a docs page); with the ADR directory inside
-  `source.root` (e.g. `source.root: packages/core`) a deleted ADR is
-  always checked (review round 2.3).
+  file only seeds an empty cache, and is otherwise not read, with a
+  warning on every run. To switch to `atlas.committed: true` and keep
+  the cache's work, delete or move `atlas.json` first; the next
+  `index` then writes it from the cache. (With the leftover in place,
+  the switch would import it over the cache and bill that work
+  again.) The MCP server and `init`'s smoke test use the same rule:
+  they import `atlas.json` only into a cache with no symbols, claims
+  or source keys (before, into any cache without symbols).
+- The MCP server warns at startup when `atlas.json` is not the atlas
+  its local cache holds: their `generated_at` differ, as after a
+  pull, an `/index-atlas` refresh or `atlas.committed: false` runs
+  (v1.2 Phase 2 review). As before, it imports `atlas.json` only
+  into an empty cache; reloading on change is planned for v1.2
+  Phase 4. The warning names the remedy: stop the server (exit
+  Claude Code, or disconnect `contextatlas` in `/mcp`), delete the
+  local cache and restart. The cache is rebuilt from `atlas.json`
+  with no API calls; with `atlas.committed: false` this discards
+  anything only the cache holds.
+- `validate-extraction` (v1.2 Phase 2 review) holds only the ADRs the
+  current ADR/docs walk lists to the ADR depth floor and coverage
+  checks. `docs.include` pages (such as README.md, wherever they are
+  stored relative to), notes in the ADR directory without an ADR
+  file name, and keys whose file is gone are not checked. A deleted
+  ADR's leftover key, which only an `/index-atlas` refresh error can
+  leave (`index` deletes it), is therefore no longer caught; 1.1.3
+  caught it only when it had fewer than 8 claims.
 - `validate-atlas` (v1.2 Phase 2 review) warns (exit code unchanged)
   when a claim's `symbol_ids` names a symbol `symbols` does not list.
   Such an atlas cannot be loaded until `contextatlas resolve-symbols`
-  runs, which rebuilds `symbols` and keeps every link whose symbol it
-  can list (see the `resolve-symbols` entry under "Fixed" for files it
-  cannot list).
-- The local cache records which of the ADR/docs and docstring streams
-  keyed each source path (v1.2 Phase 2 review; cache-only tables,
-  local cache migrations 7 and 8, never exported). Both streams key a
-  file by path at the same SHA, so a file keyed with no claims by one
-  looked unchanged to the other once `docs.include` changed.
-  Classification of such keys now uses the record, which counts only
-  while `atlas.json` is the file this cache last imported or wrote, and
-  is rolled back with an interrupted run's work. An `index` run that
-  changes the cache without writing `atlas.json` (`atlas.committed:
-  false`, or no `atlas.json` yet) ends that claim (review round 2.3):
-  records written in local mode no longer survive a switch back to the
-  committed atlas, where one deleted a zero-claim docstring key as a
-  prose key. A fresh clone has no records and classifies as before.
+  runs, which rebuilds `symbols` and keeps every link to a symbol it
+  lists. The warning also says what `resolve-symbols` cannot keep;
+  see the `/index-atlas` entry below.
+- `contextatlas index` writes `atlas.json` atomically (v1.2 Phase 2
+  review): to `<atlas>.tmp` first, then renamed over the file, the
+  way `resolve-symbols` already wrote it; both now share one writer.
+  On Windows a rename that another process blocks (EPERM, EACCES,
+  EBUSY) is retried a few times, then the file is written directly,
+  as before. `index` removes a leftover `<atlas>.tmp` when it starts.
+- After `index --full` (v1.2 Phase 2 review), a file whose
+  re-extraction failed keeps its previous claims and a key that
+  already names its content, so a plain `index` does not retry it
+  (for ADRs/docs, as in 1.1.3). `index` now lists such files in a
+  warning, and the docstring error and the exit-1 message say to
+  re-run `--full`. The unchanged files an interrupted `--full` did
+  not reach likewise wait for another `--full`.
+- A local cache whose schema version is above the one this build
+  knows is used with a warning (v1.2 Phase 2 review): a later
+  release would skip its own migrations up to that version on it.
 - `list-extraction-sources` (v1.2 Phase 2 review) leaves a source file
   out of the manifest when `getDocstring` fails for any of its
   symbols, so `/index-atlas` keeps that file's claims and key and the
   next walk retries it.
 - `/index-atlas` refresh (v1.2 Phase 2 review):
-  - carries the baseline `symbols` forward, or writes `symbols: []`
-    when that array is too large to re-write, and keeps preserved
-    `symbol_ids` either way (resolve-symbols rebuilds the list);
-  - after writing `symbols: []`, runs `resolve-symbols` right after
-    `validate-atlas`, before `validate-extraction`, so the atlas does
-    not stay unloadable while extraction depth is fixed;
+  - writes `symbols: []`, as a cold start does, and keeps preserved
+    claims' `symbol_ids` and `symbol_candidates`; it then runs
+    `resolve-symbols` (and `validate-atlas` again) right after
+    `validate-atlas`, before `validate-extraction`, so the atlas
+    does not stay unloadable while extraction depth is fixed;
+  - with `symbols: []`, a link from a preserved claim into a file the
+    language server cannot list during that `resolve-symbols` run (its
+    listing failed, or its language is not configured) is dropped, and
+    reported. A later run restores it only from the claim's
+    `symbol_candidates`; links no candidate names (claims without
+    candidates, `index` docstring provenance links, ADR
+    frontmatter-fallback links) come back only when their source is
+    re-extracted. With `atlas.committed: true`, restoring the
+    committed `atlas.json` (`git checkout -- <atlas.path>`) and
+    re-running once those files list avoids the loss;
   - carries the baseline's `extracted_at_sha` and `git_commits`
     forward;
-  - re-runs `validate-atlas` after `resolve-symbols`;
   - drops a deleted source file's key and claims even while the
     docstring stream is disabled, as `index` does;
   - recognises an ADR key the way it is stored (relative to
     `source_root`, or to the ADR directory when ADRs live outside
     `source.root`), not by an `adrs.path` prefix, so a deleted or
     renamed ADR's key is dropped in those layouts too;
-  - ends by telling the user that the running MCP server serves the
-    refresh only after a restart or an `/mcp` reconnect (with
-    `atlas.committed: false`, only after the local cache is deleted),
-    and `/prime-atlas` gives the same advice for a stale sentinel
-    (review round 2.3).
+  - ends by telling the user how the running MCP server picks up the
+    refresh: stop it, delete the local cache, and restart or
+    reconnect (with `atlas.committed: false` this discards anything
+    only the cache holds; on a first build a restart is enough).
+    `/prime-atlas` gives the same advice for a stale sentinel.
 
 ### Removed
 
@@ -394,11 +416,9 @@ load-bearing empirical findings).
     with no link are reported as orphaned.
   - The earlier symbols of files whose listing failed, or whose
     language is not configured, are now kept instead of dropped, and
-    so are the links to them. When `symbols` does not list a symbol a
-    claim links (an `/index-atlas` refresh that wrote `symbols: []`),
-    its record is taken from the `atlas.json` committed at HEAD; if
-    there is none and the file could not be listed, `resolve-symbols`
-    exits 1, names the files and writes nothing (v1.2 Phase 2 review).
+    so are the links to them. An `/index-atlas` refresh writes
+    `symbols: []`, which leaves no earlier symbols to keep; see the
+    `/index-atlas` entry under "Changed".
 - `contextatlas index --json` printed a second, plain-text line on
   stdout after the JSON object when the run exported: the
   `validate-extraction` result (v1.2 Phase 2). That line now goes to
@@ -410,7 +430,8 @@ load-bearing empirical findings).
   retried.
   - A file's claims are now replaced, and its SHA pinned, only when
     every call for it succeeded, in one transaction. Otherwise the old
-    claims and key stay and the next run retries the file.
+    claims and key stay and the next run retries the file (after
+    `index --full`, only another `--full` does; see "Changed").
   - This applies to `index` and to the exported
     `extractDocstringsForFile`, whose signature and result fields are
     unchanged.
@@ -445,24 +466,34 @@ load-bearing empirical findings).
   Phase 2). It re-extracts ADRs/docs and docstrings; commits stay
   key-gated.
 - An interrupted `contextatlas index` lost the work it had paid for
-  (v1.2 Phase 2 review). Docstring files and commits are saved to the
-  local cache as they finish, but `atlas.json` is written only at the
-  end, and the next run imported `atlas.json` over the cache and paid
-  for everything again. A run now records in the cache the
-  `atlas.json` it started from. When the next run finds that record
-  and `atlas.json` unchanged, it still imports `atlas.json`, then
-  carries over the sources the interrupted run extracted (a commit
-  only when HEAD reaches it, so another branch's commits stay out),
-  extracts only what is left, and exports. A source is carried only
-  while the working tree still has the content it was extracted from,
-  so a reverted edit or a deleted scratch file is neither billed again
-  nor exported. Nothing the interrupted run deleted or pruned is
-  carried: the run recomputes that against the current tree and config
-  and reports the orphans itself. A changed `atlas.json` is imported
-  without carrying anything. Only sources whose content differs from
-  what `atlas.json` records (changed or new files, new commits) are
-  carried: an interrupted `index --full` re-extraction of files that
-  had not changed is not kept, and a second `--full` bills it again.
+  (v1.2 Phase 2 review): `atlas.json` was written only at the end,
+  and the next run imported it over the local cache and paid for
+  everything again. With `atlas.committed: true`, `index` now also
+  writes `atlas.json` while it extracts: after a stored file or
+  commit once 30 seconds have passed since the last write, and at
+  the end of the ADR/docs and docstring stages. Each file and commit
+  is written whole and each write is atomic, so an interruption
+  loses only the work since the last write and the calls in flight;
+  the next run imports that `atlas.json` and extracts only what is
+  left.
+  - A partial `atlas.json` keeps the `extracted_at_sha` the run
+    started from (only a finished run stamps HEAD), so it never
+    reads more current than it did before the run.
+  - It is a working-tree change: do not commit `atlas.json` while
+    `index` runs.
+  - It holds what a finished run on that tree would have written,
+    including pruned links and deleted sources. To abandon an
+    interrupted run (on a temporary branch or stash, or with a
+    wrong exclude pattern), run `git checkout -- <atlas.path>`
+    before the next `index`; that also discards the run's paid
+    work.
+  - With `atlas.committed: false`, every file and commit stays in
+    the local cache as it finishes, and there is nothing to write.
+- A kill while `index` wrote an ADR or docs page's claims could leave
+  part of them under a key that already matched the file (under
+  `--full` with `atlas.committed: false`), and the file was never
+  extracted again (v1.2 Phase 2 review). A file's claims and key are
+  now written in one transaction.
 - With `atlas.committed: false` and an `atlas.json` left over from the
   committed workflow, every `index` re-extracted everything newer
   than that file (v1.2 Phase 2 review). See "Changed".
@@ -480,8 +511,7 @@ load-bearing empirical findings).
   once `atlas.json` matches HEAD, so the failed work was never
   retried. `init` now says to run `contextatlas index` first after a
   stream failure, and after a failed `validate-extraction` to fix the
-  failing ADRs (or run `index --full`) until `index` exits 0 (review
-  round 2.3).
+  failing ADRs (or run `index --full`) until `index` exits 0.
 - A `getDocstring` failure in `list-extraction-sources` made an
   `/index-atlas` refresh drop that symbol's claims and pin the file's
   new SHA (v1.2 Phase 2 review). See "Changed".
@@ -489,10 +519,9 @@ load-bearing empirical findings).
   regenerate it, or `committed` switched back to true), an `index` run
   that changed nothing never wrote `atlas.json`: it logged "atlas.json
   untouched" and exited 0 (v1.2 Phase 2 review). It now always writes
-  it in that case. The local cache is its baseline then, and it
-  survives a branch switch: commits it extracted that git knows but
-  HEAD does not reach (another branch) are now left out, where before
-  they reached this branch's `atlas.json` and stayed there.
+  it in that case. The local cache is its baseline then; if the cache
+  was used on another branch, delete it first, or that branch's
+  commit claims reach this branch's `atlas.json`.
 - One ADR or docs page whose response was malformed JSON made `index`
   fail with "Extraction failed for all 1 document(s)" on every run
   while it was the only changed prose file, blaming the API key (v1.2
@@ -508,29 +537,15 @@ load-bearing empirical findings).
   that had claims but no symbols (a docs-only repo, or every source
   excluded), on every start, so with `atlas.committed: false` the next
   `index` billed the difference again (v1.2 Phase 2 review).
-- With `atlas.committed: true` the MCP server never re-imported a
-  changed `atlas.json` into a cache that had symbols (v1.2 Phase 2
-  review). After a `git pull` or an `/index-atlas` refresh it kept
-  serving the old atlas with no warning, and without an API key the
-  only way to refresh it was deleting `index.db`. It now imports
-  `atlas.json` at startup whenever the file differs from the one the
-  cache last imported or wrote (a cache from an earlier release
-  re-imports once; a cache an `index` run changed with
-  `atlas.committed: false`, or with no `atlas.json`, holds none),
-  except while a `contextatlas index` run over the cache is still
-  running, when it serves the cache with a warning. The run records
-  its process, so a run that died (Ctrl-C, a crash) no longer holds
-  the import off; its unsaved work, which `index` would not carry over
-  a changed `atlas.json` either, is dropped. A run on another machine
-  sharing the cache counts as running, and the warning names the way
-  out (delete the local cache). An `atlas.json` that cannot be
-  imported (a merge conflict) leaves the cache in service, with a
-  warning. With `atlas.committed: false` a non-empty cache is kept, as
-  before.
 - An `atlas.json` whose claims link symbols its `symbols` array does
   not list failed to load with a bare `FOREIGN KEY constraint failed`
   (in the MCP server, `index` and `init`). The error now says how
   many claims are affected and to run `contextatlas resolve-symbols`
+  (v1.2 Phase 2 review).
+- An `atlas.json` that is not valid JSON (a torn write, an unresolved
+  merge conflict) failed to load with a bare `SyntaxError` (in the
+  MCP server, `index` and `init`). The error now names the file and
+  says to restore it, for example with `git checkout -- <path>`
   (v1.2 Phase 2 review).
 - `contextatlas index` ran `validate-extraction` only when it wrote
   `atlas.json` (since v0.7.1). After a run that wrote it and failed
@@ -538,18 +553,11 @@ load-bearing empirical findings).
   the same failing atlas, and `init` then reported setup success. With
   `atlas.committed: true` it now checks on every run (locally, no API
   call), so the exit code does not flip on an unchanged atlas (v1.2
-  Phase 2 review round 2.3).
-- After `index --full`, an ADR or docs page whose extraction failed
-  kept its key, which already matched its content, so the next plain
-  `index` never retried it; since v1.2 Phase 2 the same held for
-  docstring files, while the error message promised a retry. A prose
-  or docstring file that is not stored is now recorded in the local
-  cache (cache-only) and extracted again by the next run until it
-  succeeds (v1.2 Phase 2 review round 2.3).
+  Phase 2 review).
 - `list-extraction-sources` ignored `lsp.initialize_timeout_ms`, so
   on a slow language server the `/index-atlas` Phase A step timed out
   (or left files out) where `index` and `resolve-symbols` succeeded
-  (v1.2 Phase 2 review round 2.3).
+  (v1.2 Phase 2 review).
 
 ### Security
 

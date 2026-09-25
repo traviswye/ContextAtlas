@@ -615,48 +615,55 @@ present:
 This is how new team members and returning contributors avoid paying
 the full first-run cost. See ADR-06 for the architectural rationale.
 
-Exceptions (v1.2 Phase 2 review fixes; `atlas-baseline.ts`):
-- **An unfinished run.** Each run records, in the local cache only,
-  the SHA-256 of the atlas.json it started from and clears the record
-  when it finishes. If a run was interrupted (each unit is stored in
-  the cache as soon as it is extracted, but atlas.json is written only
-  at the end) and atlas.json has not changed since, the next run still
-  imports atlas.json, then carries over the units the interrupted run
-  stored: the keys whose SHA differs from atlas.json's, with their
-  claims (`unsaved-work.ts`). A commit is carried only when HEAD
-  reaches it, and a file's unit only while the working tree still has
-  that content (a reverted WIP edit or a deleted scratch file is left
-  to atlas.json). The cache-only key-stream records go back to their
-  state when the interrupted run started. The run then extracts only
-  what is left and exports. What the interrupted run deleted or pruned
-  is not carried: this run recomputes it against the current tree and
-  config. Nor is a unit whose SHA equals atlas.json's: an interrupted
-  `index --full` re-extraction of unchanged files is lost, and another
-  `--full` bills it again. The mark also records the process that set
-  it (`run-owner.ts`, round 2.3), so the MCP server can tell a running
-  `index` from one that died (see "index.db — local derived cache").
+Exceptions (v1.2 Phase 2 review fixes):
 - **`atlas.committed: false`.** The cache is the source of truth, so a
   leftover atlas.json only seeds an empty cache (the rule the MCP
   server and the init smoke test share: no symbols, claims or source
-  keys) and is otherwise ignored with a warning. Such a run changes the
-  cache without writing atlas.json, so it drops the cache's record of
-  which atlas.json it holds (`index.key_streams_atlas_sha256`; so does
-  a committed run with no atlas.json until Stage 7 writes one, round
-  2.3): after a switch back to `committed: true` the next import, and
-  the MCP server, treat the cache as holding no atlas.json.
+  keys) and is otherwise not read, with a warning on every run. To
+  switch to `committed: true` and keep the cache's work, delete or move
+  atlas.json first; the next `index` then writes it from the cache.
+  With the leftover in place, the switch would import it over the
+  cache, and that work would be billed again.
 - **`atlas.committed: true` and no atlas.json.** The cache is the
   baseline, and the run writes atlas.json even if nothing changed. The
   gitignored cache survives a branch switch, so commits it extracted
-  that git knows but HEAD does not reach (another branch) are dropped
-  first.
+  on another branch reach this branch's first atlas.json: delete the
+  cache first if it was used on another branch (the run then extracts
+  everything, as a first run does).
 
-**Retries (v1.2 Phase 2 review round 2.3).** A prose or docstring
-file that is not stored (a call that threw, an unparseable response, a
-failed read or write) keeps its claims and key and is recorded in a
-cache-only retry list (`retry-keys.ts`); the next run extracts it
-whatever its key says, until it is stored. Without the list a failure
-under `--full`, where the key already names the file's current
-content, was never retried by a plain run.
+**Checkpoint exports (v1.2 Phase 2 review fixes; ADR-12 2026-09-25
+Decision 10).** With `atlas.committed: true`, `index` also writes
+atlas.json while it extracts: after a stored unit (an ADR/docs file, a
+docstring file, a keyed commit) once 30 s have passed since the last
+export, and at the end of the prose and docstring stages. Each unit is
+written in one transaction and each write is atomic (a temporary file
+renamed over atlas.json), so a checkpoint holds whole units: it is the
+atlas a completed run over those units would write, except that it
+keeps the `extracted_at_sha` the run started from. Only the final
+export stamps HEAD, so a checkpoint never reads more current than the
+atlas did before the run. An interrupted run therefore loses only the
+work since the last checkpoint and the calls in flight: the next run
+imports the checkpoint at Stage 0 as usual, and the SHA gates skip the
+units it holds. Nothing depends on the local cache. With `committed:
+false` there are no checkpoints; each unit is durable in the cache as
+soon as it is stored. Differences from a completed run:
+- the next run does not repeat the orphaned-claim warning for the
+  interrupted run's prune (the claims are kept);
+- a partial atlas.json is an uncommitted working-tree edit. Do not
+  commit atlas.json while `index` runs; git carries the edit across a
+  branch switch only when atlas.json is identical at both HEADs, and
+  then brings the first branch's commit keys with it;
+- an interrupted run on a temporary tree or config (another branch, a
+  stash, WIP edits, a wrong exclude pattern) leaves that tree's pruning
+  and deletions in atlas.json, and reverted WIP is billed again. To
+  abandon an interrupted run, `git checkout -- <atlas.path>` before
+  re-running; that also discards the run's paid work.
+
+**`--full` (v1.2 Phase 2).** A file `--full` re-extracted whose call
+fails keeps its claims and a key that already names its content, so a
+plain run does not retry it: only another `--full` does, and `index`
+warns with the list. The same holds for the unchanged files an
+interrupted `--full` did not reach.
 
 **Per-stream baseline and structural refresh (v1.2).** `source_shas`
 holds keys for three claim streams:
@@ -669,10 +676,12 @@ holds keys for three claim streams:
 
 Every `contextatlas index` run:
 - **Classifies** each baseline key by the `source` prefix of its
-  claims. A zero-claim key uses the stream this cache recorded writing
-  it (prose or docstring, while the key still holds that SHA; a
-  cache-only record, v1.2 Phase 2 review fix), then the prose walk,
-  then the key's shape.
+  claims. Zero-claim keys fall back to the prose walk, then the key's
+  shape. The prose and docstring streams both key a file by relPath,
+  so after a `docs.include` change moves a file between them, a key
+  one stream wrote with no claims looks unchanged to the other: remove
+  that entry from `source_shas`, or run `index --full` once (a known
+  limitation; ADR-12 2026-09-25 amendment, review fixes).
 - **Diffs** only the prose keys against the prose walk.
 - **Applies one deletion rule per stream:**
   - a prose key goes when the prose walk no longer produces it;
@@ -704,8 +713,9 @@ own re-extraction gate:
   from its key. It makes one call per exported symbol with a
   non-empty docstring. Its claims are replaced, and the key moved, only
   when every call for the file succeeded; otherwise it keeps its old
-  claims and key and is retried next run. A file with no documented
-  exported symbol is keyed with no claims.
+  claims and key and is retried next run (after `--full`, only by
+  another `--full`). A file with no documented exported symbol is
+  keyed with no claims.
 - **commit:** a filter-passing commit is extracted once, when no key
   exists for it; commits are immutable.
 
@@ -934,18 +944,17 @@ Key properties of atlas.json:
 SQLite binary, gitignored, never committed. This is the query-time
 performance layer — fast joins, indexed lookups, compact storage.
 Every developer has their own index.db; it's rebuilt from atlas.json
-on demand. With `atlas.committed: true` the MCP server imports
-atlas.json at startup whenever it differs from the file the cache last
-imported or wrote (a pull, an `/index-atlas` refresh), except while an
-`index` run over the cache is still running or the file cannot be
-imported (then it serves the cache as it stands, with a warning); a
-mark left by a run that died does not hold the import off (the mark
-names its process; a run on another host counts as running). With
-`committed: false` it only seeds an empty cache, and warns when
-atlas.json differs from what the cache holds (v1.2 Phase 2 review
-rounds 2.2 and 2.3; `server-cache-load.ts`). The server loads
-atlas.json only at startup: after an `/index-atlas` refresh the user
-restarts Claude Code or reconnects the server (`/mcp`).
+on demand. The MCP server imports atlas.json only into an empty cache
+(no symbols, claims or source keys), at startup; reload on change is
+v1.2 Phase 4. When it serves a cache whose `generated_at` differs
+from atlas.json's (after a pull, an `/index-atlas` refresh, or
+`atlas.committed: false` runs), it logs a warning at startup. To
+serve a changed atlas.json, stop the server (exit Claude Code, or
+disconnect `contextatlas` in `/mcp`), delete the cache while no
+`contextatlas index` is running, and restart: the cache is rebuilt
+from atlas.json with no API calls. With `atlas.committed: false`
+this discards anything only the cache holds (v1.2 Phase 2 review
+fixes).
 
 SQLite schema:
 
@@ -1039,10 +1048,11 @@ internal-only codebases, and teams with other preferences may set
 - No cross-developer consistency guarantees
 - No zero-cost onboarding
 - The local cache is the baseline. An atlas.json left over from
-  `committed: true` seeds an empty cache once and is otherwise
-  ignored, with a warning to delete it (v1.2 Phase 2 review fix;
-  before, `index` imported it on every run and re-extracted everything
-  newer than it)
+  `committed: true` seeds an empty cache once and is otherwise not
+  read, with a warning that says how to switch back to
+  `committed: true` without losing the cache's work (v1.2 Phase 2
+  review fix; before, `index` imported it on every run and
+  re-extracted everything newer than it)
 
 This is the degraded mode, but it's a supported degraded mode. The
 system must work correctly under both settings.

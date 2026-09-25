@@ -980,9 +980,10 @@ historical record per v0.5 + v0.6 + v0.7 inheritance discipline.
   generation cli-runner). Closes CLI-vs-Skill mechanical-floor-
   enforcement substrate equivalence at /index-atlas surface.
   atlasExported guard prevents re-validation on SHA-diff
-  incremental skips (removed at v1.2 Phase 2 review round 2.3: an
+  incremental skips (removed by the v1.2 Phase 2 review fixes: an
   atlas that failed on the exporting run then passed silently on the
-  next; see the ADR-12 2026-09-25 amendment); clientOverride guard
+  next; see the ADR-12 2026-09-25 amendment, "Review fixes
+  (2026-09-25)"); clientOverride guard
   skips under test mode
   (stub clients produce minimal atlas content that cannot
   satisfy realistic per-ADR depth invariants).
@@ -1592,7 +1593,7 @@ historical record per v0.5 + v0.6 + v0.7 inheritance discipline.
     claims. The L-14 parity bar (per-stream call counts equal a
     `list-extraction-sources` enumeration) assumes no such overlap;
     this repository's `docs.include` matches `.md` files only. (Named
-    in the Phase 2 review, round 2.2; whether the manifest should apply
+    in the Phase 2 review fixes; whether the manifest should apply
     the same skip is open.)
 
   (As first written, this entry named a different second difference:
