@@ -151,6 +151,32 @@ export function deleteClaimsBySourcePath(
   return tx();
 }
 
+/** Number of claims stored under a source path. */
+export function countClaimsBySourcePath(
+  db: DatabaseInstance,
+  sourcePath: string,
+): number {
+  const row = db
+    .prepare("SELECT COUNT(*) AS n FROM claims WHERE source_path = ?")
+    .get(sourcePath) as { n: number };
+  return row.n;
+}
+
+/**
+ * Move every claim stored under `fromPath` to `toPath`. Claim ids, and
+ * so their `claim_symbols` links, are unchanged. Returns the number of
+ * claims moved. v1.2 Phase 2: used by the F-5 commit-key migration.
+ */
+export function reassignClaimsSourcePath(
+  db: DatabaseInstance,
+  fromPath: string,
+  toPath: string,
+): number {
+  return db
+    .prepare("UPDATE claims SET source_path = ? WHERE source_path = ?")
+    .run(toPath, fromPath).changes;
+}
+
 /**
  * IDs of every claim linked to at least one of the given symbols
  * (deduplicated, ascending). v1.2 Phase 1: captured before a symbol
@@ -221,8 +247,10 @@ export function clearClaims(db: DatabaseInstance): void {
 }
 
 // ---------------------------------------------------------------------------
-// source_shas — path → sha map of prose docs that fed extraction.
-// Distinct from symbols.file_sha, which tracks code files.
+// source_shas — key → sha map of every source that fed extraction:
+// prose relPaths, docstring source-file relPaths and `commit:<sha>`
+// keys (see src/extraction/source-keys.ts). Distinct from
+// symbols.file_sha, which tracks the files symbols were listed from.
 // ---------------------------------------------------------------------------
 
 export function setSourceSha(

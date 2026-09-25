@@ -18,7 +18,8 @@
  *   Stream C — Architectural-intent-filtered commit messages. Walks
  *               via parseCommitLog + makeDefaultCommitFilter. Per-
  *               commit entry includes pre-built extraction body per
- *               buildCommitExtractionBody (subject + body).
+ *               buildCommitExtractionBody (subject + body) and the
+ *               canonical `commit:<sha>` source_key (v1.2).
  *
  * Manifest is JSON to stdout. Skill workflow reads the manifest once
  * via Read tool, iterates per-source, makes one canonical-extraction-
@@ -53,10 +54,11 @@ import {
   makeDefaultCommitFilter,
   parseCommitLog,
   type CommitMetadata,
-} from "./commit-message-extractor.js";
+} from "./commit-log.js";
 import { walkProseFiles, walkSourceFiles } from "./file-walker.js";
 import { isExportedSymbol } from "./pipeline.js";
 import { buildSymbolInventory } from "./resolver.js";
+import { commitSourceKey } from "./source-keys.js";
 
 export type ListExtractionSourcesExitCode = 0 | 2;
 
@@ -117,7 +119,11 @@ export interface DocstringSource {
  * Per-commit entry for Stream C. The Skill agent reads this entry,
  * feeds `extraction_body` to the canonical EXTRACTION_PROMPT (matches
  * buildCommitExtractionBody output exactly), and emits claims with
- * `source: "commit:<sha>"`, `source_path: <sha>`, `source_sha: <sha>`.
+ * `source: "commit:<sha>"`, `source_path: "commit:<sha>"`,
+ * `source_sha: <sha>`, keyed in `source_shas` as `"commit:<sha>"` →
+ * `<sha>`. That key is `source_key`, so the Skill never builds keys
+ * itself (v1.2 Phase 2, F-5). Atlases written before v1.2 may hold
+ * the legacy bare-sha key and `source_path`; readers accept both.
  */
 export interface CommitSource {
   source_type: "commit";
@@ -127,6 +133,26 @@ export interface CommitSource {
   author: string;
   date: string;
   extraction_body: string;
+  /**
+   * Canonical `source_shas` key and claim `source_path` for this
+   * commit: `commit:<sha>`. Added in v1.2 (additive; the manifest
+   * stays `manifest_version: "1"`).
+   */
+  source_key: string;
+}
+
+/** Build the manifest entry for one filtered commit. */
+export function toCommitSource(commit: CommitMetadata): CommitSource {
+  return {
+    source_type: "commit",
+    sha: commit.sha,
+    subject: commit.subject,
+    body: commit.body,
+    author: commit.author,
+    date: commit.date,
+    extraction_body: buildCommitExtractionBody(commit),
+    source_key: commitSourceKey(commit.sha),
+  };
 }
 
 export interface ExtractionSourcesManifest {
@@ -220,8 +246,9 @@ export async function runListExtractionSourcesSubcommand(
     }
 
     // Stream B — source files + symbol inventory + per-symbol
-    // exported-with-docstring filter. Mirrors extractDocstringsForFile
-    // pre-API-call filter chain at pipeline.ts:834-852 exactly.
+    // exported-with-docstring filter. Mirrors the pre-API-call filter
+    // chain of extractDocstringsForFile (pipeline.ts): isExportedSymbol,
+    // then a non-empty getDocstring.
     const excludePatterns = computeExcludePatterns(config);
     const allExtensions = new Set<string>();
     for (const adapter of adapters.values()) {
@@ -235,9 +262,9 @@ export async function runListExtractionSourcesSubcommand(
     const inventory = await buildSymbolInventory(adapters, sourceFiles);
 
     const docstrings: DocstringSource[] = [];
-    // Build per-file symbol-grouping so we can issue one listSymbols /
-    // getDocstring sequence per file (parallel to extractDocstringsForFile
-    // discipline at pipeline.ts:834).
+    // Group the inventory's symbols by file so each file's getDocstring
+    // calls go through the adapter that owns it (the same per-file unit
+    // extractDocstringsForFile works in).
     const symbolsByFile = new Map<string, typeof inventory.allSymbols>();
     for (const sym of inventory.allSymbols) {
       const existing = symbolsByFile.get(sym.path);
@@ -286,17 +313,7 @@ export async function runListExtractionSourcesSubcommand(
       const filtered = allCommits.filter((c: CommitMetadata) =>
         filter(c.subject, c.body),
       );
-      for (const c of filtered) {
-        commits.push({
-          source_type: "commit",
-          sha: c.sha,
-          subject: c.subject,
-          body: c.body,
-          author: c.author,
-          date: c.date,
-          extraction_body: buildCommitExtractionBody(c),
-        });
-      }
+      for (const c of filtered) commits.push(toCommitSource(c));
     } catch (err) {
       // Commits stream is best-effort — non-git checkouts or missing
       // git binary surface a warning but do NOT fail the manifest. The

@@ -395,7 +395,7 @@ export interface ContextAtlasConfig {
      * commit-message extraction (v0.4 Step 4 / Stream A).
      *
      * AUGMENT-ONLY in v0.4: user patterns ADD to the default-set
-     * (`src/extraction/commit-message-extractor.ts`
+     * (`src/extraction/commit-log.ts`
      * `DEFAULT_SUBJECT_PREFIX_PATTERNS` + `DEFAULT_BODY_ANYWHERE_
      * PATTERNS`); defaults always apply. Empty
      * `commit_message_filter: []` means no augmentation; defaults

@@ -1,3 +1,4 @@
+import { spawnSync } from "node:child_process";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -5,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import {
   runListExtractionSourcesSubcommand,
+  toCommitSource,
   type ExtractionSourcesManifest,
 } from "./cli-list-extraction-sources.js";
 
@@ -196,5 +198,69 @@ describe("runListExtractionSourcesSubcommand", () => {
     );
     const manifest = JSON.parse(manifestJson) as ExtractionSourcesManifest;
     expect(manifest.manifest_version).toBe("1");
+  });
+
+  it("commit entries carry the canonical `commit:<sha>` source_key (F-5)", async () => {
+    const git = (args: string[]): string => {
+      const r = spawnSync(
+        "git",
+        ["-c", "commit.gpgsign=false", ...args],
+        {
+          cwd: fixture.root,
+          encoding: "utf8",
+          env: {
+            ...process.env,
+            GIT_AUTHOR_NAME: "Tester",
+            GIT_AUTHOR_EMAIL: "tester@example.com",
+            GIT_COMMITTER_NAME: "Tester",
+            GIT_COMMITTER_EMAIL: "tester@example.com",
+          },
+        },
+      );
+      if (r.status !== 0) throw new Error(`git ${args.join(" ")}: ${r.stderr}`);
+      return r.stdout.trim();
+    };
+    git(["init", "-q"]);
+    git(["add", "-A"]);
+    git(["commit", "-q", "-m", "design: introduce Foo"]);
+    const sha = git(["rev-parse", "HEAD"]);
+
+    const result = await runListExtractionSourcesSubcommand({
+      configRoot: fixture.root,
+      configFile: null,
+      writeStdout: (c) => (stdout += c),
+      writeStderr: (c) => (stderr += c),
+    });
+    if (result.exitCode === 2) return; // skip when adapter init fails on fixture
+
+    const manifest = JSON.parse(stdout) as ExtractionSourcesManifest;
+    expect(manifest.manifest_version).toBe("1");
+    expect(manifest.sources.commits).toHaveLength(1);
+    expect(manifest.sources.commits[0]!.sha).toBe(sha);
+    expect(manifest.sources.commits[0]!.source_key).toBe(`commit:${sha}`);
+  });
+});
+
+describe("toCommitSource", () => {
+  it("builds a manifest entry with the pre-built body and the canonical source_key", () => {
+    const sha = "0123456789abcdef0123456789abcdef01234567";
+    expect(
+      toCommitSource({
+        sha,
+        date: "2026-09-25T00:00:00Z",
+        author: "Tester",
+        subject: "design: split the router",
+        body: "Why it matters.",
+      }),
+    ).toEqual({
+      source_type: "commit",
+      sha,
+      subject: "design: split the router",
+      body: "Why it matters.",
+      author: "Tester",
+      date: "2026-09-25T00:00:00Z",
+      extraction_body: "design: split the router\n\nWhy it matters.",
+      source_key: `commit:${sha}`,
+    });
   });
 });

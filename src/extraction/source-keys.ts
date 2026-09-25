@@ -9,10 +9,14 @@
  *   - **docstring** — one key per source file, keyed by the source
  *     relPath (`src/router.ts`). Written by `extractDocstringsForFile`
  *     (even when the file yields zero claims) and the Skill Stream B.
- *   - **commit** — one key per extracted commit. Two formats exist
- *     (F-5): the CLI commit-message extractor uses `commit:<sha>`;
- *     the `/index-atlas` Skill uses the bare 40-hex sha. Both carry
- *     claim `source` = `commit:<sha>`.
+ *   - **commit** — one key per extracted commit. The canonical key is
+ *     `commit:<sha>` (v1.2 Phase 2, F-5 / lead decision L-2), used for
+ *     both the `source_shas` key and `claims.source_path`, so
+ *     `source_path == source`. Before v1.2 the `/index-atlas` Skill
+ *     wrote the bare 40-hex sha as key and `source_path`; readers
+ *     accept both forms permanently (installed SKILL.md copies are
+ *     never overwritten), and {@link normalizeCommitKeys} rewrites the
+ *     bare form to the canonical one.
  *
  * Stage 5 of the extraction pipeline must treat each stream by its
  * own deletion rule, so it needs to know which stream a key belongs
@@ -25,7 +29,17 @@
 
 import { posix } from "node:path";
 
-import { listClaimSourcesByPath } from "../storage/claims.js";
+import { log } from "../mcp/logger.js";
+import {
+  countClaimsBySourcePath,
+  deleteClaimsBySourcePath,
+  deleteSourceSha,
+  getSourceSha,
+  listClaimSourcesByPath,
+  listSourceShas,
+  reassignClaimsSourcePath,
+  setSourceSha,
+} from "../storage/claims.js";
 import type { DatabaseInstance } from "../storage/db.js";
 import type { LanguageCode } from "../types.js";
 
@@ -56,11 +70,32 @@ export const REGISTERED_SOURCE_EXTENSIONS: ReadonlySet<string> = new Set(
   Object.values(REGISTERED_LANGUAGE_EXTENSIONS).flat(),
 );
 
-/** CLI commit-message extractor key prefix (`commit:<sha>`). */
+/** Prefix of the canonical commit key and of commit claims' `source`. */
 export const COMMIT_KEY_PREFIX = "commit:";
 const DOCSTRING_SOURCE_PREFIX = "docstring:";
-/** Skill Stream C key format: the bare full-length commit sha. */
+/**
+ * Legacy commit key format: the bare full-length sha the `/index-atlas`
+ * Skill wrote before v1.2. Recognized permanently (F-5).
+ */
 const BARE_COMMIT_SHA = /^[0-9a-f]{40}$/i;
+
+/** Canonical `source_shas` key and `claims.source_path` for a commit. */
+export function commitSourceKey(sha: string): string {
+  return `${COMMIT_KEY_PREFIX}${sha}`;
+}
+
+/**
+ * Whether a commit is already keyed as extracted, in either form: the
+ * canonical `commit:<sha>` or the legacy bare sha, each mapping to the
+ * sha itself. Commits are immutable, so a keyed commit's claims are
+ * current and it is skipped.
+ */
+export function hasCommitKey(db: DatabaseInstance, sha: string): boolean {
+  return (
+    getSourceSha(db, commitSourceKey(sha)) === sha ||
+    getSourceSha(db, sha) === sha
+  );
+}
 
 /**
  * Most-conservative-first ordering for keys whose claims disagree.
@@ -167,5 +202,129 @@ export function partitionSourceShas(
   const out: SourceShaPartition = { prose: {}, docstring: {}, commit: {} };
   const streams = classifySourceKeys(db, Object.keys(shas), options);
   for (const [key, stream] of streams) out[stream][key] = shas[key]!;
+  return out;
+}
+
+/** What {@link normalizeCommitKeys} changed. All zero on a no-op. */
+export interface CommitKeyNormalization {
+  /** Commits found in the legacy bare-sha form (each now canonical). */
+  readonly shasNormalized: number;
+  /**
+   * `source_shas` rows renamed from `<sha>` to `commit:<sha>`. A bare
+   * key whose canonical key already exists is deleted, not counted.
+   */
+  readonly keysRewritten: number;
+  /** Claims whose `source_path` moved from `<sha>` to `commit:<sha>`. */
+  readonly claimsRewritten: number;
+  /** Commits present in both forms; the `commit:<sha>` form was kept. */
+  readonly duplicateShas: number;
+  /** Bare-form claims deleted because the `commit:<sha>` form existed. */
+  readonly duplicateClaimsDropped: number;
+}
+
+/**
+ * F-5 migration (v1.2 Phase 2, lead decision L-2): bring every commit
+ * stored under the legacy bare-sha form to the canonical
+ * `commit:<sha>` form, rewriting both the `source_shas` key and
+ * `claims.source_path` (classification, `deleteClaimsBySourcePath`,
+ * orphan reports and the Skill's preserved-claim match all join on
+ * `source_path`, so moving only the key would strand the claims).
+ *
+ * A bare key or claim path is migrated only when it is a 40-hex string
+ * that {@link classifySourceKeys} places in the commit stream, so a
+ * prose file that happens to have a 40-hex name is left alone.
+ *
+ * Both forms present for one sha: the `commit:<sha>` form wins. It
+ * counts as present when its key or any claim under it exists. The
+ * bare-form claims are deleted; the bare key is deleted, or renamed
+ * when no canonical key exists yet so the commit stays keyed. The
+ * count is logged as a warning.
+ *
+ * Idempotent and cheap on an already canonical atlas; the CLI runs it
+ * on every `index`, because installed SKILL.md copies from before v1.2
+ * keep writing the bare form. One transaction.
+ */
+export function normalizeCommitKeys(
+  db: DatabaseInstance,
+): CommitKeyNormalization {
+  const run = db.transaction((): CommitKeyNormalization => {
+    const shas = listSourceShas(db);
+    const bare = new Set<string>();
+    for (const key of Object.keys(shas)) {
+      if (BARE_COMMIT_SHA.test(key)) bare.add(key);
+    }
+    for (const { sourcePath } of listClaimSourcesByPath(db)) {
+      if (BARE_COMMIT_SHA.test(sourcePath)) bare.add(sourcePath);
+    }
+
+    let shasNormalized = 0;
+    let keysRewritten = 0;
+    let claimsRewritten = 0;
+    let duplicateShas = 0;
+    let duplicateClaimsDropped = 0;
+    if (bare.size === 0) {
+      return {
+        shasNormalized,
+        keysRewritten,
+        claimsRewritten,
+        duplicateShas,
+        duplicateClaimsDropped,
+      };
+    }
+
+    const streams = classifySourceKeys(db, [...bare].sort());
+    for (const [sha, stream] of streams) {
+      if (stream !== "commit") continue;
+      shasNormalized++;
+      const canonical = commitSourceKey(sha);
+      const bareValue = shas[sha];
+      const canonicalKeyed = shas[canonical] !== undefined;
+      const canonicalPresent =
+        canonicalKeyed || countClaimsBySourcePath(db, canonical) > 0;
+
+      if (canonicalPresent) {
+        duplicateShas++;
+        duplicateClaimsDropped += deleteClaimsBySourcePath(db, sha);
+      } else {
+        claimsRewritten += reassignClaimsSourcePath(db, sha, canonical);
+      }
+
+      if (bareValue !== undefined) {
+        deleteSourceSha(db, sha);
+        if (!canonicalKeyed) {
+          setSourceSha(db, canonical, bareValue);
+          keysRewritten++;
+        }
+      }
+    }
+    return {
+      shasNormalized,
+      keysRewritten,
+      claimsRewritten,
+      duplicateShas,
+      duplicateClaimsDropped,
+    };
+  });
+
+  const out = run();
+  if (out.duplicateShas > 0) {
+    log.warn(
+      "source-keys: commit(s) were stored in both the `commit:<sha>` and the " +
+        "bare-sha form; kept the `commit:<sha>` claims and dropped the " +
+        "bare-form duplicates. The bare form comes from an `/index-atlas` " +
+        "Skill installed before v1.2: refresh it (delete " +
+        "`.claude/skills/index-atlas/` and re-run `contextatlas init`) so " +
+        "both paths write `commit:<sha>`.",
+      {
+        duplicateShas: out.duplicateShas,
+        duplicateClaimsDropped: out.duplicateClaimsDropped,
+      },
+    );
+  }
+  if (out.shasNormalized > 0) {
+    log.info("source-keys: normalized bare-sha commit keys to `commit:<sha>`", {
+      ...out,
+    });
+  }
   return out;
 }

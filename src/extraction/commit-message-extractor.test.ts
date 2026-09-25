@@ -3,217 +3,26 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join as pathJoin } from "node:path";
 
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { log } from "../mcp/logger.js";
 import {
   buildSymbolInventory,
   type SymbolInventory,
 } from "./resolver.js";
-import { listAllClaims, setSourceSha } from "../storage/claims.js";
+import {
+  insertClaim,
+  listAllClaims,
+  listSourceShas,
+  setSourceSha,
+} from "../storage/claims.js";
 import { type DatabaseInstance, openDatabase } from "./../storage/db.js";
 import { upsertSymbols } from "./../storage/symbols.js";
-import {
-  buildCommitExtractionBody,
-  DEFAULT_BODY_ANYWHERE_PATTERNS,
-  DEFAULT_SUBJECT_PREFIX_PATTERNS,
-  extractCommitMessagesForRepo,
-  makeDefaultCommitFilter,
-  parseCommitLog,
-  type CommitMetadata,
-} from "./commit-message-extractor.js";
+import { extractCommitMessagesForRepo } from "./commit-message-extractor.js";
 import type { ExtractionClient } from "./anthropic-client.js";
 
-// ---------------------------------------------------------------------------
-// Filter regex (Step 4.1)
-// ---------------------------------------------------------------------------
-
-describe("DEFAULT_SUBJECT_PREFIX_PATTERNS", () => {
-  it("matches conventional architectural-intent subjects", () => {
-    const f = makeDefaultCommitFilter();
-    const cases: ReadonlyArray<readonly [string, boolean]> = [
-      ["design: switch from REST to gRPC", true],
-      ["arch: extract user service", true],
-      ["arch(api): scope-stripped variant", true],
-      ["architecture: top-level decision record", true],
-      ["ADR-12: introduce event-sourcing layer", true],
-      ["adr-7: write claim for thing", true],
-      ["breaking: drop Node 18 support", true],
-      ["breaking(api): rename core types", true],
-      ["deprecate FooClass; use BarClass", true],
-      ["deprecates: legacy auth flow", true],
-      ["refactor: split User into Account+Profile", true],
-      ["refactor(core): inline validators", true],
-    ];
-    for (const [subject, expected] of cases) {
-      expect(f(subject, "")).toBe(expected);
-    }
-  });
-
-  it("rejects false positives where keyword appears mid-subject", () => {
-    const f = makeDefaultCommitFilter();
-    const negatives = [
-      "Fixed design bug in user form",
-      "Implement design for new dashboard",
-      "Tests refactor module behaviors",
-      "feat: new endpoint for foo",
-      "fix: correct off-by-one",
-      "chore: upgrade vitest",
-      "Add deprecation note to README", // body word, not subject prefix
-    ];
-    for (const subject of negatives) {
-      expect(f(subject, "")).toBe(false);
-    }
-  });
-
-  it("matches BREAKING CHANGE: footer in body (not subject prefix)", () => {
-    const f = makeDefaultCommitFilter();
-    const subject = "feat: rename top-level config field";
-    const body =
-      "Renames `config.foo` to `config.bar` across the project.\n\n" +
-      "BREAKING CHANGE: existing config files must be migrated.\n";
-    expect(f(subject, body)).toBe(true);
-  });
-
-  it("body-anywhere regex catches BREAKING CHANGE: anywhere in body", () => {
-    // Confirms Q3 lock — first-200-char prefix would miss many real
-    // conventional-commits BREAKING CHANGE: footers.
-    const padding = "x".repeat(500);
-    const body = padding + "\nBREAKING CHANGE: see migration notes.\n";
-    expect(DEFAULT_BODY_ANYWHERE_PATTERNS[0]!.test(body)).toBe(true);
-  });
-});
-
-describe("user-augmented patterns", () => {
-  it("user pattern adds to defaults; default patterns still match", () => {
-    const f = makeDefaultCommitFilter(["^myteam-design/"]);
-    expect(f("myteam-design/foo: ...", "")).toBe(true);
-    expect(f("design: ...", "")).toBe(true); // default still works
-  });
-
-  it("user pattern is tested against subject + body[:200] surface", () => {
-    const f = makeDefaultCommitFilter(["proposal-id-\\d+"]);
-    expect(f("feat: foo", "Reference: proposal-id-42 inline.")).toBe(true);
-  });
-
-  it("user pattern is case-insensitive (regex 'i' flag)", () => {
-    const f = makeDefaultCommitFilter(["TEAMTAG"]);
-    expect(f("feat: teamtag in subject", "")).toBe(true);
-  });
-});
-
-describe("default exports surface", () => {
-  it("DEFAULT_SUBJECT_PREFIX_PATTERNS is non-empty", () => {
-    expect(DEFAULT_SUBJECT_PREFIX_PATTERNS.length).toBeGreaterThan(0);
-  });
-
-  it("DEFAULT_BODY_ANYWHERE_PATTERNS contains BREAKING CHANGE", () => {
-    expect(DEFAULT_BODY_ANYWHERE_PATTERNS.length).toBeGreaterThan(0);
-  });
-});
-
-describe("buildCommitExtractionBody", () => {
-  const meta = (subject: string, body: string): CommitMetadata => ({
-    sha: "abc",
-    date: "2026-04-28T00:00:00Z",
-    author: "Tester",
-    subject,
-    body,
-  });
-
-  it("concatenates subject + body with blank-line separator", () => {
-    const out = buildCommitExtractionBody(
-      meta("design: switch to gRPC", "Replaces REST endpoints with proto."),
-    );
-    expect(out).toBe("design: switch to gRPC\n\nReplaces REST endpoints with proto.");
-  });
-
-  it("returns subject only when body is empty / whitespace", () => {
-    expect(buildCommitExtractionBody(meta("subject only", ""))).toBe("subject only");
-    expect(buildCommitExtractionBody(meta("subject only", "   \n  "))).toBe(
-      "subject only",
-    );
-  });
-});
-
-// ---------------------------------------------------------------------------
-// parseCommitLog (Step 4.2) — integration with a real `git log`.
-// ---------------------------------------------------------------------------
-
-describe("parseCommitLog", () => {
-  let tmp: string;
-  beforeEach(() => {
-    tmp = mkdtempSync(pathJoin(tmpdir(), "ca-cm-"));
-  });
-  afterEach(() => rmSync(tmp, { recursive: true, force: true }));
-
-  function runGit(args: readonly string[]): void {
-    const r = spawnSync("git", args as string[], { cwd: tmp, encoding: "utf8" });
-    if (r.status !== 0) throw new Error(`git ${args.join(" ")}: ${r.stderr}`);
-  }
-
-  function commit(subject: string, body = ""): void {
-    writeFileSync(pathJoin(tmp, "stamp.txt"), `${Date.now()}-${Math.random()}`);
-    runGit(["add", "stamp.txt"]);
-    const msg = body.length > 0 ? `${subject}\n\n${body}` : subject;
-    const r = spawnSync("git", ["commit", "-m", msg], {
-      cwd: tmp,
-      encoding: "utf8",
-      env: {
-        ...process.env,
-        GIT_AUTHOR_NAME: "Tester",
-        GIT_AUTHOR_EMAIL: "tester@example.com",
-        GIT_COMMITTER_NAME: "Tester",
-        GIT_COMMITTER_EMAIL: "tester@example.com",
-      },
-    });
-    if (r.status !== 0) throw new Error(`git commit: ${r.stderr}`);
-  }
-
-  it("returns empty array for non-git directory", () => {
-    expect(() => parseCommitLog(tmp, () => true)).toThrow(
-      /not a git repository/i,
-    );
-  });
-
-  it("parses commits with subject + multi-line body via NUL/RS separators", () => {
-    runGit(["init", "-q"]);
-    commit("design: introduce widget service");
-    commit(
-      "arch(api): split user service",
-      "Body line 1\nBody line 2 with\ttabs.\n\nBREAKING CHANGE: yes.",
-    );
-    commit("chore: bump deps"); // should NOT match default filter
-    const f = makeDefaultCommitFilter();
-    const out = parseCommitLog(tmp, f);
-    expect(out.length).toBe(2);
-    // Order is `git log` chronological newest-first.
-    const subjects = out.map((c) => c.subject).sort();
-    expect(subjects).toEqual([
-      "arch(api): split user service",
-      "design: introduce widget service",
-    ]);
-    const archCommit = out.find((c) => c.subject.startsWith("arch"))!;
-    expect(archCommit.body).toContain("Body line 1");
-    expect(archCommit.body).toContain("BREAKING CHANGE: yes.");
-    expect(archCommit.author).toBe("Tester");
-    expect(archCommit.sha).toMatch(/^[0-9a-f]{40}$/);
-    expect(archCommit.date).toMatch(/^\d{4}-\d{2}-\d{2}T/);
-  });
-
-  it("filter set to () => true returns every commit unmodified", () => {
-    runGit(["init", "-q"]);
-    commit("subject one");
-    commit("subject two");
-    const out = parseCommitLog(tmp, () => true);
-    expect(out.length).toBe(2);
-  });
-
-  it("filter set to () => false returns empty array", () => {
-    runGit(["init", "-q"]);
-    commit("design: yes");
-    expect(parseCommitLog(tmp, () => false)).toEqual([]);
-  });
-});
+// Filter, git-log parsing and body-builder tests live in
+// commit-log.test.ts (collection split out at v1.2 Phase 2).
 
 // ---------------------------------------------------------------------------
 // extractCommitMessagesForRepo orchestration (Step 4.3 + 4.4 + 4.5)
@@ -275,7 +84,7 @@ describe("extractCommitMessagesForRepo", () => {
   }
 
   function makeStubClient(
-    responder: (body: string) => Awaited<ReturnType<ExtractionClient["extract"]>>,
+    responder: (body: string) => ReturnType<ExtractionClient["extract"]>,
   ): ExtractionClient {
     return {
       async extract(body) {
@@ -410,8 +219,298 @@ describe("extractCommitMessagesForRepo", () => {
     expect(withFilter.commitsFiltered).toBe(1);
     expect(withFilter.commitsExtracted).toBe(1);
   });
+
+  // -------------------------------------------------------------------------
+  // v1.2 Phase 2: canonical keys (F-5 / L-2), per-commit transaction,
+  // null-result policy (L-10 iii), additive counters.
+  // -------------------------------------------------------------------------
+
+  function headSha(): string {
+    const r = spawnSync("git", ["rev-parse", "HEAD"], {
+      cwd: tmp,
+      encoding: "utf8",
+    });
+    if (r.status !== 0) throw new Error(`git rev-parse: ${r.stderr}`);
+    return r.stdout.trim();
+  }
+
+  const oneClaim = (
+    candidates: string[],
+    text = "WidgetService is canonical.",
+  ): ExtractionClient =>
+    makeStubClient(async () => ({
+      result: {
+        claims: [
+          {
+            symbol_candidates: candidates,
+            claim: text,
+            severity: "soft",
+            rationale: "r",
+            excerpt: "e",
+          },
+        ],
+      },
+      usage: { inputTokens: 10, outputTokens: 5 },
+    }));
+
+  const claimTextsFor = (sha: string): string[] =>
+    listAllClaims(db)
+      .filter((c) => c.sourcePath === `commit:${sha}` || c.sourcePath === sha)
+      .map((c) => c.claim)
+      .sort();
+
+  it("writes the canonical `commit:<sha>` key and source_path (F-5)", async () => {
+    commit("design: introduce WidgetService");
+    const sha = headSha();
+    await extractCommitMessagesForRepo(
+      db,
+      tmp,
+      {},
+      inventory,
+      oneClaim(["WidgetService"]),
+    );
+    expect(listSourceShas(db)).toEqual({ [`commit:${sha}`]: sha });
+    const [claim] = listAllClaims(db);
+    expect(claim!.source).toBe(`commit:${sha}`);
+    expect(claim!.sourcePath).toBe(`commit:${sha}`);
+    expect(claim!.sourceSha).toBe(sha);
+  });
+
+  it("idempotence accepts a legacy bare-sha key (Skill form, pre-v1.2)", async () => {
+    commit("design: thing");
+    const sha = headSha();
+    setSourceSha(db, sha, sha);
+    let calls = 0;
+    const result = await extractCommitMessagesForRepo(
+      db,
+      tmp,
+      {},
+      inventory,
+      makeStubClient(async () => {
+        calls++;
+        return {
+          result: { claims: [] },
+          usage: { inputTokens: 0, outputTokens: 0 },
+        };
+      }),
+    );
+    expect(calls).toBe(0);
+    expect(result.commitsSkippedIdempotent).toBe(1);
+    expect(result.commitsExtracted).toBe(0);
+    expect(result.apiCalls).toBe(0);
+  });
+
+  it("re-extraction replaces the commit's claims in either key form (no duplicates)", async () => {
+    commit("design: introduce WidgetService");
+    const sha = headSha();
+    // Stale, unkeyed claims in both forms (e.g. a key removed to force
+    // a retry, or a Skill write that lost its key).
+    const stale = (sourcePath: string): void => {
+      insertClaim(db, {
+        source: `commit:${sha}`,
+        sourcePath,
+        sourceSha: sha,
+        severity: "context",
+        claim: `stale@${sourcePath}`,
+        symbolIds: [],
+      });
+    };
+    stale(`commit:${sha}`);
+    stale(sha);
+
+    await extractCommitMessagesForRepo(
+      db,
+      tmp,
+      {},
+      inventory,
+      oneClaim(["WidgetService"], "fresh-1"),
+    );
+    expect(claimTextsFor(sha)).toEqual(["fresh-1"]);
+    expect(listSourceShas(db)).toEqual({ [`commit:${sha}`]: sha });
+
+    // Losing the key and extracting again still yields one claim set.
+    db.exec("DELETE FROM source_shas");
+    await extractCommitMessagesForRepo(
+      db,
+      tmp,
+      {},
+      inventory,
+      oneClaim(["WidgetService"], "fresh-2"),
+    );
+    expect(claimTextsFor(sha)).toEqual(["fresh-2"]);
+    expect(listSourceShas(db)).toEqual({ [`commit:${sha}`]: sha });
+  });
+
+  it("a null result pins the key with zero claims and warns, so it is not re-billed", async () => {
+    const warn = vi.spyOn(log, "warn").mockImplementation(() => {});
+    try {
+      commit("design: produces an unparseable response");
+      const sha = headSha();
+      const result = await extractCommitMessagesForRepo(
+        db,
+        tmp,
+        {},
+        inventory,
+        makeStubClient(async () => ({
+          result: null,
+          usage: { inputTokens: 40, outputTokens: 7 },
+        })),
+      );
+      expect(result.commitsExtracted).toBe(1);
+      expect(result.commitsNullResult).toBe(1);
+      expect(result.claimsWritten).toBe(0);
+      expect(result.errors).toEqual([]);
+      // The call was paid for; its usage is counted.
+      expect(result.totalUsage).toEqual({ inputTokens: 40, outputTokens: 7 });
+      expect(listSourceShas(db)).toEqual({ [`commit:${sha}`]: sha });
+      expect(listAllClaims(db)).toEqual([]);
+      expect(warn).toHaveBeenCalledTimes(1);
+      const [message] = warn.mock.calls[0]!;
+      expect(message).toMatch(/no parseable result/);
+      expect(message).toContain(`commit:${sha}`);
+      expect(message).toMatch(/source_shas/);
+
+      let calls = 0;
+      const rerun = await extractCommitMessagesForRepo(
+        db,
+        tmp,
+        {},
+        inventory,
+        makeStubClient(async () => {
+          calls++;
+          return { result: null, usage: { inputTokens: 0, outputTokens: 0 } };
+        }),
+      );
+      expect(calls).toBe(0);
+      expect(rerun.commitsSkippedIdempotent).toBe(1);
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it("a thrown client error leaves the commit unkeyed so the next run retries it", async () => {
+    commit("design: flaky");
+    const sha = headSha();
+    const failed = await extractCommitMessagesForRepo(
+      db,
+      tmp,
+      {},
+      inventory,
+      makeStubClient(async () => {
+        throw new Error("simulated 529");
+      }),
+    );
+    expect(failed.errors).toEqual([
+      { sha, error: expect.stringMatching(/simulated 529/) },
+    ]);
+    expect(failed.apiCalls).toBe(1);
+    expect(listSourceShas(db)).toEqual({});
+
+    const retried = await extractCommitMessagesForRepo(
+      db,
+      tmp,
+      {},
+      inventory,
+      oneClaim(["WidgetService"]),
+    );
+    expect(retried.commitsExtracted).toBe(1);
+    expect(listSourceShas(db)).toEqual({ [`commit:${sha}`]: sha });
+  });
+
+  it("reports apiCalls (attempts, including failures) and unresolvedCandidates", async () => {
+    commit("design: one");
+    commit("arch: two");
+    let n = 0;
+    const result = await extractCommitMessagesForRepo(
+      db,
+      tmp,
+      {},
+      inventory,
+      makeStubClient(async () => {
+        n++;
+        if (n === 1) throw new Error("simulated 500");
+        return {
+          result: {
+            claims: [
+              {
+                symbol_candidates: ["WidgetService", "NoSuchSymbol"],
+                claim: "c",
+                severity: "hard",
+                rationale: "",
+                excerpt: "",
+              },
+            ],
+          },
+          usage: { inputTokens: 1, outputTokens: 1 },
+        };
+      }),
+    );
+    expect(result.apiCalls).toBe(2);
+    expect(result.commitsExtracted).toBe(1);
+    expect(result.unresolvedCandidates).toBe(1);
+    expect(result.claimsWithSymbols).toBe(1);
+    expect(result.commitsNullResult).toBe(0);
+  });
+
+  it("stores each commit atomically: a failed write keeps the prior state and records an error", async () => {
+    commit("design: introduce WidgetService");
+    const sha = headSha();
+    insertClaim(db, {
+      source: `commit:${sha}`,
+      sourcePath: `commit:${sha}`,
+      sourceSha: sha,
+      severity: "context",
+      claim: "stale",
+      symbolIds: [],
+    });
+    // A symbol the inventory knows but the database does not: linking
+    // a claim to it violates the claim_symbols foreign key mid-write.
+    const ghost = {
+      id: "sym:ts:src/ghost.ts:Ghost",
+      name: "Ghost",
+      kind: "class" as const,
+      path: "src/ghost.ts",
+      line: 1,
+      language: "typescript" as const,
+    };
+    inventory.allSymbols.push(ghost);
+    inventory.byName.set("Ghost", [ghost]);
+
+    const result = await extractCommitMessagesForRepo(
+      db,
+      tmp,
+      {},
+      inventory,
+      makeStubClient(async () => ({
+        result: {
+          claims: [
+            {
+              symbol_candidates: ["WidgetService"],
+              claim: "first",
+              severity: "soft",
+              rationale: "",
+              excerpt: "",
+            },
+            {
+              symbol_candidates: ["Ghost"],
+              claim: "second",
+              severity: "soft",
+              rationale: "",
+              excerpt: "",
+            },
+          ],
+        },
+        usage: { inputTokens: 3, outputTokens: 3 },
+      })),
+    );
+    expect(result.errors).toHaveLength(1);
+    expect(result.errors[0]!.sha).toBe(sha);
+    expect(result.errors[0]!.error).toMatch(/store/i);
+    expect(result.claimsWritten).toBe(0);
+    // Rolled back: the stale claim is untouched and the commit is not
+    // keyed, so the next run retries it.
+    expect(claimTextsFor(sha)).toEqual(["stale"]);
+    expect(listSourceShas(db)).toEqual({});
+  });
 });
 
-// Reference imported but unused-warning suppression: setSourceSha is
-// re-exported for future use cases.
-void setSourceSha;
