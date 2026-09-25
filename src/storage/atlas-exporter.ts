@@ -21,12 +21,18 @@
  * Atlas v1.1 adds `extracted_at_sha` and `git_commits` per ADR-11. The
  * exporter emits v1.1 unconditionally; the new optional fields are
  * omitted when no git data was collected (non-git source trees).
+ *
+ * `claims[].symbol_candidates` (atlas v1.4) is emitted after
+ * `symbol_ids`, only when non-empty, from `claims.symbol_candidates`
+ * (v1.2 Phase 2, F-7). An empty array in an imported atlas therefore
+ * exports as an absent key; both mean "no candidates".
  */
 
 import { writeFileSync } from "node:fs";
 
 import {
   listAllClaims,
+  listClaimSymbolCandidates,
   listSourceShas,
 } from "./claims.js";
 import type { DatabaseInstance } from "./db.js";
@@ -174,34 +180,31 @@ export function exportAtlas(
       })
       .sort((a, b) => compareStrings(a.id, b.id));
 
+    // Stored raw candidates (F-7), read beside the claims rather than
+    // through `Claim`, which also feeds MCP tool output.
+    const candidatesByClaimId = listClaimSymbolCandidates(db);
     const claims: AtlasClaimEntry[] = listAllClaims(db)
       .map((c): AtlasClaimEntry => {
         const symbol_ids = [...c.symbolIds].sort(compareStrings);
-        const base: AtlasClaimEntry = {
+        const candidates = candidatesByClaimId.get(c.id);
+        // Canonical key order for claims: source, source_path, source_sha,
+        // severity, claim, rationale?, excerpt?, symbol_ids,
+        // symbol_candidates?. Optional keys are omitted when empty.
+        // symbol_candidates keeps its stored order (not sorted): the
+        // Skill lists a docstring's documented symbol first.
+        return {
           source: c.source,
           source_path: c.sourcePath,
           source_sha: c.sourceSha,
           severity: c.severity,
           claim: c.claim,
+          ...(hasValue(c.rationale) ? { rationale: c.rationale } : {}),
+          ...(hasValue(c.excerpt) ? { excerpt: c.excerpt } : {}),
           symbol_ids,
+          ...(candidates !== undefined && candidates.length > 0
+            ? { symbol_candidates: candidates }
+            : {}),
         };
-        // Canonical key order for claims: source, source_path, source_sha,
-        // severity, claim, rationale, excerpt, symbol_ids. Rebuild the
-        // literal to match the canonical order when optional fields exist.
-        if (hasValue(c.rationale) || hasValue(c.excerpt)) {
-          const rebuilt: AtlasClaimEntry = {
-            source: c.source,
-            source_path: c.sourcePath,
-            source_sha: c.sourceSha,
-            severity: c.severity,
-            claim: c.claim,
-            ...(hasValue(c.rationale) ? { rationale: c.rationale } : {}),
-            ...(hasValue(c.excerpt) ? { excerpt: c.excerpt } : {}),
-            symbol_ids,
-          };
-          return rebuilt;
-        }
-        return base;
       })
       .sort((a, b) => {
         // Per DESIGN.md: "sorted by (source, symbol_id, claim)". A claim

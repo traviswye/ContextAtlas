@@ -26,7 +26,10 @@ import {
   parsePythonBodyDocstring,
 } from "../adapters/pyright.js";
 import { parseDocstringFromTsserverHover } from "../adapters/typescript.js";
-import { listAllClaims } from "../storage/claims.js";
+import {
+  listAllClaims,
+  listClaimSymbolCandidates,
+} from "../storage/claims.js";
 import { type DatabaseInstance, openDatabase } from "../storage/db.js";
 import { upsertSymbols } from "../storage/symbols.js";
 import type {
@@ -915,6 +918,80 @@ describe("extractDocstringsForFile (behavioral)", () => {
     expect(claim.symbolIds).toHaveLength(1); // Channel B empty; total = 1
     // Verify other inventory symbol NOT spuriously included
     expect(claim.symbolIds).not.toContain(otherInInventory.id);
+  });
+
+  // F-7 (v1.2 Phase 2): the model's raw candidates are persisted for
+  // atlas export. Provenance stays on symbol_ids only: the documented
+  // symbol's bare name is NOT prepended (a later name-based re-resolve,
+  // e.g. `resolve-symbols`, would link every same-named symbol).
+  it("F-7: stores the model's raw symbol_candidates verbatim, without the documented name", async () => {
+    const documented = makeSymbol("MyFunc", "src/lib.go", "sha-lib");
+    const crossRef = makeSymbol("Logger", "src/log.go", "sha-log");
+    upsertSymbols(db, [documented, crossRef]);
+    const inventory = makeInventory([documented, crossRef]);
+
+    const docstringText = "MyFunc uses Logger and Ghost.";
+    const silentText = "MyFunc has a second, reference-free docstring.";
+    const second = makeSymbol("MyOther", "src/lib.go", "sha-lib");
+    upsertSymbols(db, [second]);
+    const adapter = makeStubAdapter({
+      language: "go",
+      extensions: [".go"],
+      symbolsByPath: new Map([["src/lib.go", [documented, second]]]),
+      docstringsBySymbolId: new Map([
+        [documented.id, docstringText],
+        [second.id, silentText],
+      ]),
+    });
+    const client = makeStubClient({
+      responsesByDocstring: new Map([
+        [
+          docstringText,
+          {
+            claims: [
+              {
+                symbol_candidates: ["Logger", "Ghost"],
+                claim: "MyFunc logs via Logger",
+                severity: "context",
+                rationale: "r",
+                excerpt: "e",
+              },
+            ],
+          },
+        ],
+        [
+          silentText,
+          {
+            claims: [
+              {
+                symbol_candidates: [],
+                claim: "MyOther is reference-free",
+                severity: "context",
+                rationale: "r",
+                excerpt: "e",
+              },
+            ],
+          },
+        ],
+      ]),
+    });
+
+    await extractDocstringsForFile(
+      db,
+      adapter,
+      "src/lib.go",
+      "sha-lib",
+      inventory,
+      client,
+    );
+
+    const byId = listClaimSymbolCandidates(db);
+    const byText = new Map(
+      listAllClaims(db).map((c) => [c.claim, byId.get(c.id)] as const),
+    );
+    expect(byText.get("MyFunc logs via Logger")).toEqual(["Logger", "Ghost"]);
+    expect(byText.get("MyOther is reference-free")).toBeUndefined();
+    expect(byText.size).toBe(2);
   });
 });
 

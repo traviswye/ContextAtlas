@@ -10,7 +10,9 @@
  * Supports atlas versions 1.0 and 1.1 (ADR-11). v1.0 atlases have no
  * git block; they load into empty git tables without complaint. v1.1
  * atlases populate git_commits + git_file_commits from the embedded
- * commit list.
+ * commit list. Later versions add optional fields only (see the version
+ * history in ./types.ts); v1.4 `claims[].symbol_candidates` is stored
+ * in `claims.symbol_candidates` since v1.2 Phase 2.
  */
 
 import { readFileSync } from "node:fs";
@@ -123,7 +125,8 @@ export function importAtlas(db: DatabaseInstance, atlas: AtlasFileV1): void {
     }));
     upsertSymbols(db, symbols);
 
-    // claims (+ claim_symbols)
+    // claims (+ claim_symbols). symbol_candidates is atlas v1.4+
+    // (F-7: persisted so a CLI index no longer strips it).
     const claims: NewClaim[] = atlas.claims.map((entry) => ({
       source: entry.source,
       sourcePath: entry.source_path,
@@ -133,6 +136,7 @@ export function importAtlas(db: DatabaseInstance, atlas: AtlasFileV1): void {
       rationale: entry.rationale,
       excerpt: entry.excerpt,
       symbolIds: entry.symbol_ids,
+      symbolCandidates: readSymbolCandidates(entry.symbol_candidates),
     }));
     insertClaims(db, claims);
 
@@ -181,6 +185,19 @@ function validateAtlas(atlas: AtlasFileV1): void {
       "importAtlas: git_commits must be an array when present.",
     );
   }
+}
+
+/**
+ * `claims[].symbol_candidates` as stored: the string entries, in order.
+ * A malformed value (not an array) is treated as absent and non-string
+ * entries are dropped. Before v1.2 the importer ignored the field
+ * entirely, so a malformed one never stopped an atlas from loading;
+ * that stays true. `validate-atlas` rejects a non-array at the Skill
+ * boundary.
+ */
+function readSymbolCandidates(value: unknown): string[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  return value.filter((c): c is string => typeof c === "string");
 }
 
 function isSupportedVersion(v: unknown): v is AtlasVersion {

@@ -161,6 +161,63 @@ describe("openDatabase", () => {
     }
   });
 
+  it("claims table has the migration-v6 symbol_candidates column (F-7)", () => {
+    const db = openDatabase(":memory:");
+    const cols = db
+      .prepare("PRAGMA table_info(claims)")
+      .all() as { name: string; type: string; notnull: number }[];
+    const candidates = cols.find((c) => c.name === "symbol_candidates");
+    expect(candidates).toBeDefined();
+    expect(candidates?.type).toBe("TEXT");
+    expect(candidates?.notnull).toBe(0); // nullable: NULL = no candidates
+    db.close();
+  });
+
+  it("migration v6 adds symbol_candidates to an existing v5 cache without data loss", () => {
+    // Build a real v5-shaped cache on disk: open at the latest version,
+    // drop the v6 column again and roll schema_version back to 5, then
+    // store a claim (with its FTS row) the way a v1.1/v1.2 Phase 1
+    // binary would. Reopening must apply only migration 6.
+    const tmp = mkdtempSync(pathJoin(tmpdir(), "contextatlas-db-"));
+    const dbPath = pathJoin(tmp, "index.db");
+    try {
+      const db1 = openDatabase(dbPath);
+      db1.exec("ALTER TABLE claims DROP COLUMN symbol_candidates;");
+      db1
+        .prepare("UPDATE _meta SET value = '5' WHERE key = 'schema_version'")
+        .run();
+      db1
+        .prepare(
+          "INSERT INTO claims (source, source_path, source_sha, severity, claim, rationale, excerpt) " +
+            "VALUES ('adr:ADR-01.md', 'docs/adr/ADR-01.md', 's', 'hard', 'payment idempotency matters', 'r', 'e')",
+        )
+        .run();
+      db1.close();
+
+      const db2 = openDatabase(dbPath);
+      const version = db2
+        .prepare("SELECT value FROM _meta WHERE key = 'schema_version'")
+        .get() as { value: string };
+      expect(parseInt(version.value, 10)).toBe(LATEST_SCHEMA_VERSION);
+      expect(LATEST_SCHEMA_VERSION).toBeGreaterThanOrEqual(6);
+
+      const row = db2
+        .prepare("SELECT claim, symbol_candidates FROM claims")
+        .get() as { claim: string; symbol_candidates: string | null };
+      expect(row.claim).toBe("payment idempotency matters");
+      expect(row.symbol_candidates).toBeNull();
+
+      // The FTS index built before the migration still answers.
+      const hits = db2
+        .prepare("SELECT rowid FROM claims_fts WHERE claims_fts MATCH 'payment'")
+        .all();
+      expect(hits).toHaveLength(1);
+      db2.close();
+    } finally {
+      rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
   it("creates the expected indexes", () => {
     const db = openDatabase(":memory:");
     const indexes = db

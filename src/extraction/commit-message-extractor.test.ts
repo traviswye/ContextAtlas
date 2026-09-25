@@ -13,6 +13,7 @@ import {
 import {
   insertClaim,
   listAllClaims,
+  listClaimSymbolCandidates,
   listSourceShas,
   setSourceSha,
 } from "../storage/claims.js";
@@ -511,6 +512,44 @@ describe("extractCommitMessagesForRepo", () => {
     // keyed, so the next run retries it.
     expect(claimTextsFor(sha)).toEqual(["stale"]);
     expect(listSourceShas(db)).toEqual({});
+  });
+
+  it("F-7: stores the model's raw symbol_candidates on commit claims", async () => {
+    commit("design: introduce WidgetService");
+    await extractCommitMessagesForRepo(
+      db,
+      tmp,
+      {},
+      inventory,
+      makeStubClient(async () => ({
+        result: {
+          claims: [
+            {
+              symbol_candidates: ["NoSuchSymbol", "WidgetService"],
+              claim: "named",
+              severity: "soft",
+              rationale: "",
+              excerpt: "",
+            },
+            {
+              symbol_candidates: [],
+              claim: "unnamed",
+              severity: "soft",
+              rationale: "",
+              excerpt: "",
+            },
+          ],
+        },
+        usage: { inputTokens: 1, outputTokens: 1 },
+      })),
+    );
+    const byId = listClaimSymbolCandidates(db);
+    const byText = new Map(
+      listAllClaims(db).map((c) => [c.claim, byId.get(c.id)] as const),
+    );
+    expect(byText.get("named")).toEqual(["NoSuchSymbol", "WidgetService"]);
+    expect(byText.get("unnamed")).toBeUndefined();
+    expect(byText.size).toBe(2);
   });
 });
 

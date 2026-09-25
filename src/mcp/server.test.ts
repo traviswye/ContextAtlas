@@ -373,6 +373,43 @@ describe("MCP server with runtime context — get_symbol_context", () => {
     expect(text).toBe(BYTE_EQUIVALENCE_EXPECTED);
   });
 
+  it("F-7: stored symbol_candidates never change get_symbol_context output (compact + JSON)", async () => {
+    // claims.symbol_candidates is export-only: it must not reach the
+    // Claim objects the bundle is built from, so both output formats
+    // stay byte-identical whether or not a claim carries candidates.
+    const call = async (format: "compact" | "json"): Promise<string> => {
+      const result = await client.request(
+        {
+          method: "tools/call",
+          params: {
+            name: TOOL_NAMES.getSymbolContext,
+            arguments: {
+              symbol: "sym:ts:src/orders/processor.ts:OrderProcessor",
+              format,
+            },
+          },
+        },
+        CallToolResultSchema,
+      );
+      expect(result.isError).toBeFalsy();
+      return (result.content[0] as { text: string }).text;
+    };
+    const compactBefore = await call("compact");
+    const jsonBefore = await call("json");
+
+    db.prepare("UPDATE claims SET symbol_candidates = ?").run(
+      JSON.stringify(["OrderProcessor", "GhostCandidate"]),
+    );
+
+    const compactAfter = await call("compact");
+    const jsonAfter = await call("json");
+    expect(compactAfter).toBe(compactBefore);
+    expect(compactAfter).toBe(BYTE_EQUIVALENCE_EXPECTED);
+    expect(jsonAfter).toBe(jsonBefore);
+    expect(jsonAfter).not.toContain("GhostCandidate");
+    expect(jsonAfter).not.toMatch(/symbol_?[cC]andidates/);
+  });
+
   it("returns JSON format when requested", async () => {
     const result = await client.request(
       {

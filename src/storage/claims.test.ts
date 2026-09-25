@@ -7,6 +7,7 @@ import {
   insertClaims,
   listAllClaims,
   listClaimsForSymbol,
+  listClaimSymbolCandidates,
   listSourceShas,
   setSourceSha,
   type NewClaim,
@@ -152,5 +153,108 @@ describe("claims CRUD", () => {
       "docs/adr/ADR-01.md": "sha1-new",
       "docs/adr/ADR-07.md": "sha7",
     });
+  });
+});
+
+describe("claims.symbol_candidates (F-7, export-only)", () => {
+  let db: DatabaseInstance;
+  beforeEach(() => {
+    db = openDatabase(":memory:");
+    seedSymbols(db);
+  });
+  afterEach(() => {
+    db.close();
+  });
+
+  function base(over: Partial<NewClaim> = {}): NewClaim {
+    return {
+      source: "adr:ADR-01.md",
+      sourcePath: "docs/adr/ADR-01.md",
+      sourceSha: "s",
+      severity: "hard",
+      claim: "c",
+      symbolIds: ["sym:ts:src/a.ts:Foo"],
+      ...over,
+    };
+  }
+
+  it("stores the raw candidates verbatim, in order, as a JSON array", () => {
+    const id = insertClaim(
+      db,
+      base({ symbolCandidates: ["Zeta", "Foo", "src/a.ts:Foo", "Zeta", ""] }),
+    );
+    const raw = db
+      .prepare("SELECT symbol_candidates FROM claims WHERE id = ?")
+      .get(id) as { symbol_candidates: string | null };
+    expect(JSON.parse(raw.symbol_candidates!)).toEqual([
+      "Zeta",
+      "Foo",
+      "src/a.ts:Foo",
+      "Zeta",
+      "",
+    ]);
+    expect(listClaimSymbolCandidates(db)).toEqual(
+      new Map([[id, ["Zeta", "Foo", "src/a.ts:Foo", "Zeta", ""]]]),
+    );
+  });
+
+  it("stores NULL when candidates are absent or empty; the reader omits them", () => {
+    const absent = insertClaim(db, base({ claim: "absent" }));
+    const empty = insertClaim(db, base({ claim: "empty", symbolCandidates: [] }));
+    const rows = db
+      .prepare("SELECT id, symbol_candidates FROM claims ORDER BY id")
+      .all() as { id: number; symbol_candidates: string | null }[];
+    expect(rows).toEqual([
+      { id: absent, symbol_candidates: null },
+      { id: empty, symbol_candidates: null },
+    ]);
+    expect(listClaimSymbolCandidates(db).size).toBe(0);
+  });
+
+  it("reader skips a malformed stored value instead of throwing", () => {
+    const good = insertClaim(db, base({ claim: "good", symbolCandidates: ["Foo"] }));
+    const bad = insertClaim(db, base({ claim: "bad" }));
+    const mixed = insertClaim(db, base({ claim: "mixed" }));
+    db.prepare("UPDATE claims SET symbol_candidates = ? WHERE id = ?").run(
+      "{not json",
+      bad,
+    );
+    db.prepare("UPDATE claims SET symbol_candidates = ? WHERE id = ?").run(
+      JSON.stringify(["Bar", 7, null]),
+      mixed,
+    );
+    expect(listClaimSymbolCandidates(db)).toEqual(
+      new Map([
+        [good, ["Foo"]],
+        [mixed, ["Bar"]],
+      ]),
+    );
+  });
+
+  it("never surfaces candidates on Claim (MCP tool output path)", () => {
+    insertClaim(db, base({ symbolCandidates: ["Foo", "Ghost"] }));
+    const expectedKeys = [
+      "claim",
+      "excerpt",
+      "id",
+      "rationale",
+      "severity",
+      "source",
+      "sourcePath",
+      "sourceSha",
+      "symbolIds",
+    ];
+    const [fromAll] = listAllClaims(db);
+    const [fromSymbol] = listClaimsForSymbol(db, "sym:ts:src/a.ts:Foo");
+    for (const claim of [fromAll!, fromSymbol!]) {
+      expect(Object.keys(claim).sort()).toEqual(expectedKeys);
+      expect(JSON.stringify(claim)).not.toContain("Ghost");
+    }
+  });
+
+  it("deleteClaimsBySourcePath removes the candidates with the claim", () => {
+    insertClaim(db, base({ symbolCandidates: ["Foo"] }));
+    deleteClaimsBySourcePath(db, "docs/adr/ADR-01.md");
+    expect(listClaimSymbolCandidates(db).size).toBe(0);
   });
 });

@@ -464,6 +464,64 @@ describe("runExtractionPipeline", () => {
     expect(result.claimsWritten).toBe(1);
   });
 
+  it("F-7: records the model's raw symbol_candidates on prose claims in atlas.json", async () => {
+    // Candidates are stored verbatim (resolved and unresolved, model
+    // order) and emitted after symbol_ids. Frontmatter fallback symbols
+    // are not candidates: an empty model list stays absent even when
+    // the fallback links the claim.
+    writeFileSync(
+      pathJoin(tmp, "docs", "adr", "ADR-05.md"),
+      "---\nid: ADR-05\nsymbols:\n  - Foo\n---\nBody mentions Foo.",
+    );
+    writeFileSync(pathJoin(tmp, "src", "x.ts"), "export class Foo {}");
+    const adapter = adapterForSrc({
+      "x.ts": [
+        {
+          id: "sym:ts:src/x.ts:Foo",
+          name: "Foo",
+          kind: "class",
+          path: "src/x.ts",
+          line: 1,
+          language: "typescript",
+        },
+      ],
+    });
+    const client = makeStubClient([
+      {
+        claims: [
+          makeClaim({
+            claim: "named claim",
+            symbol_candidates: ["Ghost", "Foo", "src/x.ts:Foo"],
+          }),
+          makeClaim({ claim: "vague claim", symbol_candidates: [] }),
+        ],
+      },
+    ]);
+    await runExtractionPipeline({
+      repoRoot: tmp,
+      config: baseConfig(),
+      db,
+      anthropicClient: client,
+      adapters: new Map([["typescript", adapter]]),
+    });
+    const atlas = JSON.parse(
+      readFileSync(pathJoin(tmp, ".contextatlas", "atlas.json"), "utf8"),
+    ) as {
+      claims: Array<Record<string, unknown> & { claim: string }>;
+    };
+    const byClaim = new Map(atlas.claims.map((c) => [c.claim, c] as const));
+    const named = byClaim.get("named claim")!;
+    expect(named.symbol_candidates).toEqual(["Ghost", "Foo", "src/x.ts:Foo"]);
+    expect(named.symbol_ids).toEqual(["sym:ts:src/x.ts:Foo"]);
+    expect(Object.keys(named).slice(-2)).toEqual([
+      "symbol_ids",
+      "symbol_candidates",
+    ]);
+    const vague = byClaim.get("vague claim")!;
+    expect(vague.symbol_ids).toEqual(["sym:ts:src/x.ts:Foo"]);
+    expect(vague).not.toHaveProperty("symbol_candidates");
+  });
+
   it("frontmatter 'symbols:' recovers claims that resolve to zero symbols (Path X fallback)", async () => {
     // Under v0.3 Step 7 A1 default (drop-with-fallback), frontmatter
     // is no longer merged into every claim. Instead, frontmatter

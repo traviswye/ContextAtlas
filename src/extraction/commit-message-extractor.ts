@@ -203,6 +203,9 @@ export async function extractCommitClaims(
       ...(ec.rationale ? { rationale: ec.rationale } : {}),
       ...(ec.excerpt ? { excerpt: ec.excerpt } : {}),
       symbolIds: resolved.symbolIds,
+      // F-7: raw candidates, kept for atlas export. Commits are never
+      // re-extracted, so this is the only chance to record them.
+      symbolCandidates: ec.symbol_candidates,
     });
   }
 

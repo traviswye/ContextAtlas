@@ -9,7 +9,9 @@
  *   - `_meta`        — internal schema version bookkeeping (not user-visible)
  *   - `atlas_meta`   — top-level atlas.json fields (version, generated_at,
  *                      generator info) stored as key/value rows
- *   - `source_shas`  — the path→sha map of prose docs that fed extraction
+ *   - `source_shas`  — the key→sha map of every source that fed
+ *                      extraction (prose paths, docstring source files,
+ *                      `commit:<sha>` keys)
  *
  * Migrations are expressed as code. Adding a v2 appends one entry to
  * `MIGRATIONS`; the runner applies everything above the current version
@@ -244,6 +246,24 @@ const MIGRATIONS: Migration[] = [
           COALESCE(rationale, '') || ' ' || REPLACE(REPLACE(COALESCE(rationale, ''), '_', ' '), '-', ' '),
           COALESCE(excerpt, '') || ' ' || REPLACE(REPLACE(COALESCE(excerpt, ''), '_', ' '), '-', ' ')
         FROM claims;
+      `);
+    },
+  },
+  {
+    // v1.2 Phase 2 (F-7): raw `claims[].symbol_candidates` (atlas
+    // schema v1.4 optional field) as a JSON array of strings. Before
+    // this column a CLI `index` over a Skill-built atlas dropped every
+    // candidate on its import → export round trip, and CLI extraction
+    // had nowhere to keep the model's raw candidates for later
+    // re-resolution. Additive and nullable (NULL = no candidates), like
+    // migration 4. Read only by the atlas exporter via
+    // `listClaimSymbolCandidates`, never by `Claim` / `rowToClaim`, so
+    // MCP tool output is unchanged. The FTS triggers name only claim /
+    // rationale / excerpt and need no change.
+    version: 6,
+    apply(db) {
+      db.exec(`
+        ALTER TABLE claims ADD COLUMN symbol_candidates TEXT;
       `);
     },
   },

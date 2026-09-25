@@ -30,8 +30,30 @@ export interface NewClaim {
   rationale?: string;
   excerpt?: string;
   symbolIds: readonly SymbolId[];
+  /**
+   * Raw symbol-candidate strings behind `symbolIds` (atlas
+   * `claims[].symbol_candidates`, v1.2 Phase 2 / F-7), stored verbatim
+   * and in order. Absent or empty stores NULL. Export-only: read back
+   * through {@link listClaimSymbolCandidates}, never onto `Claim`.
+   */
+  symbolCandidates?: readonly string[];
 }
 
+/**
+ * NULL for absent or empty candidate lists, so "no candidates" has one
+ * stored form and the exporter omits the key for both.
+ */
+function encodeSymbolCandidates(
+  candidates: readonly string[] | undefined,
+): string | null {
+  return candidates && candidates.length > 0
+    ? JSON.stringify(candidates)
+    : null;
+}
+
+// rowToClaim deliberately ignores `claims.symbol_candidates` (F-7): it
+// feeds get_symbol_context / find_by_intent / impact_of_change, whose
+// output must not change. The exporter reads candidates separately.
 function rowToClaim(row: ClaimRow, symbolIds: SymbolId[]): Claim {
   return {
     id: row.id,
@@ -50,8 +72,8 @@ export function insertClaim(db: DatabaseInstance, claim: NewClaim): number {
   const tx = db.transaction(() => {
     const info = db
       .prepare(
-        `INSERT INTO claims (source, source_path, source_sha, severity, claim, rationale, excerpt)
-         VALUES (@source, @source_path, @source_sha, @severity, @claim, @rationale, @excerpt)`,
+        `INSERT INTO claims (source, source_path, source_sha, severity, claim, rationale, excerpt, symbol_candidates)
+         VALUES (@source, @source_path, @source_sha, @severity, @claim, @rationale, @excerpt, @symbol_candidates)`,
       )
       .run({
         source: claim.source,
@@ -61,6 +83,7 @@ export function insertClaim(db: DatabaseInstance, claim: NewClaim): number {
         claim: claim.claim,
         rationale: claim.rationale ?? null,
         excerpt: claim.excerpt ?? null,
+        symbol_candidates: encodeSymbolCandidates(claim.symbolCandidates),
       });
     const claimId = Number(info.lastInsertRowid);
     const linkStmt = db.prepare(
@@ -100,6 +123,40 @@ export function listAllClaims(db: DatabaseInstance): Claim[] {
       links.map((l) => l.symbol_id),
     );
   });
+}
+
+/**
+ * Stored `symbol_candidates` by claim id, for the atlas exporter only
+ * (F-7). Claims with no candidates are absent from the map. Each list
+ * keeps its stored order: the Skill puts a docstring's documented
+ * symbol first, so order carries meaning and is not normalized. The
+ * column is only written by {@link insertClaim}; a value that is not a
+ * JSON array is skipped and non-string entries are dropped rather than
+ * failing an export.
+ */
+export function listClaimSymbolCandidates(
+  db: DatabaseInstance,
+): Map<number, string[]> {
+  const rows = db
+    .prepare(
+      "SELECT id, symbol_candidates FROM claims WHERE symbol_candidates IS NOT NULL ORDER BY id",
+    )
+    .all() as { id: number; symbol_candidates: string }[];
+  const out = new Map<number, string[]>();
+  for (const row of rows) {
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(row.symbol_candidates);
+    } catch {
+      continue;
+    }
+    if (!Array.isArray(parsed)) continue;
+    const candidates = parsed.filter(
+      (c): c is string => typeof c === "string",
+    );
+    if (candidates.length > 0) out.set(row.id, candidates);
+  }
+  return out;
 }
 
 export function listClaimsForSymbol(

@@ -39,6 +39,11 @@
  *          not resolve). Absent on CLI-path atlases (resolution
  *          happens inline during extraction). Earlier-version atlases
  *          import cleanly with the field absent.
+ *          v1.2 Phase 2 (F-7), no version bump: the local cache keeps
+ *          the field (`claims.symbol_candidates`), so a CLI `index`
+ *          over a Skill-built atlas no longer drops it, and CLI
+ *          extraction now writes the model's raw candidates too. It
+ *          is emitted only when non-empty, in stored order.
  */
 
 import type { Severity, SymbolId, SymbolKind } from "../types.js";
@@ -83,15 +88,21 @@ export interface AtlasClaimEntry {
   excerpt?: string;
   symbol_ids: SymbolId[];
   /**
-   * Raw symbol-candidate strings produced by Skill-path extraction
-   * reasoning before LSP resolution (atlas schema v1.4+, v0.7 Step
-   * 2.3.a.1). Populated by `/index-atlas` Skill writes; consumed by
-   * `contextatlas resolve-symbols` to produce the canonical
-   * `symbol_ids` array via R8 name-form normalization. Retained on
-   * the persisted atlas as honest-scope-acknowledgment substrate for
-   * unresolved candidates (records what the LLM extracted; what LSP
-   * could and could not resolve). Absent on CLI-path atlases
-   * (resolution happens inline during extraction).
+   * Raw symbol-candidate strings produced by extraction before LSP
+   * resolution (atlas schema v1.4+, v0.7 Step 2.3.a.1). Populated by
+   * `/index-atlas` Skill writes; consumed by `contextatlas
+   * resolve-symbols` to produce the canonical `symbol_ids` array via
+   * R8 name-form normalization. Retained on the persisted atlas as
+   * honest-scope-acknowledgment substrate for unresolved candidates
+   * (records what the LLM extracted; what LSP could and could not
+   * resolve).
+   *
+   * Since v1.2 Phase 2 (F-7) CLI extraction also writes it: the
+   * model's candidates, verbatim, for ADR / prose, docstring and
+   * commit claims (a CLI docstring claim does not repeat its
+   * documented symbol here; its provenance is the exact id in
+   * `symbol_ids`). The exporter emits it after `symbol_ids`, only when
+   * non-empty, in stored order. It never appears in MCP tool output.
    */
   symbol_candidates?: string[];
 }

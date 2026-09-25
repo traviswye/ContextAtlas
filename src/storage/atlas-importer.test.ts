@@ -4,7 +4,11 @@ import { resolve as pathResolve } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { importAtlas, importAtlasFile } from "./atlas-importer.js";
-import { listAllClaims, listSourceShas } from "./claims.js";
+import {
+  listAllClaims,
+  listClaimSymbolCandidates,
+  listSourceShas,
+} from "./claims.js";
 import { type DatabaseInstance, openDatabase } from "./db.js";
 import { listAllSymbols } from "./symbols.js";
 import type { AtlasFileV1 } from "./types.js";
@@ -211,5 +215,77 @@ describe("importAtlas", () => {
     // Because the transaction rolled back, the DB must still reflect the
     // last successful import — NOT a half-cleared, half-populated state.
     expect(listAllSymbols(db)).toEqual(beforeSymbols);
+  });
+});
+
+describe("importAtlas — claims[].symbol_candidates (F-7)", () => {
+  let db: DatabaseInstance;
+  beforeEach(() => {
+    db = openDatabase(":memory:");
+  });
+  afterEach(() => {
+    db.close();
+  });
+
+  function atlasWith(
+    candidates: ReadonlyArray<unknown>,
+  ): AtlasFileV1 {
+    return {
+      version: "1.4",
+      generated_at: "2026-09-25T00:00:00Z",
+      generator: {
+        contextatlas_version: "1.2.0",
+        extraction_model: "claude-opus-4-7",
+      },
+      source_shas: {},
+      symbols: [],
+      claims: candidates.map((c, i) => ({
+        source: "adr:ADR-01.md",
+        source_path: "docs/adr/ADR-01.md",
+        source_sha: "s",
+        severity: "hard",
+        claim: `claim ${i}`,
+        symbol_ids: [],
+        ...(c === undefined ? {} : { symbol_candidates: c as string[] }),
+      })),
+    };
+  }
+
+  function candidatesByClaim(): Record<string, string[]> {
+    const byId = listClaimSymbolCandidates(db);
+    const out: Record<string, string[]> = {};
+    for (const claim of listAllClaims(db)) {
+      const c = byId.get(claim.id);
+      if (c) out[claim.claim] = c;
+    }
+    return out;
+  }
+
+  it("persists Skill-written candidates verbatim and in order", () => {
+    importAtlas(
+      db,
+      atlasWith([
+        ["RegExpRouter", "hono/router.ts:Router", "RegExpRouter"],
+        ["Ghost"],
+        [],
+        undefined,
+      ]),
+    );
+    expect(candidatesByClaim()).toEqual({
+      "claim 0": ["RegExpRouter", "hono/router.ts:Router", "RegExpRouter"],
+      "claim 1": ["Ghost"],
+    });
+  });
+
+  it("tolerates a malformed field: non-arrays are ignored, non-string entries dropped", () => {
+    importAtlas(db, atlasWith(["Foo", { a: 1 }, ["Bar", 3, null, "Baz"], [4]]));
+    expect(candidatesByClaim()).toEqual({ "claim 2": ["Bar", "Baz"] });
+    expect(listAllClaims(db)).toHaveLength(4);
+  });
+
+  it("re-import replaces candidates (clear + insert)", () => {
+    importAtlas(db, atlasWith([["Old"]]));
+    importAtlas(db, atlasWith([["New"]]));
+    expect(candidatesByClaim()).toEqual({ "claim 0": ["New"] });
   });
 });

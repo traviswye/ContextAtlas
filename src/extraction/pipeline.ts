@@ -819,6 +819,9 @@ function writeClaimsForFile(
       rationale: ec.rationale,
       excerpt: ec.excerpt,
       symbolIds,
+      // F-7: the model's raw candidates, verbatim (frontmatter fallback
+      // symbols are not candidates), for atlas export only.
+      symbolCandidates: ec.symbol_candidates,
     };
     insertClaim(db, claim);
     claimsWritten++;
@@ -1077,6 +1080,12 @@ function writeDocstringClaim(
     rationale: extracted.rationale,
     excerpt: extracted.excerpt,
     symbolIds,
+    // F-7: the model's raw candidates only. Unlike the Skill, which
+    // lists the documented symbol's name first because it has no other
+    // provenance channel, the CLI keeps provenance as the exact id in
+    // symbolIds; a bare name here would let a later name-based
+    // re-resolve (resolve-symbols) link every same-named symbol.
+    symbolCandidates: extracted.symbol_candidates,
   };
   insertClaim(db, claim);
 

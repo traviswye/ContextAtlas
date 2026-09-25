@@ -492,3 +492,211 @@ describe("atlas.json round-trip", () => {
     }
   });
 });
+
+describe("claims[].symbol_candidates export (F-7)", () => {
+  const SHA = "0123456789abcdef0123456789abcdef01234567";
+
+  /**
+   * A Skill-built atlas after `resolve-symbols`, already in the
+   * exporter's canonical order: claim keys end `symbol_ids,
+   * symbol_candidates` (the order every v0.8 Skill benchmark atlas
+   * uses), the docstring claim lists its documented symbol first
+   * (SKILL.md Phase B step 2), and candidate arrays are NOT sorted.
+   */
+  function skillShapedAtlas(): AtlasFileV1 {
+    return {
+      version: "1.4",
+      generated_at: "2026-09-25T00:00:00.000Z",
+      generator: {
+        contextatlas_version: "1.2.0",
+        extraction_model: "claude-opus-4-7",
+      },
+      source_shas: {
+        [`commit:${SHA}`]: SHA,
+        "docs/adr/ADR-01-routing.md": "adr-sha",
+        "src/router.ts": "router-sha",
+      },
+      symbols: [
+        {
+          id: "sym:ts:src/router.ts:RegExpRouter",
+          name: "RegExpRouter",
+          kind: "class",
+          path: "src/router.ts",
+          line: 12,
+          file_sha: "router-sha",
+        },
+        {
+          id: "sym:ts:src/router.ts:Router",
+          name: "Router",
+          kind: "interface",
+          path: "src/router.ts",
+          line: 3,
+          file_sha: "router-sha",
+        },
+      ],
+      claims: [
+        {
+          source: "adr:ADR-01-routing.md",
+          source_path: "docs/adr/ADR-01-routing.md",
+          source_sha: "adr-sha",
+          severity: "context",
+          claim: "Routing is pluggable",
+          rationale: "Apps pick a router",
+          excerpt: "Routers are interchangeable",
+          symbol_ids: [],
+        },
+        {
+          source: "adr:ADR-01-routing.md",
+          source_path: "docs/adr/ADR-01-routing.md",
+          source_sha: "adr-sha",
+          severity: "hard",
+          claim: "RegExpRouter must stay allocation-free on match",
+          rationale: "Hot path",
+          excerpt: "The matcher never allocates",
+          symbol_ids: ["sym:ts:src/router.ts:RegExpRouter"],
+          symbol_candidates: ["RegExpRouter", "hono.router.Matcher", "Ghost"],
+        },
+        {
+          source: `commit:${SHA}`,
+          source_path: `commit:${SHA}`,
+          source_sha: SHA,
+          severity: "soft",
+          claim: "Routers share one interface",
+          rationale: "Swap without code changes",
+          excerpt: "refactor: extract Router interface",
+          symbol_ids: ["sym:ts:src/router.ts:Router"],
+          symbol_candidates: ["Router"],
+        },
+        {
+          source: "docstring:src/router.ts",
+          source_path: "src/router.ts",
+          source_sha: "router-sha",
+          severity: "soft",
+          claim: "Router implementations are stateless",
+          rationale: "Shared across requests",
+          excerpt: "Implementations must not keep per-request state",
+          symbol_ids: [
+            "sym:ts:src/router.ts:RegExpRouter",
+            "sym:ts:src/router.ts:Router",
+          ],
+          symbol_candidates: ["Router", "RegExpRouter"],
+        },
+      ],
+    };
+  }
+
+  it("round-trips a Skill-shaped atlas byte-identically (import → export)", () => {
+    const original = serializeAtlas(skillShapedAtlas());
+    const db = openDatabase(":memory:");
+    try {
+      importAtlas(db, JSON.parse(original) as AtlasFileV1);
+      expect(serializeAtlas(exportAtlas(db))).toBe(original);
+    } finally {
+      db.close();
+    }
+  });
+
+  it("emits symbol_candidates last, only when non-empty, in stored order", () => {
+    const db = openDatabase(":memory:");
+    try {
+      insertClaims(db, [
+        {
+          source: "adr:ADR-01.md",
+          sourcePath: "docs/adr/ADR-01.md",
+          sourceSha: "s",
+          severity: "hard",
+          claim: "with candidates",
+          symbolIds: [],
+          symbolCandidates: ["Zeta", "Alpha"],
+        },
+        {
+          source: "adr:ADR-01.md",
+          sourcePath: "docs/adr/ADR-01.md",
+          sourceSha: "s",
+          severity: "hard",
+          claim: "with rationale and candidates",
+          rationale: "r",
+          symbolIds: [],
+          symbolCandidates: ["Beta"],
+        },
+        {
+          source: "adr:ADR-01.md",
+          sourcePath: "docs/adr/ADR-01.md",
+          sourceSha: "s",
+          severity: "hard",
+          claim: "empty candidates",
+          symbolIds: [],
+          symbolCandidates: [],
+        },
+        {
+          source: "adr:ADR-01.md",
+          sourcePath: "docs/adr/ADR-01.md",
+          sourceSha: "s",
+          severity: "hard",
+          claim: "no candidates",
+          symbolIds: [],
+        },
+      ]);
+      const byClaim = new Map(
+        exportAtlas(db).claims.map((c) => [c.claim, c] as const),
+      );
+      const withC = byClaim.get("with candidates")!;
+      expect(Object.keys(withC)).toEqual([
+        "source",
+        "source_path",
+        "source_sha",
+        "severity",
+        "claim",
+        "symbol_ids",
+        "symbol_candidates",
+      ]);
+      expect(withC.symbol_candidates).toEqual(["Zeta", "Alpha"]);
+      expect(Object.keys(byClaim.get("with rationale and candidates")!)).toEqual([
+        "source",
+        "source_path",
+        "source_sha",
+        "severity",
+        "claim",
+        "rationale",
+        "symbol_ids",
+        "symbol_candidates",
+      ]);
+      expect(byClaim.get("empty candidates")).not.toHaveProperty(
+        "symbol_candidates",
+      );
+      expect(byClaim.get("no candidates")).not.toHaveProperty(
+        "symbol_candidates",
+      );
+    } finally {
+      db.close();
+    }
+  });
+
+  it("drops empty symbol_candidates arrays (absent and [] mean the same)", () => {
+    const atlas = skillShapedAtlas();
+    atlas.claims[0] = { ...atlas.claims[0]!, symbol_candidates: [] };
+    const db = openDatabase(":memory:");
+    try {
+      importAtlas(db, atlas);
+      const exported = exportAtlas(db);
+      expect(exported.claims[0]).not.toHaveProperty("symbol_candidates");
+      expect(serializeAtlas(exported)).toBe(serializeAtlas(skillShapedAtlas()));
+    } finally {
+      db.close();
+    }
+  });
+
+  it("export → import → re-export is stable with candidates present", () => {
+    const db1 = openDatabase(":memory:");
+    const db2 = openDatabase(":memory:");
+    try {
+      importAtlas(db1, skillShapedAtlas());
+      const first = serializeAtlas(exportAtlas(db1));
+      importAtlas(db2, JSON.parse(first) as AtlasFileV1);
+      expect(serializeAtlas(exportAtlas(db2))).toBe(first);
+    } finally {
+      db1.close();
+      db2.close();
+    }
+  });
+});
