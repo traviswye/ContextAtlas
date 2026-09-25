@@ -56,6 +56,37 @@ describe("buildConfigScaffold (pure function; v0.7 Step 1.4b Path-3 reframe)", (
   });
 });
 
+describe("buildConfigScaffold — extraction.streams (v1.2 Phase 2; L-13)", () => {
+  // The scaffold writes no `extraction.streams` key: absent means all
+  // three streams, and binaries older than v1.2 reject the key as
+  // unknown (strict parser, ADR-05), so writing it would break them.
+  it.each([false, true])(
+    "writes no streams key and no extraction section (observe=%s)",
+    (observe) => {
+      const yamlOut = buildConfigScaffold({
+        languages: ["typescript"],
+        observe,
+      });
+      expect(yamlOut).not.toContain("streams");
+      expect(yamlOut).not.toContain("extraction:");
+    },
+  );
+
+  it("scaffold round-trips with no extraction config (streams default applies)", async () => {
+    const tmpRoot = await mkdtemp(
+      path.join(tmpdir(), "scaffold-streams-roundtrip-"),
+    );
+    try {
+      const yamlOut = buildConfigScaffold({ languages: ["typescript"] });
+      await writeFile(path.join(tmpRoot, ".contextatlas.yml"), yamlOut, "utf8");
+      const cfg = loadConfig(tmpRoot);
+      expect(cfg.extraction).toBeUndefined();
+    } finally {
+      await rm(tmpRoot, { recursive: true, force: true });
+    }
+  });
+});
+
 describe("writeConfigScaffold (idempotent writer)", () => {
   let tmpRoot: string;
 

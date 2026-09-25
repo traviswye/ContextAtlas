@@ -258,6 +258,25 @@ export interface TypeInfo {
 // Config
 // ============================================================================
 
+/**
+ * A claim stream named in `extraction.streams` (v1.2 Phase 2; SCOPE
+ * D-1). The accepted values, in execution order, are
+ * `DEFAULT_EXTRACTION_STREAMS` in `src/config/defaults.ts`.
+ *
+ *   - `adr` — prose: every file under `adrs.path` AND every file
+ *     matched by `docs.include` (README, DESIGN, docs/**). All of it
+ *     is extracted with claim source `adr:<basename>`. The extraction
+ *     pipeline calls this stream `prose` (`SourceStream` in
+ *     `src/extraction/source-keys.ts`); the config keeps the SCOPE
+ *     D-1 name, which matches the claim-source prefix.
+ *     `src/config/streams.ts` maps between the two names.
+ *   - `docstring` — docstrings of exported symbols in source files,
+ *     one extraction per symbol, one `source_shas` key per file.
+ *   - `commit` — commit messages that pass the commit filter, one
+ *     extraction per commit.
+ */
+export type ExtractionStream = "adr" | "docstring" | "commit";
+
 export interface ContextAtlasConfig {
   version: 1;
   /**
@@ -391,6 +410,31 @@ export interface ContextAtlasConfig {
      * `commitMessageFilter` (camelCase) per parser convention.
      */
     commitMessageFilter?: string[];
+    /**
+     * Claim streams CLI `index` extracts (v1.2 Phase 2; SCOPE D-1).
+     * See {@link ExtractionStream} for what each value covers.
+     *
+     * Absent means all three (`DEFAULT_EXTRACTION_STREAMS` in
+     * `src/config/defaults.ts`). The default is applied where the
+     * value is used, via `resolveExtractionStreams`
+     * (`src/config/streams.ts`), never at parse time — the same
+     * pattern as `excludePattern` — so an absent key leaves this
+     * field (and an otherwise-empty `extraction` section) undefined.
+     *
+     * Parser rules (lead decision L-3): an array of the lowercase
+     * stream names, no duplicates, not empty, and it must include
+     * `adr`. The list order is ignored: the parser stores the
+     * streams in canonical order (adr, docstring, commit), which is
+     * also the order they run in.
+     *
+     * Disabling a stream gates extraction only. That stream's
+     * existing claims stay in the atlas unchanged (frozen), and
+     * `contextatlas doctor` warns about them (check
+     * `config.extraction_streams`).
+     *
+     * YAML key is `streams` (already lowercase).
+     */
+    streams?: readonly ExtractionStream[];
   };
   /**
    * Optional cohort observability section per v0.6 Step 6.2 /

@@ -15,7 +15,11 @@ import { resolve as pathResolve } from "node:path";
 
 import yaml from "js-yaml";
 
-import type { ContextAtlasConfig, LanguageCode } from "../types.js";
+import type {
+  ContextAtlasConfig,
+  ExtractionStream,
+  LanguageCode,
+} from "../types.js";
 import { normalizePath } from "../utils/paths.js";
 
 import {
@@ -23,6 +27,7 @@ import {
   DEFAULT_ATLAS,
   DEFAULT_CONFIG_FILENAME,
   DEFAULT_DOCS_INCLUDE,
+  DEFAULT_EXTRACTION_STREAMS,
   DEFAULT_GIT_RECENT_COMMITS,
   DEFAULT_INDEX_MODEL,
 } from "./defaults.js";
@@ -68,6 +73,20 @@ export const TOP_LEVEL_KEYS = [
   "lsp",
 ] as const;
 const TOP_LEVEL_KEY_SET = new Set<string>(TOP_LEVEL_KEYS);
+
+/**
+ * Keys allowed under `extraction:`. Exported for schema-driven tests,
+ * like `TOP_LEVEL_KEYS`. Adding a key requires both extending this
+ * list and validating it in `validateExtraction`.
+ */
+export const EXTRACTION_KEYS = [
+  "budget_warn_usd",
+  "narrow_attribution",
+  "exclude_pattern",
+  "commit_message_filter",
+  "streams",
+] as const;
+const EXTRACTION_KEY_SET = new Set<string>(EXTRACTION_KEYS);
 
 /**
  * Load and validate a ContextAtlas config file.
@@ -617,17 +636,7 @@ function validateExtraction(
       `Invalid 'extraction': expected object, got ${describeType(raw)}.`,
     );
   }
-  rejectUnknownKeys(
-    raw,
-    new Set([
-      "budget_warn_usd",
-      "narrow_attribution",
-      "exclude_pattern",
-      "commit_message_filter",
-    ]),
-    "extraction.",
-    configPath,
-  );
+  rejectUnknownKeys(raw, EXTRACTION_KEY_SET, "extraction.", configPath);
 
   const out: NonNullable<ContextAtlasConfig["extraction"]> = {};
 
@@ -706,10 +715,85 @@ function validateExtraction(
     out.commitMessageFilter = patterns;
   }
 
+  if (raw.streams !== undefined) {
+    out.streams = validateExtractionStreams(raw.streams, configPath);
+  }
+
   // Section present but empty — treat as if section were absent.
   // No point in landing an extraction record with no fields set.
   if (Object.keys(out).length === 0) return undefined;
   return out;
+}
+
+/**
+ * Validate `extraction.streams` (v1.2 Phase 2; SCOPE D-1, lead decision
+ * L-3): an array of stream names from `DEFAULT_EXTRACTION_STREAMS`, no
+ * duplicates, not empty, and it must include `adr`. Returns the list in
+ * canonical order (adr, docstring, commit); the config's own order is
+ * ignored.
+ *
+ * `adr` is required because `index` auto-runs `validate-extraction`,
+ * whose invariants need ADR claims, and because the docstring and
+ * commit streams are the real cost levers. `[]` is rejected for the
+ * same reason. Both rules can be relaxed later without breaking
+ * configs that pass today.
+ */
+function validateExtractionStreams(
+  raw: unknown,
+  configPath: string,
+): ExtractionStream[] {
+  const valid = DEFAULT_EXTRACTION_STREAMS.join(", ");
+  const remedy =
+    "To fix: remove the key, or include adr " +
+    `(without the key, all three streams run: ${valid}).`;
+  if (!Array.isArray(raw)) {
+    throw cfgError(
+      configPath,
+      `Invalid 'extraction.streams': expected array of stream names (${valid}), got ${describeType(raw)}. ${remedy}`,
+    );
+  }
+  if (raw.length === 0) {
+    throw cfgError(
+      configPath,
+      `Invalid 'extraction.streams': must not be empty. ${remedy}`,
+    );
+  }
+  const seen = new Set<ExtractionStream>();
+  for (const entry of raw) {
+    if (typeof entry !== "string") {
+      throw cfgError(
+        configPath,
+        `Invalid entry in 'extraction.streams': expected one of ${valid}, got ${describeType(entry)}.`,
+      );
+    }
+    if (!isExtractionStream(entry)) {
+      throw cfgError(
+        configPath,
+        `Unknown stream '${entry}' in 'extraction.streams'. Valid: ${valid} ` +
+          "(lowercase; 'adr' covers adrs.path and docs.include prose).",
+      );
+    }
+    if (seen.has(entry)) {
+      throw cfgError(
+        configPath,
+        `Duplicate stream '${entry}' in 'extraction.streams'. List each stream once.`,
+      );
+    }
+    seen.add(entry);
+  }
+  if (!seen.has("adr")) {
+    throw cfgError(
+      configPath,
+      "Invalid 'extraction.streams': 'adr' is required (ADR and docs " +
+        "prose is the stream `index` validates after every run). " +
+        remedy,
+    );
+  }
+  return DEFAULT_EXTRACTION_STREAMS.filter((s) => seen.has(s));
+}
+
+function isExtractionStream(value: string): value is ExtractionStream {
+  return (DEFAULT_EXTRACTION_STREAMS as readonly string[]).includes(value);
 }
 
 function validateMcp(

@@ -25,7 +25,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 // ("parser.test.ts hardcoded valid-keys regex fragility recurred at
 // Steps 2 + 4. Test-as-mirror-of-implementation, brittle by
 // construction. Lifted to v0.5+ candidate #7."). v0.5 fix lands here.
-import { loadConfig, TOP_LEVEL_KEYS } from "./parser.js";
+import { EXTRACTION_KEYS, loadConfig, TOP_LEVEL_KEYS } from "./parser.js";
 
 const FIXTURE_DIR = pathResolve("test/fixtures/config");
 const MINIMAL = pathJoin(FIXTURE_DIR, "minimal.yml");
@@ -711,6 +711,175 @@ describe("loadConfig — source block (ADR-08 runtime)", () => {
     expect(() => loadConfig(tmp)).toThrow(
       /Unknown key 'observability\.bogus'/,
     );
+  });
+});
+
+// ---------------------------------------------------------------
+// extraction.streams (v1.2 Phase 2; SCOPE D-1, lead decision L-3)
+// ---------------------------------------------------------------
+
+describe("loadConfig — extraction.streams", () => {
+  let tmp: string;
+  beforeEach(() => {
+    tmp = mkdtempSync(pathJoin(tmpdir(), "contextatlas-cfg-streams-"));
+  });
+  afterEach(() => {
+    rmSync(tmp, { recursive: true, force: true });
+  });
+
+  const BASE =
+    "version: 1\nlanguages: [typescript]\nadrs: { path: docs/adr/ }\n";
+
+  function writeStreams(streamsYaml: string): string {
+    const p = pathJoin(tmp, ".contextatlas.yml");
+    writeFileSync(p, BASE + "extraction:\n  streams: " + streamsYaml + "\n", "utf8");
+    return p;
+  }
+
+  it("valid subset → parses to extraction.streams", () => {
+    writeStreams("[adr, docstring]");
+    expect(loadConfig(tmp).extraction).toEqual({
+      streams: ["adr", "docstring"],
+    });
+  });
+
+  it("adr alone → accepted", () => {
+    writeStreams("[adr]");
+    expect(loadConfig(tmp).extraction).toEqual({ streams: ["adr"] });
+  });
+
+  it("list order is ignored → stored in canonical order adr, docstring, commit", () => {
+    writeStreams("[commit, adr, docstring]");
+    expect(loadConfig(tmp).extraction?.streams).toEqual([
+      "adr",
+      "docstring",
+      "commit",
+    ]);
+  });
+
+  it("block-style YAML list → parses the same as flow style", () => {
+    const p = pathJoin(tmp, ".contextatlas.yml");
+    writeFileSync(
+      p,
+      BASE + "extraction:\n  streams:\n    - commit\n    - adr\n",
+      "utf8",
+    );
+    expect(loadConfig(tmp).extraction?.streams).toEqual(["adr", "commit"]);
+  });
+
+  it("key absent → no streams field (the default is applied where it is used)", () => {
+    const p = pathJoin(tmp, ".contextatlas.yml");
+    writeFileSync(p, BASE + "extraction:\n  budget_warn_usd: 2\n", "utf8");
+    const extraction = loadConfig(tmp).extraction;
+    expect(extraction).toEqual({ budgetWarnUsd: 2 });
+    expect(extraction).not.toHaveProperty("streams");
+  });
+
+  it("combined with every other extraction key → all parse", () => {
+    const p = pathJoin(tmp, ".contextatlas.yml");
+    writeFileSync(
+      p,
+      BASE +
+        "extraction:\n" +
+        "  budget_warn_usd: 3\n" +
+        "  narrow_attribution: drop\n" +
+        "  exclude_pattern: ['**/fixtures/**']\n" +
+        "  commit_message_filter: ['^arch:']\n" +
+        "  streams: [docstring, adr]\n",
+      "utf8",
+    );
+    expect(loadConfig(tmp).extraction).toEqual({
+      budgetWarnUsd: 3,
+      narrowAttribution: "drop",
+      excludePattern: ["**/fixtures/**"],
+      commitMessageFilter: ["^arch:"],
+      streams: ["adr", "docstring"],
+    });
+  });
+
+  it("empty list → rejected with remediation (remove the key, or include adr)", () => {
+    const p = writeStreams("[]");
+    const err = captureError(() => loadConfig(tmp));
+    expect(err.message).toContain(p);
+    expect(err.message).toMatch(/Invalid 'extraction\.streams'/);
+    expect(err.message).toMatch(/must not be empty/);
+    expect(err.message).toMatch(/remove the key, or include adr/);
+  });
+
+  it("list without adr → rejected with remediation (remove the key, or include adr)", () => {
+    const p = writeStreams("[docstring, commit]");
+    const err = captureError(() => loadConfig(tmp));
+    expect(err.message).toContain(p);
+    expect(err.message).toMatch(/Invalid 'extraction\.streams'/);
+    expect(err.message).toMatch(/'adr' is required/);
+    expect(err.message).toMatch(/remove the key, or include adr/);
+  });
+
+  it("non-array (scalar) → rejected with expected shape", () => {
+    writeStreams("adr");
+    expect(() => loadConfig(tmp)).toThrow(
+      /Invalid 'extraction\.streams': expected array of stream names \(adr, docstring, commit\), got string/,
+    );
+  });
+
+  it("non-array (mapping) → rejected", () => {
+    writeStreams("{ adr: true }");
+    expect(() => loadConfig(tmp)).toThrow(
+      /Invalid 'extraction\.streams': expected array.*got object/,
+    );
+  });
+
+  it("null → rejected (not treated as absent)", () => {
+    writeStreams("~");
+    expect(() => loadConfig(tmp)).toThrow(
+      /Invalid 'extraction\.streams': expected array.*got null/,
+    );
+  });
+
+  it("unknown value → rejected, names the value and lists valid streams", () => {
+    writeStreams("[adr, prose]");
+    expect(() => loadConfig(tmp)).toThrow(
+      /Unknown stream 'prose' in 'extraction\.streams'\. Valid: adr, docstring, commit/,
+    );
+  });
+
+  it("wrong case → rejected (stream names are lowercase)", () => {
+    writeStreams("[ADR]");
+    expect(() => loadConfig(tmp)).toThrow(
+      /Unknown stream 'ADR' in 'extraction\.streams'/,
+    );
+  });
+
+  it("non-string entry → rejected with its type", () => {
+    writeStreams("[adr, 1]");
+    expect(() => loadConfig(tmp)).toThrow(
+      /Invalid entry in 'extraction\.streams': expected one of adr, docstring, commit, got number/,
+    );
+  });
+
+  it("null entry → rejected", () => {
+    writeStreams("[adr, ~]");
+    expect(() => loadConfig(tmp)).toThrow(
+      /Invalid entry in 'extraction\.streams'.*got null/,
+    );
+  });
+
+  it("duplicate entry → rejected", () => {
+    writeStreams("[adr, docstring, adr]");
+    expect(() => loadConfig(tmp)).toThrow(
+      /Duplicate stream 'adr' in 'extraction\.streams'/,
+    );
+  });
+
+  it("unknown extraction key → error lists every EXTRACTION_KEYS entry (schema-driven)", () => {
+    const p = pathJoin(tmp, ".contextatlas.yml");
+    writeFileSync(p, BASE + "extraction:\n  bogus: 1\n", "utf8");
+    const err = captureError(() => loadConfig(tmp));
+    expect(err.message).toMatch(/Unknown key 'extraction\.bogus'/);
+    expect(EXTRACTION_KEYS).toContain("streams");
+    for (const key of EXTRACTION_KEYS) {
+      expect(err.message).toContain(key);
+    }
   });
 });
 

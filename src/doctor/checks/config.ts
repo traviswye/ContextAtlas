@@ -4,12 +4,21 @@
  * Investigates `.contextatlas.yml` existence + parsing + per-field
  * validity. The runner has already attempted `loadConfig`; we read
  * `ctx.config` / `ctx.configError` to emit the right per-field
- * checks.
+ * checks. `config.extraction_streams` also reads atlas.json, to count
+ * the claims of disabled streams.
  */
 
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { resolve as pathResolve } from "node:path";
 
+import {
+  disabledExtractionStreams,
+  extractionStreamOf,
+  resolveExtractionStreams,
+  usesDefaultExtractionStreams,
+} from "../../config/streams.js";
+import { streamFromClaimSource } from "../../extraction/source-keys.js";
+import type { ContextAtlasConfig, ExtractionStream } from "../../types.js";
 import type { CheckContext, DoctorCheck } from "../types.js";
 
 export function configChecks(ctx: CheckContext): DoctorCheck[] {
@@ -134,5 +143,92 @@ export function configChecks(ctx: CheckContext): DoctorCheck[] {
     ...(filterError ? { detail: filterError } : {}),
   });
 
+  // 7. config.extraction_streams (v1.2 Phase 2; SCOPE D-1, L-11)
+  out.push(extractionStreamsCheck(ctx.repoRoot, config));
+
   return out;
+}
+
+/**
+ * Report the enabled extraction streams, and warn when a disabled
+ * stream still has claims in atlas.json. Those claims are kept as they
+ * are (frozen): extraction neither refreshes nor deletes them, so they
+ * go stale while still being served to queries.
+ *
+ * Reads atlas.json the way the atlas checks do. A missing or
+ * unparseable atlas only drops the claim count; `atlas.exists` and
+ * `atlas.parses` report those problems.
+ */
+function extractionStreamsCheck(
+  repoRoot: string,
+  config: ContextAtlasConfig,
+): DoctorCheck {
+  const enabled = resolveExtractionStreams(config);
+  const disabled = disabledExtractionStreams(enabled);
+  let message = [...enabled].join(", ");
+  if (usesDefaultExtractionStreams(config)) message += " (default)";
+  if (disabled.length > 0) message += ` (disabled: ${disabled.join(", ")})`;
+
+  const frozen = countAtlasClaimsByStream(
+    pathResolve(repoRoot, config.atlas.path),
+  );
+  const stale = disabled.filter((s) => (frozen.get(s) ?? 0) > 0);
+  if (stale.length === 0) {
+    return {
+      id: "config.extraction_streams",
+      category: "config",
+      status: "pass",
+      message,
+    };
+  }
+
+  const total = stale.reduce((n, s) => n + (frozen.get(s) ?? 0), 0);
+  const counts = stale.map((s) => `${frozen.get(s)} ${s}`).join(" + ");
+  return {
+    id: "config.extraction_streams",
+    category: "config",
+    status: "warn",
+    message:
+      `${message}; atlas still holds ${counts} claim${total === 1 ? "" : "s"} ` +
+      "from disabled streams",
+    detail:
+      `Claims of a disabled stream are kept frozen: extraction neither ` +
+      `refreshes nor deletes them, so they go stale as the code changes ` +
+      `but are still returned by queries. To keep them current, add ` +
+      `${stale.join(" and ")} back to extraction.streams in ` +
+      `.contextatlas.yml (or remove the key to run all three streams) ` +
+      `and re-run extraction.`,
+  };
+}
+
+/**
+ * Claim counts per config stream in the atlas at `atlasPath`. Empty
+ * when the file is missing or not a JSON object with a `claims` array.
+ */
+function countAtlasClaimsByStream(
+  atlasPath: string,
+): Map<ExtractionStream, number> {
+  const counts = new Map<ExtractionStream, number>();
+  if (!existsSync(atlasPath)) return counts;
+  let atlas: unknown;
+  try {
+    atlas = JSON.parse(readFileSync(atlasPath, "utf8"));
+  } catch {
+    return counts;
+  }
+  const claims =
+    typeof atlas === "object" && atlas !== null && "claims" in atlas
+      ? (atlas as { claims: unknown }).claims
+      : undefined;
+  if (!Array.isArray(claims)) return counts;
+  for (const claim of claims) {
+    const source =
+      typeof claim === "object" && claim !== null && "source" in claim
+        ? (claim as { source: unknown }).source
+        : undefined;
+    if (typeof source !== "string") continue;
+    const stream = extractionStreamOf(streamFromClaimSource(source));
+    counts.set(stream, (counts.get(stream) ?? 0) + 1);
+  }
+  return counts;
 }
