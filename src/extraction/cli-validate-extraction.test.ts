@@ -356,6 +356,29 @@ describe("runValidateExtractionSubcommand — integration", () => {
     expect(stderr).not.toContain("docs/notes.md");
   });
 
+  it("a deleted docs page left in source_shas is exempt, with zero or a few claims (review round 2)", async () => {
+    const adrPath = "docs/adr/ADR-01-foo.md";
+    await writeFile(path.join(fixture.root, adrPath), "# ADR-01\n");
+    // docs/gone.md and docs/small-gone.md were extracted by `index` from
+    // docs.include and later deleted; the Skill keeps their keys.
+    await writeAtlas(fixture, {
+      version: "1.4",
+      source_shas: { [adrPath]: "a", "docs/gone.md": "g", "docs/small-gone.md": "s" },
+      claims: [
+        ...Array.from({ length: 8 }, () => makeAdrClaim(adrPath)),
+        ...Array.from({ length: 3 }, () => makeAdrClaim("docs/small-gone.md")),
+      ],
+    });
+    const result = await runValidateExtractionSubcommand({
+      configRoot: fixture.root,
+      configFile: null,
+      writeStdout: (c) => (stdout += c),
+      writeStderr: (c) => (stderr += c),
+    });
+    expect(stderr).toBe("");
+    expect(result.exitCode).toBe(0);
+  });
+
   it("exits 2 with actionable message when atlas missing", async () => {
     const result = await runValidateExtractionSubcommand({
       configRoot: fixture.root,
@@ -366,5 +389,82 @@ describe("runValidateExtractionSubcommand — integration", () => {
     expect(result.exitCode).toBe(2);
     expect(stderr).toContain("failed to read atlas");
     expect(stderr).toContain("/index-atlas");
+  });
+});
+
+describe("runValidateExtractionSubcommand — docs outside source.root (ADR-08; review round 2)", () => {
+  let root: string;
+  let stderr: string;
+
+  beforeEach(async () => {
+    root = await mkdtemp(path.join(tmpdir(), "ca-validate-extraction-ext-"));
+    stderr = "";
+    await mkdir(path.join(root, "app"), { recursive: true });
+    await mkdir(path.join(root, "adrs"), { recursive: true });
+    await mkdir(path.join(root, "docs"), { recursive: true });
+    await writeFile(path.join(root, "adrs", "ADR-01-foo.md"), "# ADR-01\n");
+    await writeFile(path.join(root, "README.md"), "# readme\n");
+    await writeFile(path.join(root, "docs", "guide.md"), "# guide\n");
+    await writeFile(
+      path.join(root, ".contextatlas.yml"),
+      [
+        "version: 1",
+        "languages: [typescript]",
+        "source:",
+        "  root: app/",
+        "adrs:",
+        "  path: adrs/",
+        "docs:",
+        "  include: [README.md, docs/**/*.md]",
+        "atlas:",
+        "  committed: true",
+        "  path: .contextatlas/atlas.json",
+        "  local_cache: .contextatlas/index.db",
+        "",
+      ].join("\n"),
+    );
+    await mkdir(path.join(root, ".contextatlas"), { recursive: true });
+  });
+  afterEach(async () => {
+    await rm(root, { recursive: true, force: true });
+  });
+
+  const validate = async (atlas: AtlasForValidation) => {
+    await writeFile(path.join(root, ".contextatlas", "atlas.json"), JSON.stringify(atlas, null, 2));
+    return runValidateExtractionSubcommand({
+      configRoot: root,
+      configFile: null,
+      writeStdout: () => {},
+      writeStderr: (c) => (stderr += c),
+    });
+  };
+
+  // The walk stores the ADR relative to the ADR directory and the docs
+  // pages relative to the config root (file-walker.ts proseRelPath).
+  const base: AtlasForValidation = {
+    version: "1.4",
+    source_shas: { "ADR-01-foo.md": "a", "README.md": "r", "docs/guide.md": "g" },
+    claims: [
+      ...Array.from({ length: 9 }, () => makeAdrClaim("ADR-01-foo.md")),
+      ...Array.from({ length: 3 }, () => makeAdrClaim("README.md")),
+      ...Array.from({ length: 2 }, () => makeAdrClaim("docs/guide.md")),
+    ],
+  };
+
+  it("docs pages stored relative to the config root are exempt", async () => {
+    const result = await validate(base);
+    expect(stderr).toBe("");
+    expect(result.exitCode).toBe(0);
+  });
+
+  it("a deleted ADR stored relative to the ADR directory is still checked", async () => {
+    const result = await validate({
+      ...base,
+      source_shas: { ...base.source_shas, "ADR-02-gone.md": "g" },
+    });
+    expect(result.exitCode).toBe(2);
+    expect(stderr).toContain("ADR-02-gone.md");
+    expect(stderr).not.toContain("README.md");
+    expect(stderr).not.toContain("docs/guide.md");
   });
 });

@@ -10,7 +10,10 @@
  * leaves the file unkeyed so the next run retries it; a thrown call is
  * recorded in `errors` and also left unkeyed. Malformed JSON throws a
  * `ParseError` (so it is an error here, as before), and its usage is
- * still counted (v1.2 Phase 2 review fix).
+ * still counted (v1.2 Phase 2 review fix). It does not count toward the
+ * pipeline's all-failed check (`failedCalls`), which would otherwise
+ * stop the docstring and commit streams on every run while one
+ * unparseable file was the only prose work (review round 2).
  */
 
 import { readFileSync } from "node:fs";
@@ -27,7 +30,11 @@ import {
 import type { DatabaseInstance } from "../storage/db.js";
 import { recordSourceKeyStream } from "../storage/source-key-streams.js";
 
-import { usageOfFailedCall, type ExtractionClient } from "./anthropic-client.js";
+import {
+  ParseError,
+  usageOfFailedCall,
+  type ExtractionClient,
+} from "./anthropic-client.js";
 import type { ProseFile } from "./file-walker.js";
 import { parseFrontmatterSymbols } from "./frontmatter.js";
 import type {
@@ -66,6 +73,15 @@ export interface ProseStageResult {
   unresolvedDetails: FileUnresolvedDetail[];
   /** One entry per file whose call threw. */
   errors: Array<{ sourcePath: string; error: string }>;
+  /**
+   * Files whose call threw an API or network error. A malformed-JSON
+   * response (`ParseError`) is in `errors` but not counted here: the API
+   * answered, so it is per-file noise, not the key or config problem the
+   * all-failed check looks for (review round 2).
+   */
+  failedCalls: number;
+  /** The first such call's error, for the all-failed message. */
+  firstFailedCallError?: string;
 }
 
 export interface ProseStageInput {
@@ -89,6 +105,7 @@ export async function runProseStage(
     unresolvedFrontmatterHints: 0,
     unresolvedDetails: [],
     errors: [],
+    failedCalls: 0,
   };
 
   for (let i = 0; i < files.length; i += batchSize) {
@@ -104,6 +121,10 @@ export async function runProseStage(
           // Malformed JSON (ParseError) was still billed: count its usage.
           cost.addUsage(usageOfFailedCall(err));
           out.errors.push({ sourcePath: file.relPath, error: String(err) });
+          if (!(err instanceof ParseError)) {
+            out.failedCalls++;
+            out.firstFailedCallError ??= String(err);
+          }
           return { file, extracted: null };
         }
       }),

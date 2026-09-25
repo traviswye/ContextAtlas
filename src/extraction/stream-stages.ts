@@ -17,8 +17,11 @@
  *
  * The L-10 (ii) stream-level check ({@link streamFailure}) counts only
  * calls that threw an API or network error (and, for commits, failed
- * writes). An unparseable result is reported per source and retried
- * (docstring) or pinned (commit), but never fails the stream.
+ * writes). An unparseable result never fails the stream: a docstring
+ * file's is reported in `errors` (so in `extraction_errors`) and the
+ * file is retried; a commit's is pinned with zero claims and only
+ * logged as a warning (no summary field reports it; `commitsNullResult`
+ * counts it here).
  *
  * Errors keep the `extraction_errors` shape `{sourcePath, error}`:
  * docstring entries use the file's relPath (the symbol id is in the
@@ -30,7 +33,10 @@ import type { ExtractionStream } from "../types.js";
 
 import type { ExtractionClient } from "./anthropic-client.js";
 import type { CommitMetadata } from "./commit-log.js";
-import { extractCommitClaims } from "./commit-message-extractor.js";
+import {
+  extractCommitClaims,
+  type CommitClaimsOptions,
+} from "./commit-message-extractor.js";
 import { extractDocstringFile } from "./docstring-stream.js";
 import type { DocstringWorkPlan } from "./extraction-plan.js";
 import type { StreamFailure } from "./pipeline-types.js";
@@ -51,7 +57,11 @@ interface StreamCallCounts {
    * noise, not the key, quota or network problem L-10 (ii) looks for.
    */
   failedCalls: number;
-  /** Every per-source error, including read errors and unparseable results. */
+  /**
+   * Every per-source error: read errors and failed calls, plus docstring
+   * unparseable results. A commit's unparseable result is not an error
+   * (it is pinned; see `commitsNullResult`).
+   */
   errors: SourceError[];
   /**
    * The first failed call's error, for the stream-failure message. A
@@ -134,6 +144,7 @@ export async function runCommitStage(
   inventory: SymbolInventory,
   client: ExtractionClient,
   cost: RunCostTracker,
+  options: CommitClaimsOptions = {},
 ): Promise<CommitStageResult> {
   const out: CommitStageResult = {
     attemptedCalls: 0,
@@ -147,7 +158,7 @@ export async function runCommitStage(
   for (const commit of pending) {
     cost.addCalls(1);
     out.attemptedCalls++;
-    const outcome = await extractCommitClaims(db, commit, inventory, client);
+    const outcome = await extractCommitClaims(db, commit, inventory, client, options);
     cost.addUsage(outcome.usage);
     if (outcome.status === "failed") {
       out.failedCalls++;

@@ -221,11 +221,38 @@ describe("/index-atlas SKILL.md — review fixes (v1.2 Phase 2)", () => {
     expect(failures).toMatch(/"1"[^\n]*"2"|"2"[^\n]*"1"/);
   });
 
+  it("a refresh carries the baseline's extracted_at_sha and git_commits forward (review round 2)", () => {
+    const invariants = section("### Schema invariants (MANDATORY)");
+    const topLevel = invariants.slice(0, invariants.indexOf("- `version`"));
+    expect(topLevel).toMatch(/[Rr]efresh/);
+    expect(topLevel).toContain("`extracted_at_sha`");
+    expect(topLevel).toContain("`git_commits`");
+    expect(topLevel).toMatch(/forward unchanged/);
+    const step4 = section("### Phase B step 4 — Aggregate + write atlas.json");
+    expect(step4).toContain("`extracted_at_sha`");
+    expect(step4).toContain("`git_commits`");
+  });
+
+  it("the dangling-link WARNING is repaired by resolve-symbols, never by emptying symbol_ids (review round 2)", () => {
+    const step1 = section("### Phase C step 1 — MANDATORY validate-atlas gate");
+    expect(step1).toMatch(/WARNING/);
+    expect(step1).toMatch(/resolve-symbols/);
+    expect(step1).toMatch(/Do NOT empty/);
+    const step3 = section("### Phase C step 3 — MANDATORY resolve-symbols invocation");
+    expect(step3).toMatch(/re-invoke `contextatlas validate-atlas`/);
+    const invariants = section("### Schema invariants (MANDATORY)");
+    expect(invariants).toMatch(/NEVER empty them/);
+    expect(content).not.toMatch(/give those claims `symbol_ids: \[\]`/);
+  });
+
   it("Phase C step 2 says kept docs-bucket prose is exempt and must not be dropped to pass the gate", () => {
     const gate = section(
       "### Phase C step 2 — MANDATORY validate-extraction gate (v0.7.1)",
     );
     expect(gate).toMatch(/docs-bucket|not an ADR/);
     expect(gate).toMatch(/[Nn]ever drop|do NOT drop|Do not drop/);
+    // Round 2: a deleted docs page stays exempt; only a missing ADR is checked.
+    expect(gate).toMatch(/even after the page was\s+deleted/);
+    expect(gate).toMatch(/missing file whose path names an ADR/);
   });
 });

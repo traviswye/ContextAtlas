@@ -1573,11 +1573,14 @@ historical record per v0.5 + v0.6 + v0.7 inheritance discipline.
 
   The per-symbol filter is the same on both paths (`isExportedSymbol`,
   then a non-empty docstring), so the call sets match whenever no
-  docstring read fails. Two differences remain. When a docstring read
-  fails, the manifest skips that symbol, while the CLI skips the whole
-  file for that run. And the CLI also keys source files with no
-  documented symbol, which the manifest does not list; the SKILL.md
-  refresh rule no longer drops keys its manifest does not enumerate.
+  docstring read fails. One difference remains: the CLI also keys
+  source files with no documented symbol, which the manifest does not
+  list; the SKILL.md refresh rule no longer drops keys its manifest
+  does not enumerate. (As first written, this entry named a second
+  one: on a failed docstring read the manifest skipped that symbol
+  while the CLI skipped the whole file for that run. The Phase 2
+  review fixes closed it: the manifest now leaves the whole file out
+  too; see ADR-12 "Review fixes (2026-09-25)".)
 
   **Pointers superseded** (the entries above stay as the historical
   record):

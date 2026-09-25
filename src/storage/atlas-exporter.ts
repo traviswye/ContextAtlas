@@ -280,15 +280,16 @@ export function serializeAtlas(atlas: AtlasFileV1): string {
  * Export the database to atlas.json at the given path. Writes LF-only
  * output — a .gitattributes entry on the atlas file is the long-term
  * way to guarantee line-ending stability across OSes; this function
- * handles the serialization side of that pair.
+ * handles the serialization side of that pair. Returns the text written.
  */
 export function exportAtlasToFile(
   db: DatabaseInstance,
   filePath: string,
   options: ExportAtlasOptions = {},
-): void {
-  const atlas = exportAtlas(db, options);
-  writeFileSync(filePath, serializeAtlas(atlas), "utf8");
+): string {
+  const text = serializeAtlas(exportAtlas(db, options));
+  writeFileSync(filePath, text, "utf8");
+  return text;
 }
 
 // ---------------------------------------------------------------------------

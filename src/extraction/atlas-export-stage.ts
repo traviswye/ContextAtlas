@@ -3,7 +3,9 @@
  * staleness fields to `atlas_meta` and, when the atlas is committed,
  * regenerate atlas.json. The pipeline calls this only when the run
  * changed something, so a no-op run leaves atlas.json byte-identical
- * (ADR-12). Moved out of `pipeline.ts` at v1.2 Phase 2, unchanged.
+ * (ADR-12). Moved out of `pipeline.ts` at v1.2 Phase 2. Since review
+ * round 2 it also records the SHA-256 of the written atlas.json for
+ * the cache-only key-stream records (`atlas-baseline.ts`).
  */
 
 import { log } from "../mcp/logger.js";
@@ -12,6 +14,7 @@ import { exportAtlasToFile } from "../storage/atlas-exporter.js";
 import type { DatabaseInstance } from "../storage/db.js";
 import { ATLAS_VERSION } from "../storage/types.js";
 
+import { recordAtlasWritten } from "./atlas-baseline.js";
 import { EXTRACTION_MODEL } from "./prompt.js";
 
 export interface FinalizeAtlasInput {
@@ -72,13 +75,16 @@ export function finalizeAtlas(
   }
 
   if (!input.committed) return false;
-  exportAtlasToFile(db, input.atlasAbsPath, {
+  const text = exportAtlasToFile(db, input.atlasAbsPath, {
     generatedAt: newGeneratedAt,
     contextatlasVersion: contextatlasVer,
     contextatlasCommitSha: input.contextatlasCommitSha ?? null,
     extractionModel,
     extractedAtSha: input.headSha ?? null,
   });
+  // The cache-only key-stream records now describe this file, so the
+  // next run's import of it keeps them (review round 2).
+  recordAtlasWritten(db, text);
   log.info("pipeline: atlas.json written", { path: input.atlasAbsPath });
   return true;
 }

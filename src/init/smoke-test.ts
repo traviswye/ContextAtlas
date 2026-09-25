@@ -20,6 +20,7 @@ import { dirname, resolve as pathResolve } from "node:path";
 
 import { buildBundle } from "../queries/symbol-context.js";
 import { importAtlasFile } from "../storage/atlas-importer.js";
+import { isCacheEmpty } from "../storage/cache-meta.js";
 import { openDatabase } from "../storage/db.js";
 import { listAllSymbols } from "../storage/symbols.js";
 import type {
@@ -155,8 +156,10 @@ export async function runSmokeTest(
   const db = openDatabase(cachePath);
   try {
     let symbols = listAllSymbols(db);
-    if (symbols.length === 0) {
-      // Cache empty — import from atlas.json if present.
+    if (isCacheEmpty(db)) {
+      // Cache empty — import from atlas.json if present. "Empty" is the
+      // rule the MCP server and `contextatlas index` share: a cache with
+      // claims or source keys but no symbols is not replaced.
       try {
         importAtlasFile(db, atlasJsonPath);
       } catch (err) {
@@ -168,13 +171,13 @@ export async function runSmokeTest(
         };
       }
       symbols = listAllSymbols(db);
-      if (symbols.length === 0) {
-        return {
-          status: "fail",
-          reason:
-            "atlas extraction produced zero symbols. Verify ADRs reference valid source symbols + extraction completed without errors.",
-        };
-      }
+    }
+    if (symbols.length === 0) {
+      return {
+        status: "fail",
+        reason:
+          "atlas extraction produced zero symbols. Verify ADRs reference valid source symbols + extraction completed without errors.",
+      };
     }
     firstSymbol = symbols[0]!;
 

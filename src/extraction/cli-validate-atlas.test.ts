@@ -622,7 +622,7 @@ describe("runValidateAtlasSubcommand (v0.7 Step 2.3.b.0)", () => {
       symbol_ids: ids,
     });
 
-    it("FAIL when a claim's symbol_ids names a symbol missing from symbols[] (unimportable atlas)", async () => {
+    it("WARNING (exit 0) when a claim's symbol_ids names a symbol missing from symbols[]: resolve-symbols repairs it (review round 2)", async () => {
       writeAtlas({
         ...CANONICAL_ATLAS,
         generated_at: recent(),
@@ -630,13 +630,20 @@ describe("runValidateAtlasSubcommand (v0.7 Step 2.3.b.0)", () => {
         claims: [linked(["sym:ts:src/x.ts:Foo"]), linked(["sym:ts:src/x.ts:Foo", "sym:ts:src/y.ts:Bar"])],
       });
       const r = await run();
-      expect(r.exitCode).toBe(2);
-      const err = r.errors.find((e) => /symbol_ids/.test(e) && /symbols/.test(e));
-      expect(err).toBeDefined();
-      expect(err).toContain("sym:ts:src/x.ts:Foo");
-      expect(err).toContain("2 claims");
-      expect(err).toMatch(/carry the baseline atlas's `symbols`/);
-      expect(err).toMatch(/resolve-symbols/);
+      // A refresh that could not re-write a large `symbols` array, or a
+      // pre-v1.2 baseline, must be able to reach resolve-symbols.
+      expect(r.exitCode).toBe(0);
+      expect(r.errors).toEqual([]);
+      const warning = r.warnings.find((w) => /symbols` does not list/.test(w));
+      expect(warning).toBeDefined();
+      expect(warning).toContain("sym:ts:src/x.ts:Foo");
+      expect(warning).toContain("2 claims");
+      expect(warning).toMatch(/resolve-symbols/);
+      expect(warning).toMatch(/cannot be loaded/);
+      // Emptying the links would lose them for claims without candidates.
+      expect(warning).toMatch(/Do NOT empty/);
+      expect(warning).not.toMatch(/give those claims `symbol_ids: \[\]`/);
+      expect(r.joinedStderr()).toContain("WARNING");
     });
 
     it("PASS when every linked symbol is listed", async () => {
@@ -649,6 +656,7 @@ describe("runValidateAtlasSubcommand (v0.7 Step 2.3.b.0)", () => {
       const r = await run();
       expect(r.errors).toEqual([]);
       expect(r.exitCode).toBe(0);
+      expect(r.warnings.filter((w) => /does not list/.test(w))).toEqual([]);
     });
   });
 });

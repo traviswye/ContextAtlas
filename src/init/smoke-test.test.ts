@@ -3,6 +3,9 @@ import { copyFile, mkdtemp, mkdir, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
+import { insertClaim, listAllClaims } from "../storage/claims.js";
+import { openDatabase } from "../storage/db.js";
+
 import { extractSymbolName, runSmokeTest } from "./smoke-test.js";
 
 const SAMPLE_ATLAS_FIXTURE = path.resolve(
@@ -194,5 +197,46 @@ describe("extractSymbolName helper", () => {
     // possible for some language constructs). Last colon is the
     // separator.
     expect(extractSymbolName("sym:ts:foo.ts:User.login")).toBe("User.login");
+  });
+});
+
+describe("runSmokeTest — seeding rule (v1.2 Phase 2 review round 2)", () => {
+  let tmpRoot: string;
+
+  beforeEach(async () => {
+    tmpRoot = await mkdtemp(path.join(tmpdir(), "smoke-seed-"));
+    await mkdir(path.join(tmpRoot, ".contextatlas"), { recursive: true });
+  });
+  afterEach(async () => {
+    await rm(tmpRoot, { recursive: true, force: true });
+  });
+
+  it("does not import atlas.json over a cache that has claims but no symbols", async () => {
+    await copyFile(SAMPLE_ATLAS_FIXTURE, path.join(tmpRoot, ".contextatlas", "atlas.json"));
+    const cachePath = path.join(tmpRoot, ".contextatlas", "index.db");
+    const seed = openDatabase(cachePath);
+    insertClaim(seed, {
+      source: "adr:ADR-01.md",
+      sourcePath: "docs/adr/ADR-01.md",
+      sourceSha: "s",
+      severity: "hard",
+      claim: "claim only the cache holds",
+      symbolIds: [],
+    });
+    seed.close();
+
+    const result = await runSmokeTest({
+      configRoot: tmpRoot,
+      atlasPath: ".contextatlas/atlas.json",
+      localCachePath: ".contextatlas/index.db",
+    });
+    expect(result.status).toBe("fail");
+
+    const db = openDatabase(cachePath);
+    try {
+      expect(listAllClaims(db).map((c) => c.claim)).toEqual(["claim only the cache holds"]);
+    } finally {
+      db.close();
+    }
   });
 });

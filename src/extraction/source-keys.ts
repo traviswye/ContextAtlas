@@ -212,7 +212,10 @@ export function classifySourceKeys(
 /**
  * The recorded writer stream of each key that still holds the SHA it
  * was recorded at (`source_key_streams`, cache-only). A key whose value
- * changed since (another stream, the Skill, a pull) has no entry.
+ * changed since has no entry. A rewrite that keeps the SHA (the other
+ * stream keying the same file) is invisible here, so Stage 0 drops every
+ * record when it imports an atlas.json this cache did not write or
+ * import last (`atlas-baseline.ts`).
  */
 export function recordedKeyStreams(
   db: DatabaseInstance,

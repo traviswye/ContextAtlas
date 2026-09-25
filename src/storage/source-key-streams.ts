@@ -16,6 +16,13 @@
  *
  * Coverage is this machine's local cache only: a fresh clone has no
  * rows and classifies zero-claim keys as before.
+ *
+ * The rows describe keys this cache wrote on top of one atlas.json. When
+ * `contextatlas index` imports a different atlas.json (a pull, a branch
+ * switch, a Skill run), another writer may have re-keyed a path at the
+ * same SHA, which the SHA check cannot see, so the rows are dropped
+ * ({@link clearSourceKeyStreams}) and classification falls back to the
+ * fresh-clone rules (review round 2; `atlas-baseline.ts`).
  */
 
 import type { DatabaseInstance } from "./db.js";
@@ -67,4 +74,9 @@ export function deleteSourceKeyStream(
   db.prepare("DELETE FROM source_key_streams WHERE source_path = ?").run(
     sourcePath,
   );
+}
+
+/** Forget every record (a different atlas.json was imported). */
+export function clearSourceKeyStreams(db: DatabaseInstance): void {
+  db.exec("DELETE FROM source_key_streams;");
 }

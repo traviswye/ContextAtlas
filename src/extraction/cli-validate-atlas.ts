@@ -175,6 +175,8 @@ export async function runValidateAtlasSubcommand(
   const warnings = [...tsResult.warnings];
   const legacyCommitWarning = describeLegacyCommitKeys(raw);
   if (legacyCommitWarning !== null) warnings.push(legacyCommitWarning);
+  const danglingWarning = danglingSymbolLinks(raw);
+  if (danglingWarning !== null) warnings.push(danglingWarning);
 
   if (errors.length === 0) {
     writeStdout(
@@ -506,14 +508,9 @@ function validateAtlasShape(
     }
   }
 
-  // 6b. Claim links must name listed symbols (v1.2 Phase 2 review fix).
-  //    The importer links claims through a foreign key to `symbols`, so
-  //    an atlas whose claims link symbols it does not list cannot be
-  //    loaded: the MCP server and `contextatlas index` fail on it. A
-  //    Skill refresh that keeps preserved claims' symbol_ids must keep
-  //    the baseline `symbols` too.
-  const dangling = danglingSymbolLinks(atlas);
-  if (dangling !== null) errors.push(dangling);
+  // 6b. Claim links to unlisted symbols are a WARNING, reported by the
+  //    subcommand (`danglingSymbolLinks`), not a shape error: the repair
+  //    is resolve-symbols, the next /index-atlas gate (review round 2).
 
   // 7. Surface non-canonical top-level fields the Skill agent invented
   //    at Step 2.3 Checkpoint 3 (cost_usd, cost_model, repo, sources).
@@ -533,11 +530,22 @@ function validateAtlasShape(
 }
 
 /**
- * The error for claims whose `symbol_ids` name symbols absent from
+ * The warning for claims whose `symbol_ids` name symbols absent from
  * `symbols[]`, or null when there are none (or the arrays are too
  * malformed to check; the shape errors cover that).
+ *
+ * Such an atlas cannot be loaded (claims link symbols through a foreign
+ * key), but it is a WARNING, not an error (v1.2 Phase 2 review round 2):
+ * it is the expected state of an `/index-atlas` refresh that did not
+ * re-write a large baseline `symbols` array, and of atlases written by
+ * `resolve-symbols` up to 1.1.3, and `contextatlas resolve-symbols` (the
+ * next Skill gate) repairs it without loss. As an error it blocked the
+ * workflow before that step, and its other remedy, emptying the links,
+ * lost them for good on claims without `symbol_candidates`.
  */
-function danglingSymbolLinks(atlas: Record<string, unknown>): string | null {
+function danglingSymbolLinks(raw: unknown): string | null {
+  if (raw === null || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const atlas = raw as Record<string, unknown>;
   if (!Array.isArray(atlas.symbols) || !Array.isArray(atlas.claims)) {
     return null;
   }
@@ -566,16 +574,16 @@ function danglingSymbolLinks(atlas: Record<string, unknown>): string | null {
   if (missing.size === 0) return null;
   const examples = [...missing].sort().slice(0, 5).join(", ");
   const more = missing.size > 5 ? `, and ${missing.size - 5} more` : "";
-  const claimWord = claimsAffected === 1 ? "claim" : "claims";
+  const claimWord = claimsAffected === 1 ? "claim links" : "claims link";
   return (
-    `${claimsAffected} ${claimWord} link symbols that \`symbols\` does not ` +
-    `list (${examples}${more}). The atlas cannot be loaded like this: ` +
-    `claims link symbols through a foreign key, so the MCP server and ` +
-    `\`contextatlas index\` fail on it. /index-atlas refresh: carry the ` +
-    `baseline atlas's \`symbols\` array forward unchanged (write ` +
-    `\`symbols: []\` only on a cold start), or give those claims ` +
-    `\`symbol_ids: []\`; then run \`contextatlas resolve-symbols\`, which ` +
-    `drops links to symbols that no longer exist.`
+    `${claimsAffected} ${claimWord} symbols that \`symbols\` does not ` +
+    `list (${examples}${more}). The atlas cannot be loaded until ` +
+    `\`contextatlas resolve-symbols\` runs (claims link symbols through a ` +
+    `foreign key): it rebuilds \`symbols\` from the source tree, keeps ` +
+    `every link whose symbol still exists and drops only the rest. Run it ` +
+    `next (/index-atlas: Phase C step 3). Do NOT empty these claims' ` +
+    `\`symbol_ids\`: a claim without \`symbol_candidates\` cannot be ` +
+    `linked again.`
   );
 }
 

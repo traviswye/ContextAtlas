@@ -39,6 +39,9 @@ import {
   vi,
 } from "vitest";
 
+import { insertClaim, listAllClaims, setSourceSha } from "./storage/claims.js";
+import { openDatabase } from "./storage/db.js";
+
 const FIXTURE_SRC = pathResolve("test/fixtures/server-binary");
 const DIST_ENTRY = pathResolve("dist/index.js");
 
@@ -679,5 +682,58 @@ describe("MCP server binary stdio lifecycle (SDK v2)", () => {
       { timeout: 5_000, interval: 25 },
     );
     expect(transport.stderrBuffer).not.toMatch(/MCP client initialized/);
+  }, 30_000);
+});
+
+// ---------------------------------------------------------------------------
+// Seeding the cache at startup (v1.2 Phase 2 review round 2)
+// ---------------------------------------------------------------------------
+
+describe("MCP server binary: atlas.json seeds only an empty cache", () => {
+  let fixtureRoot: string;
+  let transport: TestSubprocessTransport;
+
+  beforeEach(() => {
+    fixtureRoot = mkdtempSync(pathJoin(tmpdir(), "ca-smoke-seed-"));
+    cpSync(FIXTURE_SRC, fixtureRoot, { recursive: true });
+    // A cache with claims and source keys but no symbols (a docs-only
+    // repo, or every source excluded): `contextatlas index` treats it as
+    // authoritative, so the server must not replace it.
+    const db = openDatabase(pathJoin(fixtureRoot, ".contextatlas", "index.db"));
+    setSourceSha(db, "docs/adr/ADR-01.md", "cache-sha");
+    insertClaim(db, {
+      source: "adr:ADR-01.md",
+      sourcePath: "docs/adr/ADR-01.md",
+      sourceSha: "cache-sha",
+      severity: "hard",
+      claim: "claim only the cache holds",
+      symbolIds: [],
+    });
+    db.close();
+    transport = new TestSubprocessTransport(process.execPath, [DIST_ENTRY], fixtureRoot);
+  });
+
+  afterEach(async () => {
+    await transport.close();
+    rmWithRetry(fixtureRoot);
+  });
+
+  it("keeps a symbol-less cache that has content instead of importing atlas.json over it", async () => {
+    const client = new Client({ name: "seed-client", version: "0.0.1" }, { capabilities: {} });
+    await client.connect(transport);
+    await vi.waitFor(
+      () => expect(transport.stderrBuffer).toMatch(/Using existing local cache/),
+      { timeout: 5_000, interval: 25 },
+    );
+    expect(transport.stderrBuffer).not.toMatch(/Importing atlas\.json into fresh cache/);
+    await client.close().catch(() => {});
+    await transport.close();
+
+    const db = openDatabase(pathJoin(fixtureRoot, ".contextatlas", "index.db"));
+    try {
+      expect(listAllClaims(db).map((c) => c.claim)).toEqual(["claim only the cache holds"]);
+    } finally {
+      db.close();
+    }
   }, 30_000);
 });

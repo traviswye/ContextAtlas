@@ -5,10 +5,11 @@
  *
  * Stages (per DESIGN.md's extraction pipeline section):
  *   0. Atlas-aware startup (`atlas-baseline.ts`): import committed
- *      atlas.json if present, establishing the committed SHA baseline —
- *      unless the previous run did not finish and atlas.json is unchanged
- *      since (resume from the cache), or atlas.committed is false (the
- *      cache is authoritative; atlas.json only seeds an empty cache).
+ *      atlas.json if present, establishing the committed SHA baseline.
+ *      When the previous run did not finish and atlas.json is unchanged
+ *      since, the units that run stored are carried over the import
+ *      (`unsaved-work.ts`). With atlas.committed false the cache is
+ *      authoritative and atlas.json only seeds an empty cache.
  *   0.5 F-5 commit-key migration (v1.2 Phase 2, `source-keys.ts`): bare-
  *      sha commit keys and claim paths (the pre-v1.2 Skill form) become
  *      `commit:<sha>`. Every run, whatever streams are enabled.
@@ -31,15 +32,17 @@
  *      model call is planned.
  *   6. Prose stream (`adr`, `prose-stream.ts`): extract changed/added
  *      prose files in batches, resolve candidates, write claims. Throws
- *      when every attempted prose file failed.
+ *      when every attempted prose call failed with an API or network
+ *      error (a malformed-JSON response is not a failed call).
  *   6c. Docstring stream (`stream-stages.ts` → `docstring-stream.ts`).
  *   6d. Commit stream (`stream-stages.ts` → `commit-message-extractor.ts`).
  *   6b. Report claims orphaned by the prune (kept, never deleted); after
  *      6c/6d so re-extracted claims are not reported.
  *   7. If atlas.committed, regenerate atlas.json iff any modification
- *      happened, or the run resumed an unfinished one
- *      (`atlas-export-stage.ts`). Bump atlas_meta.generated_at on real
- *      changes only. Then clear the unfinished-run mark.
+ *      happened, the run resumed an unfinished one, or there is no
+ *      atlas.json yet (`atlas-export-stage.ts`). Bump
+ *      atlas_meta.generated_at on real changes only. Then clear the
+ *      unfinished-run mark.
  *
  * Streams run in the fixed order prose → docstring → commit (lead
  * decision L-6), sharing one cost tracker and budget check. Which
@@ -78,7 +81,11 @@ import {
   type ExtractionPlan,
 } from "./extraction-plan.js";
 import { diffShas, walkProseFiles, walkSourceFiles } from "./file-walker.js";
-import { DEFAULT_COMMIT_LIMIT, extractGitSignal } from "./git-extractor.js";
+import {
+  DEFAULT_COMMIT_LIMIT,
+  extractGitSignal,
+  isAncestorOfHead,
+} from "./git-extractor.js";
 import type {
   ExtractionPipelineDeps,
   ExtractionPipelineResult,
@@ -139,15 +146,17 @@ export async function runExtractionPipeline(
   // common case these are identical; in the external-ADRs setup
   // (ADR-08) the committed atlas belongs with the config.
   //
-  // atlas.json replaces the cache unless the previous run did not finish
-  // and atlas.json is unchanged since it started (resume: the cache holds
-  // that run's stored work), or `atlas.committed` is false (the cache is
-  // authoritative; atlas.json only seeds an empty cache). See
+  // atlas.json replaces the cache. When the previous run did not finish
+  // and atlas.json is unchanged since it started, the units that run
+  // stored (and that the current HEAD reaches, for commits) are carried
+  // over the import. With `atlas.committed` false the cache is
+  // authoritative and atlas.json only seeds an empty cache. See
   // `atlas-baseline.ts`.
   const atlasAbsPath = pathResolve(configRoot, config.atlas.path);
   const atlasBaseline = loadAtlasBaseline(db, {
     atlasAbsPath,
     committed: config.atlas.committed,
+    isCommitReachable: (sha) => isAncestorOfHead(repoRoot, sha, deps.gitBinary),
   });
 
   // --- Stage 0.5: F-5 commit-key migration (v1.2 Phase 2, L-2) ---------
@@ -341,12 +350,16 @@ export async function runExtractionPipeline(
 
   // Fail loud if every attempted prose document failed — usually a
   // config/key issue rather than per-document noise. Prose runs first,
-  // so this can never discard another stream's paid work.
-  if (plan.prose.length > 0 && prose.errors.length === plan.prose.length) {
+  // so this can never discard another stream's paid work. A malformed-
+  // JSON response is not a failed call here (review round 2): the file
+  // is reported in extraction_errors and retried, but when it was the
+  // only prose work it used to stop the docstring and commit streams on
+  // every run.
+  if (plan.prose.length > 0 && prose.failedCalls === plan.prose.length) {
     throw new Error(
       `Extraction failed for all ${plan.prose.length} document(s). ` +
         "This usually indicates an auth/config problem, not per-document noise. " +
-        `First error: ${prose.errors[0]?.error}`,
+        `First error: ${prose.firstFailedCallError ?? prose.errors[0]?.error}`,
     );
   }
   warnUnresolvedFrontmatter(prose);
@@ -360,7 +373,12 @@ export async function runExtractionPipeline(
   // --- Stage 6d: commit stream -----------------------------------------
   const commit: CommitStageResult | null =
     plan.commit?.status === "planned"
-      ? await runCommitStage(db, plan.commit.pending, inventory, anthropicClient, cost)
+      ? await runCommitStage(db, plan.commit.pending, inventory, anthropicClient, cost, {
+          // Where a pinned commit key lives, for the warning's retry hint.
+          pinnedKeyStore: config.atlas.committed
+            ? { kind: "atlas" }
+            : { kind: "cache", cachePath: pathResolve(configRoot, config.atlas.localCache) },
+        })
       : null;
 
   // A docstring or commit stream whose every call failed does not stop
@@ -393,10 +411,11 @@ export async function runExtractionPipeline(
   // a docstring-source deletion, a commit-key migration, a stored
   // docstring file and a keyed commit all change the exported symbols,
   // claims or keys, so each counts too; a run that changed nothing
-  // leaves atlas.json byte-identical. A resumed run always exports: the
-  // cache holds the unfinished run's work, which atlas.json lacks.
+  // leaves atlas.json byte-identical. A resumed run always exports (the
+  // cache holds the unfinished run's work, which atlas.json lacks), and
+  // so does a committed atlas with no atlas.json yet.
   const didModify =
-    atlasBaseline.resumed ||
+    atlasBaseline.mustExport ||
     plan.prose.length > 0 ||
     diff.deleted.length > 0 ||
     gitChanged ||

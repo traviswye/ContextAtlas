@@ -761,7 +761,9 @@ orchestration only).
   `commit:<sha>` → sha. A call that throws leaves the commit unkeyed,
   so the next run retries it. A result that does not parse (max_tokens
   or malformed JSON) pins the key with zero claims and logs a warning
-  naming the key to remove from `source_shas` to retry. Commits are
+  naming the key to remove from `source_shas` to retry (in
+  `atlas.json`; with `atlas.committed: false`, in the local cache
+  file, whose path the warning gives). Commits are
   immutable, so re-billing a likely-deterministic failure on every run
   would buy nothing. Prose and docstrings keep retry-on-null.
 - **No git.** In a non-git tree, or when git is unavailable, the commit
@@ -774,7 +776,8 @@ orchestration only).
   Throwing mid-run would skip the remaining streams and Stage 7 for
   no benefit. The prose all-fail throw is unchanged (exit 1, before
   export). Only calls that threw an API or network error (and, for
-  commits, failed writes) count as failed; see "Review fixes" below.
+  commits, failed writes) count as failed, for the prose throw too;
+  see "Review fixes" and "Review fixes, round 2" below.
 
 **4. `--full`** (L-7). It re-extracts every prose file and, while the
 docstring stream runs, every listed docstring file. Commits stay gated
@@ -876,7 +879,7 @@ commit columns for stages 1, 2 and 6.
 
 | Stage [DESIGN] | prose (precedent) | docstring | commit |
 |---|---|---|---|
-| 0 import [Stage 0] | Imported with the atlas, except over an unfinished run's cache or, with `atlas.committed: false`, over a non-empty cache (review fixes) | Symmetric to prose | Symmetric to prose |
+| 0 import [Stage 0] | Imported with the atlas; an unfinished run's stored units are carried over the import; with `atlas.committed: false`, only into an empty cache (review fixes, rounds 1 and 2) | Symmetric to prose | Symmetric to prose; a carried commit must be reachable from HEAD |
 | 0.5 key migration | Not applicable | Not applicable | Divergent: bare-sha keys and claim paths become `commit:<sha>`, because two paths wrote two forms; counts as a modification |
 | 1 collect [Stage 1] | `walkProseFiles` | Divergent: reuses the Stage 3 source walk (`walkSourceFiles` + exclude patterns); no second walker | Divergent: `git log --no-merges` + commit filter (`parseCommitLog`), because commits live in git history, not the filesystem; skipped without a git HEAD |
 | 1b classify | By claim source; a zero-claim key by the stream this cache recorded writing it, then the prose walk and key shape (review fixes) | Symmetric to prose | Symmetric to prose (Phase 1; both key forms recognized; never recorded) |
@@ -972,7 +975,8 @@ below are part of Phase 2.
   `atlas.json` is byte-identical, it keeps the cache (resume) and
   always exports. When `atlas.json` changed since (a pull, a branch
   switch, a Skill run), it is imported as before, with a warning.
-  (`atlas-baseline.ts`.)
+  (`atlas-baseline.ts`.) Round 2 below makes the resume additive and
+  limits carried commits to those HEAD reaches.
 - **`atlas.committed: false`.** The pipeline imported a leftover
   `atlas.json` on every run but never exported, so every run re-billed
   everything newer than the leftover file. With `committed: false` the
@@ -988,11 +992,16 @@ below are part of Phase 2.
   and the budget check (`ParseError.usage`).
 - **What fails a stream (L-10 ii).** Only calls that threw an API or
   network error, and failed commit writes, count. A call the API
-  answered with no parseable result (null result, malformed JSON) is
-  reported in `extraction_errors` and retried (docstring) or pinned
-  (commit), but never fails the stream, so one unparseable docstring
-  no longer makes every later `index` exit 1. The exit message quotes
-  the first failed call's error, not an earlier docstring read error.
+  answered with no parseable result (null result, malformed JSON)
+  never fails the stream, so one unparseable docstring no longer makes
+  every later `index` exit 1. A docstring file's is reported in
+  `extraction_errors` and the file is retried. A commit's is pinned
+  with zero claims and only logged as a warning: it is in no summary
+  field (`commits_extracted` counts it), so a systematic unparseable-
+  output problem on commits shows as warnings, not as errors or exit
+  1. The exit message quotes the first failed call's error, not an
+  earlier docstring read error. (Round 2 applies the same rule to the
+  prose all-failed check.)
 - **Zero-claim keys across prose and docstring.** Both streams key a
   file by relPath at the same SHA, so a zero-claim key written by one
   stream looked unchanged to the other after `docs.include` changed,
@@ -1002,13 +1011,16 @@ below are part of Phase 2.
   1b classifies a zero-claim key by that record while the key still
   holds the SHA. The table is never exported and survives the Stage 0
   import; a fresh clone has no records and falls back as before.
+  (Round 2: it survives only the import of the `atlas.json` this cache
+  last imported or wrote.)
 - **`validate-extraction` and non-ADR prose.** `adr_depth_floor` and
   `source_coverage` now skip a path whose file exists and that the
   prose walk does not put in the ADR bucket (`docs.include` pages, a
   note in the ADR directory without an ADR file name). Before, `index`
   exited 1 on them after every exporting run, and an `/index-atlas`
   refresh that kept them could never pass its gate. A missing file is
-  still checked. The failure remediation no longer offers only
+  still checked (round 2 narrows that to missing ADR paths and takes
+  the docs bucket from the walk). The failure remediation no longer offers only
   `index --full`: it says `--full` also re-extracts every docstring
   file and gives an ADR-only route (`extraction.streams: [adr]` for
   one run).
@@ -1027,7 +1039,8 @@ below are part of Phase 2.
 - **`validate-atlas`** fails (exit 2) when a claim's `symbol_ids`
   names a symbol that `symbols` does not list. Such an atlas cannot be
   imported (claim links are a foreign key), so the MCP server and
-  `index` failed on it with a raw SQLite error.
+  `index` failed on it with a raw SQLite error. (Round 2 makes this a
+  warning.)
 - **`/index-atlas` SKILL.md.** A refresh carries the baseline
   `symbols` forward instead of writing `symbols: []` next to preserved
   `symbol_ids`; the Phase B commit filter names both key forms; a
@@ -1035,3 +1048,91 @@ below are part of Phase 2.
   docstring stream is disabled, as CLI Stage 5 does; manifest
   versions `"1"` and `"2"` are accepted; the validate-extraction gate
   says kept non-ADR prose is exempt and must not be dropped to pass.
+
+### Review fixes, round 2 (2026-09-25)
+
+A second review, of the fixes above, found these defects; the fixes
+below are also part of Phase 2.
+
+- **A resume is additive only.** Keeping the whole cache also kept
+  what the unfinished run had removed against its own tree and config:
+  the symbols Stage 4a pruned (and with them the claim links) and the
+  keys Stage 5 deleted. When the file came back (a branch switched
+  back, an exclude pattern reverted, a file restored), nothing linked
+  the unchanged ADR claims again, so they were exported with empty
+  `symbol_ids` for good, the deleted docstring file was billed again,
+  and the resumed run reported no orphans. Now a committed
+  `atlas.json` is imported on every run. When the unfinished-run record
+  matches, Stage 0 first takes the units that run stored: each
+  `source_shas` key whose SHA differs from `atlas.json`'s (or that
+  `atlas.json` lacks), with its claims, their links and candidates, and
+  the symbols they link. It writes them back over the import in the
+  same transaction (`unsaved-work.ts`). This run's Stages 4a and 5
+  then prune and delete against the current tree and config and report
+  the orphans. A run is a resume, and must export, only when it
+  carried something over.
+- **Another branch's commits.** Branches whose `atlas.json` is
+  byte-identical all matched the unfinished-run record, so a run
+  interrupted on one branch exported that branch's commit keys and
+  claims into another branch's `atlas.json`, where LOCK 2.b keeps them
+  for good. A resume now carries a commit only when HEAD reaches it
+  (`git merge-base --is-ancestor`).
+- **`atlas.committed: true` without `atlas.json`.** The cache was the
+  baseline, but Stage 7 wrote `atlas.json` only when the run changed
+  something. After `atlas.json` was deleted, or `committed` was
+  switched back to true, a no-change run logged "atlas.json untouched"
+  and never wrote it. Stage 7 now always writes it in that case.
+- **One seeding rule.** The MCP server and the `init` smoke test
+  imported `atlas.json` whenever the cache had no symbols. With
+  `atlas.committed: false` and a cache without symbols (a docs-only
+  repo, or every source excluded), every server start replaced the
+  authoritative cache with a leftover `atlas.json`, and the next
+  `index` billed the difference again. All three now use
+  `isCacheEmpty` (no symbols, claims or source keys).
+- **Key-stream records after another `atlas.json`.** After a pull or a
+  branch switch replaced `atlas.json`, the `source_key_streams`
+  records still outranked the fallback classification, although the
+  other stream may have keyed the same path at the same SHA, which the
+  SHA check cannot see. Switching between branches whose
+  `docs.include` differ billed a zero-claim file again on every
+  switch, and with the docstring stream disabled a pulled docstring
+  key could be deleted as a prose key. The cache now records the
+  SHA-256 of the `atlas.json` the records were written on top of (the
+  one it last imported or wrote; cache-only `_meta` key
+  `index.key_streams_atlas_sha256`). Importing any other `atlas.json`
+  drops the records, so classification falls back to the fresh-clone
+  rules.
+- **The prose all-failed check.** It counted a prose `ParseError`
+  (malformed JSON) as a failed document. When one unparseable ADR was
+  the only prose work, `index` therefore threw before the docstring and
+  commit streams on every run, blaming the API key. The file is still
+  reported in `extraction_errors` and retried, but only API or network
+  errors count toward the throw, as for the other streams.
+- **The pinned-commit retry hint.** With `atlas.committed: false` the
+  warning said to remove the key from `atlas.json`, which is never
+  written in that mode and is not read over a non-empty cache. It now
+  names the local cache file and the row to delete.
+- **`validate-extraction` exemptions.** The docs-bucket exemption
+  checked that the file existed relative to `source.root`. Docs pages
+  stored relative to the config root (the ADR-08 layout, with the
+  default `docs.include`) were therefore checked as ADRs, so `index`
+  exited 1 after every exporting run. A deleted docs page kept by
+  `/index-atlas` failed the gate, with no way for the Skill to pass
+  it. The exemption now takes the docs bucket from the prose walk. A
+  path the walk does not return is checked only when it names an ADR
+  under `adrs.path` (an ADR naming convention) and the file is missing.
+- **`validate-atlas` dangling links are a warning (exit 0).** As an
+  error the check ran before `resolve-symbols`, the step that repairs
+  such an atlas without loss (it rebuilds `symbols` and keeps every
+  link whose symbol still exists). Its other remedy, emptying
+  `symbol_ids`, lost the links for good on claims without
+  `symbol_candidates`, which is every CLI claim from before v1.2. The
+  warning names `resolve-symbols` as the fix and says not to empty the
+  links.
+- **`/index-atlas` SKILL.md.** A refresh may write `symbols: []` when
+  the baseline `symbols` array is too large to re-write (preserved
+  `symbol_ids` stay; resolve-symbols rebuilds the list), re-runs
+  `validate-atlas` after `resolve-symbols`, and carries the baseline's
+  `extracted_at_sha` and `git_commits` forward. Before, a refresh of a
+  CLI-built atlas dropped the git signal the MCP tools serve, and only
+  a paid `index` restored it.

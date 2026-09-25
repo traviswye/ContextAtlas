@@ -135,6 +135,42 @@ export type CommitClaimsOutcome =
     };
 
 /**
+ * Where a pinned commit key has to be removed for a retry: atlas.json
+ * (the default; `atlas.committed: true`, whose atlas.json the next run
+ * imports) or the local cache file (`atlas.committed: false`, where
+ * atlas.json is never written and a leftover one is not read once the
+ * cache has content).
+ */
+export type PinnedKeyStore =
+  | { readonly kind: "atlas" }
+  | { readonly kind: "cache"; readonly cachePath: string };
+
+export interface CommitClaimsOptions {
+  /** For the retry instruction in the pin warning. Default: atlas. */
+  readonly pinnedKeyStore?: PinnedKeyStore;
+}
+
+/** The sentence telling the user how to retry a pinned commit. */
+export function pinnedCommitRetryHint(
+  key: string,
+  store: PinnedKeyStore = { kind: "atlas" },
+): string {
+  if (store.kind === "atlas") {
+    return (
+      `To retry it, remove the "${key}" entry from source_shas in ` +
+      `atlas.json and re-run extraction.`
+    );
+  }
+  return (
+    `atlas.committed is false, so the key is only in the local cache ` +
+    `(${store.cachePath}); atlas.json is not read. To retry it, delete ` +
+    `that row and re-run extraction, e.g. \`sqlite3 "${store.cachePath}" ` +
+    `"DELETE FROM source_shas WHERE source_path = '${key}'"\`. Deleting ` +
+    `the cache file also retries it, but re-extracts every source.`
+  );
+}
+
+/**
  * Extract one commit (one API call) and store its claims under the
  * canonical `commit:<sha>` key. Does not check whether the commit is
  * already keyed; callers skip keyed commits via `hasCommitKey`.
@@ -155,6 +191,7 @@ export async function extractCommitClaims(
   commit: CommitMetadata,
   inventory: SymbolInventory,
   anthropicClient: ExtractionClient,
+  options: CommitClaimsOptions = {},
 ): Promise<CommitClaimsOutcome> {
   const key = commitSourceKey(commit.sha);
 
@@ -194,8 +231,7 @@ export async function extractCommitClaims(
       `commit-message-extractor: extraction returned no parseable result ` +
         `for ${key} (${unparseable}). Recorded it as ` +
         `extracted with zero claims so it is not re-billed on every run. ` +
-        `To retry it, remove the "${key}" entry from source_shas in ` +
-        `atlas.json and re-run extraction.`,
+        pinnedCommitRetryHint(key, options.pinnedKeyStore),
       { sha: commit.sha, subject: commit.subject },
     );
     return { status: "null-result", usage };

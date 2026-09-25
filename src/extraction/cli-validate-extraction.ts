@@ -48,13 +48,16 @@
  *      prompt against substantive ADR prose).
  *
  * Non-ADR prose is exempt from invariants 2 and 3 (v1.2 Phase 2 review
- * fix): a path whose file exists but that the prose walk does not put
- * in the ADR bucket (`docs.include` pages such as README.md, or a note
- * in the ADR directory without an ADR file name). The CLI extracts those
- * with the same prompt and `adr:` prefix, the `/index-atlas` Skill keeps
- * them without re-extracting, and neither can be held to an ADR's depth.
- * Before the fix, a Skill refresh that kept them could never pass this
- * gate, and CLI `index` exited 1 on them after every exporting run.
+ * fixes): a path the prose walk does not put in the ADR bucket
+ * (`docs.include` pages such as README.md, wherever they are stored
+ * relative to, or a note in the ADR directory without an ADR file name),
+ * including a docs page that has since been deleted. The CLI extracts
+ * those with the same prompt and `adr:` prefix, the `/index-atlas` Skill
+ * keeps them without re-extracting, and neither can be held to an ADR's
+ * depth. Only a missing file whose path names an ADR under `adrs.path`
+ * is still checked. Before the fixes, a Skill refresh that kept them
+ * could never pass this gate, and CLI `index` exited 1 on them after
+ * every exporting run.
  *
  * Per-stream coverage at Phase B iteration is the SKILL.md substrate
  * concern (not validator domain) — if Phase A skips a stream
@@ -77,10 +80,16 @@
  */
 
 import { existsSync, readFileSync } from "node:fs";
-import { resolve as pathResolve } from "node:path";
+import {
+  basename,
+  isAbsolute,
+  relative,
+  resolve as pathResolve,
+} from "node:path";
 
 import { loadConfig } from "../config/parser.js";
 import type { ContextAtlasConfig } from "../types.js";
+import { matchesAdrNamingConvention } from "../utils/adr-enumeration.js";
 
 import { walkProseFiles } from "./file-walker.js";
 
@@ -145,11 +154,19 @@ export interface ValidateExtractionShapeOptions {
 }
 
 /**
- * The exemption the subcommand applies: a path is not an ADR when the
- * file exists (relative to the source root) and the current prose walk
- * does not put it in the ADR bucket. A missing file is still checked,
- * so a deleted ADR left in `source_shas` keeps failing coverage. Null
- * when the walk fails (then nothing is exempt).
+ * The exemption the subcommand applies, from the current prose walk:
+ *
+ *   - a path the walk puts in the docs bucket is not an ADR, whatever
+ *     root it is stored relative to (review round 2: a docs page outside
+ *     `source.root` is stored relative to the config root, ADR-08);
+ *   - a path the walk puts in the ADR bucket is an ADR;
+ *   - a path the walk does not return is checked only when it names an
+ *     ADR under `adrs.path` (an ADR naming convention) and that file is
+ *     missing, so a deleted ADR left in `source_shas` keeps failing
+ *     coverage. A deleted docs page is exempt (review round 2): the
+ *     `/index-atlas` Skill cannot re-extract it and must not be stuck.
+ *
+ * Null when the walk fails (then nothing is exempt).
  */
 function nonAdrProsePredicate(
   config: ContextAtlasConfig,
@@ -158,18 +175,32 @@ function nonAdrProsePredicate(
   const sourceRoot = config.source?.root
     ? pathResolve(configRoot, config.source.root)
     : configRoot;
+  const adrDir = pathResolve(configRoot, config.adrs.path);
   let adrPaths: Set<string>;
+  let docPaths: Set<string>;
   try {
-    adrPaths = new Set(
-      walkProseFiles(sourceRoot, config, configRoot)
-        .filter((f) => f.bucket === "adr")
-        .map((f) => f.relPath),
-    );
+    const walked = walkProseFiles(sourceRoot, config, configRoot);
+    adrPaths = new Set(walked.filter((f) => f.bucket === "adr").map((f) => f.relPath));
+    docPaths = new Set(walked.filter((f) => f.bucket === "doc").map((f) => f.relPath));
   } catch {
     return null;
   }
-  return (sourcePath) =>
-    !adrPaths.has(sourcePath) && existsSync(pathResolve(sourceRoot, sourcePath));
+  // An ADR's stored path is relative to the source root when the file is
+  // inside it, else relative to the ADR directory (file-walker.ts).
+  const adrBases = isInside(adrDir, sourceRoot) ? [sourceRoot] : [sourceRoot, adrDir];
+  return (sourcePath) => {
+    if (docPaths.has(sourcePath)) return true;
+    if (adrPaths.has(sourcePath)) return false;
+    const asAdr = adrBases
+      .map((base) => pathResolve(base, sourcePath))
+      .filter((abs) => isInside(abs, adrDir) && matchesAdrNamingConvention(basename(abs)));
+    return asAdr.length === 0 || asAdr.some((abs) => existsSync(abs));
+  };
+}
+
+function isInside(path: string, dir: string): boolean {
+  const rel = relative(dir, path);
+  return rel === "" || (!rel.startsWith("..") && !isAbsolute(rel));
 }
 
 /**

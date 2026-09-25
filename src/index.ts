@@ -51,6 +51,7 @@ import { TOOLS } from "./mcp/schemas.js";
 import { createObservabilityWriter } from "./observability/observe.js";
 import { checkStaleness, exitCodeFor } from "./staleness.js";
 import { importAtlasFile } from "./storage/atlas-importer.js";
+import { isCacheEmpty } from "./storage/cache-meta.js";
 import { openDatabase } from "./storage/db.js";
 import type { LanguageAdapter, LanguageCode } from "./types.js";
 
@@ -307,18 +308,23 @@ export async function main(): Promise<void> {
 
   // 4. Import committed atlas.json into fresh cache if present.
   //    atlas.path resolves against configRoot same as local_cache.
+  //    "Fresh" is `isCacheEmpty` (no symbols, claims or source keys), the
+  //    rule `contextatlas index` uses to seed a cache with
+  //    atlas.committed: false. Counting symbols alone replaced a
+  //    symbol-less cache (a docs-only repo) with a leftover atlas.json on
+  //    every start (v1.2 Phase 2 review round 2).
   const atlasPath = pathResolve(configRoot, config.atlas.path);
   const symbolCount = (
     db.prepare("SELECT COUNT(*) AS n FROM symbols").get() as { n: number }
   ).n;
-  if (symbolCount === 0 && existsSync(atlasPath)) {
+  if (isCacheEmpty(db) && existsSync(atlasPath)) {
     log.info(`Importing atlas.json into fresh cache`, { path: atlasPath });
     importAtlasFile(db, atlasPath);
     const newCount = (
       db.prepare("SELECT COUNT(*) AS n FROM symbols").get() as { n: number }
     ).n;
     log.info(`Atlas imported: ${newCount} symbols`);
-  } else if (symbolCount === 0) {
+  } else if (isCacheEmpty(db)) {
     log.warn(
       `No atlas.json at ${atlasPath} and local cache is empty. ` +
         "Queries will return ERR not_found until extraction runs.",

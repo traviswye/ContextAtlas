@@ -167,6 +167,26 @@ export function parseGitLog(stdout: string): GitCommit[] {
   return commits;
 }
 
+/**
+ * Whether `sha` is the current HEAD or one of its ancestors in the
+ * repository at `repoRoot` (`git merge-base --is-ancestor`). False when
+ * it is not, when git does not know the object, and when git cannot run
+ * (v1.2 Phase 2 review round 2: a resumed `index` run carries over only
+ * the commits of the checkout it runs on).
+ */
+export function isAncestorOfHead(
+  repoRoot: string,
+  sha: string,
+  gitBinary = "git",
+): boolean {
+  const result = spawnSync(
+    gitBinary,
+    ["merge-base", "--is-ancestor", sha, "HEAD"],
+    { cwd: repoRoot, encoding: "utf8", windowsHide: true },
+  );
+  return result.error === undefined && result.status === 0;
+}
+
 function isGitTree(repoRoot: string, gitBinary: string): boolean {
   const result = spawnSync(
     gitBinary,

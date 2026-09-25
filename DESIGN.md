@@ -615,17 +615,24 @@ present:
 This is how new team members and returning contributors avoid paying
 the full first-run cost. See ADR-06 for the architectural rationale.
 
-Two exceptions (v1.2 Phase 2 review fixes; `atlas-baseline.ts`):
+Exceptions (v1.2 Phase 2 review fixes; `atlas-baseline.ts`):
 - **An unfinished run.** Each run records, in the local cache only,
   the SHA-256 of the atlas.json it started from and clears the record
-  when it finishes. If a run was interrupted (its docstring files and
-  commits are stored in the cache one at a time, but atlas.json is
-  written only at the end) and atlas.json has not changed since, the
-  next run keeps the cache, extracts only what is left, and exports.
-  If atlas.json changed meanwhile, it is imported as usual.
+  when it finishes. If a run was interrupted (each unit is stored in
+  the cache as soon as it is extracted, but atlas.json is written only
+  at the end) and atlas.json has not changed since, the next run still
+  imports atlas.json, then carries over the units the interrupted run
+  stored: the keys whose SHA differs from atlas.json's, with their
+  claims (`unsaved-work.ts`). A commit is carried only when HEAD
+  reaches it. The run then extracts only what is left and exports.
+  What the interrupted run deleted or pruned is not carried: this run
+  recomputes it against the current tree and config.
 - **`atlas.committed: false`.** The cache is the source of truth, so a
-  leftover atlas.json only seeds an empty cache and is otherwise
-  ignored with a warning.
+  leftover atlas.json only seeds an empty cache (the rule the MCP
+  server and the init smoke test share: no symbols, claims or source
+  keys) and is otherwise ignored with a warning.
+- **`atlas.committed: true` and no atlas.json.** The cache is the
+  baseline, and the run writes atlas.json even if nothing changed.
 
 **Per-stream baseline and structural refresh (v1.2).** `source_shas`
 holds keys for three claim streams:
