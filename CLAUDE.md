@@ -126,7 +126,8 @@ These are decisions already made. Do not relitigate them.
 - **Current:** v1.1.3 (tag `v1.1.3`, 2026-06-09; npm `latest`). The
   v1.2 cycle (automatic atlas freshness) is in progress per
   [`docs/cycles/v1_2/v1.2-SCOPE.md`](docs/cycles/v1_2/v1.2-SCOPE.md);
-  Phases 0-2 are committed, and Phase 2 awaits its paid parity run.
+  Phases 0-2 are complete (Phase 2 closed with its paid parity run on
+  2026-09-25); Phase 3 is next.
   (Corrected 2026-09-25; this bullet had still named v0.8 as current.
   The v0.8 text below is kept as the historical record.)
 - **v0.8:** shipped 2026-05-14 (tag `v0.8.0`); last
@@ -583,8 +584,10 @@ kept as the historical record (Pattern 3).
   (v1.2 Phase 2) carries no such wording. The same correction is
   recorded in the ADR-02 2026-09-25 revision entry, DESIGN.md
   "Performance Characteristics" and README "First-run behavior". A
-  paid run compared against the platform bill would confirm it; none
-  has been made yet.
+  paid run compared against the platform bill would confirm it. The
+  v1.2 Phase 2 parity run (2026-09-25, 507 calls) reported
+  `cost_usd` $10.56; it has not yet been compared with the Console
+  bill for that day.
 
 ## Generation cost framing (v0.7 Step 2.3.c.0 deliberate-shift lock)
 

@@ -35,20 +35,24 @@ import {
 
 /**
  * Output tokens per call, low and high, per stream. Fixed conservative
- * priors (L-8), to be recalibrated from the Phase 2 parity run:
- *   - adr: dense ADRs produced ~3,000 output tokens per call in
- *     validation (prompt.ts, EXTRACTION_MAX_TOKENS note; hono v0.2
- *     averaged ~2,900); large docs files can produce several times more.
- *   - docstring / commit: the v0.4 hono run averaged well under 100
- *     output tokens per call (most return zero or one claim); the high
- *     end allows a few claims per call.
+ * priors (L-8), recalibrated from the v1.2 Phase 2 parity run
+ * (2026-09-25, this repository, 507 calls: 14 prose, 488 docstring,
+ * 5 commit; 247,814 output tokens in total, $10.56 actual against a
+ * $4.81-$11.12 preview with the earlier priors):
+ *   - docstring: single-call samples on the same tree used 265 and 272
+ *     output tokens, well above the v0.4-era "under 100" assumption.
+ *   - adr: the summary reports totals only, so the per-stream split is
+ *     inferred: at ~270 per docstring call, the 14 prose files averaged
+ *     ~8,000 output tokens (large cycle docs), above the old 6,000 high.
+ *   - commit: 5 calls, too few to calibrate; kept with docstring.
+ * The earlier priors were adr 1,000-6,000 and docstring/commit 30-400.
  */
 export const OUTPUT_TOKEN_PRIORS: Readonly<
   Record<ExtractionStream, { readonly low: number; readonly high: number }>
 > = {
-  adr: { low: 1_000, high: 6_000 },
-  docstring: { low: 30, high: 400 },
-  commit: { low: 30, high: 400 },
+  adr: { low: 2_000, high: 10_000 },
+  docstring: { low: 100, high: 400 },
+  commit: { low: 100, high: 400 },
 };
 
 /** Separator `anthropic-client.ts` appends after the document body. */

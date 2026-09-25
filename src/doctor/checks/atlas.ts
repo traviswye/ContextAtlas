@@ -40,7 +40,7 @@ export function atlasChecks(ctx: CheckContext): DoctorCheck[] {
       detail:
         ctx.firstRun === true
           ? "Cold-start state — atlas substrate is produced by `contextatlas index` (or by `contextatlas generate-adrs` followed by `contextatlas index`). Init completes without it; downstream commands create the atlas as part of their substantive work."
-          : "Run extraction (`contextatlas index` for ADR-only, or scripts/dogfood-extract.mjs for full v0.4 substrate) to produce the atlas.",
+          : "Run extraction (`contextatlas index`, which extracts the streams `extraction.streams` enables; all three by default) to produce the atlas.",
     });
     return out;
   }

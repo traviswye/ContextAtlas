@@ -57,7 +57,9 @@ load-bearing empirical findings).
   first model call, the run prints an estimate to stderr: calls and
   input tokens per stream, and a cost range. It is printed only when
   a call is planned, and it names disabled streams. There is no
-  prompt, and stdout is unchanged.
+  prompt, and stdout is unchanged. Its per-call output-token priors
+  were recalibrated from the paid parity run (prose 2,000-10,000,
+  docstring and commit 100-400).
 - `contextatlas index` summary fields (v1.2 Phase 2), appended after
   `unverified_symbol_files` in both output formats:
   `streams_enabled`, `docstring_files_extracted`,
@@ -330,11 +332,15 @@ load-bearing empirical findings).
 
 ### Removed
 
-- *Pending, not yet removed:* `scripts/dogfood-extract.mjs` (not part
-  of the npm package) is to be retired once the v1.2 Phase 2 paid
-  parity run shows `index` matches it. Its v0.4 "Q3" rule, which
-  deleted a repo's commit claims when there were fewer than 30, has no
-  counterpart in `index` and will go with it.
+- `scripts/dogfood-extract.mjs` (not part of the npm package). The
+  v1.2 Phase 2 paid parity run (2026-09-25) showed `contextatlas index`
+  covers it: on this repository `index` made exactly the calls a
+  zero-API `list-extraction-sources` enumeration predicts (14 prose,
+  488 docstring, 5 commit) with no extraction errors, and a no-op
+  rerun made no calls and left `atlas.json` byte-identical. The
+  script's v0.4 "Q3" rule, which deleted a repo's commit claims when
+  there were fewer than 30, has no counterpart in `index` and went with
+  it.
 - The `@modelcontextprotocol/sdk` 0.5.0 dependency tree (v1.2
   Phase 0).
 - The `node-fetch` / `formdata-node` chain of `@anthropic-ai/sdk`

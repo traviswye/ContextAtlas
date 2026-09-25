@@ -95,9 +95,10 @@ export {
 // Two entry points share one per-commit core (`extractCommitClaims`):
 //   - `extractCommitMessagesForRepo`: the standalone whole-repo pass. The
 //     benchmarks repo scripts (`extract-benchmark-atlas.mjs`,
-//     `v0.4-step5-mock-test.mjs`) and `scripts/dogfood-extract.mjs` call
-//     it and read its result fields by name, so its signature and field
-//     names stay stable; new fields are additive only.
+//     `v0.4-step5-mock-test.mjs`) call it and read its result fields by
+//     name, so its signature and field names stay stable; new fields are
+//     additive only. (`scripts/dogfood-extract.mjs` also called it until
+//     it was retired after the v1.2 Phase 2 parity run.)
 //   - `runExtractionPipeline` (`contextatlas index`, Stage 6d since v1.2
 //     Phase 2) plans the pending commits itself (`extraction-plan.ts`) and
 //     runs the per-commit core through `stream-stages.ts`.
