@@ -33,7 +33,10 @@
  *
  *   --full                (ADR-12) Accepted only with `index`. Bypass
  *                         SHA-diff gating and re-extract every prose
- *                         file regardless of staleness.
+ *                         file and (v1.2 Phase 2, when the docstring
+ *                         stream is enabled) every docstring file,
+ *                         regardless of staleness. Commits stay gated
+ *                         by their source_shas key.
  *
  *   --json                (ADR-12) Accepted only with `index`. Emit
  *                         the completion summary as a JSON object on
@@ -285,7 +288,7 @@ Subcommand options (selected; see individual subcommand for full set):
   index, generate-adrs:
     --budget-warn <usd>   Emit warning if cumulative cost exceeds threshold
   index:
-    --full                Bypass SHA-diff gating; re-extract everything
+    --full                Skip the SHA gate for ADR/docs + docstrings (commits stay key-gated)
     --json                Print the run summary as one JSON object on stdout
     --verbose             Per-file unresolved-token detail on stderr
     --narrow-attribution <drop|drop-with-fallback>

@@ -885,6 +885,17 @@ describe("--version + --help launch-readiness flags (v0.7 Step 2.2.b.0 FO-4 fix)
     expect(indexBlock).not.toBeNull();
     expect(indexBlock![1]).toMatch(/^ {4}--json\s+\S/m);
   });
+
+  it("HELP_TEXT's --full line states the v1.2 per-stream scope (commits stay key-gated)", () => {
+    // v1.2 Phase 2 (L-7): --full re-extracts ADR/docs prose and
+    // docstrings; commit messages are immutable and stay gated by
+    // their source_shas key, so "re-extract everything" would overstate it.
+    const fullLine = /^ {4}--full\s+(.*)$/m.exec(HELP_TEXT);
+    expect(fullLine).not.toBeNull();
+    expect(fullLine![1]).not.toMatch(/everything/);
+    expect(fullLine![1]).toMatch(/docstring/);
+    expect(fullLine![1]).toMatch(/commits/);
+  });
 });
 
 describe("--yes / --no-confirm flag (v0.7 Step 2.2.a.2 Lock 3 confirmation bypass)", () => {

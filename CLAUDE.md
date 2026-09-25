@@ -123,7 +123,13 @@ These are decisions already made. Do not relitigate them.
 
 ## Current Version
 
-- **Current:** v0.8 shipped 2026-05-14 (tag `v0.8.0`); last
+- **Current:** v1.1.3 (tag `v1.1.3`, 2026-06-09; npm `latest`). The
+  v1.2 cycle (automatic atlas freshness) is in progress per
+  [`docs/cycles/v1_2/v1.2-SCOPE.md`](docs/cycles/v1_2/v1.2-SCOPE.md);
+  Phases 0-2 are committed, and Phase 2 awaits its paid parity run.
+  (Corrected 2026-09-25; this bullet had still named v0.8 as current.
+  The v0.8 text below is kept as the historical record.)
+- **v0.8:** shipped 2026-05-14 (tag `v0.8.0`); last
   substantive code/features cycle before v1.0 public launch.
   Cycle-engineering substrate at [`v1_1-HANDOFF.md`](v1_1-HANDOFF.md);
   v1.1 candidates queued post-launch per
@@ -555,6 +561,30 @@ priors-based correction landed at v0.5 Step 10.1 (per
 `cost-priors-v0.5.json` versioned snapshot); cumulative
 aggregation strategy per Q4(ii) lock; rolling-N aggregation
 remains v0.6+ candidate if needed for ongoing cost forecasting.
+
+**Correction (2026-09-25, v1.2 Phase 2, lead decision L-15).** The
+prompt-cache explanation above is very likely wrong; the text above is
+kept as the historical record (Pattern 3).
+- **The ratio is the pricing constants.** The ~3x script-vs-platform
+  ratio (2.98-2.99 in the three figures above) matches 15/5 = 75/25 = 3.
+  That is the ratio between the $15/$75 per-million-token constants
+  `src/extraction/pricing.ts` used until v0.6 (`6c48078`, 2026-05-09)
+  and the true Opus 4.7 prices of $5/$25. The v0.4 script costs were
+  computed with the stale constants.
+- **No prompt cache was in play.** The extraction request
+  (`createExtractionClient`) sends no `cache_control`, and no commit
+  in `src/` has ever contained it.
+- **Two of the three platform figures were estimates.** Only cobra's
+  was a platform measurement, as the list above notes.
+- **Consequence.** Script-reported and `index`-reported costs at
+  $5/$25 (`cost_usd`, the `index` cost preview) are expected to track
+  platform billing. Do not apply a ~3x discount to them, and do not
+  repeat the ~3x claim in new user-facing text. The `index` preview
+  (v1.2 Phase 2) carries no such wording. The same correction is
+  recorded in the ADR-02 2026-09-25 revision entry, DESIGN.md
+  "Performance Characteristics" and README "First-run behavior". A
+  paid run compared against the platform bill would confirm it; none
+  has been made yet.
 
 ## Generation cost framing (v0.7 Step 2.3.c.0 deliberate-shift lock)
 

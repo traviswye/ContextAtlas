@@ -362,14 +362,27 @@ What ContextAtlas does and doesn't send off your machine:
 
 **Sent to Anthropic's API (at index time only):**
 - Text contents of ADRs, READMEs, and other markdown docs configured
-  via `.contextatlas.yml`
-- This happens once per document per change — only on initial index
-  and on incremental reindex of changed files
+  via `.contextatlas.yml` (`adrs.path` and `docs.include`)
+- The docstring text of exported symbols in your source files (the
+  comment text only, not the code), one symbol per request
+- Messages of commits that pass the commit filter (subject and body;
+  no diffs), one commit per request
+- This happens once per source per change — on initial index and on
+  incremental reindex of changed files and new commits. A commit is
+  sent once.
+- `contextatlas index` sends all three by default (v1.2+). Set
+  `extraction.streams: [adr]` in `.contextatlas.yml` to send ADRs and
+  docs only. The `/index-atlas` Skill processes the same sources
+  inside your Claude Code session.
+- `contextatlas generate-adrs` (CLI) sends a structural inventory
+  instead: source file paths and top-level symbol names, plus
+  `README.md`, `DESIGN.md` and `CLAUDE.md` verbatim and any
+  `--reference-context` documents.
 
 **Never sent anywhere:**
-- Your source code
-- Your git history
-- LSP symbol data (names, references, types)
+- Your source code, apart from the docstring text above
+- Your git history, apart from the filtered commit messages above
+- LSP reference and type data
 - Query contents at runtime
 
 **Stored locally only:**
@@ -382,8 +395,9 @@ calls. No network traffic. No model calls. Your code never leaves your
 machine during normal use.
 
 Index-time extraction uses the Anthropic API per standard API terms. If
-your ADRs contain sensitive architectural decisions, they'll be
-processed under those terms like any other API-submitted content.
+your ADRs, docstrings or commit messages contain sensitive
+architectural decisions, they'll be processed under those terms like
+any other API-submitted content.
 
 ## The Three Tools
 
@@ -419,7 +433,11 @@ adapts based on substrate state:
 
 SHA-diff incremental refresh per [ADR-12](docs/adr/ADR-12-cli-subcommand-surface.md)
 is substantively cheaper than cold-start scaffolding. Unchanged ADR
-and docstring sources skip; only changed sources re-extracted.
+and docstring sources skip, and commits already extracted are not
+extracted again; only changed sources are re-extracted. Since v1.2 the
+CLI `index` covers all three streams (ADRs/docs, docstrings, commit
+messages) like the Skill does; see `extraction.streams` under
+[Configuration](#configuration).
 
 ## Quick Start
 
@@ -537,12 +555,25 @@ Choose based on whether `contextatlas` is on your PATH:
   dollars in Opus API credits (CLI path) or session tokens (Skills
   path). The resulting `atlas.json` can be committed so future
   contributors skip this step.
-- **Cost projection note.** Script-reported extraction costs use
-  full-token API pricing; platform-billed actuals reflect prompt-cache
-  discount on the shared `EXTRACTION_PROMPT` prefix and typically run
-  **~3x lower**. v0.4 reference measurements: cobra $5.44 → $1.82,
-  httpx $5.53 → $1.85, hono $10.89 → $3.65 (3.0x ratio consistent
-  across targets). Treat projected costs as conservative upper bounds.
+- **Docstrings and commits add to the first run (v1.2+).** The CLI
+  `index` also makes one API call per documented exported symbol and
+  one per filter-passing commit. Before its first call it prints an
+  estimate to stderr: calls and input tokens per stream, and a cost
+  range. For this repository's own first three-stream run, planned
+  without calling the API at commit `9d2bf4c`, that was 479 calls (13
+  ADR/doc files, 461 docstrings, 5 commits), estimated at $4.42 to
+  $10.35.
+  `extraction.streams: [adr]` keeps extraction to ADRs and docs, and
+  `--budget-warn <usd>` warns when a run's spend passes a threshold.
+- **Cost projection note.** Until v1.2 this note said platform-billed
+  actuals typically run ~3x below script-reported costs because of a
+  prompt-cache discount (v0.4: cobra $5.44 → $1.82, httpx $5.53 →
+  $1.85, hono $10.89 → $3.65). That explanation is very likely wrong.
+  The v0.4 script costs used stale $15/$75 per-million-token prices,
+  exactly 3x the real $5/$25 (corrected in v0.6), and extraction
+  requests do not use prompt caching. `cost_usd`, computed at $5/$25,
+  is expected to track what you are billed; do not discount it or the
+  preview's range by 3x.
 - On subsequent runs, only files whose SHAs have changed since the
   last index get reprocessed. Usually seconds.
 
@@ -569,9 +600,12 @@ git:
   recent_commits: 5
 atlas:
   committed: true    # default; commits atlas.json to your repo
+# extraction:
+#   streams: [adr]   # CLI `index`: ADRs/docs only. Default: all three
+#                    # (adr, docstring, commit). Must include adr.
 ```
 
-Full reference at [`docs/config.md`](docs/config.md).
+Full reference: [Config Schema in DESIGN.md](DESIGN.md#config-schema).
 
 ## Methodology and Honest Limits
 

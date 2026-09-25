@@ -404,16 +404,33 @@ atlas:
   committed: true                        # commit atlas.json to the repo
   path: .contextatlas/atlas.json         # committed artifact location
   local_cache: .contextatlas/index.db    # gitignored SQLite cache
-extraction:                              # optional; v0.2 + v0.3 knobs
+extraction:                              # optional; every key optional
   budget_warn_usd: 1.50                  # USD warn threshold (v0.2 Stream A #2)
   narrow_attribution: drop               # claim-attribution rule (v0.3 Fix 2)
+  exclude_pattern:                       # extra source-walk excludes (v0.4 A4)
+    - "**/generated/**"
+  commit_message_filter:                 # extra commit-filter regexes (v0.4)
+    - "^perf[:(]"
+  streams: [adr, docstring, commit]      # streams `index` extracts (v1.2)
 mcp:                                     # optional; v0.3 query-time knobs
   symbol_context_bm25: true              # BM25 ranking on get_symbol_context (ADR-16)
 ```
 
-Seven sections required (`extraction` is optional). No inheritance, no
-workspaces, no cross-repo refs. MVP-scoped deliberately. See ADR-06 for
-the atlas committed/local-cache split.
+Required: `version` (must be `1`), `languages`, and `adrs` with
+`adrs.path`. `docs`, `git`, `index` and `atlas` fall back to the
+values shown above when omitted (`adrs.format` defaults to
+`markdown-frontmatter`; `adrs.symbol_field` has no default).
+`extraction` and `mcp` are optional, and so are `source` (ADR-08),
+`observability` (ADR-20), `lsp` and the deprecated `architecture`.
+Unknown keys are errors (ADR-05); the one exception today is `lsp`,
+whose unknown sub-keys are ignored. No inheritance, no
+workspaces, no cross-repo refs. MVP-scoped deliberately. See ADR-06
+for the atlas committed/local-cache split.
+
+(Until 2026-09-25 this paragraph read "Seven sections required
+(`extraction` is optional)". The first parser, `ba2e58c`, had exactly
+those seven top-level keys, but only `version`, `languages` and `adrs`
+have ever been required.)
 
 ### `extraction` section (optional)
 
@@ -450,13 +467,14 @@ Pipeline knobs surfaced after v0.2 reference runs.
   progress log](docs/cycles/v0_3/STEP-PLAN-V0.3.md). The "Absent (default)" semantics
   above describe the pre-Step-7 schema; the Step 7 decision flips
   the absent-value behavior to `drop-with-fallback`-equivalent.
-  Opt-out for v0.2-equivalent attribution: explicit
-  `extraction.narrow_attribution: off` (the `off` schema value +
-  config-default flip implementation lands bundled with Step 14
-  atlas re-extraction — until then, the schema described above is
-  current shipped state). Pattern 2 commits maintenance of all
-  flag-off codepaths through v0.3-v0.5+ until Stream D + dogfood +
-  production evidence supports retirement.
+  The `off` opt-out this paragraph used to announce for
+  v0.2-equivalent attribution (`extraction.narrow_attribution: off`)
+  was never implemented. As shipped (checked 2026-09-25): the parser
+  accepts only `drop` and `drop-with-fallback`; an absent value
+  behaves as `drop-with-fallback`; and the v0.2 baseline, which merged
+  frontmatter symbols into every claim, is not reachable from config.
+  Pattern 2 retention applies to the `drop` vs `drop-with-fallback`
+  axis.
 
   **Narrowing risk (post-Step 7 default-on caveat).**
   `drop-with-fallback` recovers zero-symbol cases but does NOT
@@ -465,12 +483,27 @@ Pipeline knobs surfaced after v0.2 reference runs.
   `drop-with-fallback` default-on, X now attaches to {A, B} only.
   The missing {C, D, E} aren't recovered because the fallback rule
   fires only when a claim resolves to zero symbols; X still
-  resolves to ≥1 symbol so fallback doesn't trigger. Users wanting
-  full v0.2 attribution behavior must explicitly opt out via
-  `extraction.narrow_attribution: off`. Step 5 spot-check evidence
+  resolves to ≥1 symbol so fallback doesn't trigger. No config value
+  restores full v0.2 attribution (see above). Step 5 spot-check evidence
   (main-repo `b025d3d`; benchmarks `68e3d1e`) measured this
   trade-off as net-positive on the p4-stream-lifecycle cell;
   Stream D Step 14/15 re-measures at scale.
+- **`exclude_pattern`** (v0.4 Step 2, A4). Glob patterns (minimatch,
+  repo-relative) added to the per-language default excludes when the
+  source tree is walked; the defaults always apply (augment-only).
+  Excluded files get no symbols and no docstring claims.
+- **`commit_message_filter`** (v0.4 Stream A). Regex patterns
+  (case-insensitive) added to the default commit filter. They are
+  tested against the subject plus the first 200 characters of the
+  body; the defaults always apply (augment-only).
+- **`streams`** (v1.2 Phase 2; ADR-05 2026-09-25 amendment). Which
+  claim streams `contextatlas index` extracts: `adr` (ADRs **and**
+  `docs.include` files), `docstring`, `commit`. Absent means all
+  three. Order does not matter; the streams run adr → docstring →
+  commit. The list must not be empty and must include `adr`; unknown
+  values and duplicates are errors. A disabled stream's existing
+  claims are kept, frozen, and `contextatlas doctor` warns about
+  them. `contextatlas list-extraction-sources` honours the key too.
 
 ### `mcp` section (optional)
 
@@ -584,8 +617,10 @@ the full first-run cost. See ADR-06 for the architectural rationale.
 holds keys for three claim streams:
 - prose: ADR/doc relPaths;
 - docstring: source-file relPaths;
-- commit: `commit:<sha>` from the CLI, the bare sha from the
-  `/index-atlas` Skill.
+- commit: `commit:<sha>`. Until v1.2 Phase 2 the `/index-atlas` Skill
+  wrote the bare sha instead; readers accept both forms, and every
+  `contextatlas index` migrates bare keys (and their claims'
+  `source_path`) to `commit:<sha>`.
 
 Every `contextatlas index` run:
 - **Classifies** each baseline key by the `source` prefix of its
@@ -593,7 +628,9 @@ Every `contextatlas index` run:
 - **Diffs** only the prose keys against the prose walk.
 - **Applies one deletion rule per stream:**
   - a prose key goes when the prose walk no longer produces it;
-  - a docstring key goes when its source file is gone from disk;
+  - a docstring key goes when its source file is gone from disk, or
+    (v1.2 Phase 2, while the docstring stream runs) when the file is
+    no longer walked and a configured adapter owns its extension;
   - a commit key is never deleted.
 - **Prunes stale symbols** after upserting the fresh LSP inventory.
   Pruned: symbols of deleted or newly excluded files, and symbols a
@@ -609,6 +646,26 @@ resolve-symbols` (Skill path) applies the same prune rules and drops
 claim links to symbols that no longer exist. See the ADR-12
 2026-09-24 amendment for the rules and the stage-by-stage stream
 table.
+
+**Three-stream extraction (v1.2 Phase 2).** `contextatlas index`
+extracts every stream `extraction.streams` enables (default: all
+three), in the order prose → docstring → commit. Each stream has its
+own re-extraction gate:
+- **prose:** a file is re-extracted when its SHA differs from its key.
+- **docstring:** a source file is re-extracted when its SHA differs
+  from its key. It makes one call per exported symbol with a
+  non-empty docstring. Its claims are replaced, and the key moved, only
+  when every call for the file succeeded; otherwise it keeps its old
+  claims and key and is retried next run. A file with no documented
+  exported symbol is keyed with no claims.
+- **commit:** a filter-passing commit is extracted once, when no key
+  exists for it; commits are immutable.
+
+`--full` bypasses the prose and docstring gates, not the commit gate.
+Before the first model call the run prints a cost estimate to stderr.
+Library callers of `runExtractionPipeline` that do not pass
+`deps.streams` get prose only. See the ADR-12 2026-09-25 amendment
+for the stage table, failure semantics and summary keys.
 
 ### Two-paths extraction architecture (v0.7+)
 
@@ -690,8 +747,10 @@ Schema:
     "extraction_model": "claude-opus-4-7"
   },
   "source_shas": {
-    "docs/adr/ADR-01.md": "abc123...",
-    "docs/adr/ADR-02.md": "def456..."
+    "docs/adr/ADR-01.md": "abc123...",          // prose: file SHA
+    "docs/adr/ADR-02.md": "def456...",
+    "src/orders/processor.ts": "0a1b2c...",     // docstring: file SHA
+    "commit:a1b2c3d4...": "a1b2c3d4..."         // commit: the commit SHA
   },
   "symbols": [
     {
@@ -716,14 +775,15 @@ Schema:
   ],
   "claims": [
     {
-      "source": "ADR-07",
+      "source": "adr:ADR-07-idempotency.md",
       "source_path": "docs/adr/ADR-07-idempotency.md",
       "source_sha": "ghi789...",
       "severity": "hard",
       "claim": "must be idempotent",
       "rationale": "...",
       "excerpt": "...",
-      "symbol_ids": ["sym:ts:src/orders/processor.ts:OrderProcessor"]
+      "symbol_ids": ["sym:ts:src/orders/processor.ts:OrderProcessor"],
+      "symbol_candidates": ["OrderProcessor"]
     }
   ]
 }
@@ -777,22 +837,45 @@ Key properties of atlas.json:
   workflow gate for the `/index-atlas` Skill.
 - **Claim `source` field format.** Identifies where the claim was
   extracted from. Three shapes:
-  - **Markdown intent** (ADRs, design docs) — bare identifier
-    (e.g., `"ADR-07"`).
+  - **Markdown intent** (ADRs, design docs) — `"adr:<basename>"`
+    (e.g., `"adr:ADR-07-idempotency.md"`), for files under
+    `adrs.path` and `docs.include` alike. CLI atlases from before
+    v0.7.2 carry a bare identifier instead (e.g., `"ADR-07"`,
+    `"DESIGN"`); readers accept both.
   - **Structured docstrings** extracted from source code (v0.3
     Stream B) — `"docstring:<path>"` (e.g.,
     `"docstring:src/orders/processor.ts"`).
   - **Commit-message intent** (v0.4 Stream A) — `"commit:<sha>"`
     (e.g., `"commit:a1b2c3d4..."`). Architectural-intent claims
-    extracted from filtered git commit messages; per-repo
-    integration gated on Q3 threshold (≥30 claims/repo on at
-    least 2 of 3 repos AND any single repo above 50). User
-    augmentation via `extraction.commit_message_filter` config
-    array.
+    extracted from filtered git commit messages. User augmentation
+    via `extraction.commit_message_filter` config array. Historical
+    note: v0.4 gated per-repo integration of this stream on a "Q3"
+    threshold (≥30 claims/repo on at least 2 of 3 repos AND any
+    single repo above 50). Only `scripts/dogfood-extract.mjs` acted
+    on it, by deleting a repo's commit claims below 30; the
+    benchmarks driver only reports it. v1.2 Phase 2 dropped it: the CLI
+    `index` extracts filtered commits whenever the `commit` stream
+    is enabled, and `extraction.streams` is the off switch.
 
   All three forms carry `source_path` + `source_sha` for
   provenance; for commit-message claims, `source_path == source`
-  and `source_sha == commit SHA`.
+  and `source_sha == commit SHA`. The commit key form
+  `commit:<sha>` is canonical on both extraction paths from v1.2
+  Phase 2 (for `source`, `source_path` and the `source_shas` key).
+  Skill-built atlases from before then used the bare sha as
+  `source_path` and key; `contextatlas index` migrates them, and
+  `validate-atlas` warns about them.
+- **`symbol_candidates` (atlas schema v1.4, optional).** The raw
+  symbol names the extraction model proposed for a claim, before
+  resolution to `symbol_ids`. Kept so symbols can be re-resolved
+  later without a model call (`contextatlas resolve-symbols`).
+  Emitted after `symbol_ids`, in the order stored, and omitted when
+  empty. The local cache has stored it since v1.2 Phase 2 (cache
+  migration 6), so a CLI `index` no longer strips it, and CLI
+  extraction writes it for all three streams. For docstring claims
+  the CLI records only the model's candidates; the documented symbol
+  is identified by its exact id in `symbol_ids`. The field is
+  index-time data only: MCP tool output never includes it.
 
 ### index.db — local derived cache
 
@@ -1056,6 +1139,26 @@ Sub-100ms per `get_symbol_context` call on typical hardware.
   expectation has not been re-derived for this configuration: no
   live CLI `generate-adrs` run has been made on it yet, and the
   pre-flight estimator does not model thinking tokens.
+- **Three-stream `index` (v1.2 Phase 2).** The first-index table above
+  covers ADR prose only. `contextatlas index` now also makes one call
+  per documented exported symbol and one per filter-passing commit,
+  unless `extraction.streams` turns those streams off. On this
+  repository a zero-API probe at `9d2bf4c` planned 479 calls (13 prose
+  files, 461 docstring calls across 108 files, 5 commits); the
+  run's own preview estimated $4.42 to $10.35. Each run prints such an
+  estimate to stderr before its first model call. Later runs pay only
+  for changed files and new commits.
+- **Cost framing correction (2026-09-25).** The "Platform-billed vs
+  script-projected" bullet above is very likely wrong about the cause.
+  The v0.4 script costs were computed with `pricing.ts` constants of
+  $15/$75 per million tokens, which v0.6 (`6c48078`) corrected to
+  $5/$25: a factor of 3, which matches the observed 2.98–2.99 (two of
+  the three platform figures were estimates). The extraction
+  request has never sent `cache_control`, so no prompt-cache discount
+  applied. Script-reported costs at the current $5/$25 are expected to
+  track platform billing, not to run about 3× above it. Do not
+  discount `cost_usd` or the `index` preview by 3×. See the CLAUDE.md
+  "Extraction cost framing" correction.
 
 ## Benchmark Methodology (Summary)
 

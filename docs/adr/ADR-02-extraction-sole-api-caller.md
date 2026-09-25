@@ -1545,3 +1545,74 @@ historical record per v0.5 + v0.6 + v0.7 inheritance discipline.
     extracted from the 2026-05-12 entry (the β-1 `budget_tokens`
     parameter and the SDK cast rationale). They stay stale until a
     re-index, which costs money on the CLI path and needs approval.
+
+- **2026-09-25** — v1.2 Phase 2: three-stream CLI `index`. The frozen
+  substrate is unchanged: `EXTRACTION_PROMPT`, the severity taxonomy,
+  the output schema, the model (`claude-opus-4-7`) and the request body
+  (`{ model, max_tokens, messages }`, built by `createExtractionClient`
+  from `EXTRACTION_PROMPT` + body + `"\n---\n"`). All three streams
+  send that same request; only the body differs (the prose file
+  without frontmatter, one raw docstring, or one commit's subject and
+  body). Phase 2 adds no module that imports `@anthropic-ai/sdk`.
+
+  **The 2026-05-13 matrix row is now true of the shipped CLI.** The
+  row "Source-stream coverage (ADR + docstring + commit) |
+  walkProseFiles + runStreamBPass + extractCommitMessagesForRepo |
+  … | EQUIVALENT" described the scripts, not `contextatlas index`.
+  `runStreamBPass` is defined only in `scripts/dogfood-extract.mjs` and
+  the benchmarks driver, and until v1.2 Phase 2 the CLI extracted the
+  ADR/docs stream only (`docs/cycles/v1_2/v1.2-SCOPE.md` §2 F-2). From
+  v1.2 Phase 2, `runExtractionPipeline` runs the docstring stream
+  (Stage 6c) and the commit stream (Stage 6d) after prose, gated by
+  `extraction.streams` (ADR-05 2026-09-25 amendment; default: all
+  three). The row now reads:
+
+  | Substrate layer | CLI (`contextatlas index`) | Skill (`/index-atlas`) | Status |
+  |---|---|---|---|
+  | Source-stream coverage (ADR + docstring + commit) | `walkProseFiles` + Stage 3 source walk + `parseCommitLog`, planned in `extraction-plan.ts` | Phase A list-extraction-sources manifest enumeration | EQUIVALENT for ADRs, docstrings and commits (same walkers and filters; both honour `extraction.streams`). `docs.include` prose is CLI-only until v1.2 Phase 6 |
+
+  The per-symbol filter is the same on both paths (`isExportedSymbol`,
+  then a non-empty docstring), so the call sets match whenever no
+  docstring read fails. Two differences remain. When a docstring read
+  fails, the manifest skips that symbol, while the CLI skips the whole
+  file for that run. And the CLI also keys source files with no
+  documented symbol, which the manifest does not list; the SKILL.md
+  refresh rule no longer drops keys its manifest does not enumerate.
+
+  **Pointers superseded** (the entries above stay as the historical
+  record):
+  - `extractDocstringsForFile` and `isExportedSymbol` (2026-05-13
+    entry, "pipeline.ts:846") live in
+    `src/extraction/docstring-stream.ts` and
+    `src/extraction/docstring-read.ts`, re-exported from `pipeline.ts`.
+    The CLI runs the per-file core `extractDocstringFile`; the legacy
+    `extractDocstringsForFile` runs through it, keeping its signature.
+    Both now replace a file's claims only when every call succeeded.
+  - The docstring `setSourceSha` ("pipeline.ts:881", v0.7.2 entry) is
+    in `extractDocstringFile`, inside the file's write transaction.
+  - `deriveSourceName` ("pipeline.ts:573-586", v0.7.2 entry) lives in
+    `src/extraction/prose-stream.ts`, re-exported from `pipeline.ts`.
+    Its output is unchanged (`adr:<basename>`).
+
+  **Commit keys and candidates.** Commit claims use the canonical
+  `commit:<sha>` as `source`, `source_path` and `source_shas` key on
+  both paths (F-5). The v0.7.2 entry's "40-char-hex commit SHAs
+  prefixed `commit:`" was the CLI form; the Skill wrote the bare sha
+  until v1.2. CLI claims of all three streams now carry the model's raw
+  `symbol_candidates` (F-7). Details: ADR-12 2026-09-25 amendment.
+
+  **Cost-projection note** (see §Historical context,
+  "Cost-projection-vs-platform-billing 3x-reduction invariant"). The
+  v0.4 script-vs-platform ratios (cobra $5.44 → $1.82, httpx $5.53 →
+  $1.85, hono $10.89 → $3.65) are 2.98 to 2.99; only the cobra
+  platform figure was measured, and the other two were recorded as
+  estimates. The ratio matches 15/5 and 75/25, the ratio between the
+  $15/$75 per-million-token constants `pricing.ts` used until v0.6
+  (`6c48078`) and the true $5/$25. The extraction request, built by
+  `createExtractionClient`, has never sent `cache_control` (no commit
+  in `src/` has ever contained it). The prompt-cache explanation of
+  the ratio is therefore very likely wrong; the likely cause is the
+  stale pricing constants. Script-reported costs at $5/$25 are
+  expected to track platform billing. The `index` cost
+  preview and `cost_usd` carry no "~3x lower" wording. See the
+  CLAUDE.md "Extraction cost framing" correction dated 2026-09-25.

@@ -28,6 +28,66 @@ load-bearing empirical findings).
   - `orphaned_claims_by_source` (`--json` only).
   - `files_deleted` now counts deleted ADR/doc sources only, its
     documented meaning.
+- `contextatlas index` extracts docstrings and commit messages as well
+  as ADRs/docs (v1.2 Phase 2). Before, only `/index-atlas` and
+  `scripts/dogfood-extract.mjs` did.
+  - **Streams run in a fixed order:** ADR/docs prose, then docstrings,
+    then commits, sharing one `--budget-warn` check.
+  - **Docstrings:** one call per exported symbol with a docstring. A
+    source file is re-extracted when its SHA changes.
+  - **Commits:** one call per commit that passes the commit filter,
+    once per commit.
+  - **No git:** the commit stream is skipped with an info log in a
+    non-git tree or when git is missing, and with a warning on other
+    git errors. The run goes on.
+  - The Pipeline Integration Discipline stage table is in the ADR-12
+    2026-09-25 amendment.
+- `extraction.streams` config key (v1.2 Phase 2; ADR-05 2026-09-25
+  amendment). Chooses which streams `index` extracts: `adr` (ADRs and
+  `docs.include` files), `docstring`, `commit`. The default, with the
+  key absent, is all three.
+  - The list must not be empty and must include `adr`. Unknown values
+    and duplicates are errors; order does not matter.
+  - A disabled stream's claims are kept, frozen.
+  - Releases before this one reject the key as unknown.
+- Cost preview for `contextatlas index` (v1.2 Phase 2). Before the
+  first model call, the run prints an estimate to stderr: calls and
+  input tokens per stream, and a cost range. It is printed only when
+  a call is planned, and it names disabled streams. There is no
+  prompt, and stdout is unchanged.
+- `contextatlas index` summary fields (v1.2 Phase 2), appended after
+  `unverified_symbol_files` in both output formats:
+  `streams_enabled`, `docstring_files_extracted`,
+  `docstring_files_unchanged`, `docstring_symbols_extracted`,
+  `docstring_claims_written`, `commits_extracted`, `commits_skipped`,
+  `commit_claims_written`, `commit_keys_migrated`.
+- `contextatlas doctor` checks (v1.2 Phase 2):
+  - `config.extraction_streams` lists the enabled streams. It warns
+    when `atlas.json` still holds claims of a disabled stream.
+  - `extraction.skills_fresh` compares the installed
+    `.claude/skills/*/SKILL.md` copies with the package's. It warns
+    on missing or different copies and names the file to copy.
+    `contextatlas init` never overwrites an installed skill.
+- `contextatlas list-extraction-sources` (v1.2 Phase 2):
+  - honours `extraction.streams`: a disabled stream gets an empty
+    array, and `summary.disabled_streams` names it. With docstrings
+    disabled, no language server is started.
+  - each commit entry gains `source_key` (`commit:<sha>`).
+  - `manifest_version` stays `"1"`.
+- `contextatlas validate-atlas` warns (exit code unchanged) when commits
+  are stored under the legacy bare-sha key (v1.2 Phase 2).
+- `--help` lists `--json` under `index` (v1.2 Phase 2).
+- Library functions (v1.2 Phase 2, used by the benchmarks scripts):
+  - `parseCommitLog` and `extractCommitMessagesForRepo` take an
+    optional `gitBinary`.
+  - `extractCommitMessagesForRepo` results gain `apiCalls`,
+    `unresolvedCandidates` and `commitsNullResult`.
+  - New per-unit functions `extractCommitClaims` and
+    `extractDocstringFile`.
+  - The commit filter and `git log` parsing moved to
+    `src/extraction/commit-log.ts`, and the docstring functions to
+    `docstring-stream.ts` / `docstring-read.ts`. The old modules
+    re-export every name they exported before.
 
 ### Changed
 
@@ -116,9 +176,53 @@ load-bearing empirical findings).
   not leave `dist/` empty: `noEmitOnError` is off, so `tsc` still
   emits the JavaScript before exiting non-zero, and the build then
   skips prompt-artifact generation.
+- **`contextatlas index` costs more by default** (v1.2 Phase 2).
+  Without `extraction.streams`, every run, including `init`'s first
+  one, makes docstring and commit calls.
+  - The first run after upgrading keys every source file whose
+    docstrings it can read (files with none get a key and no claims)
+    and every filter-passing commit, so expect a large one-time
+    `atlas.json` diff.
+  - On this repository a zero-API plan of the first three-stream run
+    (at `9d2bf4c`) came to 479 calls, estimated at $4.42 to $10.35.
+  - `extraction.streams: [adr]` restores ADR/docs-only extraction.
+- Summary totals cover every stream (v1.2 Phase 2): `claims_written`,
+  `unresolved_candidates`, `api_calls`, `input_tokens`,
+  `output_tokens`, `cost_usd` and `extraction_errors`. `files_*` stay
+  ADR/docs only. A docstring error's `sourcePath` is the file (the
+  symbol is named in `error`); a commit error's is `commit:<sha>`.
+- `index --full` re-extracts docstrings as well as ADRs/docs (v1.2
+  Phase 2). Commits are never re-extracted by `--full`.
+- Commit claims use one key form, `commit:<sha>`, as `source`,
+  `source_path` and `source_shas` key on both paths (v1.2 Phase 2).
+  - `/index-atlas` used to write the bare sha. Every `index` run now
+    migrates bare keys and their claims, and logs a warning when a
+    commit existed in both forms.
+  - Readers accept both forms.
+  - **Upgrading Skill users:** refresh `.claude/skills/index-atlas/`
+    (`doctor` shows which copies differ). An old copy keeps writing
+    bare keys, which `index` keeps migrating.
+- `/index-atlas` refresh (v1.2 Phase 2):
+  - it never drops commit keys, keys of a disabled stream, or
+    `docs.include` prose keys (which the Skill does not extract);
+  - it drops a source-file or ADR key only when the file is gone;
+  - preserved claims keep their `symbol_ids` and `symbol_candidates`.
+- A commit whose extraction returns no parseable result (max_tokens
+  or malformed JSON) is now keyed with zero claims and a warning, so it
+  is not billed again on every run (v1.2 Phase 2). The warning names
+  the key to delete to retry. ADRs/docs and docstrings still retry.
+- `contextatlas index` exits 1 when every call of the docstring or
+  commit stream failed (v1.2 Phase 2). The rest of the run is saved
+  and exported first, the summary is printed, and a stderr message
+  says what to do.
 
 ### Removed
 
+- *Pending, not yet removed:* `scripts/dogfood-extract.mjs` (not part
+  of the npm package) is to be retired once the v1.2 Phase 2 paid
+  parity run shows `index` matches it. Its v0.4 "Q3" rule, which
+  deleted a repo's commit claims when there were fewer than 30, has no
+  counterpart in `index` and will go with it.
 - The `@modelcontextprotocol/sdk` 0.5.0 dependency tree (v1.2
   Phase 0).
 - The `node-fetch` / `formdata-node` chain of `@anthropic-ai/sdk`
@@ -205,6 +309,51 @@ load-bearing empirical findings).
     with no link are reported as orphaned.
   - The earlier symbols of files whose listing failed are now kept
     instead of dropped.
+- `contextatlas index --json` printed a second, plain-text line on
+  stdout after the JSON object when the run exported: the
+  `validate-extraction` result (v1.2 Phase 2). That line now goes to
+  stderr, so stdout is one JSON object. `key=value` output is
+  unchanged.
+- Docstring extraction could lose claims silently (v1.2 Phase 2). It
+  deleted a file's claims before extracting, and pinned the file's
+  SHA even when a call failed, so the lost claims were never
+  retried.
+  - A file's claims are now replaced, and its SHA pinned, only when
+    every call for it succeeded, in one transaction. Otherwise the old
+    claims and key stay and the next run retries the file.
+  - This applies to `index` and to the exported
+    `extractDocstringsForFile`, whose signature and result fields are
+    unchanged.
+  - A symbol-listing failure in `extractDocstringsForFile` now throws
+    before anything is changed. A foreign-key failure is returned as
+    an error instead of escaping.
+- Commit-message extraction (v1.2 Phase 2):
+  - A commit stored under both key forms could hold duplicate claims.
+    Its claims are now replaced in one transaction.
+  - A failed write (e.g. a foreign-key violation) escaped and aborted
+    the run. It is now rolled back and reported for that commit, which
+    is retried next run.
+- `claims[].symbol_candidates` was dropped by every CLI `index` run
+  (v1.2 Phase 2, F-7).
+  - The local cache stores it now (cache migration 6), and `atlas.json`
+    emits it after `symbol_ids` when non-empty.
+  - CLI extraction also writes it, for all three streams.
+  - MCP tool output does not include it and is unchanged.
+- `/index-atlas` refresh dropped every `source_shas` key its manifest
+  did not list, with the key's claims (v1.2 Phase 2). That included
+  commit keys, `docs.include` prose keys (the Skill extracts only
+  `adrs.path` prose) and source files with no docstring, for example
+  in atlases built by the CLI. It also emptied preserved claims'
+  `symbol_ids`.
+- `/index-atlas` SKILL.md told the agent to record `cost_usd` /
+  `cost_model` in `atlas.json`, which `validate-atlas` rejects (v1.2
+  Phase 2).
+- `validate-atlas` remediation pointed to an atlas example in
+  `prompts/extraction.md`, which has none (v1.2 Phase 2). It now points
+  to the canonical schema in the `/index-atlas` SKILL.md.
+- `--help` said `index --full` re-extracts "everything" (v1.2
+  Phase 2). It re-extracts ADRs/docs and docstrings; commits stay
+  key-gated.
 
 ### Security
 

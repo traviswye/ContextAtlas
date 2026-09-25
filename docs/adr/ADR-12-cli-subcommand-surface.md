@@ -661,3 +661,282 @@ Per CLAUDE.md "Pipeline Integration Discipline". Stage numbers follow
   column for `claims[].symbol_candidates` (atlas v1.4 optional field),
   so any CLI `index` run on a Skill-built atlas drops it on re-export.
   This predates Phase 1 and is recorded as a Phase 2/3 input.
+
+## Amendment (2026-09-25, v1.2 Phase 2): three-stream `index`, cost preview, canonical commit keys
+
+Until this amendment the shipped `contextatlas index` extracted
+ADR/docs prose only. Docstring and commit-message extraction existed
+as library functions, called by `scripts/dogfood-extract.mjs` and the
+benchmarks scripts but not by the CLI (`docs/cycles/v1_2/v1.2-SCOPE.md`
+§2 F-2). The same phase closes two v1.2 cycle-entry findings. The
+two extraction paths wrote commit keys in two forms (F-5), and
+`claims[].symbol_candidates` did not survive a CLI run (F-7).
+
+### Decision
+
+**1. Streams.** `index` extracts the streams that
+`extraction.streams` enables (ADR-05 2026-09-25 amendment); without
+the key it extracts all three. They always run in the fixed order
+prose (`adr`) → docstring → commit, one after another, and share one
+cost tracker and budget check. Prose runs first so that its
+"every document failed" error (unchanged) can never discard a later
+stream's paid work.
+- **Library default.** `runExtractionPipeline` extracts the streams in
+  `deps.streams`. When the field is omitted it extracts prose only,
+  the pre-Phase-2 library behaviour. `AnthropicAPIDirectExtractor`
+  passes `resolveExtractionStreams(config)`. Library callers such as
+  the benchmarks driver therefore keep their current substrate until
+  they opt in.
+- **Stages 1, 1b and 2 always run.** Only the Stage 6 prose extraction
+  depends on `adr` being enabled. Skipping the prose walk would make
+  Stage 5 treat every prose key as deleted.
+
+**2. New and changed stages** (`src/extraction/pipeline.ts`, now the
+orchestration only).
+- **Stage 0.5, commit-key migration (F-5).** After the atlas import and
+  before the baseline is read, `normalizeCommitKeys`
+  (`source-keys.ts`) rewrites every commit stored under a bare 40-hex
+  sha to `commit:<sha>`. It rewrites both the `source_shas` key and
+  `claims.source_path`; claim ids and symbol links are unchanged.
+  - Only keys that the Phase 1 classification places in the commit
+    stream are touched. A prose file with a 40-hex name is left alone.
+  - When a sha exists in both forms, the `commit:<sha>` form wins. The
+    bare-form claims are deleted, and the count is logged as a warning
+    that says how to refresh a pre-v1.2 installed Skill.
+  - It runs on every `index`, whatever streams are enabled, because
+    installed SKILL.md copies are never overwritten. It is idempotent.
+    A migration counts as a modification for Stage 7.
+- **Stage 5, docstring rule (L-11).** A docstring key is still deleted
+  when its file no longer exists. While the docstring stream runs,
+  one more case is deleted: the file exists, is no longer walked, and
+  a configured adapter owns its extension, so an exclude pattern now
+  drops it (Phase 1 prune rule 4). A file whose language is not
+  configured keeps its key (rule 5). With the stream disabled, such
+  keys stay frozen. A changed file keeps its claims and key at Stage 5;
+  Stage 6c replaces them.
+- **Plan** (`extraction-plan.ts`), after Stage 5 and before any model
+  call. No model calls and no database writes.
+  - prose: Stage 2's changed and added files.
+  - docstring: walked source files whose SHA differs from their key.
+    Excluded: files whose `listSymbols` failed this run (their stored
+    symbols and claims are unverified, and the key is kept), and
+    files that `docs.include` also matches (one warning; both streams
+    key by relPath, so extracting them here would replace their prose
+    claims). For the planned files the plan reads the docstrings of
+    exported symbols through the language adapters (LSP only) and
+    hands the result to Stage 6c, so the preview's call count is
+    exact and no file is read twice. Symbols come from the Stage 3
+    inventory; nothing is listed twice.
+  - commit: `git log --no-merges` through the commit filter, minus
+    commits already keyed in either form. Only when the git signal
+    (Stage 4b) found a HEAD. This log is separate from the git signal
+    and not capped (the git signal keeps its 500-commit cap), so a
+    first run covers the whole filtered history.
+- **Stage 6c, docstring stream** (`stream-stages.ts` →
+  `extractDocstringFile` in `docstring-stream.ts`). One call per
+  exported symbol with a non-empty docstring, sequential; the request
+  body is the raw docstring.
+- **Stage 6d, commit stream** (`stream-stages.ts` →
+  `extractCommitClaims` in `commit-message-extractor.ts`). One call per
+  pending commit, sequential; the body is the subject, a blank line
+  and the message body.
+- **Stage 6b** (orphan report) now runs after 6c and 6d, so claims
+  those stages re-extracted are not reported.
+- **Stage 7** also re-exports when a commit key was migrated, a
+  docstring file was stored, or a commit was keyed. A run that changes
+  nothing still leaves `atlas.json` byte-identical.
+
+**3. Write and failure semantics per unit** (lead decision L-10).
+- **Docstring file.** Its claims are replaced and its SHA pinned only
+  when every call for the file succeeded, in one transaction (delete
+  by path, insert, set the key). A call that throws, a result that
+  does not parse, a failed docstring read, or a failed write leaves
+  the file's previous claims and key untouched. The error is recorded
+  and the next run retries the whole file. Once one call for a file
+  fails, the file's remaining calls are not made. A planned file with
+  no documented exported symbol is keyed with zero claims.
+- **Commit.** One transaction deletes the commit's claims in both key
+  forms, drops a bare key, inserts the new claims and sets
+  `commit:<sha>` → sha. A call that throws leaves the commit unkeyed,
+  so the next run retries it. A result that does not parse (max_tokens
+  or malformed JSON) pins the key with zero claims and logs a warning
+  naming the key to remove from `source_shas` to retry. Commits are
+  immutable, so re-billing a likely-deterministic failure on every run
+  would buy nothing. Prose and docstrings keep retry-on-null.
+- **No git.** In a non-git tree, or when git is unavailable, the commit
+  stream is skipped with an info log. Any other `git log` failure is
+  skipped with a warning. Neither fails the run.
+- **A stream where every call failed.** When a docstring or commit
+  stream attempted at least one call and all of them failed, the run
+  still finishes the remaining streams and Stage 7. `index` then prints
+  the summary, writes an actionable message to stderr, and exits 1.
+  Throwing mid-run would lose the run's other paid work, because the
+  next run's Stage 0 re-imports `atlas.json` over the cache. The prose
+  all-fail throw is unchanged (exit 1, before export).
+
+**4. `--full`** (L-7). It re-extracts every prose file and, while the
+docstring stream runs, every listed docstring file. Commits stay gated
+by their key: they are immutable, and `--full` exists for prompt or
+model changes, where re-billing the whole filtered history would need
+its own explicit flag.
+
+**5. Cost preview** (L-8 (a); `cost-preview.ts`). Before the first
+model call, `index` prints an estimate to **stderr**. stdout is
+unchanged, so `--json` still carries one object.
+- **When.** Only when the plan has at least one model call. A no-op
+  run prints nothing.
+- **Content.** Per enabled stream: units (files or commits), calls and
+  estimated input tokens. Then the total calls, a low-high cost range
+  and the pricing line. Disabled streams are named. A skipped commit
+  stream gives its reason.
+- **Not interactive.** There is no prompt and no confirmation; the run
+  continues. `--budget-warn` stays the in-run guard, and `cost_usd` in
+  the summary is the actual. The preview carries no "actual is ~3x
+  lower" wording (CLAUDE.md "Extraction cost framing", 2026-09-25
+  correction).
+- **Estimate.** Input tokens are the request text
+  (`EXTRACTION_PROMPT` + body + `"\n---\n"`) at 3 characters per token
+  (`CHARS_PER_TOKEN_ESTIMATE`, `pricing.ts`). Output tokens are fixed
+  per-call priors, low/high: prose 1,000/6,000; docstring 30/400;
+  commit 30/400 (`OUTPUT_TOKEN_PRIORS`). Both are to be recalibrated
+  from the Phase 2 paid parity run.
+- **API key first.** A missing `ANTHROPIC_API_KEY` still exits 2
+  before any planning, so no preview is printed.
+
+**6. Summary output** (L-9). The "new keys may be added, existing keys
+never renamed" rule holds. Existing keys keep their names and order.
+- **Widened to all streams:** `claims_written`,
+  `unresolved_candidates`, `api_calls`, `input_tokens`,
+  `output_tokens`, `cost_usd` and `extraction_errors`. `cost_usd` and
+  `--budget-warn` therefore mean the run's true spend.
+- **Still prose only:** `files_extracted`, `files_unchanged`,
+  `files_deleted` and `unresolved_frontmatter_hints`. `--verbose`
+  unresolved-token detail is also prose only.
+- **Widened in meaning:** `docstring_sources_deleted` also counts the
+  Stage 5 L-11 deletions.
+- **`extraction_errors` entries** keep the shape
+  `{sourcePath, error}`. A docstring entry uses the file's relPath and
+  names the symbol id in `error`; a commit entry uses `commit:<sha>`.
+- **Appended after `unverified_symbol_files`**, in this order, in both
+  formats:
+
+  | Key | Meaning |
+  |---|---|
+  | `streams_enabled` | Streams this run extracted, in canonical order. Comma-joined in `key=value`; an array in `--json`. |
+  | `docstring_files_extracted` | Docstring files stored this run, including zero-docstring files keyed with no claims. |
+  | `docstring_files_unchanged` | Walked, listed source files the docstring SHA gate skipped. |
+  | `docstring_symbols_extracted` | Calls behind the stored docstring files (one per documented symbol). |
+  | `docstring_claims_written` | Claims those files wrote. |
+  | `commits_extracted` | Commits keyed this run: claims stored, or a null result pinned. |
+  | `commits_skipped` | Filter-passing commits skipped because they were already keyed. |
+  | `commit_claims_written` | Claims the commit stream wrote. |
+  | `commit_keys_migrated` | Commits moved from the bare-sha form by Stage 0.5. |
+
+  Which stream failed entirely is not a summary key; the exit code
+  and the stderr message carry it.
+
+**7. `--json` prints exactly one JSON object on stdout.** When the
+run exported, `index` runs `validate-extraction`, which printed its
+one-line result to stdout after the JSON object. That broke the
+single-object contract above. Under `--json` the validator's line now
+goes to stderr. `key=value` output is unchanged: the line still
+follows the summary on stdout.
+
+**8. Canonical commit key (F-5, L-2).** `commit:<sha>` is the
+`source_shas` key and the `claims.source_path` of every commit claim,
+so `source_path == source`.
+- The `/index-atlas` Skill writes it from v1.2 on;
+  `list-extraction-sources` gives it to the Skill as
+  `commit.source_key`.
+- Every reader accepts the legacy bare-sha form permanently.
+- `validate-atlas` warns (exit 0) on bare-form keys and claim paths.
+
+**9. `symbol_candidates` survives `index` (F-7, L-5).**
+- Local cache migration 6 adds `claims.symbol_candidates`.
+- The importer keeps `claims[].symbol_candidates`. The exporter emits
+  it after `symbol_ids`, in stored order, only when non-empty. An
+  empty list therefore exports as an absent key.
+- CLI extraction now records the model's raw candidates on the claims
+  of all three streams. Docstring claims record only the model's
+  candidates: provenance stays the exact documented symbol id in
+  `symbol_ids`.
+- The field never reaches `Claim` or MCP tool output; that output is
+  byte-identical.
+- The atlas schema stays 1.4, where the field was already optional.
+
+### Pipeline-integration stage table
+
+Per CLAUDE.md "Pipeline Integration Discipline". Stage numbers follow
+`src/extraction/pipeline.ts`, as in the Phase 1 table; the DESIGN.md
+"Extraction Pipeline" stage is in brackets. Prose is the precedent
+stream. This table supersedes the Phase 1 table's docstring and
+commit columns for stages 1, 2 and 6.
+
+| Stage [DESIGN] | prose (precedent) | docstring | commit |
+|---|---|---|---|
+| 0 import [Stage 0] | Imported with the atlas | Symmetric to prose | Symmetric to prose |
+| 0.5 key migration | Not applicable | Not applicable | Divergent: bare-sha keys and claim paths become `commit:<sha>`, because two paths wrote two forms; counts as a modification |
+| 1 collect [Stage 1] | `walkProseFiles` | Divergent: reuses the Stage 3 source walk (`walkSourceFiles` + exclude patterns); no second walker | Divergent: `git log --no-merges` + commit filter (`parseCommitLog`), because commits live in git history, not the filesystem; skipped without a git HEAD |
+| 1b classify | By claim source, key shape as fallback | Symmetric to prose (Phase 1) | Symmetric to prose (Phase 1; both key forms recognized) |
+| 2 SHA gate [Stage 6] | Per-file SHA vs the prose baseline; `--full` forces | Same rule against the docstring baseline, evaluated in the plan after Stage 3; files whose listing failed and files `docs.include` also matches are skipped; `--full` forces | Divergent: key presence in either form (commits are immutable); `--full` does not force |
+| 3–4a inventory, upsert, prune [Stage 2] | Stream-independent | Symmetric; also consumes the Stage 3 inventory (no re-listing) | Symmetric; candidates resolve against the same inventory |
+| 4b git signal (ADR-11) | Not applicable | Not applicable | Related: its HEAD gates the stream; the stream's own `git log` is uncapped, the signal's is capped at 500 |
+| 5 deletions [Stage 6] | Absent from the prose walk | Divergent: file gone; or, while the stream runs, file no longer walked and owned by a configured adapter | Divergent: never deleted (LOCK 2.b) |
+| plan + preview | Counts planned files | Counts calls exactly via the zero-API docstring read | Counts pending commits |
+| 6 extract [Stage 3] | Frontmatter-stripped file, batches of 3 | Divergent: one call per documented exported symbol, sequential; body = raw docstring | Divergent: one call per pending commit, sequential; body = subject + blank line + body |
+| 6 API call [Stage 3] | `EXTRACTION_PROMPT` + body, frozen request, wrapper retries | Symmetric to prose | Symmetric to prose |
+| 6 resolve [Stage 4] | `resolveCandidates` + frontmatter fallback (`narrowAttribution`) | Divergent: the documented symbol's id + `resolveCandidates`; no frontmatter | Divergent: `resolveCandidates` only |
+| 6 store [Stage 5] | Delete by path, insert, key after a parsed result; source `adr:<basename>`; raw candidates kept | Divergent: all-or-nothing per file in one transaction; source `docstring:<relPath>`, `source_path` relPath; raw candidates kept | Divergent: one transaction per commit (delete both forms, insert, key `commit:<sha>`); null result pinned with zero claims; `source` = `source_path` = `commit:<sha>`; raw candidates kept |
+| 6 errors, budget | `extraction_errors`; all-fail throw | Shared budget; own errors; all-fail → exit 1 after export | Same as docstring |
+| 6b orphan report | Per claim source | Symmetric; runs after 6c | Symmetric; runs after 6d; orphan shells retained |
+| 7 export [Stage 5] | `didModify` | Symmetric; adds stored docstring files and L-11 deletions | Symmetric; adds keyed commits and migrations |
+| Skill `resolve-symbols` | Phase 1 prune rules | Symmetric | Symmetric; no key normalization at this boundary (the next CLI `index` migrates) |
+
+### Notes on earlier text in this ADR
+
+These correct statements above without rewriting them (Pattern 3).
+- **`--full`.** The flag list and "First-run vs. incremental behavior"
+  say it re-extracts "every prose file". Since this amendment it also
+  re-extracts docstring files while that stream runs; commits stay
+  key-gated (Decision 4).
+- **Flag list.** `--narrow-attribution <drop|drop-with-fallback>` has
+  been accepted by `index` since v0.3 (`7e1956a`) but is missing from
+  the "Flags accepted by `index`" list. It overrides
+  `extraction.narrow_attribution`.
+- **Pricing.** "Cost visibility" quotes $15/M input and $75/M output.
+  `pricing.ts` has used $5/M and $25/M since v0.6 (`6c48078`,
+  2026-05-09).
+- **`cost_usd` in `--json`.** It is rounded to four decimals
+  (`toFixed(4)`), not truncated.
+- **Phase 1 amendment.** Its docstring row ("the CLI does not
+  re-extract docstrings until v1.2 Phase 2"), its stage-table
+  "Not walked" and "Not applicable (v1.2 Phase 2)" cells, and its
+  consequences "F-5 is not normalized here" and "`symbol_candidates`
+  is still lost" are superseded by Decisions 2, 8 and 9 above.
+
+### Consequences
+
+- **Default-on cost.** Every `index` without `extraction.streams`,
+  including `init`'s first run (lead decision L-13 (a)), now makes
+  docstring and commit model calls. The preview shows the size first.
+  On this repository, a zero-API probe at `9d2bf4c` planned 479 calls:
+  13 prose files, 461 docstring calls across 108 files, and 5
+  commits. The preview estimated $4.42 to $10.35.
+- **One-time `atlas.json` diff.** The first three-stream run keys
+  every walked source file whose symbols and docstrings it can read
+  (a file with no documented exported symbol gets a key with no
+  claims) and every filter-passing commit. It migrates bare
+  commit keys and adds `symbol_candidates` to every claim it
+  re-extracts.
+- **Exit 1 for a failed stream.** A run can exit 1 after exporting.
+  CI that reads the exit code sees the failure; the summary on stdout
+  is complete, and nothing new was recorded for the failed units.
+- **Library callers.** A caller that omits `deps.streams` stays prose
+  only. Stage 0.5 still runs for it; on an atlas that already uses
+  canonical keys it changes nothing. The result object gains the
+  per-stream fields above.
+- **Skill path.** `/index-atlas` writes canonical commit keys and no
+  longer drops keys its manifest does not enumerate. `doctor` gains
+  `extraction.skills_fresh`, which flags installed skill copies that
+  differ from the package's. See `docs/cycles/v1_2/v1.2-SCOPE.md`
+  Phase 2 outcome.
