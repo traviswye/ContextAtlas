@@ -747,9 +747,10 @@ describe("runExtractionPipeline", () => {
 // Budget warning (v0.2 Stream A #2)
 //
 // Default stub usage is 100 input + 50 output tokens per call. Under
-// Opus 4.7 pricing ($15/M input + $75/M output), that's
-// (100/1e6 * 15) + (50/1e6 * 75) = 0.0015 + 0.00375 = $0.00525 per call.
-// Tests pick thresholds relative to that unit cost.
+// Opus 4.7 pricing ($5/M input + $25/M output, pricing.ts since v0.6
+// 6c48078; the $15/$75 figures this comment used to cite were stale),
+// that's (100/1e6 * 5) + (50/1e6 * 25) = 0.0005 + 0.00125 = $0.00175
+// per call. Tests pick thresholds relative to that unit cost.
 // ---------------------------------------------------------------------------
 
 import { vi } from "vitest";
@@ -820,7 +821,7 @@ describe("runExtractionPipeline — budget warning", () => {
 
   it("no warning fires when cumulative cost stays under threshold", async () => {
     writeAdrs(2);
-    // 2 calls * $0.00525 = $0.0105 cumulative, threshold $1.00 → no warning.
+    // 2 calls * $0.00175 = $0.0035 cumulative, threshold $1.00 → no warning.
     const warnings = captureWarnings();
     const adapter = makeStubAdapter("typescript", [".ts"], () => []);
     const client = makeStubClient([{ claims: [] }, { claims: [] }]);
@@ -841,9 +842,12 @@ describe("runExtractionPipeline — budget warning", () => {
 
   it("fires exactly one warning when cumulative cost exceeds threshold", async () => {
     writeAdrs(3);
-    // 3 calls * $0.00525 = $0.01575. Threshold $0.005 is crossed on
+    // 3 calls * $0.00175 = $0.00525. Threshold $0.005 is crossed on
     // first batch (batchSize default 3 → all three fire before the
-    // post-batch check). Warning should fire once.
+    // post-batch check). Warning should fire once. The margin is only
+    // $0.00025, but it is deterministic: cost comes from fixed integer
+    // token totals (300 in / 150 out), and floating-point error is
+    // orders of magnitude smaller than the margin.
     const warnings = captureWarnings();
     const adapter = makeStubAdapter("typescript", [".ts"], () => []);
     const client = makeStubClient([

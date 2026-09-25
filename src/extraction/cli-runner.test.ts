@@ -2,9 +2,9 @@ import {
   mkdirSync,
   mkdtempSync,
   readFileSync,
-  rmSync,
   writeFileSync,
 } from "node:fs";
+import { rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join as pathJoin } from "node:path";
 
@@ -98,8 +98,18 @@ describe("runIndexSubcommand (ADR-12)", () => {
     );
   });
 
-  afterEach(() => {
-    rmSync(tmp, { recursive: true, force: true });
+  afterEach(async () => {
+    // Retrying async rm: on Windows the tsserver subprocess can keep a
+    // handle on the tmp dir for a moment after shutdown (EBUSY). The
+    // promise form waits between retries on timers, so the event loop
+    // keeps running (child pipes drain, exit events fire); rmSync's
+    // retries block the thread instead.
+    await rm(tmp, {
+      recursive: true,
+      force: true,
+      maxRetries: 10,
+      retryDelay: 100,
+    });
   });
 
   it("returns exit code 2 when ANTHROPIC_API_KEY is missing", async () => {
@@ -1053,6 +1063,128 @@ describe("runIndexSubcommand (ADR-12)", () => {
     ]);
     expect(parsed.orphaned_claims_by_source).toEqual([]);
   });
+
+  // ---------------------------------------------------------------
+  // ADR-12 --json contract: stdout carries exactly one JSON object,
+  // including when the auto-invoked validate-extraction runs (it only
+  // runs without clientOverride, so these tests use the real client
+  // path with a fake key and a fetch stub that must never be hit).
+  // ---------------------------------------------------------------
+
+  /**
+   * Seeds an atlas whose ADR-01 claims pass validate-extraction, plus a
+   * source_shas key for a deleted ADR-02 so Stage 5 deletes it: the run
+   * exports (and the validator runs) without any model call.
+   */
+  function seedExportingAtlasWithoutModelCalls(): void {
+    const adrPath = pathJoin(tmp, "docs", "adr", "ADR-01.md");
+    writeFileSync(adrPath, "---\nid: ADR-01\n---\nbody\n");
+    const adrSha = computeFileSha(adrPath);
+    const claim = (source: string, sourcePath: string, n: number) => ({
+      source,
+      source_path: sourcePath,
+      source_sha: sourcePath === "docs/adr/ADR-01.md" ? adrSha : "gone-sha",
+      severity: "hard",
+      claim: `claim ${n}`,
+      symbol_ids: [],
+    });
+    writeFileSync(
+      pathJoin(tmp, ".contextatlas", "atlas.json"),
+      JSON.stringify({
+        version: "1.4",
+        generated_at: "2026-09-01T00:00:00.000Z",
+        generator: {
+          contextatlas_version: "1.1.3",
+          extraction_model: "claude-opus-4-7",
+        },
+        source_shas: {
+          "docs/adr/ADR-01.md": adrSha,
+          "docs/adr/ADR-02.md": "gone-sha",
+        },
+        symbols: [],
+        claims: [
+          ...Array.from({ length: 8 }, (_, i) =>
+            claim("adr:ADR-01.md", "docs/adr/ADR-01.md", i),
+          ),
+          claim("adr:ADR-02.md", "docs/adr/ADR-02.md", 99),
+        ],
+      }),
+    );
+  }
+
+  function stubFetchNeverCalled(): string[] {
+    const requests: string[] = [];
+    vi.stubGlobal("fetch", async (input: unknown) => {
+      requests.push(String(input));
+      throw new Error("no model call expected");
+    });
+    return requests;
+  }
+
+  it("--json: validate-extraction output goes to stderr; stdout is exactly one JSON object", async () => {
+    seedExportingAtlasWithoutModelCalls();
+    const requests = stubFetchNeverCalled();
+    const stdout = captureStdout();
+    const stderr = captureStderr();
+    try {
+      const result = await runIndexSubcommand({
+        configRoot: tmp,
+        configFile: null,
+        full: false,
+        json: true,
+        contextatlasVersion: "0.0.1-test",
+        contextatlasCommitSha: null,
+        readEnv: (name) =>
+          name === "ANTHROPIC_API_KEY" ? "sk-ant-test-never-used" : undefined,
+        writeStdout: stdout.writer,
+        writeStderr: stderr.writer,
+      });
+      expect(result.exitCode).toBe(0);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+    expect(requests).toEqual([]);
+    const out = stdout.joined();
+    const parsed = JSON.parse(out) as Record<string, unknown>;
+    expect(parsed.atlas_exported).toBe(true);
+    expect(parsed.files_deleted).toBe(1);
+    expect(parsed.api_calls).toBe(0);
+    expect(out).not.toContain("validate-extraction");
+    expect(stderr.joined()).toMatch(
+      /validate-extraction: atlas at .* conforms to canonical extraction-quality invariants/,
+    );
+  }, 30_000);
+
+  it("key=value mode: validate-extraction output stays on stdout after the summary", async () => {
+    seedExportingAtlasWithoutModelCalls();
+    const requests = stubFetchNeverCalled();
+    const stdout = captureStdout();
+    const stderr = captureStderr();
+    try {
+      const result = await runIndexSubcommand({
+        configRoot: tmp,
+        configFile: null,
+        full: false,
+        json: false,
+        contextatlasVersion: "0.0.1-test",
+        contextatlasCommitSha: null,
+        readEnv: (name) =>
+          name === "ANTHROPIC_API_KEY" ? "sk-ant-test-never-used" : undefined,
+        writeStdout: stdout.writer,
+        writeStderr: stderr.writer,
+      });
+      expect(result.exitCode).toBe(0);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+    expect(requests).toEqual([]);
+    const lines = stdout.joined().trim().split(/\r?\n/);
+    expect(lines[0]).toBe("files_extracted=0");
+    expect(lines).toContain("atlas_exported=true");
+    expect(lines[lines.length - 1]).toMatch(
+      /^validate-extraction: atlas at .* conforms/,
+    );
+  }, 30_000);
 
   it("reports a pruned stale symbol and the claim it orphans (real tsserver, zero model calls)", async () => {
     const adrPath = pathJoin(tmp, "docs", "adr", "ADR-01.md");

@@ -283,13 +283,16 @@ export async function runIndexSubcommand(
     // test-seam signal; stub clients produce minimal atlas content
     // that cannot satisfy realistic per-ADR depth invariants, so
     // skip the validator under test mode.
+    //
+    // Under --json the validator's stdout (its one-line PASS message)
+    // goes to stderr, so stdout carries exactly the single JSON
+    // summary object ADR-12 promises. Key=value mode keeps it on
+    // stdout after the summary.
     if (pipelineResult.atlasExported && options.clientOverride === undefined) {
       const validateResult = await runValidateExtractionSubcommand({
         configRoot: options.configRoot,
         configFile: options.configFile,
-        ...(options.writeStdout !== undefined
-          ? { writeStdout: options.writeStdout }
-          : {}),
+        writeStdout: options.json ? writeStderr : writeStdout,
         writeStderr,
       });
       if (validateResult.exitCode !== 0) {

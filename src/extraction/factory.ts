@@ -31,7 +31,8 @@
  * CLI is always API direct); Q1.0.8 simplified (--cc-only no-op +
  * warning; --api-direct dropped); Q1.0.10 simplified (single CLI-
  * invoked extractor + ClaudeCodeOnlyExtractor stub for legacy
- * paths); Q1.0.5 preserved (cost_model metadata in atlas.json).
+ * paths); Q1.0.5 preserved (`costModel` on ExtractionResult; it is
+ * not written to atlas.json or printed in the `index` summary).
  */
 
 import type { ContextAtlasConfig } from "../types.js";

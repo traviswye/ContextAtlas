@@ -1002,10 +1002,13 @@ export async function extractDocstringsForFile(
  * trailing component (matches listSymbols' shape per ADR-14
  * §Decision 4).
  *
- * TypeScript / Python: deferred to Step 11 (returns true permissively
- * for now; both adapters' `getDocstring` returns null until Step 11
- * implementation, so no docstring claims are produced for those
- * languages regardless of this check).
+ * Python: `<module>` and dunder names count as exported; any other
+ * leading-underscore name is private (PEP 8).
+ *
+ * TypeScript and every other language: permissive (always true). The
+ * TS and Python adapters' `getDocstring` have returned real docstrings
+ * since v0.3 Step 11 (this comment used to say they returned null);
+ * no TypeScript-specific export filter has been added.
  */
 export function isExportedSymbol(name: string, language: LanguageCode): boolean {
   if (language === "go") {

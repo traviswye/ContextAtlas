@@ -74,7 +74,15 @@ async function makeFixture(): Promise<Fixture> {
 
   return {
     root,
-    cleanup: () => rm(root, { recursive: true, force: true }),
+    // Retrying rm: on Windows the tsserver subprocess can keep a
+    // handle on the tmp dir for a moment after shutdown (EBUSY).
+    cleanup: () =>
+      rm(root, {
+        recursive: true,
+        force: true,
+        maxRetries: 10,
+        retryDelay: 100,
+      }),
   };
 }
 

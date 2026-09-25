@@ -14,7 +14,7 @@
  * redirect message + zero-counts result.
  *
  * Cost model: "subscription-bounded" preserved per Q1.0.5 δ lock
- * (cost_model metadata field useful for atlas.json provenance).
+ * (reported on ExtractionResult.costModel; not written to atlas.json).
  */
 
 import type {

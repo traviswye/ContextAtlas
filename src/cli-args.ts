@@ -286,6 +286,7 @@ Subcommand options (selected; see individual subcommand for full set):
     --budget-warn <usd>   Emit warning if cumulative cost exceeds threshold
   index:
     --full                Bypass SHA-diff gating; re-extract everything
+    --json                Print the run summary as one JSON object on stdout
     --verbose             Per-file unresolved-token detail on stderr
     --narrow-attribution <drop|drop-with-fallback>
                           Override extraction.narrow_attribution config

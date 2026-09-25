@@ -52,8 +52,10 @@ export type CostModel = "api" | "subscription-bounded";
  * field captures path semantics per Q1.0.5 δ lock.
  *
  * cli-runner.ts summary printing consumes `pipelineResult` fields
- * unchanged; new cost_model field surfaces in summary output per
- * v0.7 launch-bearing reframe extraction-path-visibility.
+ * unchanged. `costModel` is carried here for callers only: it is not
+ * printed in the `index` summary (key=value or --json) and is not
+ * written to atlas.json (validate-atlas rejects a top-level
+ * `cost_model` as non-canonical).
  */
 export interface ExtractionResult {
   pipelineResult: ExtractionPipelineResult;

@@ -877,6 +877,14 @@ describe("--version + --help launch-readiness flags (v0.7 Step 2.2.b.0 FO-4 fix)
     expect(HELP_TEXT).toContain("--version");
     expect(HELP_TEXT).toContain("--help");
   });
+
+  it("HELP_TEXT lists --json under the index subcommand options", () => {
+    // The `index:` block runs until the next subcommand heading
+    // (a 2-space-indented line ending in ':').
+    const indexBlock = /\n  index:\n((?: {4}.*\n)+)/.exec(HELP_TEXT);
+    expect(indexBlock).not.toBeNull();
+    expect(indexBlock![1]).toMatch(/^ {4}--json\s+\S/m);
+  });
 });
 
 describe("--yes / --no-confirm flag (v0.7 Step 2.2.a.2 Lock 3 confirmation bypass)", () => {

@@ -17,6 +17,7 @@ import {
   rmSync,
   writeFileSync,
 } from "node:fs";
+import { rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join as pathJoin } from "node:path";
 
@@ -137,8 +138,18 @@ describe("runResolveSymbolsSubcommand (v0.7 Step 2.3.a.1)", () => {
     writeFileSync(pathJoin(tmp, "sample.ts"), SAMPLE_TS);
   });
 
-  afterEach(() => {
-    rmSync(tmp, { recursive: true, force: true });
+  afterEach(async () => {
+    // Retrying async rm: on Windows the tsserver subprocess can keep a
+    // handle on the tmp dir for a moment after shutdown (EBUSY). The
+    // promise form waits between retries on timers, so the event loop
+    // keeps running (child pipes drain, exit events fire); rmSync's
+    // retries block the thread instead.
+    await rm(tmp, {
+      recursive: true,
+      force: true,
+      maxRetries: 10,
+      retryDelay: 100,
+    });
   });
 
   it("returns exit code 2 when atlas.json does not exist", async () => {

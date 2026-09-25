@@ -1,10 +1,21 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { mkdtemp, mkdir, rm, writeFile, readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
 import { runGenerateAdrsSubcommand } from "./cli-runner.js";
 import type { Generator, GeneratorContext, GenerationResult } from "./generator.js";
+
+/**
+ * Retrying rm: the runner spawns tsserver, and on Windows it can keep
+ * a handle on the tmp dir for a moment after shutdown (EBUSY).
+ */
+const RM_RETRY = {
+  recursive: true,
+  force: true,
+  maxRetries: 10,
+  retryDelay: 100,
+} as const;
 
 /**
  * Step 2.2.a.2 generate-adrs CLI runner tests. Skeleton-era tests
@@ -20,7 +31,8 @@ describe("runGenerateAdrsSubcommand (Step 2.2.a.2 full implementation)", () => {
   });
 
   afterEach(async () => {
-    await rm(tmpRoot, { recursive: true, force: true });
+    vi.unstubAllGlobals();
+    await rm(tmpRoot, RM_RETRY);
   });
 
   async function writeMinimalConfig(): Promise<void> {
@@ -78,10 +90,21 @@ describe("runGenerateAdrsSubcommand (Step 2.2.a.2 full implementation)", () => {
   });
 
   it("propagates --yes / skipConfirmation flag to generator context", async () => {
-    // With skipConfirmation: true + a bogus API key, the generator
-    // reaches the (real, network-hitting) API call, which fails.
-    // Verify the runner doesn't try to invoke the confirmation prompt.
-    // The exit code depends on connectivity (see the assertion below).
+    // With skipConfirmation: true the generator goes straight to the
+    // API call without invoking the confirmation prompt. Global fetch
+    // is stubbed with a 401 so the test is hermetic (no network, no
+    // spend) and the exit code is deterministic.
+    const requests: string[] = [];
+    vi.stubGlobal("fetch", async (input: unknown) => {
+      requests.push(String(input));
+      return new Response(
+        JSON.stringify({
+          type: "error",
+          error: { type: "authentication_error", message: "invalid x-api-key" },
+        }),
+        { status: 401, headers: { "content-type": "application/json" } },
+      );
+    });
     await writeMinimalConfig();
     let stderrOutput = "";
     // confirmProceed deliberately throws — if runner invokes it
@@ -99,15 +122,13 @@ describe("runGenerateAdrsSubcommand (Step 2.2.a.2 full implementation)", () => {
         stderrOutput += c;
       },
     });
-    // Online: the API answers 401 → SDK AuthenticationError → mapped
-    // to GenerationSetupError → exit code 2 (ADR-12 setup failure).
-    // (Before the v1.2 error-import fix the mapping never matched, so
-    // this was exit 1.) Offline: APIConnectionError after the SDK's
-    // default connect-phase retries → generic Error → exit code 1
-    // (pipeline failure).
-    expect([1, 2]).toContain(result.exitCode);
-    // Confirmation prompt was never invoked (no stderr message about
-    // it; confirmProceed-as-throw would have surfaced as caught error).
+    // The stubbed 401 → SDK AuthenticationError → mapped to
+    // GenerationSetupError → exit code 2 (ADR-12 setup failure).
+    // Reaching the API at all proves the prompt was skipped: a
+    // throwing confirmProceed would have ended the run before it.
+    expect(result.exitCode).toBe(2);
+    expect(requests).toHaveLength(1);
+    expect(requests[0]).toMatch(/\/v1\/messages$/);
     expect(stderrOutput).not.toContain("aborted by user");
   });
 });
@@ -239,7 +260,7 @@ describe("Step 2.4.a β-2 auto-invoke validate-adrs post-generation", () => {
   });
 
   afterEach(async () => {
-    await rm(tmpRoot, { recursive: true, force: true });
+    await rm(tmpRoot, RM_RETRY);
   });
 
   function noopGenerator(): Generator {

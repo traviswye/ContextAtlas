@@ -1,9 +1,9 @@
 import {
   mkdirSync,
   mkdtempSync,
-  rmSync,
   writeFileSync,
 } from "node:fs";
+import { rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join as pathJoin } from "node:path";
 
@@ -22,6 +22,20 @@ import { collectChecks, runDoctorSubcommand } from "./runner.js";
  * acceptance smoke test, not unit tests — the adapter conformance
  * suite already covers spawn behavior.
  */
+
+/**
+ * Retrying async rm: the LSP health checks spawn tsserver (and the SHA
+ * checks spawn git); on Windows a subprocess can keep a handle on the
+ * tmp dir for a moment after it exits (EBUSY). The promise form waits
+ * between retries on timers, so the event loop keeps running; rmSync's
+ * retries block the thread instead.
+ */
+const RM_RETRY = {
+  recursive: true,
+  force: true,
+  maxRetries: 10,
+  retryDelay: 100,
+} as const;
 
 interface Fixture {
   readonly tmp: string;
@@ -100,7 +114,7 @@ describe("collectChecks — limited mode (no .contextatlas.yml)", () => {
   beforeEach(() => {
     f = makeFixture();
   });
-  afterEach(() => rmSync(f.tmp, { recursive: true, force: true }));
+  afterEach(() => rm(f.tmp, RM_RETRY));
 
   it("emits doctor.limited_mode WARN at top + filesystem-only checks", async () => {
     const result = await collectChecks(f.tmp);
@@ -132,7 +146,7 @@ describe("collectChecks — config FAIL paths", () => {
   beforeEach(() => {
     f = makeFixture();
   });
-  afterEach(() => rmSync(f.tmp, { recursive: true, force: true }));
+  afterEach(() => rm(f.tmp, RM_RETRY));
 
   it("malformed YAML → config.parses FAIL", async () => {
     writeFileSync(pathJoin(f.tmp, ".contextatlas.yml"), "not: [valid: yaml");
@@ -169,7 +183,7 @@ describe("collectChecks — atlas FAIL paths", () => {
     f = makeFixture();
     writeMinimalConfig(f.tmp);
   });
-  afterEach(() => rmSync(f.tmp, { recursive: true, force: true }));
+  afterEach(() => rm(f.tmp, RM_RETRY));
 
   it("missing atlas.json → atlas.exists FAIL", async () => {
     const result = await collectChecks(f.tmp);
@@ -226,7 +240,7 @@ describe("collectChecks — valid-minimal PASS path", () => {
     writeMinimalConfig(f.tmp);
     writeMinimalAtlas(f.tmp);
   });
-  afterEach(() => rmSync(f.tmp, { recursive: true, force: true }));
+  afterEach(() => rm(f.tmp, RM_RETRY));
 
   it("config + atlas content checks all PASS; LSP skipped (test fixture has no node_modules)", async () => {
     const result = await collectChecks(f.tmp);
@@ -254,7 +268,7 @@ describe("runDoctorSubcommand — output dispatch", () => {
   beforeEach(() => {
     f = makeFixture();
   });
-  afterEach(() => rmSync(f.tmp, { recursive: true, force: true }));
+  afterEach(() => rm(f.tmp, RM_RETRY));
 
   it("text output (default) starts with 'ContextAtlas Doctor'", async () => {
     let captured = "";
