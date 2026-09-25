@@ -80,6 +80,15 @@ const DOCSTRING_SOURCE_PREFIX = "docstring:";
  */
 const BARE_COMMIT_SHA = /^[0-9a-f]{40}$/i;
 
+/**
+ * Whether `key` has the legacy bare-sha shape (a full 40-hex sha). Shape
+ * only: a bare key belongs to the commit stream when its claims are
+ * commit claims or it has none (see {@link classifySourceKeys}).
+ */
+export function isBareCommitSha(key: string): boolean {
+  return BARE_COMMIT_SHA.test(key);
+}
+
 /** Canonical `source_shas` key and `claims.source_path` for a commit. */
 export function commitSourceKey(sha: string): string {
   return `${COMMIT_KEY_PREFIX}${sha}`;

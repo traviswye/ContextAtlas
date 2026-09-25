@@ -134,6 +134,9 @@ describe("collectChecks — limited mode (no .contextatlas.yml)", () => {
     expect(ids).toContain("env.anthropic_api_key");
     expect(ids).toContain("runtime.node_version");
     expect(ids).toContain("deps.installed");
+    // Skill freshness (v1.2 Phase 2) is filesystem-only, like the
+    // prompt-artifact checks.
+    expect(ids).toContain("extraction.skills_fresh");
 
     // Limited mode is WARN-only-or-PASS; FAIL count stays 0.
     expect(result.summary.fail).toBe(0);
@@ -155,6 +158,8 @@ describe("collectChecks — config FAIL paths", () => {
     expect(parseCheck?.status).toBe("fail");
     expect(result.summary.fail).toBeGreaterThan(0);
     expect(result.exitCode).toBe(1);
+    // Normal-mode path still runs the filesystem-level skill check.
+    expect(result.checks.map((c) => c.id)).toContain("extraction.skills_fresh");
   });
 
   it("missing adrs.path → config.adrs_path_resolves FAIL", async () => {

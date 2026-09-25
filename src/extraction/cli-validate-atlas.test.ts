@@ -508,9 +508,78 @@ describe("runValidateAtlasSubcommand (v0.7 Step 2.3.b.0)", () => {
     writeAtlas({ ...CANONICAL_ATLAS, version: "1" });
     const r = await run();
     expect(r.exitCode).toBe(2);
-    expect(r.joinedStderr()).toContain(
+    // The Skill-path example lives in the index-atlas SKILL.md; the
+    // extraction prompt artifact holds no atlas example (v1.2 Phase 2 E4).
+    expect(r.joinedStderr()).toContain(".claude/skills/index-atlas/SKILL.md");
+    expect(r.joinedStderr()).toContain("Canonical atlas schema");
+    expect(r.joinedStderr()).not.toContain(
       ".contextatlas/prompts/extraction.md",
     );
     expect(r.joinedStderr()).toContain("AtlasFileV1");
+  });
+
+  describe("legacy bare-sha commit keys (v1.2 Phase 2, F-5)", () => {
+    const SHA = "0123456789abcdef0123456789abcdef01234567";
+    const recent = () => new Date(Date.now() - 60 * 60 * 1000).toISOString();
+    function commitClaim(sourcePath: string) {
+      return {
+        source: `commit:${SHA}`,
+        source_path: sourcePath,
+        source_sha: SHA,
+        severity: "context",
+        claim: "Router split into per-method tables",
+        rationale: "Keeps lookups O(1)",
+        excerpt: "split the router",
+        symbol_ids: [],
+      };
+    }
+
+    it("PASS with a WARNING when commits use the bare-sha key and source_path", async () => {
+      writeAtlas({
+        ...CANONICAL_ATLAS,
+        generated_at: recent(),
+        source_shas: { ...CANONICAL_ATLAS.source_shas, [SHA]: SHA },
+        claims: [...CANONICAL_ATLAS.claims, commitClaim(SHA)],
+      });
+      const r = await run();
+      expect(r.exitCode).toBe(0);
+      expect(r.errors).toEqual([]);
+      const bare = r.warnings.filter((w) => /bare-sha/.test(w));
+      expect(bare).toHaveLength(1);
+      expect(bare[0]).toContain("1 commit key");
+      expect(bare[0]).toContain("1 commit claim");
+      expect(bare[0]).toContain(`commit:<sha>`);
+      expect(bare[0]).toContain("source_key");
+      expect(r.joinedStderr()).toContain("WARNING");
+    });
+
+    it("no bare-sha WARNING for canonical commit:<sha> keys", async () => {
+      writeAtlas({
+        ...CANONICAL_ATLAS,
+        generated_at: recent(),
+        source_shas: {
+          ...CANONICAL_ATLAS.source_shas,
+          [`commit:${SHA}`]: SHA,
+        },
+        claims: [...CANONICAL_ATLAS.claims, commitClaim(`commit:${SHA}`)],
+      });
+      const r = await run();
+      expect(r.exitCode).toBe(0);
+      expect(r.warnings.filter((w) => /bare-sha/.test(w))).toEqual([]);
+    });
+
+    it("does not treat a 40-hex prose path or a docstring claim as a commit", async () => {
+      writeAtlas({
+        ...CANONICAL_ATLAS,
+        generated_at: recent(),
+        source_shas: {
+          ...CANONICAL_ATLAS.source_shas,
+          [`docs/${SHA}.md`]: "abc",
+        },
+      });
+      const r = await run();
+      expect(r.exitCode).toBe(0);
+      expect(r.warnings.filter((w) => /bare-sha/.test(w))).toEqual([]);
+    });
   });
 });

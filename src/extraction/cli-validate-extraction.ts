@@ -283,10 +283,12 @@ export function validateExtractionShape(
 /**
  * Identify ADR-shaped source_shas keys for the source_coverage
  * invariant. ADR substrate emits `.md` or `.rst` paths per Scope γ'
- * walker convention; Stream B emits source-file paths (`.ts`, `.py`,
- * `.go`, etc.); Stream C emits commit-SHA-prefixed keys
- * (`commit:<40-char-hex>`). Only ADR-shaped keys reliably produce
- * claims by design.
+ * walker convention (docs-bucket prose too); Stream B emits source-file
+ * paths (`.ts`, `.py`, `.go`, etc.); Stream C emits the canonical
+ * `commit:<40-char-hex>` key (v1.2 Phase 2, F-5), or the legacy bare
+ * 40-hex sha in atlases written by the `/index-atlas` Skill before v1.2.
+ * Neither commit form is ADR-shaped. Only ADR-shaped keys reliably
+ * produce claims by design.
  */
 function isAdrSourcePath(sourcePath: string): boolean {
   const lower = sourcePath.toLowerCase();

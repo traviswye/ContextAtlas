@@ -114,7 +114,7 @@ describe("validateExtractionShape — pure function", () => {
     );
   });
 
-  it("passes source_coverage when ADR source_shas entries have matching claims (Stream B + Stream C coverage requirements relaxed per v0.7.2)", () => {
+  it("passes source_coverage when ADR source_shas entries have matching claims (Stream B + Stream C coverage requirements relaxed per v0.7.2; legacy bare-sha commit key)", () => {
     const adrPath = "docs/adr/ADR-01-foo.md";
     const docPath = "src/foo.ts";
     const commitSha = "abc123def456abc123def456abc123def456abcd";
@@ -127,6 +127,33 @@ describe("validateExtractionShape — pure function", () => {
       source_shas: { [adrPath]: "a", [docPath]: "b", [commitSha]: commitSha },
       claims,
     });
+    expect(validateExtractionShape(atlas)).toEqual([]);
+  });
+
+  it("passes source_coverage with canonical commit:<sha> keys and source_path (v1.2 Phase 2, F-5)", () => {
+    const adrPath = "docs/adr/ADR-01-foo.md";
+    const commitSha = "abc123def456abc123def456abc123def456abcd";
+    const commitKey = `commit:${commitSha}`;
+    const claims = [
+      ...Array.from({ length: 10 }, () => makeAdrClaim(adrPath)),
+      { source: commitKey, source_path: commitKey },
+    ];
+    const atlas = makeAtlas({
+      source_shas: { [adrPath]: "a", [commitKey]: commitSha },
+      claims,
+    });
+    expect(validateExtractionShape(atlas)).toEqual([]);
+  });
+
+  it("ignores canonical commit:<sha> keys without claims, like bare-sha keys", () => {
+    const adrPath = "docs/adr/ADR-01-foo.md";
+    const claims = Array.from({ length: 10 }, () => makeAdrClaim(adrPath));
+    const sourceShas: Record<string, string> = { [adrPath]: "a" };
+    for (let i = 0; i < 5; i++) {
+      const sha = String(i).padStart(40, "0");
+      sourceShas[`commit:${sha}`] = sha;
+    }
+    const atlas = makeAtlas({ source_shas: sourceShas, claims });
     expect(validateExtractionShape(atlas)).toEqual([]);
   });
 
@@ -145,7 +172,7 @@ describe("validateExtractionShape — pure function", () => {
     expect(validateExtractionShape(atlas)).toEqual([]);
   });
 
-  it("ignores Stream C commit-SHA source_shas entries without claims (v0.7.2 calibration — most commits lack architectural intent body)", () => {
+  it("ignores Stream C commit-SHA source_shas entries without claims (v0.7.2 calibration — most commits lack architectural intent body; legacy bare-sha keys)", () => {
     const adrPath = "docs/adr/ADR-01-foo.md";
     const claims = Array.from({ length: 10 }, () => makeAdrClaim(adrPath));
     const sourceShas: Record<string, string> = { [adrPath]: "a" };

@@ -15,6 +15,10 @@
  * forces canonical shape: invalid atlas fails loudly with specific
  * remediation; Skill workflow blocks until atlas conforms.
  *
+ * Warnings (stderr; exit code unaffected): a `generated_at` older than
+ * 6 months (FO-16), and commits stored under the legacy bare-sha key
+ * instead of the canonical `commit:<sha>` (v1.2 Phase 2, F-5).
+ *
  * Exit codes:
  *   0 — atlas valid (or atlas absent — informational, not an error
  *       in validate-only context)
@@ -31,6 +35,12 @@ import {
   ATLAS_VERSION,
   SUPPORTED_ATLAS_VERSIONS,
 } from "../storage/types.js";
+
+import {
+  COMMIT_KEY_PREFIX,
+  isBareCommitSha,
+  streamFromClaimSource,
+} from "./source-keys.js";
 
 export type ValidateAtlasExitCode = 0 | 2;
 
@@ -162,7 +172,9 @@ export async function runValidateAtlasSubcommand(
     options.nowOverride ?? new Date(),
   );
   const errors = [...shapeErrors, ...tsResult.errors];
-  const warnings = tsResult.warnings;
+  const warnings = [...tsResult.warnings];
+  const legacyCommitWarning = describeLegacyCommitKeys(raw);
+  if (legacyCommitWarning !== null) warnings.push(legacyCommitWarning);
 
   if (errors.length === 0) {
     writeStdout(
@@ -188,13 +200,75 @@ export async function runValidateAtlasSubcommand(
   }
   writeStderr(
     `\n` +
-      `Refer to the canonical atlas example embedded in ` +
-      `.contextatlas/prompts/extraction.md (Skill path) OR ` +
-      `src/storage/types.ts:AtlasFileV1 (CLI path). DO NOT invent ` +
+      `Compare against the example under "Canonical atlas schema" in ` +
+      `.claude/skills/index-atlas/SKILL.md (Skill path; installed by ` +
+      `\`contextatlas init\`) OR the AtlasFileV1 type in ` +
+      `src/storage/types.ts (CLI path). DO NOT invent ` +
       `top-level fields; DO NOT nest claims inside a \`sources\` ` +
       `object; \`claims\` is a flat top-level array.\n`,
   );
   return { exitCode: 2, errors, warnings };
+}
+
+/**
+ * v1.2 Phase 2 (F-5): warn when commits are stored in the legacy
+ * bare-sha form that `/index-atlas` Skill copies from before v1.2 write,
+ * instead of the canonical `commit:<sha>` key and claim `source_path`.
+ * A warning, not an error: every reader accepts both forms and the next
+ * `contextatlas index` migrates them (`normalizeCommitKeys`). A bare key
+ * counts only when the claims stored under it are commit claims or it
+ * has none, matching `classifySourceKeys`. Returns null when there is
+ * nothing to report or the atlas is too malformed to inspect (the shape
+ * errors cover that case).
+ */
+function describeLegacyCommitKeys(raw: unknown): string | null {
+  if (raw === null || typeof raw !== "object" || Array.isArray(raw)) {
+    return null;
+  }
+  const atlas = raw as Record<string, unknown>;
+  const claims: unknown[] = Array.isArray(atlas.claims) ? atlas.claims : [];
+  const streamsByPath = new Map<string, Set<string>>();
+  let bareClaims = 0;
+  for (const claim of claims) {
+    if (claim === null || typeof claim !== "object") continue;
+    const c = claim as Record<string, unknown>;
+    const source = c.source;
+    const sourcePath = c.source_path;
+    if (typeof source !== "string" || typeof sourcePath !== "string") {
+      continue;
+    }
+    const stream = streamFromClaimSource(source);
+    const seen = streamsByPath.get(sourcePath) ?? new Set<string>();
+    seen.add(stream);
+    streamsByPath.set(sourcePath, seen);
+    if (stream === "commit" && isBareCommitSha(sourcePath)) bareClaims++;
+  }
+
+  let bareKeys = 0;
+  const shas = atlas.source_shas;
+  if (shas !== null && typeof shas === "object" && !Array.isArray(shas)) {
+    for (const key of Object.keys(shas)) {
+      if (!isBareCommitSha(key)) continue;
+      const streams = streamsByPath.get(key);
+      if (streams === undefined || [...streams].every((s) => s === "commit")) {
+        bareKeys++;
+      }
+    }
+  }
+
+  if (bareKeys === 0 && bareClaims === 0) return null;
+  const keyWord = bareKeys === 1 ? "key" : "keys";
+  const claimWord = bareClaims === 1 ? "claim" : "claims";
+  return (
+    `${bareKeys} commit ${keyWord} in \`source_shas\` and the ` +
+    `\`source_path\` of ${bareClaims} commit ${claimWord} use the legacy ` +
+    `bare-sha form. ` +
+    `Write \`${COMMIT_KEY_PREFIX}<sha>\` for both (each commit's ` +
+    `\`source_key\` in the list-extraction-sources manifest). Readers ` +
+    `accept both forms and the next \`contextatlas index\` migrates them. ` +
+    `An /index-atlas skill that still writes the bare form predates v1.2: ` +
+    `see the \`extraction.skills_fresh\` check in \`contextatlas doctor\`.`
+  );
 }
 
 /**

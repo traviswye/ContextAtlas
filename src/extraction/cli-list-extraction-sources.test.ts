@@ -4,6 +4,12 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
+import type {
+  LanguageAdapter,
+  LanguageCode,
+  Symbol as AtlasSymbol,
+} from "../types.js";
+
 import {
   runListExtractionSourcesSubcommand,
   toCommitSource,
@@ -262,5 +268,227 @@ describe("toCommitSource", () => {
       extraction_body: "design: split the router\n\nWhy it matters.",
       source_key: `commit:${sha}`,
     });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// extraction.streams (v1.2 Phase 2, lead decision L-12 iii)
+// ---------------------------------------------------------------------------
+
+/**
+ * Fake TS adapter: one exported symbol `Foo` in src/foo.ts with a
+ * docstring. Records whether it was initialized, so a test can prove the
+ * LSP walk is skipped when the docstring stream is off.
+ */
+function fakeAdapter(root: string): {
+  adapter: LanguageAdapter;
+  calls: { initialize: number; listSymbols: number };
+} {
+  const calls = { initialize: 0, listSymbols: 0 };
+  const foo: AtlasSymbol = {
+    id: "sym:ts:src/foo.ts:Foo",
+    name: "Foo",
+    kind: "class",
+    path: "src/foo.ts",
+    line: 1,
+    language: "typescript",
+  };
+  const adapter: LanguageAdapter = {
+    language: "typescript",
+    extensions: [".ts"],
+    async initialize() {
+      calls.initialize += 1;
+    },
+    async shutdown() {},
+    async listSymbols(p: string) {
+      calls.listSymbols += 1;
+      const rel = path.relative(root, p).split(path.sep).join("/");
+      return rel === "src/foo.ts" ? [foo] : [];
+    },
+    async getSymbolDetails() {
+      return null;
+    },
+    async findReferences() {
+      return [];
+    },
+    async getDiagnostics() {
+      return [];
+    },
+    async getTypeInfo() {
+      return { extends: [], implements: [], usedByTypes: [] };
+    },
+    async getDocstring(id: string) {
+      return id === foo.id ? "Foo routes every request." : null;
+    },
+  };
+  return { adapter, calls };
+}
+
+function gitCommitAll(root: string, subject: string): void {
+  const run = (args: string[]): void => {
+    const r = spawnSync("git", ["-c", "commit.gpgsign=false", ...args], {
+      cwd: root,
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        GIT_AUTHOR_NAME: "Tester",
+        GIT_AUTHOR_EMAIL: "tester@example.com",
+        GIT_COMMITTER_NAME: "Tester",
+        GIT_COMMITTER_EMAIL: "tester@example.com",
+      },
+    });
+    if (r.status !== 0) throw new Error(`git ${args.join(" ")}: ${r.stderr}`);
+  };
+  run(["init", "-q"]);
+  run(["add", "-A"]);
+  run(["commit", "-q", "-m", subject]);
+}
+
+async function writeStreamsConfig(
+  root: string,
+  streams: readonly string[] | null,
+): Promise<void> {
+  const lines = [
+    "version: 1",
+    "languages: [typescript]",
+    "source:",
+    "  root: .",
+    "adrs:",
+    "  path: docs/adr/",
+    "docs:",
+    "  include: []",
+    "atlas:",
+    "  committed: true",
+    "  path: atlases/test/atlas.json",
+    "  local_cache: atlases/test/index.db",
+  ];
+  if (streams !== null) {
+    lines.push("extraction:", `  streams: [${streams.join(", ")}]`);
+  }
+  await writeFile(path.join(root, ".contextatlas.yml"), lines.join("\n") + "\n");
+}
+
+describe("runListExtractionSourcesSubcommand — extraction.streams", () => {
+  let fixture: Fixture;
+  let stdout: string;
+  let stderr: string;
+
+  beforeEach(async () => {
+    fixture = await makeFixture();
+    stdout = "";
+    stderr = "";
+  });
+
+  afterEach(async () => {
+    await fixture.cleanup();
+  });
+
+  async function run(
+    fake: ReturnType<typeof fakeAdapter>,
+    outputPath: string | null = null,
+  ) {
+    return runListExtractionSourcesSubcommand({
+      configRoot: fixture.root,
+      configFile: null,
+      outputPath,
+      writeStdout: (c) => (stdout += c),
+      writeStderr: (c) => (stderr += c),
+      createAdapterOverride: (lang: LanguageCode) => {
+        expect(lang).toBe("typescript");
+        return fake.adapter;
+      },
+    });
+  }
+
+  it("walks all three streams when the key is absent (disabled_streams: [])", async () => {
+    gitCommitAll(fixture.root, "design: introduce Foo");
+    const fake = fakeAdapter(fixture.root);
+
+    const result = await run(fake);
+
+    expect(result.exitCode).toBe(0);
+    const manifest = JSON.parse(stdout) as ExtractionSourcesManifest;
+    expect(manifest.sources.adrs).toHaveLength(1);
+    expect(manifest.sources.docstrings.map((d) => d.symbol_id)).toEqual([
+      "sym:ts:src/foo.ts:Foo",
+    ]);
+    expect(manifest.sources.commits).toHaveLength(1);
+    expect(manifest.summary.disabled_streams).toEqual([]);
+    expect(fake.calls.initialize).toBe(1);
+  });
+
+  it("emits empty docstring and commit arrays when only adr is enabled, without starting the LSP walk", async () => {
+    await writeStreamsConfig(fixture.root, ["adr"]);
+    gitCommitAll(fixture.root, "design: introduce Foo");
+    const fake = fakeAdapter(fixture.root);
+
+    const result = await run(fake);
+
+    expect(result.exitCode).toBe(0);
+    const manifest = JSON.parse(stdout) as ExtractionSourcesManifest;
+    expect(manifest.manifest_version).toBe("1");
+    expect(manifest.sources.adrs).toHaveLength(1);
+    expect(manifest.sources.docstrings).toEqual([]);
+    expect(manifest.sources.commits).toEqual([]);
+    expect(manifest.summary).toEqual({
+      adr_count: 1,
+      symbols_with_docstrings: 0,
+      filtered_commits: 0,
+      disabled_streams: ["docstring", "commit"],
+    });
+    expect(fake.calls.initialize).toBe(0);
+    expect(fake.calls.listSymbols).toBe(0);
+  });
+
+  it("keeps the commit stream when only docstring is disabled", async () => {
+    await writeStreamsConfig(fixture.root, ["commit", "adr"]);
+    gitCommitAll(fixture.root, "design: introduce Foo");
+    const fake = fakeAdapter(fixture.root);
+
+    const result = await run(fake);
+
+    expect(result.exitCode).toBe(0);
+    const manifest = JSON.parse(stdout) as ExtractionSourcesManifest;
+    expect(manifest.sources.docstrings).toEqual([]);
+    expect(manifest.sources.commits).toHaveLength(1);
+    expect(manifest.summary.disabled_streams).toEqual(["docstring"]);
+  });
+
+  it("keeps the docstring stream when only commit is disabled", async () => {
+    await writeStreamsConfig(fixture.root, ["adr", "docstring"]);
+    gitCommitAll(fixture.root, "design: introduce Foo");
+    const fake = fakeAdapter(fixture.root);
+
+    const result = await run(fake);
+
+    expect(result.exitCode).toBe(0);
+    const manifest = JSON.parse(stdout) as ExtractionSourcesManifest;
+    expect(manifest.sources.docstrings).toHaveLength(1);
+    expect(manifest.sources.commits).toEqual([]);
+    expect(manifest.summary.disabled_streams).toEqual(["commit"]);
+  });
+
+  it("names the disabled streams in the --output summary line", async () => {
+    await writeStreamsConfig(fixture.root, ["adr"]);
+    const fake = fakeAdapter(fixture.root);
+
+    const result = await run(fake, "manifest.json");
+
+    expect(result.exitCode).toBe(0);
+    expect(stdout).toMatch(
+      /\(1 ADRs, 0 symbols-with-docstrings, 0 filtered commits; disabled by extraction\.streams: docstring, commit\)\n$/,
+    );
+  });
+
+  it("leaves the --output summary line unchanged when every stream is enabled", async () => {
+    const fake = fakeAdapter(fixture.root);
+
+    const result = await run(fake, "manifest.json");
+
+    expect(result.exitCode).toBe(0);
+    expect(stdout).toMatch(
+      /\(1 ADRs, 1 symbols-with-docstrings, 0 filtered commits\)\n$/,
+    );
+    expect(stdout).not.toContain("disabled");
   });
 });
