@@ -13,6 +13,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { ExtractionClient } from "./anthropic-client.js";
 import {
+  formatStreamFailures,
   resolveContextatlasCommitSha,
   runIndexSubcommand,
 } from "./cli-runner.js";
@@ -1473,4 +1474,27 @@ describe("runIndexSubcommand (ADR-12)", () => {
     expect(onDisk.symbols).toEqual([]);
     expect(onDisk.claims[0]?.symbol_ids).toEqual([]);
   }, 30_000);
+});
+
+describe("formatStreamFailures (the exit-1 message of a failed stream)", () => {
+  const docstring = { stream: "docstring" as const, attemptedCalls: 3, firstError: "401 invalid x-api-key" };
+  const commit = { stream: "commit" as const, attemptedCalls: 2, firstError: "401 invalid x-api-key" };
+
+  it("a plain run: the next run retries the failed units", () => {
+    const text = formatStreamFailures([docstring, commit], true, false);
+    expect(text).toMatch(/every docstring extraction call failed \(3 of 3\)/);
+    expect(text).toMatch(/docstring files: they keep their previous claims, and the next run retries them/);
+    expect(text).toMatch(/commits: they keep their previous claims, and the next run retries them/);
+    expect(text).not.toMatch(/--full/);
+  });
+
+  it("after --full: docstring files whose key already matched need another --full; commits are unchanged", () => {
+    const text = formatStreamFailures([docstring, commit], true, true);
+    expect(text).toMatch(
+      /docstring files: they keep their previous claims\. A plain `contextatlas index` retries only those whose content differs from their kept key/,
+    );
+    expect(text).toMatch(/re-run `contextatlas index --full` to retry them/);
+    expect(text).not.toMatch(/docstring files: they keep their previous claims, and the next run retries them/);
+    expect(text).toMatch(/commits: they keep their previous claims, and the next run retries them/);
+  });
 });

@@ -1,12 +1,6 @@
-import { spawnSync } from "node:child_process";
-import { mkdtempSync } from "node:fs";
-import { rm } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { join as pathJoin } from "node:path";
-
 import { describe, expect, it } from "vitest";
 
-import { commitReachability, parseGitLog } from "./git-extractor.js";
+import { parseGitLog } from "./git-extractor.js";
 
 describe("parseGitLog", () => {
   it("parses a single commit with one file", () => {
@@ -98,37 +92,5 @@ describe("parseGitLog", () => {
     const commits = parseGitLog(stdout);
     expect(commits).toHaveLength(1);
     expect(commits[0]?.message).toBe("subject\x1fwith\x1fseparators");
-  });
-});
-
-describe("commitReachability (review round 2.2)", () => {
-  it("tells a commit HEAD reaches from one on another branch and from one git does not know", async () => {
-    const root = mkdtempSync(pathJoin(tmpdir(), "ca-reach-"));
-    const git = (...args: string[]): string => {
-      const r = spawnSync(
-        "git",
-        ["-c", "user.email=t@example.com", "-c", "user.name=T", "-c", "commit.gpgsign=false", ...args],
-        { cwd: root, encoding: "utf8" },
-      );
-      if (r.status !== 0) throw new Error(r.stderr);
-      return r.stdout.trim();
-    };
-    try {
-      git("init", "-q");
-      git("commit", "-q", "--allow-empty", "-m", "base");
-      const base = git("rev-parse", "HEAD");
-      const main = git("rev-parse", "--abbrev-ref", "HEAD");
-      git("checkout", "-q", "-b", "other");
-      git("commit", "-q", "--allow-empty", "-m", "other only");
-      const other = git("rev-parse", "HEAD");
-      git("checkout", "-q", main);
-
-      expect(commitReachability(root, base)).toBe("reachable");
-      expect(commitReachability(root, other)).toBe("unreachable");
-      expect(commitReachability(root, "f".repeat(40))).toBe("unknown");
-      expect(commitReachability(root, base, pathJoin(root, "no-such-git"))).toBe("unknown");
-    } finally {
-      await rm(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
-    }
   });
 });

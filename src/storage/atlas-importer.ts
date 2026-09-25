@@ -53,15 +53,80 @@ export const ATLAS_META_KEYS = {
 
 /**
  * Read an atlas.json file from disk, parse it, and import into the given
- * database. Convenience wrapper around `importAtlas`.
+ * database. Convenience wrapper around `importAtlas`. A file that is not
+ * valid JSON (a write torn by a kill, an unresolved merge conflict)
+ * fails with a message naming the file and the way back, not a bare
+ * `SyntaxError` (v1.2 Phase 2).
  */
 export function importAtlasFile(
   db: DatabaseInstance,
   filePath: string,
 ): void {
   const raw = readFileSync(filePath, "utf8");
-  const parsed = JSON.parse(raw) as AtlasFileV1;
+  let parsed: AtlasFileV1;
+  try {
+    parsed = JSON.parse(raw) as AtlasFileV1;
+  } catch (err) {
+    throw new Error(
+      `importAtlas: ${filePath} is not valid JSON (${err instanceof Error ? err.message : String(err)}). ` +
+        "An interrupted write or an unresolved merge conflict leaves it like " +
+        `this. Restore it, for example with \`git checkout -- ${filePath}\`, ` +
+        "then retry.",
+    );
+  }
   importAtlas(db, parsed);
+}
+
+/**
+ * Whether the cache holds no atlas content: no symbols, no claims and
+ * no source keys. A cache that has only git commits or atlas_meta rows
+ * is still empty in this sense. The one seeding rule shared by the MCP
+ * server, the init smoke test and `contextatlas index` with
+ * `atlas.committed: false`: atlas.json is imported only into an empty
+ * cache (v1.2 Phase 2; counting symbols alone replaced a docs-only cache
+ * on every start).
+ */
+export function isCacheEmpty(db: DatabaseInstance): boolean {
+  const row = db
+    .prepare(
+      "SELECT EXISTS (SELECT 1 FROM symbols) OR " +
+        "EXISTS (SELECT 1 FROM claims) OR " +
+        "EXISTS (SELECT 1 FROM source_shas) AS has_content",
+    )
+    .get() as { has_content: number };
+  return row.has_content === 0;
+}
+
+/**
+ * The `generated_at` of atlas.json and of the atlas the cache holds, when
+ * they differ; null when they match or atlas.json cannot be read or
+ * parsed. Stateless: every writer stamps both from one value (an import
+ * copies it, `contextatlas index` writes the same value to atlas_meta and
+ * atlas.json), so a difference means atlas.json changed without this
+ * cache (a pull, an `/index-atlas` refresh) or the cache changed without
+ * atlas.json (`atlas.committed: false` runs). The MCP server uses it to
+ * warn when it serves a cache that does not match atlas.json (v1.2
+ * Phase 2; it does not re-import).
+ */
+export function atlasGeneratedAtMismatch(
+  db: DatabaseInstance,
+  atlasPath: string,
+): { atlasJson: string; cache: string | null } | null {
+  let fileValue: unknown;
+  try {
+    const parsed = JSON.parse(readFileSync(atlasPath, "utf8")) as {
+      generated_at?: unknown;
+    };
+    fileValue = parsed?.generated_at;
+  } catch {
+    return null;
+  }
+  if (typeof fileValue !== "string") return null;
+  const row = db
+    .prepare("SELECT value FROM atlas_meta WHERE key = ?")
+    .get(ATLAS_META_KEYS.generatedAt) as { value: string } | undefined;
+  const cacheValue = row?.value ?? null;
+  return cacheValue === fileValue ? null : { atlasJson: fileValue, cache: cacheValue };
 }
 
 /**

@@ -18,10 +18,11 @@
  * that file succeeded: its docstrings were all read, every model call
  * returned a parseable result, and the write committed. Any failure
  * leaves the file's previous claims and key exactly as they were, so
- * the next run retries the whole file; the failing file's remaining
- * calls are not made, because their results would be discarded. A
- * file with no docstring to extract is still keyed (its old claims, if
- * any, are cleared), so it is not re-read on every run.
+ * the next run retries the whole file (unless the kept key already
+ * matches the file's content, as after `--full`); the failing file's
+ * remaining calls are not made, because their results would be
+ * discarded. A file with no docstring to extract is still keyed (its
+ * old claims, if any, are cleared), so it is not re-read on every run.
  *
  * Layers:
  *   - `readFileDocstrings` (`docstring-read.ts`): the zero-API read
@@ -47,7 +48,6 @@ import {
   type NewClaim,
 } from "../storage/claims.js";
 import type { DatabaseInstance } from "../storage/db.js";
-import { recordSourceKeyStream } from "../storage/source-key-streams.js";
 import { getSymbol } from "../storage/symbols.js";
 import type {
   LanguageAdapter,
@@ -243,9 +243,6 @@ export async function extractDocstringFile(
       }
       progress.symbolId = null;
       setSourceSha(db, file.relPath, file.sha);
-      // Cache-only: lets a zero-claim key be told apart from a prose key
-      // at the same path (`source-key-streams.ts`).
-      recordSourceKeyStream(db, file.relPath, "docstring", file.sha);
     })();
   } catch (err) {
     const from = progress.symbolId;
@@ -269,7 +266,9 @@ export async function extractDocstringFile(
 function keptMessage(relPath: string): string {
   return (
     `${relPath} was left unchanged (its existing claims and source SHA ` +
-    `were kept), so the next run retries the whole file`
+    `were kept); the next run retries the whole file unless that kept ` +
+    `key already matches its content (possible after \`--full\`: then ` +
+    `re-run \`contextatlas index --full\`)`
   );
 }
 

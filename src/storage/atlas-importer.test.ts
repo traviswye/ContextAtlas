@@ -1,16 +1,25 @@
-import { readFileSync } from "node:fs";
-import { resolve as pathResolve } from "node:path";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join as pathJoin, resolve as pathResolve } from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { importAtlas, importAtlasFile } from "./atlas-importer.js";
 import {
+  atlasGeneratedAtMismatch,
+  importAtlas,
+  importAtlasFile,
+  isCacheEmpty,
+} from "./atlas-importer.js";
+import {
+  insertClaim,
   listAllClaims,
   listClaimSymbolCandidates,
   listSourceShas,
+  setSourceSha,
 } from "./claims.js";
 import { type DatabaseInstance, openDatabase } from "./db.js";
-import { listAllSymbols } from "./symbols.js";
+import { replaceGitCommits } from "./git.js";
+import { listAllSymbols, upsertSymbols } from "./symbols.js";
 import type { AtlasFileV1 } from "./types.js";
 
 const FIXTURE_PATH = pathResolve("test/fixtures/atlas/sample-atlas.json");
@@ -306,5 +315,126 @@ describe("importAtlas — claims[].symbol_candidates (F-7)", () => {
     importAtlas(db, atlasWith([["Old"]]));
     importAtlas(db, atlasWith([["New"]]));
     expect(candidatesByClaim()).toEqual({ "claim 0": ["New"] });
+  });
+});
+
+describe("isCacheEmpty (the one seeding rule: MCP server, init smoke test, index with atlas.committed: false)", () => {
+  it("true until a symbol, claim or source key exists; git commits and atlas_meta rows alone do not count", () => {
+    const db = openDatabase(":memory:");
+    expect(isCacheEmpty(db)).toBe(true);
+    db.prepare("INSERT INTO atlas_meta (key, value) VALUES ('generated_at', 'x')").run();
+    replaceGitCommits(db, [
+      { sha: "a".repeat(40), date: "2026-09-25T00:00:00Z", message: "m", authorEmail: "e", files: ["src/a.ts"] },
+    ]);
+    expect(isCacheEmpty(db)).toBe(true);
+    setSourceSha(db, "docs/adr/ADR-01.md", "s");
+    expect(isCacheEmpty(db)).toBe(false);
+    db.close();
+
+    const db2 = openDatabase(":memory:");
+    insertClaim(db2, {
+      source: "adr:x.md",
+      sourcePath: "x.md",
+      sourceSha: "s",
+      severity: "hard",
+      claim: "c",
+      symbolIds: [],
+    });
+    expect(isCacheEmpty(db2)).toBe(false);
+    db2.close();
+
+    const db3 = openDatabase(":memory:");
+    upsertSymbols(db3, [
+      {
+        id: "sym:ts:src/a.ts:A",
+        name: "A",
+        kind: "function",
+        path: "src/a.ts",
+        line: 1,
+        language: "typescript",
+        fileSha: "s",
+      },
+    ]);
+    expect(isCacheEmpty(db3)).toBe(false);
+    db3.close();
+  });
+});
+
+describe("importAtlasFile — a file that is not valid JSON", () => {
+  let tmp: string;
+  let db: DatabaseInstance;
+  beforeEach(() => {
+    tmp = mkdtempSync(pathJoin(tmpdir(), "ca-import-json-"));
+    db = openDatabase(":memory:");
+  });
+  afterEach(() => {
+    db.close();
+    rmSync(tmp, { recursive: true, force: true });
+  });
+
+  it("names the file, the likely cause and the way back, and leaves the cache as it was", () => {
+    importAtlasFile(db, FIXTURE_PATH);
+    const before = listAllClaims(db);
+    const torn = pathJoin(tmp, "atlas.json");
+    const text = readFileSync(FIXTURE_PATH, "utf8");
+    writeFileSync(torn, text.slice(0, Math.floor(text.length / 2)));
+    expect(() => importAtlasFile(db, torn)).toThrow(
+      /importAtlas: .*atlas\.json is not valid JSON \(.*\)\. An interrupted write or an unresolved merge conflict .*git checkout -- /s,
+    );
+    expect(() => importAtlasFile(db, torn)).not.toThrow(/^Unexpected/);
+    expect(listAllClaims(db)).toEqual(before);
+  });
+});
+
+describe("atlasGeneratedAtMismatch (MCP server stale-cache hint)", () => {
+  let tmp: string;
+  let db: DatabaseInstance;
+  beforeEach(() => {
+    tmp = mkdtempSync(pathJoin(tmpdir(), "ca-generated-at-"));
+    db = openDatabase(":memory:");
+  });
+  afterEach(() => {
+    db.close();
+    rmSync(tmp, { recursive: true, force: true });
+  });
+
+  const writeAtlas = (generatedAt: string): string => {
+    const atlas = loadFixture();
+    atlas.generated_at = generatedAt;
+    const path = pathJoin(tmp, "atlas.json");
+    writeFileSync(path, JSON.stringify(atlas, null, 2));
+    return path;
+  };
+
+  it("null when the cache holds the atlas.json it imported", () => {
+    const path = writeAtlas("2026-09-25T01:00:00.000Z");
+    importAtlasFile(db, path);
+    expect(atlasGeneratedAtMismatch(db, path)).toBeNull();
+  });
+
+  it("both values when atlas.json changed after the import (a pull, a Skill refresh)", () => {
+    importAtlasFile(db, writeAtlas("2026-09-25T01:00:00.000Z"));
+    const path = writeAtlas("2026-09-25T02:00:00.000Z");
+    expect(atlasGeneratedAtMismatch(db, path)).toEqual({
+      atlasJson: "2026-09-25T02:00:00.000Z",
+      cache: "2026-09-25T01:00:00.000Z",
+    });
+  });
+
+  it("a cache with no atlas_meta generated_at differs from any atlas.json", () => {
+    const path = writeAtlas("2026-09-25T01:00:00.000Z");
+    expect(atlasGeneratedAtMismatch(db, path)).toEqual({
+      atlasJson: "2026-09-25T01:00:00.000Z",
+      cache: null,
+    });
+  });
+
+  it("null when atlas.json is missing, not JSON, or has no generated_at string", () => {
+    expect(atlasGeneratedAtMismatch(db, pathJoin(tmp, "missing.json"))).toBeNull();
+    const bad = pathJoin(tmp, "bad.json");
+    writeFileSync(bad, "{ not json");
+    expect(atlasGeneratedAtMismatch(db, bad)).toBeNull();
+    writeFileSync(bad, JSON.stringify({ generated_at: 5 }));
+    expect(atlasGeneratedAtMismatch(db, bad)).toBeNull();
   });
 });

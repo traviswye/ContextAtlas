@@ -47,20 +47,17 @@
  *      A reliably produces claims per source by design (extraction
  *      prompt against substantive ADR prose).
  *
- * Non-ADR prose is exempt from invariants 2 and 3 (v1.2 Phase 2 review
- * fixes): a path the prose walk does not put in the ADR bucket
- * (`docs.include` pages such as README.md, wherever they are stored
- * relative to, or a note in the ADR directory without an ADR file name),
- * including a docs page that has since been deleted. The CLI extracts
- * those with the same prompt and `adr:` prefix, the `/index-atlas` Skill
- * keeps them without re-extracting, and neither can be held to an ADR's
- * depth. Only a missing file whose path names an ADR under `adrs.path`
- * is still checked, and not when the path reads as a `docs.include` page
- * stored relative to the config root (review round 2.2: in the ADR-08
- * external layout such a key also resolves inside the ADR directory, so
- * a deleted RFC or dated blog page was checked as an ADR). Before the
- * fixes, a Skill refresh that kept them could never pass this gate, and
- * CLI `index` exited 1 on them after every exporting run.
+ * Only ADRs the current prose walk lists are held to invariants 2 and 3
+ * (v1.2 Phase 2 review fixes, lead decision F1). Docs pages
+ * (`docs.include` files such as README.md, wherever they are stored
+ * relative to, or a note in the ADR directory without an ADR file name)
+ * and keys whose file is gone are not: the CLI extracts docs pages with
+ * the same prompt and `adr:` prefix, the `/index-atlas` Skill keeps them
+ * without re-extracting, and neither can be held to an ADR's depth.
+ * Dropping a deleted ADR's key is Stage 5 on the CLI, and refresh rule 4
+ * in the Skill. Before the fixes, a Skill refresh that kept docs pages
+ * could never pass this gate, and CLI `index` exited 1 on them after
+ * every exporting run.
  *
  * Per-stream coverage at Phase B iteration is the SKILL.md substrate
  * concern (not validator domain) — if Phase A skips a stream
@@ -82,20 +79,13 @@
  *       stderr with per-invariant guidance
  */
 
-import { existsSync, readFileSync } from "node:fs";
-import {
-  basename,
-  isAbsolute,
-  relative,
-  resolve as pathResolve,
-  sep,
-} from "node:path";
+import { readFileSync } from "node:fs";
+import { resolve as pathResolve } from "node:path";
 
 import { loadConfig } from "../config/parser.js";
 import type { ContextAtlasConfig } from "../types.js";
-import { matchesAdrNamingConvention } from "../utils/adr-enumeration.js";
 
-import { docsIncludeMatcher, walkProseFiles } from "./file-walker.js";
+import { walkProseFiles } from "./file-walker.js";
 
 export type ValidateExtractionExitCode = 0 | 2;
 
@@ -145,9 +135,10 @@ export interface AtlasForValidation {
 /** Options for {@link validateExtractionShape}. */
 export interface ValidateExtractionShapeOptions {
   /**
-   * True for a source path that is prose but not an ADR (a
-   * `docs.include` page such as README.md, or a note in the ADR
-   * directory that does not follow an ADR naming convention). Such
+   * True for a source path that is not an ADR (a `docs.include` page
+   * such as README.md, a note in the ADR directory that does not follow
+   * an ADR naming convention; the subcommand also passes true for a key
+   * the current prose walk does not list). Such
    * paths are exempt from `adr_depth_floor` and `source_coverage`: the
    * CLI extracts them with the same prompt and `adr:` source prefix,
    * but nothing says a README yields 8 claims, and the `/index-atlas`
@@ -158,30 +149,16 @@ export interface ValidateExtractionShapeOptions {
 }
 
 /**
- * The exemption the subcommand applies, from the current prose walk:
- *
- *   - a path the walk puts in the docs bucket is not an ADR, whatever
- *     root it is stored relative to (review round 2: a docs page outside
- *     `source.root` is stored relative to the config root, ADR-08);
- *   - a path the walk puts in the ADR bucket is an ADR;
- *   - a path the walk does not return is checked only when it names an
- *     ADR under `adrs.path` (an ADR naming convention) and that file is
- *     missing, so a deleted ADR left in `source_shas` keeps failing
- *     coverage. A deleted docs page is exempt (review round 2): the
- *     `/index-atlas` Skill cannot re-extract it and must not be stuck.
- *     That includes, in the ADR-08 layout (the ADR directory outside
- *     `source.root`), a docs page stored relative to the config root
- *     whose file name looks like an ADR's, such as `docs/rfcs/0001-x.md`:
- *     when the path, read relative to the config root, lies outside the
- *     source root and matches a `docs.include` glob, it is a docs page
- *     (review round 2.2). When the ADR directory is inside the source
- *     root (the default layout, or `source.root: packages/core` with
- *     `adrs.path: packages/core/docs/adr`), every ADR key is stored
- *     relative to the source root, so that reading does not apply and a
- *     deleted ADR is still checked (review round 2.3: in the
- *     `packages/core` layout the config-root reading of
- *     `docs/adr/ADR-02-x.md` matched `docs/**` and exempted it), as
- *     SKILL refresh rule 4 classifies it.
+ * The exemption the subcommand applies: a path is an ADR only when the
+ * current prose walk puts it in the ADR bucket (walk membership; the
+ * walk emits each ADR's stored key, relative to `source.root` or, in the
+ * ADR-08 layout, to the ADR directory). Everything else is exempt: a
+ * docs-bucket page (existing or deleted), a note in the ADR directory
+ * without an ADR file name, and the key of an ADR that no longer exists.
+ * Layout-independent, and it can never hold the `/index-atlas` Skill on
+ * a key it may not drop. The cost (lead decision F1): a deleted ADR's
+ * leftover key, which only an agent error in refresh rule 4 can leave
+ * (the CLI's Stage 5 drops it), is no longer caught here.
  *
  * Null when the walk fails (then nothing is exempt).
  */
@@ -192,45 +169,14 @@ function nonAdrProsePredicate(
   const sourceRoot = config.source?.root
     ? pathResolve(configRoot, config.source.root)
     : configRoot;
-  const adrDir = pathResolve(configRoot, config.adrs.path);
   let adrPaths: Set<string>;
-  let docPaths: Set<string>;
   try {
     const walked = walkProseFiles(sourceRoot, config, configRoot);
     adrPaths = new Set(walked.filter((f) => f.bucket === "adr").map((f) => f.relPath));
-    docPaths = new Set(walked.filter((f) => f.bucket === "doc").map((f) => f.relPath));
   } catch {
     return null;
   }
-  // An ADR's stored path is relative to the source root when the file is
-  // inside it, else relative to the ADR directory (file-walker.ts).
-  const adrsInsideSourceRoot = isInside(adrDir, sourceRoot);
-  const adrBases = adrsInsideSourceRoot ? [sourceRoot] : [sourceRoot, adrDir];
-  // A docs page outside the source root is stored relative to the config
-  // root, and `docs.include` globs are evaluated there (file-walker.ts).
-  // Only the ADR-08 layout needs that reading to tell such a page from an
-  // ADR stored relative to the ADR directory (round 2.3).
-  const matchesDocsInclude = docsIncludeMatcher(config.docs.include);
-  const isConfigRootDocsPage = (sourcePath: string): boolean => {
-    if (adrsInsideSourceRoot) return false;
-    const abs = pathResolve(configRoot, sourcePath);
-    if (isInside(abs, sourceRoot)) return false;
-    return matchesDocsInclude(relative(configRoot, abs).split(sep).join("/"));
-  };
-  return (sourcePath) => {
-    if (docPaths.has(sourcePath)) return true;
-    if (adrPaths.has(sourcePath)) return false;
-    if (isConfigRootDocsPage(sourcePath)) return true;
-    const asAdr = adrBases
-      .map((base) => pathResolve(base, sourcePath))
-      .filter((abs) => isInside(abs, adrDir) && matchesAdrNamingConvention(basename(abs)));
-    return asAdr.length === 0 || asAdr.some((abs) => existsSync(abs));
-  };
-}
-
-function isInside(path: string, dir: string): boolean {
-  const rel = relative(dir, path);
-  return rel === "" || (!rel.startsWith("..") && !isAbsolute(rel));
+  return (sourcePath) => !adrPaths.has(sourcePath);
 }
 
 /**

@@ -1,16 +1,17 @@
 /**
  * `contextatlas resolve-symbols` on a refresh atlas that wrote
- * `symbols: []` next to preserved `symbol_ids` (v1.2 Phase 2 review
- * round 2.2). A link into a file the run could not verify must not be
- * dropped: its symbol comes from the atlas.json committed at HEAD, and
- * when it cannot, the run exits 1 and writes nothing.
+ * `symbols: []` next to preserved `symbol_ids` (the `/index-atlas`
+ * refresh contract, v1.2 Phase 2 lead decision F2). It rebuilds
+ * `symbols` from the files it can list and keeps every link to a symbol
+ * it lists. The documented loss: a link into a file it cannot list in
+ * that run (a listing failure, a language not configured) is dropped,
+ * and only the claim's `symbol_candidates` can restore it later.
  *
  * The language adapter is a stub (`vi.mock` of the registry): it lists
  * `src/a.ts` and throws for `src/big.ts`, the stand-in for a
  * documentSymbol timeout. No language server is spawned.
  */
 
-import { spawnSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -97,22 +98,7 @@ function baseline(): AtlasFileV1 {
   };
 }
 
-function git(root: string, args: string[]): void {
-  const r = spawnSync("git", ["-c", "commit.gpgsign=false", ...args], {
-    cwd: root,
-    encoding: "utf8",
-    env: {
-      ...process.env,
-      GIT_AUTHOR_NAME: "Tester",
-      GIT_AUTHOR_EMAIL: "tester@example.com",
-      GIT_COMMITTER_NAME: "Tester",
-      GIT_COMMITTER_EMAIL: "tester@example.com",
-    },
-  });
-  if (r.status !== 0) throw new Error(`git ${args.join(" ")} failed: ${r.stderr}`);
-}
-
-describe("resolve-symbols on a `symbols: []` refresh atlas (review round 2.2)", () => {
+describe("resolve-symbols on a `symbols: []` refresh atlas (lead decision F2)", () => {
   let tmp: string;
   let out: string;
   let err: string;
@@ -152,34 +138,16 @@ describe("resolve-symbols on a `symbols: []` refresh atlas (review round 2.2)", 
     expect(final.claims.map((c) => c.symbol_ids)).toEqual([[ALPHA.id], [ROUTER.id], [HELPER.id]]);
   });
 
-  it("no committed atlas.json to recover from: exits 1, names the files and writes nothing", async () => {
+  it("`symbols: []`: links to symbols it lists are kept; links into files it cannot list are dropped and reported (the documented loss)", async () => {
     writeAtlas(refresh());
-    const before = readFileSync(atlasPath(), "utf8");
     const r = await resolve();
-    expect(r.exitCode).toBe(1);
-    expect(readFileSync(atlasPath(), "utf8")).toBe(before);
-    expect(err).toMatch(/claims link 2 symbols in files this run could not verify/);
-    expect(err).toMatch(/src\/big\.ts \(its symbol listing failed\): 1 symbol/);
-    expect(err).toMatch(/src\/tool\.py \(its language is not configured\): 1 symbol/);
-    expect(err).toMatch(/Nothing was written/);
-    expect(err).toMatch(/re-run `contextatlas resolve-symbols`/);
-  });
-
-  it("the symbols come from the atlas.json committed at HEAD: every link is kept", async () => {
-    git(tmp, ["init", "-q"]);
-    writeAtlas(baseline());
-    git(tmp, ["add", ".contextatlas/atlas.json"]);
-    git(tmp, ["commit", "-q", "-m", "atlas"]);
-    writeAtlas(refresh()); // the Skill refresh, not yet committed
-
-    const r = await resolve();
-    expect(err).toBe("");
     expect(r.exitCode).toBe(0);
+    expect(r.danglingLinksDropped).toBe(2);
+    expect(r.claimsOrphaned).toBe(2);
+    expect(out).toMatch(/dropped 2 dangling symbol links; 2 claims orphaned/);
     const final = JSON.parse(readFileSync(atlasPath(), "utf8")) as AtlasFileV1;
-    expect(final.claims.map((c) => c.symbol_ids)).toEqual([[ALPHA.id], [ROUTER.id], [HELPER.id]]);
-    expect(final.symbols.map((s) => s.id).sort()).toEqual([ALPHA.id, ROUTER.id, HELPER.id].sort());
-    expect(r.unverifiedSymbolFiles).toBe(2);
-    expect(r.danglingLinksDropped).toBe(0);
+    expect(final.claims.map((c) => c.symbol_ids)).toEqual([[ALPHA.id], [], []]);
+    expect(final.symbols.map((s) => s.id)).toEqual([ALPHA.id]);
   });
 
   it("a link whose file is gone is still dropped (its symbol is known to be gone)", async () => {

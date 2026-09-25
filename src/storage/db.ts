@@ -13,17 +13,14 @@
  *                      extraction (prose paths, docstring source files,
  *                      `commit:<sha>` keys)
  *
- * and cache-only facts that are never exported: `_meta` rows beyond
- * the schema version (`cache-meta.ts`), `source_key_streams` and its
- * run-start copy `source_key_streams_run_start`
- * (`source-key-streams.ts`).
- *
  * Migrations are expressed as code. Adding a v2 appends one entry to
  * `MIGRATIONS`; the runner applies everything above the current version
  * inside a single transaction per migration.
  */
 
 import Database, { type Database as DatabaseInstance } from "better-sqlite3";
+
+import { log } from "../mcp/logger.js";
 
 interface Migration {
   version: number;
@@ -272,46 +269,6 @@ const MIGRATIONS: Migration[] = [
       `);
     },
   },
-  {
-    // v1.2 Phase 2 review fix: which stream (prose or docstring) last
-    // keyed each source path, and at which SHA. Both streams key a file
-    // by relPath at the same file SHA, so a key with no claims could not
-    // say which stream wrote it, and a zero-claim key from one stream
-    // made the other treat the file as unchanged forever (for example
-    // after docs.include is narrowed). Cache-only: never exported to
-    // atlas.json and never cleared by the atlas importer, so it outlives
-    // the Stage 0 re-import. `deleteSourceSha` drops a path's row.
-    version: 7,
-    apply(db) {
-      db.exec(`
-        CREATE TABLE source_key_streams (
-          source_path TEXT PRIMARY KEY,
-          stream      TEXT NOT NULL,
-          source_sha  TEXT NOT NULL
-        );
-      `);
-    },
-  },
-  {
-    // v1.2 Phase 2 review round 2.2: a copy of `source_key_streams` as
-    // it stood when an `index` run started (right after its Stage 0
-    // import). The run changes the records as it goes (Stage 5 drops a
-    // deleted key's row; a stream re-keying a path at the same SHA
-    // replaces it) and atlas.json only at Stage 7, so a resume after an
-    // interrupted run restores this copy together with the imported
-    // atlas.json. Cache-only, like migration 7; emptied when the run
-    // finishes.
-    version: 8,
-    apply(db) {
-      db.exec(`
-        CREATE TABLE source_key_streams_run_start (
-          source_path TEXT PRIMARY KEY,
-          stream      TEXT NOT NULL,
-          source_sha  TEXT NOT NULL
-        );
-      `);
-    },
-  },
 ];
 
 export const LATEST_SCHEMA_VERSION = MIGRATIONS.reduce(
@@ -369,6 +326,21 @@ function setSchemaVersion(db: DatabaseInstance, version: number): void {
 
 function runMigrations(db: DatabaseInstance): void {
   const current = getSchemaVersion(db);
+  if (current > LATEST_SCHEMA_VERSION) {
+    // A newer (or unreleased) build migrated this cache. This build uses
+    // it as it is, but a later build whose migrations reuse those version
+    // numbers would skip them on it, so say so instead of staying silent.
+    log.warn(
+      `local cache ${db.name} is at schema version ${current}, above the ` +
+        `latest this contextatlas build knows (${LATEST_SCHEMA_VERSION}): a ` +
+        "newer or unreleased build migrated it. It is used as it is, but a " +
+        "later release would skip its own migrations up to version " +
+        `${current} on it. If an unreleased build migrated it, stop every ` +
+        "contextatlas process using it and delete the file; it is rebuilt " +
+        "from atlas.json with no API calls (with atlas.committed: false, " +
+        "anything only the cache holds is lost).",
+    );
+  }
   for (const migration of MIGRATIONS) {
     if (migration.version <= current) continue;
     const tx = db.transaction(() => {

@@ -205,12 +205,17 @@ describe("/index-atlas SKILL.md — review fixes (v1.2 Phase 2)", () => {
     expect(intro).toContain("commit.sha");
   });
 
-  it("a refresh carries the baseline `symbols` forward; `symbols: []` is for a cold start", () => {
+  it("a refresh writes `symbols: []` like a cold start and keeps every preserved `symbol_ids` (lead decision F2)", () => {
     const invariants = section("### Schema invariants (MANDATORY)");
-    expect(invariants).toMatch(/[Rr]efresh[^\n]*\n?[^\n]*baseline[^\n]*\n?[^\n]*`symbols`/);
+    expect(invariants).toMatch(/`symbols`: an empty array, on a cold start and on a refresh\s+alike/);
+    expect(invariants).toMatch(/even though `symbols` is `\[\]`\. NEVER empty them/);
+    expect(invariants).not.toMatch(/too large to re-write/);
+    expect(invariants).not.toMatch(/carried forward\s+unchanged, so every id/);
     const step4 = section("### Phase B step 4 — Aggregate + write atlas.json");
-    expect(step4).toMatch(/[Cc]old-start[^\n]*`symbols: \[\]`|`symbols: \[\]`[^\n]*[Cc]old-start/);
-    expect(step4).toMatch(/baseline[^.]*`symbols`[^.]*unchanged|unchanged[^.]*baseline[^.]*`symbols`/);
+    expect(step4).toMatch(/`symbols: \[\]`, cold start and refresh alike/);
+    expect(step4).toMatch(/Write `symbols: \[\]` \(cold\s+start and refresh\)/);
+    expect(step4).not.toMatch(/too large to re-write/);
+    expect(step4).not.toMatch(/baseline[^.]*`symbols`[^.]*unchanged/);
     expect(step4).not.toMatch(/Leave `symbols: \[\]`, and/);
   });
 
@@ -256,41 +261,62 @@ describe("/index-atlas SKILL.md — review fixes (v1.2 Phase 2)", () => {
     expect(content).not.toMatch(/give those claims `symbol_ids: \[\]`/);
   });
 
-  it("a `symbols: []` refresh runs resolve-symbols before validate-extraction (review round 2.2)", () => {
+  it("a refresh runs resolve-symbols right after validate-atlas, before validate-extraction", () => {
     const step1 = section("### Phase C step 1 — MANDATORY validate-atlas gate");
     // The unloadable atlas is repaired before the gate that can loop.
+    expect(step1).toMatch(/expected on every refresh/);
     expect(step1).toMatch(/repair it now, before step 2/);
     expect(step1).toMatch(/```bash\ncontextatlas resolve-symbols\ncontextatlas validate-atlas\n```/);
-    expect(step1).toMatch(/exits 1/);
+    // resolve-symbols no longer stops on unverifiable links or reads HEAD.
+    expect(step1).not.toMatch(/exits 1/);
+    expect(content).not.toMatch(/committed at HEAD/);
     const invariants = section("### Schema invariants (MANDATORY)");
     expect(invariants).toMatch(/run resolve-symbols right away \(Phase C step 1\),\s+before validate-extraction/);
     expect(invariants).not.toMatch(/never stop before Phase C step 3/);
+    const step3 = section("### Phase C step 3 — MANDATORY resolve-symbols invocation");
+    expect(step3).not.toMatch(/exits 1/);
     const failures = section("## Failure modes");
     expect(failures).toMatch(/Run `contextatlas resolve-symbols` right away, before\s+validate-extraction/);
     expect(failures).not.toMatch(/Continue to Phase C step 3, which repairs it/);
+    expect(failures).not.toMatch(/could not verify/);
   });
 
-  it("Phase C step 2 says kept docs-bucket prose is exempt and must not be dropped to pass the gate", () => {
+  it("failure modes document the `symbols: []` loss: links into files resolve-symbols cannot list are dropped", () => {
+    const failures = section("## Failure modes");
+    expect(failures).toMatch(/reports dropped links or orphaned\s+claims next to unverified files/);
+    expect(failures).toMatch(/only\s+the claim's `symbol_candidates` can restore it/);
+    expect(failures).toMatch(/`contextatlas index` docstring provenance links/);
+    expect(failures).toMatch(/frontmatter-fallback links/);
+    expect(failures).toMatch(/git checkout -- <atlas\.path>/);
+  });
+
+  it("Phase C step 2 checks only ADRs the prose walk lists; kept docs pages and gone keys are exempt and must not be dropped (lead decision F1)", () => {
     const gate = section(
       "### Phase C step 2 — MANDATORY validate-extraction gate (v0.7.1)",
     );
-    expect(gate).toMatch(/docs-bucket|not an ADR/);
-    expect(gate).toMatch(/[Nn]ever drop|do NOT drop|Do not drop/);
-    // Round 2: a deleted docs page stays exempt; only a missing ADR is checked.
-    expect(gate).toMatch(/even after the page was\s+deleted/);
-    expect(gate).toMatch(/missing file whose path names an ADR/);
-    // Round 2.3: the config-root docs reading is for the ADR-08 layout only.
-    expect(gate).toMatch(/in the ADR-08\s+layout only/);
+    expect(gate).toMatch(/checks only ADRs the current prose walk lists/);
+    expect(gate).toMatch(/Docs-bucket pages/);
+    expect(gate).toMatch(/keys whose file is gone are not checked/);
+    expect(gate).toMatch(/dropping a deleted ADR's\s+key is refresh rule 4's job/);
+    expect(gate).toMatch(/Never drop kept keys or claims/);
+    expect(gate).not.toMatch(/missing file whose path names an ADR/);
+    expect(gate).not.toMatch(/ADR-08\s+layout only/);
   });
 
-  it("Phase C step 5 tells the user to restart or reconnect the MCP server, and the committed: false way (review round 2.3)", () => {
+  it("Phase C step 5 gives one remedy for both modes: the server imports atlas.json only into an empty cache", () => {
     const step5 = section(
       "### Phase C step 5 — Tell the user how the MCP server picks up the refresh",
     );
     expect(step5).toMatch(/does not reload it/);
-    expect(step5).toMatch(/restart Claude Code, or reconnect the `contextatlas` server with\s+`\/mcp`/);
-    expect(step5).toMatch(/atlas\.committed: false/);
-    expect(step5).toMatch(/deletes the\s+local cache file/);
+    expect(step5).toMatch(/imports `atlas\.json` only into an empty local\s+cache/);
+    expect(step5).toMatch(/closes Claude Code \(or\s+disconnects `contextatlas` in `\/mcp`\)/);
+    expect(step5).toMatch(/deletes the local cache file/);
+    expect(step5).toMatch(/while no `contextatlas index` is running/);
+    expect(step5).toMatch(/with\s+no API calls/);
+    expect(step5).toMatch(/With `atlas\.committed: true` nothing is lost/);
+    expect(step5).toMatch(/`atlas\.committed: false` this discards anything only that cache holds/);
     expect(step5).toMatch(/Do not delete it yourself/);
+    // The server no longer re-imports a changed atlas.json on restart.
+    expect(step5).not.toMatch(/At startup the server imports an `atlas\.json` that differs/);
   });
 });

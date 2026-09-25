@@ -155,26 +155,21 @@ proceed until the atlas validates.
     here and as the `source_shas` key. Readers accept that legacy
     form and `contextatlas index` migrates it, but always WRITE the
     canonical `commit:<sha>` form.)
-- `symbols`: cold start — an empty array; the `contextatlas
-  resolve-symbols` Phase C step populates it via LSP walk. Refresh
-  case — the baseline atlas's `symbols` array, carried forward
-  unchanged, so every id a preserved claim's `symbol_ids` names stays
-  listed and the atlas stays loadable. If the baseline `symbols` array
-  is too large to re-write (thousands of entries), write `symbols: []`
-  instead: `validate-atlas` then WARNS that claims link unlisted
-  symbols, and you run resolve-symbols right away (Phase C step 1),
-  before validate-extraction. It rebuilds the list and keeps every link
-  whose symbol still exists; for a file it cannot list (a listing
-  failure, a language not configured) it keeps the symbol recorded in
-  the atlas.json committed at HEAD, and if there is none it exits 1 and
-  writes nothing (see Phase C step 1). Until it has run, such an atlas
-  cannot be loaded.
+- `symbols`: an empty array, on a cold start and on a refresh
+  alike; the `contextatlas resolve-symbols` Phase C step populates it
+  via LSP walk. On a refresh, preserved claims keep their
+  `symbol_ids` (below), so `validate-atlas` WARNS that claims link
+  unlisted symbols, and you run resolve-symbols right away (Phase C step 1),
+  before validate-extraction: it rebuilds the list from the source
+  tree and keeps every link to a symbol it lists. Until it has run,
+  such an atlas cannot be loaded. (A link into a file it cannot list
+  in that run is dropped; see "Failure modes".)
 - `claims[].symbol_ids`: empty array on every claim you newly
   extract. Phase C resolve-symbols populates it. Refresh case:
   preserved baseline claims keep their existing `symbol_ids` exactly,
-  whether or not you carried `symbols` forward. NEVER empty them: a
-  claim without `symbol_candidates` (common in CLI-built atlases)
-  cannot be linked again.
+  even though `symbols` is `[]`. NEVER empty them: a claim without
+  `symbol_candidates` (common in CLI-built atlases) cannot be linked
+  again.
 - `claims[].symbol_candidates`: the raw symbol names you extracted
   from the source document text. Phase C resolves them into the
   canonical `symbol_ids` array. For Stream B docstring claims,
@@ -392,9 +387,8 @@ After all three streams complete:
      frozen and kept sources, in the form the baseline holds them) +
      newly-computed SHAs (changed + new sources); only the entries
      refresh rule 4 finds deleted are removed.
-   - `symbols`: cold-start `symbols: []`; refresh — the baseline
-     atlas's `symbols` array, unchanged (or `[]` when it is too large
-     to re-write; see "Schema invariants")
+   - `symbols: []`, cold start and refresh alike (Phase C
+     resolve-symbols rebuilds it; see "Schema invariants")
    - Refresh case, when the baseline has them: `extracted_at_sha` and
      `git_commits`, copied from the baseline unchanged. Omit both on a
      cold start.
@@ -407,20 +401,17 @@ After all three streams complete:
 2. Persist via Write tool to `.contextatlas/atlas.json`.
 
 3. Each claim's `source_sha` field MUST match the corresponding
-   hash in `source_shas` for that source. Give each newly extracted
-   claim `symbol_ids: []` (Phase C resolve-symbols populates them).
-   Cold-start: write `symbols: []`. Refresh: write the baseline
-   atlas's `symbols` array forward unchanged, and keep preserved
-   baseline claims' `symbol_ids` and `symbol_candidates` exactly as
-   the baseline has them. resolve-symbols keeps every link whose
-   symbol still exists (and keeps the baseline symbols of files it
-   cannot verify), and a preserved claim without candidates (common
-   in CLI-built atlases) could not be re-linked if you emptied it.
-   If the baseline `symbols` array is too large to re-write, write
-   `symbols: []` but still keep every preserved `symbol_ids`: that
-   atlas cannot be loaded until resolve-symbols has run, and
-   validate-atlas warns about it (Phase C step 1), which is where you
-   run resolve-symbols, before validate-extraction.
+   hash in `source_shas` for that source. Write `symbols: []` (cold
+   start and refresh) and give each newly extracted claim
+   `symbol_ids: []` (Phase C resolve-symbols populates them).
+   Preserved baseline claims (refresh case) keep their `symbol_ids`
+   and `symbol_candidates` exactly as the baseline has them:
+   resolve-symbols keeps every link to a symbol it lists, and a
+   preserved claim without candidates (common in CLI-built atlases)
+   could not be re-linked if you emptied it. Such an atlas cannot be
+   loaded until resolve-symbols has run; validate-atlas warns about
+   it (Phase C step 1), which is where you run resolve-symbols,
+   before validate-extraction.
 
 Phase B complete when atlas.json contains claims from all
 extracted manifest sources (subject to refresh-case skip
@@ -471,25 +462,23 @@ write the atlas.json; re-invoke `contextatlas validate-atlas`.
 DO NOT proceed to step 2 until validate-atlas exits 0.
 
 A WARNING (exit code 0) that claims link symbols `symbols` does not
-list is not a failure: it is expected when you wrote `symbols: []` on
-a refresh, or when the baseline atlas came from `resolve-symbols` 1.1.3
-or earlier. Do NOT empty those claims' `symbol_ids` to silence it.
-Such an atlas cannot be loaded until resolve-symbols has run, and step
-2 can send you back to Phase B, so repair it now, before step 2:
+list is not a failure: it is expected on every refresh (you wrote
+`symbols: []` next to preserved `symbol_ids`), and when an atlas came
+from `resolve-symbols` 1.1.3 or earlier. Do NOT empty those claims'
+`symbol_ids` to silence it. Such an atlas cannot be loaded until
+resolve-symbols has run, and step 2 can send you back to Phase B, so
+repair it now, before step 2:
 
 ```bash
 contextatlas resolve-symbols
 contextatlas validate-atlas
 ```
 
-The second validate-atlas must exit 0 without that warning. If
-resolve-symbols exits 1 saying claims link symbols in files it could
-not verify, re-run it (a listing failure is often transient). If it
-keeps failing for the same files, or their language is no longer
-configured, copy those files' entries from the baseline atlas's
-`symbols` array into atlas.json's `symbols` and re-run it. Step 3 runs
-resolve-symbols again, which links any claims you re-extract after
-step 2; running it twice is harmless.
+The second validate-atlas must exit 0 without that warning. Report
+resolve-symbols' output: if it dropped links or orphaned claims next
+to unverified files, see "Failure modes". Step 3 runs resolve-symbols
+again, which links any claims you re-extract after step 2; running it
+twice is harmless.
 
 ### Phase C step 2 — MANDATORY validate-extraction gate (v0.7.1)
 
@@ -514,20 +503,13 @@ v0.7.1 Step 1.1.b.0 + Q1.1.G.α substrate-equivalence closure):
   re-execute Phase B against the missing sources. Source-file and
   commit entries are exempt (most legitimately yield zero claims).
 
-Prose that is not an ADR is exempt from `adr_depth_floor` and
-`source_coverage`: a file the prose walk does not treat as an ADR,
-such as a docs-bucket page (`README.md`, `docs/**`) that `contextatlas
-index` extracted and refresh rule 4 keeps (even after the page was
-deleted), or a note in the ADR directory whose file name is not an
-ADR name. Only a missing file whose path names an ADR under
-`adrs.path` is still checked (refresh rule 4 drops those); a missing
-path that, read relative to the config root, lies outside `source_root`
-and matches a `docs.include` glob is a docs page, even when its file
-name looks like an ADR's (`docs/rfcs/0001-x.md`) — in the ADR-08
-layout only (ADR directory outside `source_root`; refresh rule 4).
-When the ADR directory is inside `source_root`, a missing path that
-names an ADR there is checked even if a `docs.include` glob also
-matches it. Never drop kept keys or claims to make this gate pass.
+validate-extraction checks only ADRs the current prose walk lists
+(`adr_depth_floor`, `source_coverage`). Docs-bucket pages (`README.md`,
+`docs/**`) that `contextatlas index` extracted and refresh rule 4
+keeps, notes in the ADR directory whose file name is not an ADR name,
+and keys whose file is gone are not checked; dropping a deleted ADR's
+key is refresh rule 4's job. Never drop kept keys or claims to make
+this gate pass.
 
 If exit code is NON-ZERO, read stderr (per-invariant remediation
 guidance). Re-execute Phase B against the failing sources;
@@ -545,9 +527,9 @@ resolve-symbols`. This CLI subcommand spawns LSP adapters, walks
 the codebase, resolves each claim's `symbol_candidates` into
 canonical `symbol_ids` via R8 name-form normalization, and writes
 the enriched atlas back atomically. **The atlas is INCOMPLETE
-without this step** — `symbols[]` stays empty (cold start) or
-stale (refresh) and new claims' `symbol_ids` stay unpopulated;
-downstream MCP query
+without this step** — `symbols[]` stays empty (or, after step 1 ran
+resolve-symbols, out of date) and new claims' `symbol_ids` stay
+unpopulated; downstream MCP query
 tools (get_symbol_context, find_by_intent, impact_of_change)
 cannot operate without resolved symbols. Report stdout output
 verbatim to the user — it surfaces the resolved-claim count +
@@ -556,9 +538,7 @@ only).
 
 Then re-invoke `contextatlas validate-atlas`. It must exit 0 and must
 no longer warn that claims link symbols `symbols` does not list; if
-it does, resolve-symbols did not complete, so re-run it. If
-resolve-symbols exits 1 because claims link symbols in files it could
-not verify, handle it as in step 1.
+it does, resolve-symbols did not complete, so re-run it.
 
 ### Phase C step 4 — MANDATORY doctor verification
 
@@ -585,18 +565,18 @@ restarts, `get_symbol_context`, `find_by_intent` and
 `impact_of_change` keep returning what it loaded (or `ERR not_found`
 on a first build). When you report success, tell the user:
 
-- With `atlas.committed: true` (the default; check `.contextatlas.yml`):
-  restart Claude Code, or reconnect the `contextatlas` server with
-  `/mcp`. At startup the server imports an `atlas.json` that differs
-  from what its local cache holds.
-- With `atlas.committed: false`: the local cache is the source of
-  truth, and once it has content the server does not load
-  `atlas.json` at all. To serve this refresh, the user deletes the
-  local cache file (`atlas.local_cache` in `.contextatlas.yml`,
-  default `.contextatlas/index.db`) and then restarts or reconnects;
-  the cache is rebuilt from `atlas.json` with no API calls. Say that
-  this discards anything only that cache holds (work of `contextatlas
-  index` runs in that mode). Do not delete it yourself.
+The running server imports `atlas.json` only into an empty local
+cache (at startup it warns when `atlas.json` differs from what its
+cache holds). To serve this refresh, the user closes Claude Code (or
+disconnects `contextatlas` in `/mcp`), deletes the local cache file
+(`atlas.local_cache` in `.contextatlas.yml`, default
+`.contextatlas/index.db`) while no `contextatlas index` is running,
+and restarts or reconnects; the cache is rebuilt from `atlas.json`
+with no API calls. With `atlas.committed: true` nothing is lost; with
+`atlas.committed: false` this discards anything only that cache holds
+(work of `contextatlas index` runs in that mode). On a first build,
+while the cache is still empty, restarting or reconnecting is enough.
+Do not delete it yourself.
 
 ### Substantive bash invocation rationale
 
@@ -788,9 +768,9 @@ This skill uses Claude Code session tools to perform extraction:
     — LSP bridge; atlas is INCOMPLETE without this step
   - **Phase C step 4 (MANDATORY)**: `contextatlas doctor` — final
     verification; atlas.has_symbols PASS required
-  - Phase C step 5 runs no command: it tells the user to restart or
-    reconnect the MCP server (and, with `atlas.committed: false`, to
-    delete the local cache first) so the refresh is served
+  - Phase C step 5 runs no command: it tells the user to stop the
+    MCP server, delete the local cache file and restart or reconnect
+    it so the refresh is served
 
 The `Bash(contextatlas:*)` allowlist covers all five invocations.
 Bundled helper scripts deferred to v0.8+ per v0.7 ship scope.
@@ -848,11 +828,19 @@ Bundled helper scripts deferred to v0.8+ per v0.7 ship scope.
   contextatlas peer deps); atlas malformed (re-validate via
   validate-atlas); config invalid (run `contextatlas doctor` to
   diagnose). User can re-invoke `contextatlas resolve-symbols`
-  manually after fixing the issue. Exit 1 saying claims link symbols
-  in files it could not verify (a listing failure, or a language not
-  configured) means atlas.json was left unchanged: re-run it, and if
-  it keeps failing, copy those files' entries from the baseline
-  atlas's `symbols` into atlas.json's `symbols` (Phase C step 1).
+  manually after fixing the issue.
+- **`contextatlas resolve-symbols` reports dropped links or orphaned
+  claims next to unverified files** (a refresh wrote `symbols: []`):
+  a link into a file it could not list in that run (its listing
+  failed, or its language is not configured) is dropped, and only
+  the claim's `symbol_candidates` can restore it on a later run.
+  Links no candidate names (claims without `symbol_candidates`,
+  `contextatlas index` docstring provenance links, ADR
+  frontmatter-fallback links) come back only when their source is
+  re-extracted. Report the counts to the user. With
+  `atlas.committed: true` they can restore the committed atlas.json
+  (`git checkout -- <atlas.path>`) and re-run `/index-atlas` once the
+  language server lists those files.
 - **`contextatlas doctor` reports `atlas.has_symbols` FAIL (Phase C
   step 4 verification)**: resolve-symbols was likely skipped or
   failed silently. Go back to Phase C step 3 and re-invoke. Do NOT

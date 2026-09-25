@@ -17,6 +17,7 @@
 
 import { spawnSync } from "node:child_process";
 import {
+  existsSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
@@ -28,6 +29,7 @@ import { isAbsolute, join as pathJoin, relative, sep } from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { detectAtlasOnlyAvailable } from "../queries/atlas-only-mode.js";
 import { listAllClaims, listSourceShas } from "../storage/claims.js";
 import { type DatabaseInstance, openDatabase } from "../storage/db.js";
 import type {
@@ -949,21 +951,10 @@ describe("runExtractionPipeline — v1.2 Phase 2 streams", () => {
   });
 
   // -------------------------------------------------------------------
-  // Stage 0: atlas.json vs the local cache (review fixes)
+  // Interrupted runs: checkpoint exports (v1.2 Phase 2 simplification)
   // -------------------------------------------------------------------
 
-  describe("Stage 0: an unfinished run and atlas.committed: false keep the cache's paid work", () => {
-    const emptyAtlas = (): void => {
-      const atlas: AtlasFileV1 = {
-        version: "1.4",
-        generated_at: "2026-09-01T00:00:00.000Z",
-        generator: { contextatlas_version: "1.1.3", extraction_model: "claude-opus-4-7" },
-        source_shas: {},
-        symbols: [],
-        claims: [],
-      };
-      writeFileSync(atlasPath(), JSON.stringify(atlas, null, 2));
-    };
+  describe("checkpoint exports: an interrupted run keeps its completed units in atlas.json", () => {
     function threeDocFiles() {
       const listing: Record<string, AtlasSymbol[]> = {};
       const docs: Record<SymbolId, Docstring> = {};
@@ -997,81 +988,177 @@ describe("runExtractionPipeline — v1.2 Phase 2 streams", () => {
         },
       };
     }
+    const EVERY_UNIT = { checkpointIntervalMs: 0 };
+    const tmpLeft = () => existsSync(`${atlasPath()}.tmp`);
 
-    it("a run interrupted mid-docstring stream: the next run keeps the stored files and extracts only the rest", async () => {
-      emptyAtlas();
-      const bytesBefore = readFileSync(atlasPath(), "utf8");
+    for (const nextCache of ["a fresh cache", "the same cache"] as const) {
+      it(`a run killed mid-docstring stream: atlas.json holds the stored files, and the next run on ${nextCache} bills only the rest`, async () => {
+        const adapter = threeDocFiles();
+        await expect(run(adapter, crashingClient(2), EVERY_UNIT)).rejects.toThrow(/simulated crash/);
+        // Nothing depends on the cache: atlas.json alone carries the work.
+        expect(Object.keys(readAtlas().source_shas).sort()).toEqual(["src/a.ts", "src/b.ts"]);
+        expect(readAtlas().claims.map((c) => c.claim).sort()).toEqual([
+          "claim for doc a",
+          "claim for doc b",
+        ]);
+        expect(tmpLeft()).toBe(false);
+
+        if (nextCache === "a fresh cache") freshDb();
+        const rec = recordingClient((b) => oneClaim(`claim for ${b}`));
+        const result = await run(adapter, rec.client, EVERY_UNIT);
+        expect(rec.bodies).toEqual(["doc c"]);
+        expect(result.docstringFilesUnchanged).toBe(2);
+        expect(result.atlasExported).toBe(true);
+        expect(Object.keys(readAtlas().source_shas).sort()).toEqual(["src/a.ts", "src/b.ts", "src/c.ts"]);
+        expect(readAtlas().claims.map((c) => c.claim).sort()).toEqual([
+          "claim for doc a",
+          "claim for doc b",
+          "claim for doc c",
+        ]);
+      });
+    }
+
+    it("the checkpoint at the end of the prose stream saves the prose files before the docstring stream starts (long interval)", async () => {
+      write("docs/adr/ADR-01.md", "---\nid: ADR-01\n---\nThe router stays pure.\n");
       const adapter = threeDocFiles();
-      await expect(run(adapter, crashingClient(2))).rejects.toThrow(/simulated crash/);
-      // atlas.json was not written; the cache holds a.ts and b.ts.
-      expect(readFileSync(atlasPath(), "utf8")).toBe(bytesBefore);
-      expect(Object.keys(listSourceShas(db)).sort()).toEqual(["src/a.ts", "src/b.ts"]);
+      // Call 1 is the ADR (prose runs first); call 2, doc a, crashes.
+      await expect(
+        run(adapter, crashingClient(1), { checkpointIntervalMs: 3_600_000 }),
+      ).rejects.toThrow(/simulated crash/);
+      expect(Object.keys(readAtlas().source_shas)).toEqual(["docs/adr/ADR-01.md"]);
+      expect(readAtlas().claims.map((c) => c.source)).toEqual(["adr:ADR-01.md"]);
 
-      // Same cache (a persistent index.db), atlas.json unchanged: resume.
+      freshDb();
       const rec = recordingClient((b) => oneClaim(`claim for ${b}`));
-      const result = await run(adapter, rec.client);
-      expect(rec.bodies).toEqual(["doc c"]);
-      expect(result.apiCalls).toBe(1);
-      expect(result.docstringFilesUnchanged).toBe(2);
-      expect(result.atlasExported).toBe(true);
-      expect(Object.keys(readAtlas().source_shas).sort()).toEqual(["src/a.ts", "src/b.ts", "src/c.ts"]);
-      expect(readAtlas().claims.map((c) => c.claim).sort()).toEqual([
-        "claim for doc a",
-        "claim for doc b",
-        "claim for doc c",
-      ]);
-
-      // Finished: the next run imports atlas.json again (and has no work).
-      const noop = recordingClient(() => "throw");
-      const third = await run(adapter, noop.client);
-      expect(noop.bodies).toEqual([]);
-      expect(third.atlasExported).toBe(false);
+      await run(adapter, rec.client);
+      expect(rec.bodies).toEqual(["doc a", "doc b", "doc c"]);
     });
 
-    it("a resumed run exports even when it has nothing left to extract", async () => {
-      emptyAtlas();
-      const bytesBefore = readFileSync(atlasPath(), "utf8");
+    it("killed after the last unit, before Stage 7: atlas.json already holds every unit, and the next run makes no call", async () => {
       const adapter = threeDocFiles();
-      // All three files are stored, then the run dies before Stage 7
-      // (here: Stage 7's first atlas_meta write is made to throw).
+      // Checkpoints and Stage 7 both go through finalizeAtlas; the fourth
+      // time it writes atlas_meta is Stage 7, after three checkpoints.
       const original = db.prepare.bind(db);
-      let armed = false;
+      let finalizes = 0;
       const spy = vi.spyOn(db, "prepare").mockImplementation((sql: string) => {
-        if (armed && /INSERT INTO atlas_meta/.test(sql)) throw new Error("simulated crash before export");
+        if (/INSERT INTO atlas_meta.*ON CONFLICT/s.test(sql) && ++finalizes === 4) {
+          throw new Error("simulated crash before Stage 7");
+        }
         return original(sql);
       });
-      const client = recordingClient((b) => {
-        if (b === "doc c") armed = true;
-        return oneClaim(`claim for ${b}`);
-      });
-      await expect(run(adapter, client.client)).rejects.toThrow(/simulated crash/);
+      const client = recordingClient((b) => oneClaim(`claim for ${b}`));
+      await expect(run(adapter, client.client, EVERY_UNIT)).rejects.toThrow(/before Stage 7/);
       spy.mockRestore();
-      expect(readFileSync(atlasPath(), "utf8")).toBe(bytesBefore);
-      expect(Object.keys(listSourceShas(db)).sort()).toEqual(["src/a.ts", "src/b.ts", "src/c.ts"]);
-
-      const noop = recordingClient(() => "throw");
-      const resumed = await run(adapter, noop.client);
-      expect(noop.bodies).toEqual([]);
-      expect(resumed.atlasExported).toBe(true);
       expect(Object.keys(readAtlas().source_shas).sort()).toEqual(["src/a.ts", "src/b.ts", "src/c.ts"]);
+
+      freshDb();
+      const noop = recordingClient(() => "throw");
+      await run(adapter, noop.client, EVERY_UNIT);
+      expect(noop.bodies).toEqual([]);
     });
 
-    it("atlas.json changed since the unfinished run started: it is imported (atlas.json wins)", async () => {
-      emptyAtlas();
+    it("a checkpoint keeps the extracted_at_sha the run started from; only a finished run stamps HEAD (real git)", async () => {
+      const [h1] = initGitRepo(tmp, ["chore: start"]);
       const adapter = threeDocFiles();
-      await expect(run(adapter, crashingClient(2))).rejects.toThrow(/simulated crash/);
-      // A pull rewrote atlas.json in between.
-      const atlas = JSON.parse(readFileSync(atlasPath(), "utf8")) as AtlasFileV1;
-      atlas.generated_at = "2026-09-02T00:00:00.000Z";
-      writeFileSync(atlasPath(), JSON.stringify(atlas, null, 2));
-      const warnings = captureWarnings();
-      const rec = recordingClient((b) => oneClaim(`claim for ${b}`));
-      await run(adapter, rec.client).finally(() => warnings.restore());
-      expect([...rec.bodies].sort()).toEqual(["doc a", "doc b", "doc c"]);
-      expect(warnings.lines.some((l) => /did not finish/.test(l))).toBe(true);
+      const gitRun = (client: ExtractionClient) =>
+        run(adapter, client, { ...EVERY_UNIT, gitBinary: "git" });
+
+      // First run, interrupted: no extracted_at_sha at all, so init's
+      // skip and atlas-only mode do not take it as current.
+      await expect(gitRun(crashingClient(1))).rejects.toThrow(/simulated crash/);
+      expect(readAtlas().extracted_at_sha).toBeUndefined();
+      expect(await detectAtlasOnlyAvailable(atlasPath(), h1!)).toBeNull();
+
+      // Finished: stamped.
+      await gitRun(recordingClient((b) => oneClaim(`claim for ${b}`)).client);
+      expect(readAtlas().extracted_at_sha).toBe(h1);
+
+      // A new commit, then an interrupted run: the checkpoint keeps h1, so
+      // the atlas reads stale at h2, as it did before the run.
+      write("src/a.ts", "export function Fa() { return 1; }\n");
+      git(tmp, ["commit", "-q", "--allow-empty", "-m", "chore: move on"]);
+      const h2 = git(tmp, ["rev-parse", "HEAD"]);
+      write("src/b.ts", "export function Fb() { return 2; }\n");
+      await expect(gitRun(crashingClient(1))).rejects.toThrow(/simulated crash/);
+      expect(readAtlas().source_shas["src/a.ts"]).toBeDefined();
+      expect(readAtlas().extracted_at_sha).toBe(h1);
+      expect(await detectAtlasOnlyAvailable(atlasPath(), h2)).toBeNull();
+
+      // Prior == HEAD (an atlas already current before the run): the
+      // checkpoint keeps HEAD, never reading more current than before.
+      await gitRun(recordingClient((b) => oneClaim(`claim for ${b}`)).client);
+      expect(readAtlas().extracted_at_sha).toBe(h2);
+      write("src/c.ts", "export function Fc() { return 3; }\n");
+      write("src/a.ts", "export function Fa() { return 4; }\n");
+      await expect(gitRun(crashingClient(1))).rejects.toThrow(/simulated crash/);
+      expect(readAtlas().extracted_at_sha).toBe(h2);
     });
 
-    it("atlas.committed: false: a leftover atlas.json seeds an empty cache once, then is ignored, so nothing is re-billed", async () => {
+    it("a run that stores nothing writes no checkpoint: atlas.json stays byte-identical at interval 0", async () => {
+      const adapter = threeDocFiles();
+      await run(adapter, recordingClient((b) => oneClaim(b)).client, EVERY_UNIT);
+      const bytes = readFileSync(atlasPath(), "utf8");
+      freshDb();
+      const noop = recordingClient(() => "throw");
+      const result = await run(adapter, noop.client, EVERY_UNIT);
+      expect(noop.bodies).toEqual([]);
+      expect(result.atlasExported).toBe(false);
+      expect(readFileSync(atlasPath(), "utf8")).toBe(bytes);
+    });
+
+    it("atlas.committed: false: no checkpoint is written, and the next run on the same cache bills only the rest", async () => {
+      const uncommitted = baseConfig({
+        atlas: { committed: false, path: ".contextatlas/atlas.json", localCache: ".contextatlas/index.db" },
+      });
+      const adapter = threeDocFiles();
+      await expect(
+        run(adapter, crashingClient(2), { ...EVERY_UNIT, config: uncommitted }),
+      ).rejects.toThrow(/simulated crash/);
+      expect(existsSync(atlasPath())).toBe(false);
+
+      const rec = recordingClient((b) => oneClaim(`claim for ${b}`));
+      await run(adapter, rec.client, { ...EVERY_UNIT, config: uncommitted });
+      expect(rec.bodies).toEqual(["doc c"]);
+      expect(existsSync(atlasPath())).toBe(false);
+      expect(claimTexts()).toEqual(["claim for doc a", "claim for doc b", "claim for doc c"]);
+    });
+
+    it("a prose file's claims and key are one unit: a failing insert rolls the file back to its previous claims and key", async () => {
+      const oldSha = write("docs/adr/ADR-01.md", "---\nid: ADR-01\n---\nold text\n");
+      const adapter = streamAdapter(tmp, {});
+      await run(adapter, recordingClient(() => oneClaim("old claim")).client);
+      expect(claimTexts()).toEqual(["old claim"]);
+
+      write("docs/adr/ADR-01.md", "---\nid: ADR-01\n---\nnew text\n");
+      const two: ExtractionResult = {
+        claims: [
+          { symbol_candidates: [], claim: "new claim 1", severity: "hard", rationale: "r", excerpt: "e" },
+          { symbol_candidates: [], claim: "new claim 2", severity: "hard", rationale: "r", excerpt: "e" },
+        ],
+      };
+      // Armed once the model answers, after Stage 0 re-imported atlas.json:
+      // the file's first new claim is stored, its second insert fails.
+      const original = db.prepare.bind(db);
+      let armed = false;
+      let inserts = 0;
+      const spy = vi.spyOn(db, "prepare").mockImplementation((sql: string) => {
+        if (armed && /INSERT INTO claims \(/.test(sql) && ++inserts === 2) {
+          throw new Error("simulated insert failure");
+        }
+        return original(sql);
+      });
+      const client = recordingClient(() => {
+        armed = true;
+        return two;
+      });
+      await expect(run(adapter, client.client)).rejects.toThrow(/simulated insert failure/);
+      expect(inserts).toBe(2);
+      spy.mockRestore();
+      expect(claimTexts()).toEqual(["old claim"]);
+      expect(listSourceShas(db)["docs/adr/ADR-01.md"]).toBe(oldSha);
+    });
+
+    it("atlas.committed: false: a leftover atlas.json seeds an empty cache once, then is not read, so nothing is re-billed", async () => {
       initGitRepo(tmp, ["design: split the router", "arch: move auth"]);
       const seedSha = write("docs/adr/ADR-00.md", "seed\n");
       const atlas: AtlasFileV1 = {
@@ -1114,83 +1201,84 @@ describe("runExtractionPipeline — v1.2 Phase 2 streams", () => {
         }).finally(() => warnings.restore());
         expect(again.bodies).toEqual([]);
         expect(r.commitsSkipped).toBe(2);
-        expect(warnings.lines.some((l) => /atlas\.committed is false/.test(l) && /ignoring/.test(l))).toBe(true);
+        const warning = warnings.lines.find((l) => /atlas\.committed is false/.test(l));
+        expect(warning).toMatch(/not read/);
+        // The way to switch that keeps the cache's work, not a way to lose it.
+        expect(warning).toMatch(/delete or move\s+atlas\.json first/);
+        expect(warning).not.toMatch(/Delete it/);
       }
       expect(readFileSync(atlasPath(), "utf8")).toBe(bytes);
     });
 
-    it("the unfinished-run mark is cleared by a finished run and is never exported", async () => {
-      emptyAtlas();
-      await run(threeDocFiles(), recordingClient((b) => oneClaim(b)).client);
-      const row = db
-        .prepare("SELECT value FROM _meta WHERE key = ?")
-        .get("index.unfinished_run_atlas_sha256");
-      expect(row).toBeUndefined();
-      expect(readFileSync(atlasPath(), "utf8")).not.toContain("unfinished");
+    it("atlas.committed: false with no atlas.json: nothing is imported and nothing is warned", async () => {
+      const uncommitted = baseConfig({
+        atlas: { committed: false, path: ".contextatlas/atlas.json", localCache: ".contextatlas/index.db" },
+      });
+      const adapter = threeDocFiles();
+      for (let i = 0; i < 2; i++) {
+        const warnings = captureWarnings();
+        await run(adapter, recordingClient((b) => oneClaim(b)).client, { config: uncommitted }).finally(
+          () => warnings.restore(),
+        );
+        expect(warnings.lines.filter((l) => /atlas\.committed is false/.test(l))).toEqual([]);
+      }
+      expect(existsSync(atlasPath())).toBe(false);
     });
-  });
 
-  // -------------------------------------------------------------------
-  // Zero-claim keys crossing between the prose and docstring streams
-  // (review fix): both streams key a file by relPath at the same SHA
-  // -------------------------------------------------------------------
+    it("--full: a file whose key already matched fails and keeps it, so the run says only another --full retries it; a changed file is left to a plain run", async () => {
+      const adapter = threeDocFiles();
+      await run(adapter, recordingClient((b) => oneClaim(`v1 ${b}`)).client);
+      write("src/c.ts", "export function Fc() { return 1; }\n"); // content changed
 
-  describe("a zero-claim key written by one stream does not mask the file from the other", () => {
-    const withDocs = (include: string[]) => baseConfig({ docs: { include } });
+      const warnings = captureWarnings();
+      const full = recordingClient((b) => (b === "doc b" ? oneClaim("v2 doc b") : "throw"));
+      const result = await run(adapter, full.client, { skipShaDiff: true }).finally(() =>
+        warnings.restore(),
+      );
+      expect([...full.bodies].sort()).toEqual(["doc a", "doc b", "doc c"]);
+      expect(result.extractionErrors.map((e) => e.sourcePath).sort()).toEqual(["src/a.ts", "src/c.ts"]);
+      const warning = warnings.lines.find((l) => /--full re-extracted failed/.test(l));
+      expect(warning).toMatch(/1 file\(s\)/);
+      expect(warning).toContain("src/a.ts");
+      expect(warning).not.toContain("src/c.ts");
+      expect(warning).toMatch(/re-run `contextatlas index --full`/);
+      expect(result.extractionErrors.find((e) => e.sourcePath === "src/a.ts")?.error).toMatch(
+        /unless that kept key already matches its content \(possible after `--full`/,
+      );
 
-    it("docs.include narrowed after prose keyed a code file with zero claims: its docstrings are extracted, once", async () => {
+      // A plain run retries only the changed file.
+      const plain = recordingClient((b) => oneClaim(`v3 ${b}`));
+      await run(adapter, plain.client);
+      expect(plain.bodies).toEqual(["doc c"]);
+      expect(claimTexts()).toEqual(["v1 doc a", "v2 doc b", "v3 doc c"]);
+    });
+
+    it("documented limitation: after docs.include narrows, a code file prose keyed with no claims needs --full (or its key removed) for its docstrings", async () => {
+      const withDocs = (include: string[]) => baseConfig({ docs: { include } });
       write("src/a.ts", "export function Foo() {}\n");
       const Foo = tsSym("src/a.ts", "Foo");
       const adapter = streamAdapter(tmp, { "src/a.ts": [Foo] }, { [Foo.id]: "Foo doc." });
 
-      // Run 1: docs.include matches the code file; prose finds no claims.
-      const prose = recordingClient(() => ({ claims: [] }));
+      // docs.include matches the code file; prose finds no claims. The
+      // collision warning names the remedy.
       const warnings = captureWarnings();
-      await run(adapter, prose.client, { config: withDocs(["src/a.ts"]) }).finally(() =>
-        warnings.restore(),
-      );
-      expect(prose.bodies).toHaveLength(1);
-      expect(listSourceShas(db)["src/a.ts"]).toBeDefined();
-      expect(claimTexts()).toEqual([]);
+      await run(adapter, recordingClient(() => ({ claims: [] })).client, {
+        config: withDocs(["src/a.ts"]),
+      }).finally(() => warnings.restore());
+      const collision = warnings.lines.find((l) => /docs\.include also matches/.test(l));
+      expect(collision).toMatch(/remove that path's entry from source_shas/);
+      expect(collision).toMatch(/contextatlas index --full/);
 
-      // Run 2 (same local cache), glob narrowed as the collision warning
-      // advises: the docstring stream now extracts the file.
-      const doc = recordingClient((b) => (b === "Foo doc." ? oneClaim("foo is pure") : "throw"));
-      const r2 = await run(adapter, doc.client, { config: withDocs([]) });
-      expect(doc.bodies).toEqual(["Foo doc."]);
-      expect(r2.docstringFilesExtracted).toBe(1);
+      // Narrowed: the zero-claim key looks unchanged to the docstring stream.
+      const plain = recordingClient(() => oneClaim("never"));
+      await run(adapter, plain.client, { config: withDocs([]) });
+      expect(plain.bodies).toEqual([]);
+
+      // The remedy: --full extracts its docstrings.
+      const full = recordingClient((b) => (b === "Foo doc." ? oneClaim("foo is pure") : "throw"));
+      await run(adapter, full.client, { config: withDocs([]), skipShaDiff: true });
+      expect(full.bodies).toEqual(["Foo doc."]);
       expect(claimTexts()).toEqual(["foo is pure"]);
-
-      // Run 3: nothing to do.
-      const noop = recordingClient(() => "throw");
-      await run(adapter, noop.client, { config: withDocs([]) });
-      expect(noop.bodies).toEqual([]);
-    });
-
-    it("docs.include widened over a zero-docstring file the docstring stream keyed: prose extracts it, once", async () => {
-      write("src/a.ts", "export const x = 1;\n");
-      const adapter = streamAdapter(tmp, { "src/a.ts": [tsSym("src/a.ts", "x")] });
-
-      // Run 1: no docstrings; the docstring stream keys the file anyway.
-      const first = recordingClient(() => "throw");
-      await run(adapter, first.client, { config: withDocs([]) });
-      expect(first.bodies).toEqual([]);
-      expect(listSourceShas(db)["src/a.ts"]).toBeDefined();
-
-      // Run 2: docs.include now matches it, so prose must extract it.
-      const prose = recordingClient(() => oneClaim("x is a constant"));
-      const warnings = captureWarnings();
-      await run(adapter, prose.client, { config: withDocs(["src/a.ts"]) }).finally(() =>
-        warnings.restore(),
-      );
-      expect(prose.bodies).toHaveLength(1);
-      expect(claimTexts()).toEqual(["x is a constant"]);
-
-      // Run 3: nothing to do.
-      const noop = recordingClient(() => "throw");
-      const w3 = captureWarnings();
-      await run(adapter, noop.client, { config: withDocs(["src/a.ts"]) }).finally(() => w3.restore());
-      expect(noop.bodies).toEqual([]);
     });
   });
 });

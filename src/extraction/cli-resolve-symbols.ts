@@ -18,27 +18,20 @@
  * (symbols[] + claims[].symbol_ids populated; per-language LSP
  * coverage equivalent to `contextatlas index` LSP walk).
  *
- * Claim links whose symbol `symbols` does not list (an `/index-atlas`
- * refresh that wrote `symbols: []`) take their prior symbol records from
- * the atlas.json committed at HEAD; a link into a file this run could
- * not list whose symbol is in neither stops the run before anything is
- * written (v1.2 Phase 2 review round 2.2; `atlas-symbol-reconcile.ts`).
- *
  * Exit-code contract (ADR-12-style):
  *   0 — success (atlas read, resolved, written back)
- *   1 — pipeline failure (LSP walk threw; atlas not writable; claim
- *       links into files this run could not verify, whose symbols
- *       neither atlas.json nor HEAD's atlas.json lists — nothing written)
+ *   1 — pipeline failure (LSP walk threw; atlas not writable)
  *   2 — setup error (atlas not found; atlas malformed; config invalid;
  *       adapter init failed)
  */
 
-import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync } from "node:fs";
 import { dirname, resolve as pathResolve } from "node:path";
 
 import { createAdapter } from "../adapters/registry.js";
 import { loadConfig } from "../config/parser.js";
 import { log } from "../mcp/logger.js";
+import { writeAtlasFileAtomic } from "../storage/atlas-exporter.js";
 import type {
   AtlasFileV1,
   AtlasSymbolEntry,
@@ -46,24 +39,19 @@ import type {
 import { ATLAS_VERSION } from "../storage/types.js";
 import type { LanguageAdapter, LanguageCode } from "../types.js";
 
-import {
-  readCommittedAtlasSymbols,
-  reconcileAtlasSymbols,
-  unlistedLinkedIds,
-  unverifiableLinks,
-  unverifiableLinksMessage,
-} from "./atlas-symbol-reconcile.js";
 import { walkSourceFiles } from "./file-walker.js";
 import {
   buildSymbolInventory,
   resolveCandidatesWithNormalization,
   type SymbolInventoryWithCoverage,
 } from "./resolver.js";
-import { coverageFromInventory, warnUnverified } from "./symbol-prune.js";
-
-// Moved to `atlas-symbol-reconcile.ts` (review round 2.2); re-exported
-// for existing importers.
-export { reconcileAtlasSymbols } from "./atlas-symbol-reconcile.js";
+import {
+  coverageFromInventory,
+  planSymbolPrune,
+  warnUnverified,
+  type SymbolCoverage,
+  type SymbolPrunePlan,
+} from "./symbol-prune.js";
 
 export type ResolveSymbolsExitCode = 0 | 1 | 2;
 
@@ -92,6 +80,32 @@ export interface ResolveSymbolsCliResult {
   danglingLinksDropped?: number;
   /** Files whose prior symbols were kept without verification. */
   unverifiedSymbolFiles?: number;
+}
+
+/**
+ * Rebuild `symbols[]` for an atlas (v1.2 Phase 1 D6 parity with the
+ * CLI pipeline's Stage 4a prune). Fresh LSP symbols replace prior
+ * ones; prior symbols are kept only where the run could not verify
+ * them (listing failed, or the language is not configured) — the same
+ * `planSymbolPrune` rules the CLI applies. Before v1.2 the rebuild was
+ * wholesale: stale symbols never survived, but neither did the symbols
+ * of a file tsserver failed to list.
+ */
+export function reconcileAtlasSymbols(
+  prior: readonly AtlasSymbolEntry[],
+  fresh: readonly AtlasSymbolEntry[],
+  coverage: SymbolCoverage,
+): { symbols: AtlasSymbolEntry[]; plan: SymbolPrunePlan } {
+  const plan = planSymbolPrune(
+    prior.map((s) => ({ id: s.id, path: s.path })),
+    coverage,
+  );
+  const pruned = new Set(plan.pruneIds);
+  const freshIds = new Set(fresh.map((s) => s.id));
+  const keptPrior = prior.filter(
+    (s) => !pruned.has(s.id) && !freshIds.has(s.id),
+  );
+  return { symbols: [...fresh, ...keptPrior], plan };
 }
 
 async function shutdownAll(
@@ -222,46 +236,19 @@ export async function runResolveSymbolsSubcommand(
         file_sha: s.fileSha ?? "",
       }),
     );
-    const coverage = coverageFromInventory({
-      repoRoot: sourceRoot,
-      sourceFiles,
-      inventory,
-      adapters,
-    });
-    // Claim links `symbols` does not list (an /index-atlas refresh that
-    // wrote `symbols: []`): their prior records come from the atlas.json
-    // committed at HEAD, so the prune rules can keep the symbols of files
-    // this run cannot verify (review round 2.2).
-    const listedPrior = Array.isArray(atlas.symbols) ? atlas.symbols : [];
-    const unlisted = unlistedLinkedIds(atlas.claims, listedPrior);
-    const recovered =
-      unlisted.size > 0
-        ? (readCommittedAtlasSymbols(atlasPath) ?? []).filter((s) => unlisted.has(s.id))
-        : [];
-    if (recovered.length > 0) {
-      log.info(
-        `resolve-symbols: took ${recovered.length} symbol record(s) that claims link ` +
-          "but `symbols` does not list from the atlas.json committed at HEAD",
-      );
-    }
-    const prior = [...listedPrior, ...recovered];
-    const reconciled = reconcileAtlasSymbols(prior, freshSymbols, coverage);
+    const reconciled = reconcileAtlasSymbols(
+      Array.isArray(atlas.symbols) ? atlas.symbols : [],
+      freshSymbols,
+      coverageFromInventory({
+        repoRoot: sourceRoot,
+        sourceFiles,
+        inventory,
+        adapters,
+      }),
+    );
+    warnUnverified(reconciled.plan.unverified);
     const enrichedSymbols = reconciled.symbols;
     const finalIds = new Set(enrichedSymbols.map((s) => s.id));
-
-    // A link whose symbol is in no list, into a file this run could not
-    // verify, may point at a symbol that still exists: stop before
-    // writing rather than drop it for good.
-    const priorIds = new Set(prior.map((s) => s.id));
-    const blocked = unverifiableLinks(
-      [...unlisted].filter((id) => !finalIds.has(id) && !priorIds.has(id)),
-      coverage,
-    );
-    if (blocked.length > 0) {
-      writeStderr(unverifiableLinksMessage(blocked, config.atlas.path));
-      return { exitCode: 1 };
-    }
-    warnUnverified(reconciled.plan.unverified);
 
     let claimsResolved = 0;
     let candidatesUnresolved = 0;
@@ -312,12 +299,10 @@ export async function runResolveSymbolsSubcommand(
       symbols: enrichedSymbols,
     };
 
-    // Atomic write: write to temp file in the same directory, then rename
-    // (rename is atomic on the same filesystem; survives crashes mid-write).
-    const tempPath = atlasPath + ".tmp";
+    // Atomic write: temp file in the same directory, then rename (the
+    // shared atlas writer; survives crashes mid-write).
     mkdirSync(dirname(atlasPath), { recursive: true });
-    writeFileSync(tempPath, JSON.stringify(enrichedAtlas, null, 2), "utf8");
-    renameSync(tempPath, atlasPath);
+    writeAtlasFileAtomic(atlasPath, JSON.stringify(enrichedAtlas, null, 2));
 
     writeStdout(
       `resolve-symbols: enumerated ${freshSymbols.length} symbols across ${sourceFiles.length} source files; ` +

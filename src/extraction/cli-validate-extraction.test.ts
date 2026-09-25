@@ -290,6 +290,8 @@ describe("runValidateExtractionSubcommand — integration", () => {
 
   it("exits 2 with structured remediation on failing atlas", async () => {
     const adrPath = "docs/adr/ADR-01-foo.md";
+    // The ADR exists: only ADRs the prose walk lists are checked.
+    await writeFile(path.join(fixture.root, adrPath), "# ADR-01\n");
     const claims = Array.from({ length: 3 }, () => makeAdrClaim(adrPath));
     await writeAtlas(fixture, {
       version: "1.4",
@@ -308,7 +310,7 @@ describe("runValidateExtractionSubcommand — integration", () => {
     expect(stderr).toContain("Re-run extraction");
   });
 
-  it("docs-bucket prose (existing non-ADR files) is exempt; a deleted ADR's zero-claim key still fails (review fix)", async () => {
+  it("docs-bucket prose (existing non-ADR files) is exempt; so is a key the prose walk does not list, such as a deleted ADR's (lead decision F1)", async () => {
     const adrPath = "docs/adr/ADR-01-foo.md";
     await writeFile(path.join(fixture.root, adrPath), "# ADR-01\n");
     await writeFile(path.join(fixture.root, "README.md"), "# readme\n");
@@ -338,22 +340,44 @@ describe("runValidateExtractionSubcommand — integration", () => {
     expect(stderr).toBe("");
     expect(ok.exitCode).toBe(0);
 
-    // A deleted ADR still left in source_shas is still reported.
+    // A deleted ADR's key (the walk does not list it) is not checked:
+    // dropping it is Stage 5's job on the CLI and refresh rule 4's in the
+    // Skill.
     await writeAtlas(fixture, {
       ...base,
       source_shas: { ...base.source_shas, "docs/adr/ADR-02-gone.md": "g" },
     });
-    const bad = await runValidateExtractionSubcommand({
+    const gone = await runValidateExtractionSubcommand({
       configRoot: fixture.root,
       configFile: null,
       writeStdout: (c) => (stdout += c),
       writeStderr: (c) => (stderr += c),
     });
-    expect(bad.exitCode).toBe(2);
-    expect(stderr).toContain("docs/adr/ADR-02-gone.md");
+    expect(stderr).toBe("");
+    expect(gone.exitCode).toBe(0);
+  });
+
+  it("an existing ADR with fewer than 8 claims still fails, docs pages or not", async () => {
+    const adrPath = "docs/adr/ADR-01-foo.md";
+    await writeFile(path.join(fixture.root, adrPath), "# ADR-01\n");
+    await writeFile(path.join(fixture.root, "README.md"), "# readme\n");
+    await writeAtlas(fixture, {
+      version: "1.4",
+      source_shas: { [adrPath]: "a", "README.md": "r" },
+      claims: [
+        ...Array.from({ length: 3 }, () => makeAdrClaim(adrPath)),
+        makeAdrClaim("README.md"),
+      ],
+    });
+    const result = await runValidateExtractionSubcommand({
+      configRoot: fixture.root,
+      configFile: null,
+      writeStdout: (c) => (stdout += c),
+      writeStderr: (c) => (stderr += c),
+    });
+    expect(result.exitCode).toBe(2);
+    expect(stderr).toContain("docs/adr/ADR-01-foo.md: 3 claims");
     expect(stderr).not.toContain("README.md");
-    expect(stderr).not.toContain("probe-findings.md");
-    expect(stderr).not.toContain("docs/notes.md");
   });
 
   it("a deleted docs page left in source_shas is exempt, with zero or a few claims (review round 2)", async () => {
@@ -457,15 +481,26 @@ describe("runValidateExtractionSubcommand — docs outside source.root (ADR-08; 
     expect(result.exitCode).toBe(0);
   });
 
-  it("a deleted ADR stored relative to the ADR directory is still checked", async () => {
+  it("a deleted ADR's key (stored relative to the ADR directory) is exempt: the walk does not list it", async () => {
     const result = await validate({
       ...base,
       source_shas: { ...base.source_shas, "ADR-02-gone.md": "g" },
     });
+    expect(stderr).toBe("");
+    expect(result.exitCode).toBe(0);
+  });
+
+  it("an existing ADR with fewer than 8 claims still fails", async () => {
+    const result = await validate({
+      ...base,
+      claims: [
+        ...Array.from({ length: 4 }, () => makeAdrClaim("ADR-01-foo.md")),
+        ...Array.from({ length: 3 }, () => makeAdrClaim("README.md")),
+      ],
+    });
     expect(result.exitCode).toBe(2);
-    expect(stderr).toContain("ADR-02-gone.md");
+    expect(stderr).toContain("ADR-01-foo.md: 4 claims");
     expect(stderr).not.toContain("README.md");
-    expect(stderr).not.toContain("docs/guide.md");
   });
 
   it("a deleted docs page whose file name looks like an ADR's is exempt, not checked as an ADR (review round 2.2)", async () => {
@@ -491,7 +526,7 @@ describe("runValidateExtractionSubcommand — docs outside source.root (ADR-08; 
   });
 });
 
-describe("runValidateExtractionSubcommand — default layout keeps checking deleted ADRs (review round 2.2)", () => {
+describe("runValidateExtractionSubcommand — default layout with a docs glob over the ADR directory", () => {
   let fixture: Fixture;
   let stderr: string;
   beforeEach(async () => {
@@ -505,7 +540,7 @@ describe("runValidateExtractionSubcommand — default layout keeps checking dele
     await fixture.cleanup();
   });
 
-  it("a deleted ADR whose path a docs.include glob also matches is still checked", async () => {
+  it("a deleted ADR's key is exempt, whatever docs.include matches", async () => {
     const adrPath = "docs/adr/ADR-01-foo.md";
     await writeFile(path.join(fixture.root, adrPath), "# ADR-01\n");
     await writeAtlas(fixture, {
@@ -522,8 +557,26 @@ describe("runValidateExtractionSubcommand — default layout keeps checking dele
       writeStdout: () => {},
       writeStderr: (c) => (stderr += c),
     });
+    expect(stderr).toBe("");
+    expect(result.exitCode).toBe(0);
+  });
+
+  it("an existing ADR the docs glob also matches is still held to the depth floor", async () => {
+    const adrPath = "docs/adr/ADR-01-foo.md";
+    await writeFile(path.join(fixture.root, adrPath), "# ADR-01\n");
+    await writeAtlas(fixture, {
+      version: "1.4",
+      source_shas: { [adrPath]: "a" },
+      claims: Array.from({ length: 5 }, () => makeAdrClaim(adrPath)),
+    });
+    const result = await runValidateExtractionSubcommand({
+      configRoot: fixture.root,
+      configFile: null,
+      writeStdout: () => {},
+      writeStderr: (c) => (stderr += c),
+    });
     expect(result.exitCode).toBe(2);
-    expect(stderr).toContain("docs/adr/ADR-02-gone.md: 3 claims");
+    expect(stderr).toContain("docs/adr/ADR-01-foo.md: 5 claims");
   });
 });
 
@@ -588,16 +641,16 @@ describe("runValidateExtractionSubcommand — source.root holding the ADR direct
     expect(stderr).toBe("");
   });
 
-  it("a deleted ADR's zero-claim key is still checked", async () => {
+  it("a deleted ADR's zero-claim key is exempt: the walk does not list it", async () => {
     const result = await validate({
       ...base,
       source_shas: { ...base.source_shas, "docs/adr/ADR-02-gone.md": "g" },
     });
-    expect(result.exitCode).toBe(2);
-    expect(stderr).toContain("docs/adr/ADR-02-gone.md");
+    expect(stderr).toBe("");
+    expect(result.exitCode).toBe(0);
   });
 
-  it("a deleted ADR left with a few stale claims is still held to the depth floor", async () => {
+  it("a deleted ADR left with a few stale claims is exempt too", async () => {
     const result = await validate({
       ...base,
       source_shas: { ...base.source_shas, "docs/adr/ADR-02-gone.md": "g" },
@@ -606,8 +659,21 @@ describe("runValidateExtractionSubcommand — source.root holding the ADR direct
         ...Array.from({ length: 3 }, () => makeAdrClaim("docs/adr/ADR-02-gone.md")),
       ],
     });
+    expect(stderr).toBe("");
+    expect(result.exitCode).toBe(0);
+  });
+
+  it("an existing ADR with fewer than 8 claims still fails", async () => {
+    const result = await validate({
+      ...base,
+      claims: [
+        ...Array.from({ length: 2 }, () => makeAdrClaim("docs/adr/ADR-01-foo.md")),
+        makeAdrClaim("README.md"),
+      ],
+    });
     expect(result.exitCode).toBe(2);
-    expect(stderr).toContain("docs/adr/ADR-02-gone.md: 3 claims");
+    expect(stderr).toContain("docs/adr/ADR-01-foo.md: 2 claims");
+    expect(stderr).not.toContain("README.md");
   });
 
   it("a deleted config-root docs page outside the ADR directory stays exempt", async () => {

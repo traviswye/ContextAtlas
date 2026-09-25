@@ -124,6 +124,18 @@ export interface ExtractionPipelineDeps {
    *     frontmatter inheritance for that claim only.
    */
   narrowAttribution?: "drop" | "drop-with-fallback";
+  /**
+   * Checkpoint exports (v1.2 Phase 2, `atlas-export-stage.ts`): with
+   * `atlas.committed: true`, the minimum time in ms between two exports
+   * of atlas.json while a stream extracts, checked each time a unit (a
+   * prose file, a docstring file, a keyed commit) is stored. Every
+   * stream stage that stored a unit also ends with one. `0` exports
+   * after every stored unit (tests). Default:
+   * `DEFAULT_CHECKPOINT_INTERVAL_MS` (30 s). A checkpoint keeps the
+   * `extracted_at_sha` the run started from; only the final Stage 7
+   * export stamps HEAD.
+   */
+  checkpointIntervalMs?: number;
 }
 
 /**
@@ -201,9 +213,15 @@ export interface ExtractionPipelineResult {
    * Per-source extraction errors from every stream: prose files
    * (`sourcePath` = relPath), docstring files (relPath; the symbol id
    * is in `error`) and commits (`commit:<sha>`). A failed docstring file
-   * or commit keeps its previous claims and key and is retried next run.
+   * or commit keeps its previous claims and key and is retried next run
+   * (a docstring file whose kept key already matches its content, as
+   * after `--full`, only by another `--full`).
    */
   extractionErrors: Array<{ sourcePath: string; error: string }>;
+  /**
+   * The final Stage 7 export wrote atlas.json (checkpoint exports during
+   * the run are not counted).
+   */
   atlasExported: boolean;
   wallClockMs: number;
   /** Model calls attempted by every stream, including ones that threw. */

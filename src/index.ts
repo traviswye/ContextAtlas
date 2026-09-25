@@ -26,7 +26,7 @@
  * --check staleness semantics, and ADR-12 for the subcommand surface.
  */
 
-import { mkdirSync, readFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync } from "node:fs";
 import { dirname, join, resolve as pathResolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -42,7 +42,6 @@ import { runResolveSymbolsSubcommand } from "./extraction/cli-resolve-symbols.js
 import { runIndexSubcommand } from "./extraction/cli-runner.js";
 import { runValidateAtlasSubcommand } from "./extraction/cli-validate-atlas.js";
 import { runValidateExtractionSubcommand } from "./extraction/cli-validate-extraction.js";
-import { loadAtlasForServer } from "./extraction/server-cache-load.js";
 import { runGenerateAdrsSubcommand } from "./generation/cli-runner.js";
 import { runValidateAdrsSubcommand } from "./generation/cli-validate-adrs.js";
 import { runInitSubcommand } from "./init/runner.js";
@@ -51,6 +50,11 @@ import { createServer } from "./mcp/server.js";
 import { TOOLS } from "./mcp/schemas.js";
 import { createObservabilityWriter } from "./observability/observe.js";
 import { checkStaleness, exitCodeFor } from "./staleness.js";
+import {
+  atlasGeneratedAtMismatch,
+  importAtlasFile,
+  isCacheEmpty,
+} from "./storage/atlas-importer.js";
 import { openDatabase } from "./storage/db.js";
 import type { LanguageAdapter, LanguageCode } from "./types.js";
 
@@ -305,91 +309,51 @@ export async function main(): Promise<void> {
   const db = openDatabase(cachePath);
   log.info(`Opened local cache at ${cachePath}`);
 
-  // 4. Load atlas.json into the cache (`server-cache-load.ts`). An empty
-  //    cache (no symbols, claims or source keys) is seeded from it. With
-  //    atlas.committed: true atlas.json is the source of truth (ADR-06),
-  //    so a changed one (a pull, an /index-atlas refresh) is imported
-  //    again, unless an `index` run over this cache is still running
-  //    (a dead run's mark does not hold it off, round 2.3). With
-  //    atlas.committed: false a non-empty cache is authoritative and
-  //    kept, with a warning when atlas.json differs from it (v1.2
-  //    Phase 2 review rounds 2.2 and 2.3). atlas.path resolves against
-  //    configRoot same as local_cache.
+  // 4. Import committed atlas.json into fresh cache if present.
+  //    atlas.path resolves against configRoot same as local_cache.
+  //    "Fresh" is `isCacheEmpty` (no symbols, claims or source keys), the
+  //    rule `contextatlas index` uses to seed a cache with
+  //    atlas.committed: false. Counting symbols alone replaced a
+  //    symbol-less cache (a docs-only repo) with a leftover atlas.json on
+  //    every start (v1.2 Phase 2 review round 2). A cache that has
+  //    content is served as it is, never re-imported (reload on change
+  //    is v1.2 Phase 4); when atlas.json's generated_at differs from the
+  //    cache's, the server says how to load it (v1.2 Phase 2).
   const atlasPath = pathResolve(configRoot, config.atlas.path);
-  const symbolCount = (): number =>
-    (db.prepare("SELECT COUNT(*) AS n FROM symbols").get() as { n: number }).n;
-  const load = loadAtlasForServer(db, {
-    atlasAbsPath: atlasPath,
-    committed: config.atlas.committed,
-  });
-  switch (load.action) {
-    case "seeded":
-      log.info(`Importing atlas.json into fresh cache`, { path: atlasPath });
-      log.info(`Atlas imported: ${symbolCount()} symbols`);
-      break;
-    case "reimported":
-      if (load.abandonedRun !== undefined) {
-        log.info(
-          "a `contextatlas index` run over the local cache stopped before it " +
-            `finished (process ${load.abandonedRun.pid} is gone), and ` +
-            "atlas.json has changed since it started; that run's unsaved " +
-            "work is dropped (`index` would not carry it over a changed " +
-            "atlas.json either)",
-          { path: atlasPath },
-        );
-      }
-      log.info(
-        "atlas.json changed since the local cache last imported or wrote it; " +
-          `re-imported it (atlas.committed: true): ${symbolCount()} symbols`,
-        { path: atlasPath },
-      );
-      break;
-    case "kept-unfinished-run": {
-      const who =
-        load.owner === null
-          ? "a `contextatlas index` run over this cache has not finished"
-          : `a \`contextatlas index\` run over this cache (process ${load.owner.pid} ` +
-            `on ${load.owner.host}) has not finished`;
+  const symbolCount = (
+    db.prepare("SELECT COUNT(*) AS n FROM symbols").get() as { n: number }
+  ).n;
+  if (isCacheEmpty(db) && existsSync(atlasPath)) {
+    log.info(`Importing atlas.json into fresh cache`, { path: atlasPath });
+    importAtlasFile(db, atlasPath);
+    const newCount = (
+      db.prepare("SELECT COUNT(*) AS n FROM symbols").get() as { n: number }
+    ).n;
+    log.info(`Atlas imported: ${newCount} symbols`);
+  } else if (isCacheEmpty(db)) {
+    log.warn(
+      `No atlas.json at ${atlasPath} and local cache is empty. ` +
+        "Queries will return ERR not_found until extraction runs.",
+    );
+  } else {
+    log.info(`Using existing local cache (${symbolCount} symbols)`);
+    const mismatch = existsSync(atlasPath)
+      ? atlasGeneratedAtMismatch(db, atlasPath)
+      : null;
+    if (mismatch !== null) {
       log.warn(
-        `atlas.json differs from the local cache, but ${who}; serving the ` +
-          "local cache as it stands. When that run finishes, restart the " +
-          "server. If no `contextatlas index` run is in progress (the " +
-          "process id was reused, or the run was on another machine sharing " +
-          `this cache), delete the local cache (${cachePath}) and restart ` +
-          "the server: it is rebuilt from atlas.json with no API calls.",
+        `atlas.json (generated_at ${mismatch.atlasJson}) is not the atlas the ` +
+          `local cache holds (generated_at ${mismatch.cache ?? "absent"}): a ` +
+          "pull, an /index-atlas refresh or atlas.committed: false runs changed " +
+          "one without the other. The server serves the local cache and " +
+          "imports atlas.json only into an empty cache. To serve atlas.json, " +
+          "stop the server (exit Claude Code, or disconnect `contextatlas` in " +
+          `/mcp), delete the local cache (${cachePath}), and restart: it is ` +
+          "rebuilt from atlas.json with no API calls. With atlas.committed: " +
+          "false this discards anything only the cache holds.",
         { path: atlasPath },
       );
-      break;
     }
-    case "kept-uncommitted":
-      log.warn(
-        "atlas.committed is false, so the local cache is the source of truth " +
-          "and atlas.json, which differs from it, is not loaded. If " +
-          "`/index-atlas` wrote atlas.json, delete the local cache " +
-          `(${cachePath}) and restart the server to load it; this discards ` +
-          "anything only the cache holds (work of `contextatlas index` runs " +
-          "in this mode). If atlas.json is left over from atlas.committed: " +
-          `true, delete it. Using the local cache (${symbolCount()} symbols).`,
-        { path: atlasPath },
-      );
-      break;
-    case "kept-import-failed":
-      log.warn(
-        "atlas.json differs from the local cache but could not be imported; " +
-          `serving the local cache as it stands (${symbolCount()} symbols). ` +
-          "Fix atlas.json, then restart the server.",
-        { path: atlasPath, err: load.error },
-      );
-      break;
-    case "empty":
-      log.warn(
-        `No atlas.json at ${atlasPath} and local cache is empty. ` +
-          "Queries will return ERR not_found until extraction runs.",
-      );
-      break;
-    case "kept":
-      log.info(`Using existing local cache (${symbolCount()} symbols)`);
-      break;
   }
 
   // 5. Initialize every declared adapter against sourceRoot. Any

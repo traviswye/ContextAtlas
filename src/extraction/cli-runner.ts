@@ -285,6 +285,7 @@ export async function runIndexSubcommand(
         formatStreamFailures(
           pipelineResult.failedStreams,
           pipelineResult.atlasExported,
+          options.full,
         ),
       );
     }
@@ -430,11 +431,15 @@ export function resolveContextatlasCommitSha(): string | null {
 
 /**
  * The exit-1 message for streams whose every call failed. Names what
- * was kept and what to do next.
+ * was kept and what to do next. After `--full`, a docstring file whose
+ * key already matched its content keeps that key, so only another
+ * `--full` retries it (v1.2 Phase 2); failed commits stay unkeyed and
+ * are retried by any run. Exported for tests.
  */
-function formatStreamFailures(
+export function formatStreamFailures(
   failures: readonly StreamFailure[],
   atlasExported: boolean,
+  full: boolean,
 ): string {
   const saved = atlasExported
     ? "The run's other work was saved and atlas.json was exported."
@@ -442,11 +447,18 @@ function formatStreamFailures(
   const lines = [""];
   for (const f of failures) {
     const unit = f.stream === "commit" ? "commits" : "docstring files";
+    const retry =
+      full && f.stream === "docstring"
+        ? "keep their previous claims. A plain `contextatlas index` retries " +
+          "only those whose content differs from their kept key; the rest " +
+          "already match it, so re-run `contextatlas index --full` to retry " +
+          "them (it re-extracts every ADR, docs page and docstring file; see " +
+          "the cost preview)."
+        : "keep their previous claims, and the next run retries them.";
     lines.push(
       `contextatlas index: every ${f.stream} extraction call failed ` +
         `(${f.attemptedCalls} of ${f.attemptedCalls}). First error: ${f.firstError}`,
-      `  ${saved} Nothing new was recorded for the failed ${unit}: they ` +
-        "keep their previous claims, and the next run retries them.",
+      `  ${saved} Nothing new was recorded for the failed ${unit}: they ${retry}`,
     );
   }
   lines.push(

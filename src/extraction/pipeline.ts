@@ -4,14 +4,10 @@
  * orchestration; each stage's logic lives in its own module.
  *
  * Stages (per DESIGN.md's extraction pipeline section):
- *   0. Atlas-aware startup (`atlas-baseline.ts`): import committed
- *      atlas.json if present, establishing the committed SHA baseline.
- *      When the previous run did not finish and atlas.json is unchanged
- *      since, the units that run stored and that are still valid (a
- *      commit HEAD reaches, a file the tree still has at that SHA) are
- *      carried over the import (`unsaved-work.ts`). With atlas.committed
- *      false the cache is authoritative and atlas.json only seeds an
- *      empty cache.
+ *   0. Atlas-aware startup: import atlas.json if present
+ *      (`atlas.committed: true`), establishing the committed SHA
+ *      baseline; with `atlas.committed: false` the cache is the source of
+ *      truth and atlas.json only seeds an empty cache.
  *   0.5 F-5 commit-key migration (v1.2 Phase 2, `source-keys.ts`): bare-
  *      sha commit keys and claim paths (the pre-v1.2 Skill form) become
  *      `commit:<sha>`. Every run, whatever streams are enabled.
@@ -36,15 +32,17 @@
  *      prose files in batches, resolve candidates, write claims. Throws
  *      when every attempted prose call failed with an API or network
  *      error (a malformed-JSON response is not a failed call).
+ *      Checkpoint exports (`atlas-export-stage.ts`, committed only): after
+ *      Stage 6 and 6c, and every 30 s inside a stream when a unit is
+ *      stored; they keep the run's starting `extracted_at_sha`.
  *   6c. Docstring stream (`stream-stages.ts` → `docstring-stream.ts`).
  *   6d. Commit stream (`stream-stages.ts` → `commit-message-extractor.ts`).
  *   6b. Report claims orphaned by the prune (kept, never deleted); after
  *      6c/6d so re-extracted claims are not reported.
  *   7. If atlas.committed, regenerate atlas.json iff any modification
- *      happened, the run resumed an unfinished one, or there is no
- *      atlas.json yet (`atlas-export-stage.ts`). Bump
- *      atlas_meta.generated_at on real changes only. Then clear the
- *      unfinished-run mark.
+ *      happened or there is no atlas.json yet (`atlas-export-stage.ts`);
+ *      this final export stamps `extracted_at_sha`. Bump
+ *      atlas_meta.generated_at on real changes only.
  *
  * Streams run in the fixed order prose → docstring → commit (lead
  * decision L-6), sharing one cost tracker and budget check. Which
@@ -55,12 +53,18 @@
  * caller inspects storage for those.
  */
 
+import { existsSync } from "node:fs";
 import { resolve as pathResolve } from "node:path";
 
 import { computeExcludePatterns } from "../config/exclude-patterns.js";
 import { DEFAULT_EXTRACTION_STREAMS } from "../config/defaults.js";
 import { log } from "../mcp/logger.js";
-import { exportAtlas, serializeAtlas } from "../storage/atlas-exporter.js";
+import {
+  exportAtlas,
+  removeStaleAtlasTemp,
+  serializeAtlas,
+} from "../storage/atlas-exporter.js";
+import { importAtlasFile, isCacheEmpty } from "../storage/atlas-importer.js";
 import {
   deleteClaimsBySourcePath,
   deleteSourceSha,
@@ -72,8 +76,11 @@ import { replaceGitCommits } from "../storage/git.js";
 import { ATLAS_META_KEYS } from "../storage/atlas-importer.js";
 import type { ExtractionStream } from "../types.js";
 
-import { loadAtlasBaseline, markRunFinished } from "./atlas-baseline.js";
-import { finalizeAtlas } from "./atlas-export-stage.js";
+import {
+  createCheckpointer,
+  DEFAULT_CHECKPOINT_INTERVAL_MS,
+  finalizeAtlas,
+} from "./atlas-export-stage.js";
 import { buildCostPreview } from "./cost-preview.js";
 import {
   planCommitWork,
@@ -83,11 +90,7 @@ import {
   type ExtractionPlan,
 } from "./extraction-plan.js";
 import { diffShas, walkProseFiles, walkSourceFiles } from "./file-walker.js";
-import {
-  commitReachability,
-  DEFAULT_COMMIT_LIMIT,
-  extractGitSignal,
-} from "./git-extractor.js";
+import { DEFAULT_COMMIT_LIMIT, extractGitSignal } from "./git-extractor.js";
 import type {
   ExtractionPipelineDeps,
   ExtractionPipelineResult,
@@ -95,14 +98,8 @@ import type {
 } from "./pipeline-types.js";
 import { runProseStage, warnUnresolvedFrontmatter } from "./prose-stream.js";
 import { buildSymbolInventory } from "./resolver.js";
-import { listRetryKeys, pruneRetryKeys, withRetries } from "./retry-keys.js";
 import { RunCostTracker } from "./run-cost.js";
-import { sourceKeyMatcher } from "./source-key-files.js";
-import {
-  normalizeCommitKeys,
-  partitionSourceShas,
-  recordedKeyStreams,
-} from "./source-keys.js";
+import { normalizeCommitKeys, partitionSourceShas } from "./source-keys.js";
 import {
   runCommitStage,
   runDocstringStage,
@@ -150,23 +147,44 @@ export async function runExtractionPipeline(
   // common case these are identical; in the external-ADRs setup
   // (ADR-08) the committed atlas belongs with the config.
   //
-  // atlas.json replaces the cache. When the previous run did not finish
-  // and atlas.json is unchanged since it started, the units that run
-  // stored are carried over the import: a commit when the current HEAD
-  // reaches it, a file's unit while the working tree still has that
-  // content. With `atlas.committed` false the cache is authoritative and
-  // atlas.json only seeds an empty cache. See `atlas-baseline.ts`.
+  // `atlas.committed: true`: atlas.json, when present, replaces the cache
+  // (ADR-06: the committed atlas is the source of truth). An interrupted
+  // run left its completed units in atlas.json through checkpoint
+  // exports, so importing it keeps them. Without atlas.json the cache is
+  // the baseline and Stage 7 writes atlas.json even if nothing changed.
+  // `atlas.committed: false`: the cache is the source of truth; a
+  // leftover atlas.json only seeds an empty cache (the MCP server and the
+  // init smoke test use the same `isCacheEmpty` rule).
   const atlasAbsPath = pathResolve(configRoot, config.atlas.path);
-  const atlasBaseline = loadAtlasBaseline(db, {
-    atlasAbsPath,
-    committed: config.atlas.committed,
-    commitReachability: (sha) => commitReachability(repoRoot, sha, deps.gitBinary),
-    isSourceCurrent: sourceKeyMatcher({
-      sourceRoot: repoRoot,
-      configRoot,
-      adrsPath: config.adrs.path,
-    }),
-  });
+  if (removeStaleAtlasTemp(atlasAbsPath)) {
+    log.info("pipeline: removed a temporary atlas file an interrupted write left", {
+      path: `${atlasAbsPath}.tmp`,
+    });
+  }
+  const atlasExists = existsSync(atlasAbsPath);
+  if (config.atlas.committed) {
+    if (atlasExists) {
+      log.info("pipeline: importing committed atlas.json", { path: atlasAbsPath });
+      importAtlasFile(db, atlasAbsPath);
+    }
+  } else if (atlasExists && isCacheEmpty(db)) {
+    log.info(
+      "pipeline: atlas.committed is false; seeding the empty local cache from atlas.json",
+      { path: atlasAbsPath },
+    );
+    importAtlasFile(db, atlasAbsPath);
+  } else if (atlasExists) {
+    log.warn(
+      "pipeline: atlas.committed is false, so the local cache is the source " +
+        `of truth: ${atlasAbsPath} is not read while the cache has content, ` +
+        "and `contextatlas index` does not update it. To switch to " +
+        "atlas.committed: true and keep this cache's work, delete or move " +
+        "atlas.json first; the next `contextatlas index` then writes it from " +
+        "the cache.",
+      { path: atlasAbsPath },
+    );
+  }
+  const atlasMissing = config.atlas.committed && !atlasExists;
 
   // --- Stage 0.5: F-5 commit-key migration (v1.2 Phase 2, L-2) ---------
   // Before the baseline is read, so Stage 1b and the commit plan see
@@ -190,11 +208,7 @@ export async function runExtractionPipeline(
   // Diffing all of them against the prose walk marked every non-prose
   // key "deleted", and Stage 5 then wiped docstring claims, commit
   // claims and the symbols of every docstring-bearing file.
-  // A zero-claim key is classified by the stream this cache recorded
-  // writing it, when it still holds that SHA (review fix: prose and
-  // docstring keys share relPaths and SHAs).
   const baseline = partitionSourceShas(db, committedShas, {
-    recordedStreams: recordedKeyStreams(db, committedShas),
     knownProsePaths: prosePaths,
   });
   log.info("pipeline: baseline source keys by stream", {
@@ -209,11 +223,8 @@ export async function runExtractionPipeline(
   // them all as dirty — the ShaDiff record is retained for the
   // `files_unchanged=0` summary line rather than being faked. Deleted
   // prose keys are the same under --full: a key the prose walk no
-  // longer produces is gone either way. A file whose extraction failed
-  // on an earlier run is extracted again even when its key names its
-  // current SHA (the retry list, `retry-keys.ts`, review round 2.3).
-  const retryKeys = listRetryKeys(db);
-  const proseDiff = withRetries(diffShas(proseFiles, baseline.prose), retryKeys);
+  // longer produces is gone either way.
+  const proseDiff = diffShas(proseFiles, baseline.prose);
   const diff = full
     ? {
         unchanged: [],
@@ -239,8 +250,6 @@ export async function runExtractionPipeline(
   const excludePatterns = computeExcludePatterns(deps.config);
   const sourceFiles = walkSourceFiles(repoRoot, extensions, excludePatterns);
   const inventory = await buildSymbolInventory(adapters, sourceFiles);
-  const walkedSourcePaths = new Set(sourceFiles.map((f) => f.relPath));
-  pruneRetryKeys(db, (key) => prosePaths.has(key) || walkedSourcePaths.has(key));
   log.info("pipeline: symbol inventory built", {
     sourceFiles: sourceFiles.length,
     symbols: inventory.allSymbols.length,
@@ -325,7 +334,6 @@ export async function runExtractionPipeline(
           adapters,
           baseline: baseline.docstring,
           full,
-          retry: retryKeys,
           prosePaths,
         })
       : null,
@@ -352,6 +360,20 @@ export async function runExtractionPipeline(
 
   const cost = new RunCostTracker(deps.budgetWarnUsd);
 
+  // Checkpoint exports (committed only): each stored unit may export
+  // atlas.json (at most every `checkpointIntervalMs`), and every stream
+  // stage that stored a unit ends with one, so an interruption loses at
+  // most the work since the last checkpoint. A checkpoint keeps the
+  // `extracted_at_sha` the run started from; Stage 7 stamps HEAD.
+  const checkpoint = createCheckpointer(db, {
+    atlasAbsPath,
+    committed: config.atlas.committed,
+    contextatlasVersion: deps.contextatlasVersion,
+    contextatlasCommitSha: deps.contextatlasCommitSha,
+    extractedAtSha: priorHeadSha,
+    intervalMs: deps.checkpointIntervalMs ?? DEFAULT_CHECKPOINT_INTERVAL_MS,
+  });
+
   // --- Stage 6: prose stream (`adr`) -----------------------------------
   const prose = await runProseStage({
     db,
@@ -361,6 +383,7 @@ export async function runExtractionPipeline(
     batchSize,
     narrowAttribution: deps.narrowAttribution,
     cost,
+    onUnitStored: checkpoint.unitStored,
   });
 
   // Fail loud if every attempted prose document failed — usually a
@@ -378,22 +401,60 @@ export async function runExtractionPipeline(
     );
   }
   warnUnresolvedFrontmatter(prose);
+  checkpoint.flush();
 
   // --- Stage 6c: docstring stream --------------------------------------
   const docstring: DocstringStageResult | null =
     plan.docstring !== null
-      ? await runDocstringStage(db, plan.docstring, inventory, anthropicClient, cost)
+      ? await runDocstringStage(
+          db,
+          plan.docstring,
+          inventory,
+          anthropicClient,
+          cost,
+          checkpoint.unitStored,
+        )
       : null;
+  checkpoint.flush();
+
+  // A file --full re-extracted whose key already named its content keeps
+  // that key when it fails, so the SHA gate of a plain run will not
+  // retry it; only another --full does. (A changed or new file that
+  // fails is retried by a plain run.)
+  if (full) {
+    const failedDocstring = new Set((docstring?.errors ?? []).map((e) => e.sourcePath));
+    const unstoredProse = new Set(prose.unstoredPaths);
+    const notRetried = [
+      ...plan.prose.filter(
+        (f) => unstoredProse.has(f.relPath) && baseline.prose[f.relPath] === f.sha,
+      ),
+      ...(plan.docstring?.files ?? []).filter(
+        (f) => failedDocstring.has(f.relPath) && baseline.docstring[f.relPath] === f.sha,
+      ),
+    ].map((f) => f.relPath);
+    if (notRetried.length > 0) {
+      log.warn(
+        `pipeline: ${notRetried.length} file(s) --full re-extracted failed and ` +
+          "kept their previous claims. Their keys already match their content, " +
+          "so a plain `contextatlas index` does not retry them; re-run " +
+          "`contextatlas index --full` (it re-extracts every ADR, docs page and " +
+          "docstring file; see the cost preview).",
+        { files: notRetried.slice(0, 10), more: Math.max(0, notRetried.length - 10) },
+      );
+    }
+  }
 
   // --- Stage 6d: commit stream -----------------------------------------
   const commit: CommitStageResult | null =
     plan.commit?.status === "planned"
-      ? await runCommitStage(db, plan.commit.pending, inventory, anthropicClient, cost, {
-          // Where a pinned commit key lives, for the warning's retry hint.
-          pinnedKeyStore: config.atlas.committed
-            ? { kind: "atlas" }
-            : { kind: "cache", cachePath: pathResolve(configRoot, config.atlas.localCache) },
-        })
+      ? await runCommitStage(
+          db,
+          plan.commit.pending,
+          inventory,
+          anthropicClient,
+          cost,
+          checkpoint.unitStored,
+        )
       : null;
 
   // A docstring or commit stream whose every call failed does not stop
@@ -426,11 +487,11 @@ export async function runExtractionPipeline(
   // a docstring-source deletion, a commit-key migration, a stored
   // docstring file and a keyed commit all change the exported symbols,
   // claims or keys, so each counts too; a run that changed nothing
-  // leaves atlas.json byte-identical. A resumed run always exports (the
-  // cache holds the unfinished run's work, which atlas.json lacks), and
-  // so does a committed atlas with no atlas.json yet.
+  // leaves atlas.json byte-identical. A committed atlas with no
+  // atlas.json yet is always written. Any run that checkpointed stored a
+  // unit, so it reaches the export below, which stamps HEAD.
   const didModify =
-    atlasBaseline.mustExport ||
+    atlasMissing ||
     plan.prose.length > 0 ||
     diff.deleted.length > 0 ||
     gitChanged ||
@@ -451,9 +512,6 @@ export async function runExtractionPipeline(
   } else {
     log.info("pipeline: no changes detected; atlas.json untouched");
   }
-  // Only a run that reaches this point clears the mark; an interrupted
-  // or throwing run leaves it, so the next run keeps the stored work.
-  markRunFinished(db);
 
   return {
     filesExtracted: plan.prose.length - prose.errors.length,

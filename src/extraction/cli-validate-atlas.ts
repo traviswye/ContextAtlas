@@ -536,18 +536,23 @@ function validateAtlasShape(
  *
  * Such an atlas cannot be loaded (claims link symbols through a foreign
  * key), but it is a WARNING, not an error (v1.2 Phase 2 review round 2):
- * it is the expected state of an `/index-atlas` refresh that did not
- * re-write a large baseline `symbols` array, and of atlases written by
+ * it is the expected state of an `/index-atlas` refresh, which writes
+ * `symbols: []` (lead decision F2), and of atlases written by
  * `resolve-symbols` up to 1.1.3, and `contextatlas resolve-symbols`
- * repairs it: links to symbols the source tree still lists are kept, and
- * since round 2.2 so are links into files it cannot list, whose symbols
- * it takes from the atlas.json committed at HEAD; if it cannot, it
- * exits 1 without writing. As an error it blocked the workflow before
- * that step, and its other remedy, emptying the links, lost them for
- * good on claims without `symbol_candidates`. The Skill runs
- * resolve-symbols right after this warning (round 2.2), before
- * validate-extraction, so the atlas is not left unloadable while
- * extraction depth is fixed.
+ * repairs it: it rebuilds `symbols` from the source tree and keeps every
+ * link to a symbol it lists. The Skill runs it right after this warning
+ * (Phase C step 1), before validate-extraction, so the atlas is not left
+ * unloadable while extraction depth is fixed. As an error it blocked the
+ * workflow before that step, and its other remedy, emptying the links,
+ * lost them for good on claims without `symbol_candidates`.
+ *
+ * The documented loss: with `symbols: []`, a link into a file
+ * resolve-symbols cannot list in that run (its listing failed, or its
+ * language is not configured) is dropped, and a later run restores it
+ * only from the claim's `symbol_candidates`. Links no candidate names
+ * (claims without candidates, `contextatlas index` docstring provenance
+ * links, ADR frontmatter-fallback links) come back only when their
+ * source is re-extracted.
  */
 function danglingSymbolLinks(raw: unknown): string | null {
   if (raw === null || typeof raw !== "object" || Array.isArray(raw)) return null;
@@ -586,12 +591,17 @@ function danglingSymbolLinks(raw: unknown): string | null {
     `list (${examples}${more}). The atlas cannot be loaded until ` +
     `\`contextatlas resolve-symbols\` runs (claims link symbols through a ` +
     `foreign key): it rebuilds \`symbols\` from the source tree and keeps ` +
-    `every link whose symbol still exists. A link into a file it cannot ` +
-    `list keeps the symbol recorded in the atlas.json committed at HEAD; ` +
-    `if there is none, resolve-symbols exits 1 and writes nothing. Run it ` +
-    `now, before validate-extraction (/index-atlas: Phase C step 1). Do ` +
-    `NOT empty these claims' \`symbol_ids\`: a claim without ` +
-    `\`symbol_candidates\` cannot be linked again.`
+    `every link to a symbol it lists. Run it now, before validate-extraction ` +
+    `(/index-atlas: Phase C step 1). With \`symbols: []\`, a link into a ` +
+    `file resolve-symbols cannot list in that run (its listing failed, or ` +
+    `its language is not configured) is dropped (resolve-symbols reports ` +
+    `dropped links and orphaned claims); a later run restores it only from ` +
+    `the claim's \`symbol_candidates\`, so links no candidate names ` +
+    `(claims without candidates, \`contextatlas index\` docstring ` +
+    `provenance links, ADR frontmatter-fallback links) come back only when ` +
+    `their source is re-extracted. Do NOT empty these claims' ` +
+    `\`symbol_ids\`: a claim without \`symbol_candidates\` cannot be ` +
+    `linked again.`
   );
 }
 

@@ -8,10 +8,9 @@
  *     file with the planning pass's cached docstring read. A file's
  *     claims are replaced and its SHA pinned only when every call for it
  *     succeeded (L-10 i); otherwise it keeps its previous claims and key
- *     and is retried next run: it is recorded in the cache-only retry
- *     list (`retry-keys.ts`, review round 2.3), which the next plan
- *     honours even when the key already names the file's current SHA
- *     (a `--full` run).
+ *     and is retried by a later run while its content differs from that
+ *     key (after `--full`, when it may already match, only another
+ *     `--full` retries it).
  *   - 6d runs `extractCommitClaims` (`commit-message-extractor.ts`) per
  *     pending commit: canonical `commit:<sha>` key, one transaction per
  *     commit, a null result or malformed JSON pinned with zero claims
@@ -22,9 +21,13 @@
  * calls that threw an API or network error (and, for commits, failed
  * writes). An unparseable result never fails the stream: a docstring
  * file's is reported in `errors` (so in `extraction_errors`) and the
- * file is retried; a commit's is pinned with zero claims and only
- * logged as a warning (no summary field reports it; `commitsNullResult`
- * counts it here).
+ * file is retried; a commit's is pinned with zero claims and logged as
+ * a warning (it is counted in `commits_extracted`, with no claims;
+ * `commitsNullResult` counts it here).
+ *
+ * Both stages take an optional `onUnitStored`, called after each stored
+ * docstring file and each keyed commit (checkpoint exports,
+ * `atlas-export-stage.ts`).
  *
  * Errors keep the `extraction_errors` shape `{sourcePath, error}`:
  * docstring entries use the file's relPath (the symbol id is in the
@@ -36,15 +39,11 @@ import type { ExtractionStream } from "../types.js";
 
 import type { ExtractionClient } from "./anthropic-client.js";
 import type { CommitMetadata } from "./commit-log.js";
-import {
-  extractCommitClaims,
-  type CommitClaimsOptions,
-} from "./commit-message-extractor.js";
+import { extractCommitClaims } from "./commit-message-extractor.js";
 import { extractDocstringFile } from "./docstring-stream.js";
 import type { DocstringWorkPlan } from "./extraction-plan.js";
 import type { StreamFailure } from "./pipeline-types.js";
 import type { SymbolInventory } from "./resolver.js";
-import { clearRetry, markForRetry } from "./retry-keys.js";
 import type { RunCostTracker } from "./run-cost.js";
 import { commitSourceKey } from "./source-keys.js";
 
@@ -91,6 +90,7 @@ export async function runDocstringStage(
   inventory: SymbolInventory,
   client: ExtractionClient,
   cost: RunCostTracker,
+  onUnitStored?: () => void,
 ): Promise<DocstringStageResult> {
   const out: DocstringStageResult = {
     attemptedCalls: 0,
@@ -114,13 +114,12 @@ export async function runDocstringStage(
     cost.addUsage(outcome.usage);
     out.attemptedCalls += outcome.apiCalls;
     if (outcome.status === "stored") {
-      clearRetry(db, file.relPath);
       out.filesStored++;
       out.symbolsExtracted += outcome.apiCalls;
       out.claimsWritten += outcome.claimsWritten;
       out.unresolvedCandidates += outcome.unresolvedCandidates;
+      onUnitStored?.();
     } else {
-      markForRetry(db, file.relPath);
       out.failedCalls += outcome.failedCalls;
       if (outcome.failedCalls > 0 && out.firstFailedCallError === undefined) {
         out.firstFailedCallError = outcome.errors[0]?.error;
@@ -150,7 +149,7 @@ export async function runCommitStage(
   inventory: SymbolInventory,
   client: ExtractionClient,
   cost: RunCostTracker,
-  options: CommitClaimsOptions = {},
+  onUnitStored?: () => void,
 ): Promise<CommitStageResult> {
   const out: CommitStageResult = {
     attemptedCalls: 0,
@@ -164,7 +163,7 @@ export async function runCommitStage(
   for (const commit of pending) {
     cost.addCalls(1);
     out.attemptedCalls++;
-    const outcome = await extractCommitClaims(db, commit, inventory, client, options);
+    const outcome = await extractCommitClaims(db, commit, inventory, client);
     cost.addUsage(outcome.usage);
     if (outcome.status === "failed") {
       out.failedCalls++;
@@ -178,6 +177,7 @@ export async function runCommitStage(
         out.claimsWritten += outcome.claimsWritten;
         out.unresolvedCandidates += outcome.unresolvedCandidates;
       }
+      onUnitStored?.();
     }
     cost.checkBudget();
   }

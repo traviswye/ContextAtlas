@@ -15,10 +15,13 @@
  * stop the docstring and commit streams on every run while one
  * unparseable file was the only prose work (review round 2).
  *
- * A file that is not stored (thrown call, null result) is recorded for
- * a retry (`retry-keys.ts`, review round 2.3): under `--full` its key
- * already names its current content, so the SHA diff alone would never
- * retry it. A stored file is removed from that list.
+ * A file's claims and key are written in one transaction (v1.2 Phase
+ * 2): an interruption or a failed insert leaves the file's previous
+ * claims and key as they were. Before, a kill between the delete and
+ * the key write under `--full` with `atlas.committed: false` left
+ * partial claims under a key that already matched the file, never
+ * retried. `onUnitStored` fires after each stored file (checkpoint
+ * exports, `atlas-export-stage.ts`).
  */
 
 import { readFileSync } from "node:fs";
@@ -33,7 +36,6 @@ import {
   type NewClaim,
 } from "../storage/claims.js";
 import type { DatabaseInstance } from "../storage/db.js";
-import { recordSourceKeyStream } from "../storage/source-key-streams.js";
 
 import {
   ParseError,
@@ -42,7 +44,6 @@ import {
 } from "./anthropic-client.js";
 import type { ProseFile } from "./file-walker.js";
 import { parseFrontmatterSymbols } from "./frontmatter.js";
-import { clearRetry, markForRetry } from "./retry-keys.js";
 import type {
   FileUnresolvedDetail,
   UnresolvedClaimDetail,
@@ -88,6 +89,11 @@ export interface ProseStageResult {
   failedCalls: number;
   /** The first such call's error, for the all-failed message. */
   firstFailedCallError?: string;
+  /**
+   * relPaths of planned files not stored: the call threw or returned no
+   * parseable result. They keep their previous claims and key.
+   */
+  unstoredPaths: string[];
 }
 
 export interface ProseStageInput {
@@ -98,6 +104,8 @@ export interface ProseStageInput {
   batchSize: number;
   narrowAttribution: "drop" | "drop-with-fallback" | undefined;
   cost: RunCostTracker;
+  /** Called after each file's claims and key are stored. */
+  onUnitStored?: () => void;
 }
 
 /** Extract the planned prose files (Stage 6). Never throws per file. */
@@ -112,6 +120,7 @@ export async function runProseStage(
     unresolvedDetails: [],
     errors: [],
     failedCalls: 0,
+    unstoredPaths: [],
   };
 
   for (let i = 0; i < files.length; i += batchSize) {
@@ -127,7 +136,7 @@ export async function runProseStage(
           // Malformed JSON (ParseError) was still billed: count its usage.
           cost.addUsage(usageOfFailedCall(err));
           out.errors.push({ sourcePath: file.relPath, error: String(err) });
-          markForRetry(db, file.relPath);
+          out.unstoredPaths.push(file.relPath);
           if (!(err instanceof ParseError)) {
             out.failedCalls++;
             out.firstFailedCallError ??= String(err);
@@ -143,25 +152,27 @@ export async function runProseStage(
       // max_tokens or malformed-JSON response still consumed tokens.
       cost.addUsage(extracted.usage);
       if (!extracted.result) {
-        markForRetry(db, file.relPath);
+        out.unstoredPaths.push(file.relPath);
         continue;
       }
-      const outcome = writeClaimsForFile(
-        db,
-        file,
-        extracted.result.claims,
-        inventory,
-        input.narrowAttribution,
-      );
+      const claims = extracted.result.claims;
+      // Claims and key in one transaction: all of the file or none of it.
+      const outcome = db.transaction(() => {
+        const written = writeClaimsForFile(
+          db,
+          file,
+          claims,
+          inventory,
+          input.narrowAttribution,
+        );
+        setSourceSha(db, file.relPath, file.sha);
+        return written;
+      })();
       out.claimsWritten += outcome.claimsWritten;
       out.unresolvedCandidates += outcome.unresolved;
       out.unresolvedFrontmatterHints += outcome.frontmatterHintsUnresolved;
       if (outcome.detail) out.unresolvedDetails.push(outcome.detail);
-      setSourceSha(db, file.relPath, file.sha);
-      // Cache-only: lets a zero-claim key be told apart from a docstring
-      // key at the same path (`source-key-streams.ts`).
-      recordSourceKeyStream(db, file.relPath, "prose", file.sha);
-      clearRetry(db, file.relPath);
+      input.onUnitStored?.();
     }
 
     // Budget warning at most once per run, checked after each batch.

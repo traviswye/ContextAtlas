@@ -28,7 +28,7 @@
  * exports as an absent key; both mean "no candidates".
  */
 
-import { writeFileSync } from "node:fs";
+import { renameSync, rmSync, writeFileSync } from "node:fs";
 
 import {
   listAllClaims,
@@ -280,16 +280,93 @@ export function serializeAtlas(atlas: AtlasFileV1): string {
  * Export the database to atlas.json at the given path. Writes LF-only
  * output — a .gitattributes entry on the atlas file is the long-term
  * way to guarantee line-ending stability across OSes; this function
- * handles the serialization side of that pair. Returns the text written.
+ * handles the serialization side of that pair. The write is atomic
+ * ({@link writeAtlasFileAtomic}) since v1.2 Phase 2: `contextatlas
+ * index` now also writes atlas.json mid-run (checkpoints), and a kill
+ * must not leave a torn file.
  */
 export function exportAtlasToFile(
   db: DatabaseInstance,
   filePath: string,
   options: ExportAtlasOptions = {},
-): string {
-  const text = serializeAtlas(exportAtlas(db, options));
-  writeFileSync(filePath, text, "utf8");
-  return text;
+): void {
+  const atlas = exportAtlas(db, options);
+  writeAtlasFileAtomic(filePath, serializeAtlas(atlas));
+}
+
+/** The temporary file an atlas write goes through: `<path>.tmp`. */
+export function atlasTempPath(filePath: string): string {
+  return `${filePath}.tmp`;
+}
+
+/** Error codes a rename onto a file another process holds open gives. */
+const RENAME_RETRY_CODES: ReadonlySet<string> = new Set(["EPERM", "EACCES", "EBUSY"]);
+const RENAME_ATTEMPTS = 4;
+const RENAME_RETRY_DELAY_MS = 50;
+
+/**
+ * Write `text` to `filePath` atomically: write `<path>.tmp` in the same
+ * directory, then rename it over the target, so a reader or a kill sees
+ * the old file or the new one, never a torn one. The one writer of
+ * atlas files (`contextatlas index` export and checkpoints,
+ * `resolve-symbols`). The directory must exist.
+ *
+ * On Windows a rename onto a file another process has open (an editor,
+ * antivirus, the search indexer) fails with EPERM, EACCES or EBUSY,
+ * often only briefly: the rename is retried a few times 50 ms apart,
+ * then the target is written directly (the behaviour before v1.2
+ * Phase 2; not atomic) and the temporary file removed. Any other error
+ * removes the temporary file and is rethrown.
+ */
+export function writeAtlasFileAtomic(filePath: string, text: string): void {
+  const tmp = atlasTempPath(filePath);
+  writeFileSync(tmp, text, "utf8");
+  for (let attempt = 1; ; attempt++) {
+    try {
+      renameSync(tmp, filePath);
+      return;
+    } catch (err) {
+      const code = (err as NodeJS.ErrnoException).code;
+      if (code === undefined || !RENAME_RETRY_CODES.has(code)) {
+        removeQuietly(tmp);
+        throw err;
+      }
+      if (attempt < RENAME_ATTEMPTS) {
+        sleepSync(RENAME_RETRY_DELAY_MS);
+        continue;
+      }
+      writeFileSync(filePath, text, "utf8");
+      removeQuietly(tmp);
+      return;
+    }
+  }
+}
+
+/**
+ * Remove a `<path>.tmp` left by a write that was killed between writing
+ * it and the rename (`contextatlas index` Stage 0). Returns whether one
+ * was removed. Never throws.
+ */
+export function removeStaleAtlasTemp(filePath: string): boolean {
+  const tmp = atlasTempPath(filePath);
+  try {
+    rmSync(tmp);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function removeQuietly(path: string): void {
+  try {
+    rmSync(path, { force: true });
+  } catch {
+    // Best effort: a stale temp file is removed at the next Stage 0.
+  }
+}
+
+function sleepSync(ms: number): void {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
 }
 
 // ---------------------------------------------------------------------------

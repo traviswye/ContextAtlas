@@ -19,8 +19,7 @@ import { existsSync, mkdirSync } from "node:fs";
 import { dirname, resolve as pathResolve } from "node:path";
 
 import { buildBundle } from "../queries/symbol-context.js";
-import { importAtlasFile } from "../storage/atlas-importer.js";
-import { isCacheEmpty } from "../storage/cache-meta.js";
+import { importAtlasFile, isCacheEmpty } from "../storage/atlas-importer.js";
 import { openDatabase } from "../storage/db.js";
 import { listAllSymbols } from "../storage/symbols.js";
 import type {
@@ -158,11 +157,8 @@ export async function runSmokeTest(
     let symbols = listAllSymbols(db);
     if (isCacheEmpty(db)) {
       // Cache empty — import from atlas.json if present. "Empty" is the
-      // rule the MCP server and `contextatlas index` use to seed a cache:
-      // a cache with claims or source keys but no symbols is not
-      // replaced here. (The MCP server also re-imports a changed
-      // atlas.json with atlas.committed: true; this smoke check only
-      // needs a loadable cache with one symbol.)
+      // rule the MCP server and `contextatlas index` share: a cache with
+      // claims or source keys but no symbols is not replaced.
       try {
         importAtlasFile(db, atlasJsonPath);
       } catch (err) {

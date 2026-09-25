@@ -1,13 +1,47 @@
-import { readFileSync } from "node:fs";
-import { resolve as pathResolve } from "node:path";
+import {
+  existsSync,
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  writeFileSync,
+  type PathLike,
+} from "node:fs";
+import { tmpdir } from "node:os";
+import { join as pathJoin, resolve as pathResolve } from "node:path";
 
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { importAtlas, importAtlasFile } from "./atlas-importer.js";
 import {
   exportAtlas,
+  exportAtlasToFile,
+  removeStaleAtlasTemp,
   serializeAtlas,
+  writeAtlasFileAtomic,
 } from "./atlas-exporter.js";
+
+/**
+ * `renameSync` fails with the queued error codes, then behaves normally
+ * (the Windows lock cases of `writeAtlasFileAtomic`). Empty by default,
+ * so every other test sees the real function.
+ */
+const renameFailures = vi.hoisted(() => [] as string[]);
+vi.mock("node:fs", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("node:fs")>();
+  return {
+    ...actual,
+    renameSync: (from: PathLike, to: PathLike): void => {
+      const code = renameFailures.shift();
+      if (code !== undefined) {
+        const err = new Error(`simulated ${code}`) as NodeJS.ErrnoException;
+        err.code = code;
+        throw err;
+      }
+      actual.renameSync(from, to);
+    },
+  };
+});
 import { insertClaims } from "./claims.js";
 import { type DatabaseInstance, openDatabase } from "./db.js";
 import { upsertSymbols } from "./symbols.js";
@@ -698,5 +732,67 @@ describe("claims[].symbol_candidates export (F-7)", () => {
       db1.close();
       db2.close();
     }
+  });
+});
+
+describe("atlas file writes are atomic (v1.2 Phase 2 checkpoints)", () => {
+  let tmp: string;
+  let db: DatabaseInstance;
+  beforeEach(() => {
+    tmp = mkdtempSync(pathJoin(tmpdir(), "ca-atomic-"));
+    db = openDatabase(":memory:");
+    renameFailures.length = 0;
+  });
+  afterEach(() => {
+    renameFailures.length = 0;
+    db.close();
+    rmSync(tmp, { recursive: true, force: true });
+  });
+
+  const target = () => pathJoin(tmp, "atlas.json");
+  const opts = {
+    generatedAt: "2026-09-25T00:00:00.000Z",
+    contextatlasVersion: "1.2.0",
+    extractionModel: "claude-opus-4-7",
+  };
+
+  it("exportAtlasToFile writes serializeAtlas's text and leaves no temporary file", () => {
+    importAtlasFile(db, FIXTURE_PATH);
+    writeFileSync(target(), "old content");
+    exportAtlasToFile(db, target(), opts);
+    expect(readFileSync(target(), "utf8")).toBe(serializeAtlas(exportAtlas(db, opts)));
+    expect(readdirSync(tmp)).toEqual(["atlas.json"]);
+  });
+
+  it("a rename that fails briefly with EPERM or EACCES (a lock on Windows) is retried", () => {
+    renameFailures.push("EPERM", "EACCES");
+    writeAtlasFileAtomic(target(), "new\n");
+    expect(renameFailures).toEqual([]);
+    expect(readFileSync(target(), "utf8")).toBe("new\n");
+    expect(readdirSync(tmp)).toEqual(["atlas.json"]);
+  });
+
+  it("a rename that keeps failing with EBUSY falls back to writing the file directly and removes the temporary file", () => {
+    writeFileSync(target(), "old\n");
+    renameFailures.push("EBUSY", "EBUSY", "EBUSY", "EBUSY");
+    writeAtlasFileAtomic(target(), "new\n");
+    expect(renameFailures).toEqual([]);
+    expect(readFileSync(target(), "utf8")).toBe("new\n");
+    expect(readdirSync(tmp)).toEqual(["atlas.json"]);
+  });
+
+  it("any other rename error is rethrown, the target is untouched and the temporary file removed", () => {
+    writeFileSync(target(), "old\n");
+    renameFailures.push("EXDEV");
+    expect(() => writeAtlasFileAtomic(target(), "new\n")).toThrow(/simulated EXDEV/);
+    expect(readFileSync(target(), "utf8")).toBe("old\n");
+    expect(readdirSync(tmp)).toEqual(["atlas.json"]);
+  });
+
+  it("removeStaleAtlasTemp removes a leftover <path>.tmp and reports whether there was one", () => {
+    writeFileSync(`${target()}.tmp`, "half a write");
+    expect(removeStaleAtlasTemp(target())).toBe(true);
+    expect(existsSync(`${target()}.tmp`)).toBe(false);
+    expect(removeStaleAtlasTemp(target())).toBe(false);
   });
 });

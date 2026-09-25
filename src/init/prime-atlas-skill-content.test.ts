@@ -157,6 +157,19 @@ describe("/prime-atlas SKILL.md canonical content (v0.8 Step 3.1)", () => {
       expect(content.toLowerCase()).toContain("atlas.json missing");
       expect(content.toLowerCase()).toContain(".mcp.json missing");
     });
+
+    it("the stale-sentinel row gives the seed-only server rule and one remedy for both atlas.committed modes (v1.2 Phase 2)", () => {
+      const row = content
+        .split("\n")
+        .find((line) => line.startsWith("| Tool returns ERR not_found for sentinel symbol"));
+      expect(row).toBeDefined();
+      expect(row).toMatch(/imports `atlas\.json` only into an empty local cache/);
+      expect(row).toMatch(/closes Claude Code \(or disconnects `contextatlas` in `\/mcp`\)/);
+      expect(row).toMatch(/deletes the local cache file/);
+      expect(row).toMatch(/no API calls/);
+      expect(row).toMatch(/With `atlas\.committed: true` nothing is lost; with `false` this discards/);
+      expect(row).not.toMatch(/restarting Claude Code or reconnecting `contextatlas` with `\/mcp`;/);
+    });
   });
 
   // -------------------------------------------------------------------------

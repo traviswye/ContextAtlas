@@ -3,9 +3,18 @@
  * staleness fields to `atlas_meta` and, when the atlas is committed,
  * regenerate atlas.json. The pipeline calls this only when the run
  * changed something, so a no-op run leaves atlas.json byte-identical
- * (ADR-12). Moved out of `pipeline.ts` at v1.2 Phase 2. Since review
- * round 2 it also records the SHA-256 of the written atlas.json for
- * the cache-only key-stream records (`atlas-baseline.ts`).
+ * (ADR-12). Moved out of `pipeline.ts` at v1.2 Phase 2.
+ *
+ * Checkpoint exports (v1.2 Phase 2, {@link createCheckpointer}): with
+ * `atlas.committed: true` the run also writes atlas.json while it
+ * extracts, so an interrupted run loses at most the paid work since the
+ * last checkpoint. The next run imports that atlas.json at Stage 0 as
+ * usual, and the SHA gates skip the units it holds; no cache-only state
+ * is involved. Each checkpoint is the same export as Stage 7 over the
+ * units stored so far (every unit is written in one transaction), with
+ * one difference: it keeps the `extracted_at_sha` the run started from,
+ * so a checkpoint never reads more current than the atlas did before
+ * the run (only Stage 7 stamps HEAD).
  */
 
 import { log } from "../mcp/logger.js";
@@ -14,7 +23,6 @@ import { exportAtlasToFile } from "../storage/atlas-exporter.js";
 import type { DatabaseInstance } from "../storage/db.js";
 import { ATLAS_VERSION } from "../storage/types.js";
 
-import { recordAtlasWritten } from "./atlas-baseline.js";
 import { EXTRACTION_MODEL } from "./prompt.js";
 
 export interface FinalizeAtlasInput {
@@ -75,16 +83,102 @@ export function finalizeAtlas(
   }
 
   if (!input.committed) return false;
-  const text = exportAtlasToFile(db, input.atlasAbsPath, {
+  exportAtlasToFile(db, input.atlasAbsPath, {
     generatedAt: newGeneratedAt,
     contextatlasVersion: contextatlasVer,
     contextatlasCommitSha: input.contextatlasCommitSha ?? null,
     extractionModel,
     extractedAtSha: input.headSha ?? null,
   });
-  // The cache-only key-stream records now describe this file, so the
-  // next run's import of it keeps them (review round 2).
-  recordAtlasWritten(db, text);
   log.info("pipeline: atlas.json written", { path: input.atlasAbsPath });
   return true;
+}
+
+/**
+ * Minimum time between two checkpoint exports inside a stream (lead
+ * decision F7). Checked only when a unit has been stored: units differ
+ * by 10x in duration (a prose batch takes about 30-90 s, a docstring
+ * call about 3-8 s), so time bounds the paid work at risk better than a
+ * unit count. An export of an 8 MB atlas takes about 60 ms.
+ */
+export const DEFAULT_CHECKPOINT_INTERVAL_MS = 30_000;
+
+export interface CheckpointInput extends Omit<FinalizeAtlasInput, "headSha"> {
+  /**
+   * The `extracted_at_sha` the run started from (null when absent). A
+   * checkpoint keeps it; only Stage 7 stamps the current HEAD.
+   */
+  extractedAtSha: string | null;
+  /** See {@link DEFAULT_CHECKPOINT_INTERVAL_MS}; 0 exports after every unit. */
+  intervalMs: number;
+  /** Test seam: the clock. Default `Date.now`. */
+  now?: () => number;
+}
+
+export interface Checkpointer {
+  /**
+   * A unit was stored (a prose file, a docstring file, a keyed commit):
+   * exports when the interval has passed since the last export.
+   */
+  unitStored(): void;
+  /** Exports now if any unit was stored since the last export. */
+  flush(): void;
+}
+
+/**
+ * Checkpoint exports for one run. Does nothing with `atlas.committed:
+ * false` (every stored unit is already durable in the cache, the source
+ * of truth) or while no unit is pending, so a run that stores nothing
+ * never writes atlas.json before Stage 7. A failed export is logged
+ * once as a warning and the run goes on (lead decision F7): the units
+ * stay pending for the next checkpoint or Stage 7, which still fails
+ * loudly.
+ */
+export function createCheckpointer(
+  db: DatabaseInstance,
+  input: CheckpointInput,
+): Checkpointer {
+  const now = input.now ?? Date.now;
+  let pending = 0;
+  let lastExport = now();
+  let warned = false;
+
+  const flush = (): void => {
+    if (!input.committed || pending === 0) return;
+    try {
+      finalizeAtlas(db, {
+        atlasAbsPath: input.atlasAbsPath,
+        committed: input.committed,
+        contextatlasVersion: input.contextatlasVersion,
+        contextatlasCommitSha: input.contextatlasCommitSha,
+        headSha: input.extractedAtSha,
+      });
+      log.info("pipeline: checkpoint: atlas.json holds the work stored so far", {
+        unitsSinceLastCheckpoint: pending,
+      });
+      pending = 0;
+    } catch (err) {
+      if (!warned) {
+        warned = true;
+        log.warn(
+          "pipeline: checkpoint export of atlas.json failed; the run goes on " +
+            "and retries at the next checkpoint, and Stage 7 writes atlas.json " +
+            "at the end. Until then an interruption loses the work since the " +
+            "last successful checkpoint.",
+          { path: input.atlasAbsPath, err: String(err) },
+        );
+      }
+    }
+    // Advanced on failure too: a failing export is not retried at every
+    // unit boundary.
+    lastExport = now();
+  };
+
+  return {
+    unitStored(): void {
+      pending++;
+      if (now() - lastExport >= input.intervalMs) flush();
+    },
+    flush,
+  };
 }
