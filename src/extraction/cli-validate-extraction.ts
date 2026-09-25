@@ -55,9 +55,12 @@
  * those with the same prompt and `adr:` prefix, the `/index-atlas` Skill
  * keeps them without re-extracting, and neither can be held to an ADR's
  * depth. Only a missing file whose path names an ADR under `adrs.path`
- * is still checked. Before the fixes, a Skill refresh that kept them
- * could never pass this gate, and CLI `index` exited 1 on them after
- * every exporting run.
+ * is still checked, and not when the path reads as a `docs.include` page
+ * stored relative to the config root (review round 2.2: in the ADR-08
+ * external layout such a key also resolves inside the ADR directory, so
+ * a deleted RFC or dated blog page was checked as an ADR). Before the
+ * fixes, a Skill refresh that kept them could never pass this gate, and
+ * CLI `index` exited 1 on them after every exporting run.
  *
  * Per-stream coverage at Phase B iteration is the SKILL.md substrate
  * concern (not validator domain) — if Phase A skips a stream
@@ -85,13 +88,14 @@ import {
   isAbsolute,
   relative,
   resolve as pathResolve,
+  sep,
 } from "node:path";
 
 import { loadConfig } from "../config/parser.js";
 import type { ContextAtlasConfig } from "../types.js";
 import { matchesAdrNamingConvention } from "../utils/adr-enumeration.js";
 
-import { walkProseFiles } from "./file-walker.js";
+import { docsIncludeMatcher, walkProseFiles } from "./file-walker.js";
 
 export type ValidateExtractionExitCode = 0 | 2;
 
@@ -165,6 +169,13 @@ export interface ValidateExtractionShapeOptions {
  *     missing, so a deleted ADR left in `source_shas` keeps failing
  *     coverage. A deleted docs page is exempt (review round 2): the
  *     `/index-atlas` Skill cannot re-extract it and must not be stuck.
+ *     That includes a docs page stored relative to the config root
+ *     (outside `source.root`) whose file name looks like an ADR's, such
+ *     as `docs/rfcs/0001-x.md`: when the path, read relative to the
+ *     config root, lies outside the source root and matches a
+ *     `docs.include` glob, it is a docs page (review round 2.2). In the
+ *     default layout (source root = config root) that reading never
+ *     applies, so a deleted ADR there is still checked.
  *
  * Null when the walk fails (then nothing is exempt).
  */
@@ -188,9 +199,18 @@ function nonAdrProsePredicate(
   // An ADR's stored path is relative to the source root when the file is
   // inside it, else relative to the ADR directory (file-walker.ts).
   const adrBases = isInside(adrDir, sourceRoot) ? [sourceRoot] : [sourceRoot, adrDir];
+  // A docs page outside the source root is stored relative to the config
+  // root, and `docs.include` globs are evaluated there (file-walker.ts).
+  const matchesDocsInclude = docsIncludeMatcher(config.docs.include);
+  const isConfigRootDocsPage = (sourcePath: string): boolean => {
+    const abs = pathResolve(configRoot, sourcePath);
+    if (isInside(abs, sourceRoot)) return false;
+    return matchesDocsInclude(relative(configRoot, abs).split(sep).join("/"));
+  };
   return (sourcePath) => {
     if (docPaths.has(sourcePath)) return true;
     if (adrPaths.has(sourcePath)) return false;
+    if (isConfigRootDocsPage(sourcePath)) return true;
     const asAdr = adrBases
       .map((base) => pathResolve(base, sourcePath))
       .filter((abs) => isInside(abs, adrDir) && matchesAdrNamingConvention(basename(abs)));

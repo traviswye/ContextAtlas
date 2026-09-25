@@ -7,9 +7,11 @@
  *   0. Atlas-aware startup (`atlas-baseline.ts`): import committed
  *      atlas.json if present, establishing the committed SHA baseline.
  *      When the previous run did not finish and atlas.json is unchanged
- *      since, the units that run stored are carried over the import
- *      (`unsaved-work.ts`). With atlas.committed false the cache is
- *      authoritative and atlas.json only seeds an empty cache.
+ *      since, the units that run stored and that are still valid (a
+ *      commit HEAD reaches, a file the tree still has at that SHA) are
+ *      carried over the import (`unsaved-work.ts`). With atlas.committed
+ *      false the cache is authoritative and atlas.json only seeds an
+ *      empty cache.
  *   0.5 F-5 commit-key migration (v1.2 Phase 2, `source-keys.ts`): bare-
  *      sha commit keys and claim paths (the pre-v1.2 Skill form) become
  *      `commit:<sha>`. Every run, whatever streams are enabled.
@@ -82,9 +84,9 @@ import {
 } from "./extraction-plan.js";
 import { diffShas, walkProseFiles, walkSourceFiles } from "./file-walker.js";
 import {
+  commitReachability,
   DEFAULT_COMMIT_LIMIT,
   extractGitSignal,
-  isAncestorOfHead,
 } from "./git-extractor.js";
 import type {
   ExtractionPipelineDeps,
@@ -94,6 +96,7 @@ import type {
 import { runProseStage, warnUnresolvedFrontmatter } from "./prose-stream.js";
 import { buildSymbolInventory } from "./resolver.js";
 import { RunCostTracker } from "./run-cost.js";
+import { sourceKeyMatcher } from "./source-key-files.js";
 import {
   normalizeCommitKeys,
   partitionSourceShas,
@@ -148,15 +151,20 @@ export async function runExtractionPipeline(
   //
   // atlas.json replaces the cache. When the previous run did not finish
   // and atlas.json is unchanged since it started, the units that run
-  // stored (and that the current HEAD reaches, for commits) are carried
-  // over the import. With `atlas.committed` false the cache is
-  // authoritative and atlas.json only seeds an empty cache. See
-  // `atlas-baseline.ts`.
+  // stored are carried over the import: a commit when the current HEAD
+  // reaches it, a file's unit while the working tree still has that
+  // content. With `atlas.committed` false the cache is authoritative and
+  // atlas.json only seeds an empty cache. See `atlas-baseline.ts`.
   const atlasAbsPath = pathResolve(configRoot, config.atlas.path);
   const atlasBaseline = loadAtlasBaseline(db, {
     atlasAbsPath,
     committed: config.atlas.committed,
-    isCommitReachable: (sha) => isAncestorOfHead(repoRoot, sha, deps.gitBinary),
+    commitReachability: (sha) => commitReachability(repoRoot, sha, deps.gitBinary),
+    isSourceCurrent: sourceKeyMatcher({
+      sourceRoot: repoRoot,
+      configRoot,
+      adrsPath: config.adrs.path,
+    }),
   });
 
   // --- Stage 0.5: F-5 commit-key migration (v1.2 Phase 2, L-2) ---------

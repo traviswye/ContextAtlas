@@ -1,6 +1,6 @@
 /**
  * Stage 0 of `runExtractionPipeline`: load the run's baseline into the
- * local cache (v1.2 Phase 2 review fixes, rounds 1 and 2).
+ * local cache (v1.2 Phase 2 review fixes, rounds 1, 2 and 2.2).
  *
  *   - `atlas.committed: true` with an atlas.json: it is imported over the
  *     cache on every run (ADR-06: the committed atlas is the source of
@@ -12,12 +12,17 @@
  *     When the next run finds the mark and atlas.json is byte-identical,
  *     the units the unfinished run stored are carried over the import
  *     (`unsaved-work.ts`): additive only, so nothing that run deleted or
- *     pruned against its own tree survives, and a commit is carried only
- *     when the current HEAD reaches it. A resumed run always exports.
+ *     pruned against its own tree survives; a commit is carried only
+ *     when the current HEAD reaches it, and a file's unit only while the
+ *     working tree still has that content (round 2.2). The
+ *     `source_key_streams` records are rolled back with the import to
+ *     their state when the unfinished run started (round 2.2). A resumed
+ *     run always exports.
  *   - `atlas.committed: true` without an atlas.json: the cache is the
  *     baseline, and the run must write atlas.json even if it changes
  *     nothing (it was deleted, or the atlas was kept uncommitted until
- *     now).
+ *     now). Commits the cache extracted on another branch are dropped
+ *     first (`foreign-commits.ts`, round 2.2).
  *   - `atlas.committed: false`: the local cache is the source of truth.
  *     atlas.json only seeds an empty cache (the MCP server and the init
  *     smoke test use the same `isCacheEmpty` rule) and is otherwise
@@ -41,9 +46,16 @@ import {
   setCacheMeta,
 } from "../storage/cache-meta.js";
 import type { DatabaseInstance } from "../storage/db.js";
-import { clearSourceKeyStreams } from "../storage/source-key-streams.js";
+import {
+  clearRunStartKeyStreams,
+  clearSourceKeyStreams,
+  restoreRunStartKeyStreams,
+  saveRunStartKeyStreams,
+} from "../storage/source-key-streams.js";
 import type { AtlasFileV1 } from "../storage/types.js";
 
+import { dropUnreachableCommits } from "./foreign-commits.js";
+import type { CommitReachability } from "./git-extractor.js";
 import { restoreUnsavedWork, snapshotUnsavedWork } from "./unsaved-work.js";
 
 /**
@@ -59,15 +71,30 @@ export const RUN_IN_PROGRESS_KEY = "index.unfinished_run_atlas_sha256";
  */
 export const KEY_STREAMS_ATLAS_KEY = "index.key_streams_atlas_sha256";
 
+/**
+ * `_meta` key: SHA-256 of the atlas.json whose import the run-start copy
+ * of the `source_key_streams` records follows (round 2.2). A resume
+ * restores the copy only when this matches.
+ */
+export const RUN_START_KEY_STREAMS_KEY = "index.run_start_key_streams_atlas_sha256";
+
 export interface AtlasBaselineInput {
   atlasAbsPath: string;
   /** `config.atlas.committed`. */
   committed: boolean;
   /**
-   * Whether a commit (by sha) is reachable from the current HEAD. A
-   * resumed run carries over only those commits. Omitted: none are.
+   * Where a commit (by sha) stands relative to the current HEAD. A
+   * resumed run carries over only "reachable" commits; with no
+   * atlas.json, "unreachable" ones are dropped from the cache. Omitted:
+   * every commit is "unknown" (none carried, none dropped).
    */
-  isCommitReachable?: (sha: string) => boolean;
+  commitReachability?: (sha: string) => CommitReachability;
+  /**
+   * Whether the file a prose or docstring key names has `sha` in the
+   * working tree now. A resumed run carries over only such units.
+   * Omitted: none are.
+   */
+  isSourceCurrent?: (key: string, sha: string) => boolean;
 }
 
 export interface AtlasBaseline {
@@ -88,8 +115,8 @@ export interface AtlasBaseline {
 
 /**
  * Load the run's baseline into the cache (see the module header). Throws
- * only when atlas.json cannot be read or parsed, as the import always
- * did.
+ * only when atlas.json cannot be read, parsed or imported, as the import
+ * always did.
  */
 export function loadAtlasBaseline(
   db: DatabaseInstance,
@@ -97,10 +124,11 @@ export function loadAtlasBaseline(
 ): AtlasBaseline {
   const { atlasAbsPath } = input;
   const exists = existsSync(atlasAbsPath);
+  const reachability = input.commitReachability ?? (() => "unknown" as const);
 
   if (!input.committed) {
     // The cache is authoritative; the resume mark is not used.
-    deleteCacheMeta(db, RUN_IN_PROGRESS_KEY);
+    clearRunMark(db);
     if (!exists) return { imported: false, resumed: false, mustExport: false };
     if (isCacheEmpty(db)) {
       log.info(
@@ -110,7 +138,7 @@ export function loadAtlasBaseline(
       const raw = readFileSync(atlasAbsPath);
       db.transaction(() => {
         importAtlas(db, parseAtlas(raw));
-        adoptAtlas(db, sha256(raw));
+        adoptAtlas(db, atlasFileSha256(raw));
       })();
       return { imported: true, resumed: false, mustExport: false };
     }
@@ -126,24 +154,33 @@ export function loadAtlasBaseline(
 
   if (!exists) {
     // No committed baseline: the cache is the baseline, as always, and
-    // this run writes atlas.json.
-    deleteCacheMeta(db, RUN_IN_PROGRESS_KEY);
+    // this run writes atlas.json. The cache outlives a branch switch, so
+    // it can hold commits of another branch; those must not reach this
+    // branch's atlas.json (round 2.2).
+    clearRunMark(db);
+    const dropped = dropUnreachableCommits(db, reachability);
+    if (dropped > 0) {
+      log.info(
+        `pipeline: no atlas.json; leaving out ${dropped} commit(s) the local ` +
+          "cache extracted that the current HEAD does not reach (another branch)",
+        { path: atlasAbsPath },
+      );
+    }
     return { imported: false, resumed: false, mustExport: true };
   }
 
   const raw = readFileSync(atlasAbsPath);
-  const hash = sha256(raw);
+  const hash = atlasFileSha256(raw);
   const atlas = parseAtlas(raw);
   const unfinished = getCacheMeta(db, RUN_IN_PROGRESS_KEY);
-  const unsaved =
-    unfinished === hash
-      ? snapshotUnsavedWork(
-          db,
-          atlas.source_shas ?? {},
-          input.isCommitReachable ?? (() => false),
-        )
-      : null;
-  if (unfinished !== undefined && unfinished !== hash) {
+  const resuming = unfinished === hash;
+  const unsaved = resuming
+    ? snapshotUnsavedWork(db, atlas.source_shas ?? {}, {
+        isCommitReachable: (sha) => reachability(sha) === "reachable",
+        isSourceCurrent: input.isSourceCurrent ?? (() => false),
+      })
+    : null;
+  if (unfinished !== undefined && !resuming) {
     log.warn(
       "pipeline: the previous `contextatlas index` run did not finish, and " +
         "atlas.json has changed since it started; importing atlas.json. " +
@@ -156,7 +193,20 @@ export function loadAtlasBaseline(
   db.transaction(() => {
     importAtlas(db, atlas);
     adoptAtlas(db, hash);
-    if (unsaved !== null) restoreUnsavedWork(db, unsaved);
+    if (unsaved !== null) {
+      // The records go back to what they were when the unfinished run
+      // started, as its claims and keys just did; a carried unit brings
+      // its own record back.
+      if (getCacheMeta(db, RUN_START_KEY_STREAMS_KEY) === hash) {
+        restoreRunStartKeyStreams(db);
+      } else {
+        clearSourceKeyStreams(db);
+      }
+      restoreUnsavedWork(db, unsaved);
+    } else {
+      saveRunStartKeyStreams(db);
+      setCacheMeta(db, RUN_START_KEY_STREAMS_KEY, hash);
+    }
     setCacheMeta(db, RUN_IN_PROGRESS_KEY, hash);
   })();
 
@@ -176,6 +226,13 @@ export function loadAtlasBaseline(
         "(another branch)",
     );
   }
+  if (unsaved !== null && unsaved.sourcesLeftOut > 0) {
+    log.info(
+      `pipeline: not keeping ${unsaved.sourcesLeftOut} source(s) the ` +
+        "unfinished run extracted whose content the working tree no " +
+        "longer has (reverted, switched away or deleted)",
+    );
+  }
   return { imported: true, resumed, mustExport: resumed };
 }
 
@@ -184,7 +241,7 @@ export function loadAtlasBaseline(
  * everything the cache does, so the next run imports it again.
  */
 export function markRunFinished(db: DatabaseInstance): void {
-  deleteCacheMeta(db, RUN_IN_PROGRESS_KEY);
+  clearRunMark(db);
 }
 
 /**
@@ -196,21 +253,29 @@ export function recordAtlasWritten(
   db: DatabaseInstance,
   atlasText: string,
 ): void {
-  setCacheMeta(db, KEY_STREAMS_ATLAS_KEY, sha256(Buffer.from(atlasText, "utf8")));
+  setCacheMeta(db, KEY_STREAMS_ATLAS_KEY, atlasFileSha256(Buffer.from(atlasText, "utf8")));
 }
 
 /**
- * The cache now holds the atlas.json with SHA-256 `hash`. Records
- * written on top of another file are dropped.
+ * The cache now holds the atlas.json with SHA-256 `hash` (imported or
+ * seeded). Records written on top of another file are dropped. Also used
+ * by the MCP server's startup import (`server-cache-load.ts`).
  */
-function adoptAtlas(db: DatabaseInstance, hash: string): void {
+export function adoptAtlas(db: DatabaseInstance, hash: string): void {
   if (getCacheMeta(db, KEY_STREAMS_ATLAS_KEY) === hash) return;
   clearSourceKeyStreams(db);
   setCacheMeta(db, KEY_STREAMS_ATLAS_KEY, hash);
 }
 
-function sha256(raw: Buffer): string {
+/** SHA-256 (hex) of an atlas.json file's bytes. */
+export function atlasFileSha256(raw: Buffer): string {
   return createHash("sha256").update(raw).digest("hex");
+}
+
+function clearRunMark(db: DatabaseInstance): void {
+  deleteCacheMeta(db, RUN_IN_PROGRESS_KEY);
+  deleteCacheMeta(db, RUN_START_KEY_STREAMS_KEY);
+  clearRunStartKeyStreams(db);
 }
 
 function parseAtlas(raw: Buffer): AtlasFileV1 {

@@ -15,7 +15,14 @@
  */
 
 import { spawn, spawnSync, type ChildProcess } from "node:child_process";
-import { cpSync, existsSync, mkdtempSync, rmSync } from "node:fs";
+import {
+  cpSync,
+  existsSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join as pathJoin, resolve as pathResolve } from "node:path";
 
@@ -686,10 +693,10 @@ describe("MCP server binary stdio lifecycle (SDK v2)", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Seeding the cache at startup (v1.2 Phase 2 review round 2)
+// Loading atlas.json at startup (v1.2 Phase 2 review rounds 2 and 2.2)
 // ---------------------------------------------------------------------------
 
-describe("MCP server binary: atlas.json seeds only an empty cache", () => {
+describe("MCP server binary: loading atlas.json into a cache that has content", () => {
   let fixtureRoot: string;
   let transport: TestSubprocessTransport;
 
@@ -697,8 +704,8 @@ describe("MCP server binary: atlas.json seeds only an empty cache", () => {
     fixtureRoot = mkdtempSync(pathJoin(tmpdir(), "ca-smoke-seed-"));
     cpSync(FIXTURE_SRC, fixtureRoot, { recursive: true });
     // A cache with claims and source keys but no symbols (a docs-only
-    // repo, or every source excluded): `contextatlas index` treats it as
-    // authoritative, so the server must not replace it.
+    // repo, or every source excluded), holding something other than the
+    // fixture's atlas.json.
     const db = openDatabase(pathJoin(fixtureRoot, ".contextatlas", "index.db"));
     setSourceSha(db, "docs/adr/ADR-01.md", "cache-sha");
     insertClaim(db, {
@@ -718,22 +725,41 @@ describe("MCP server binary: atlas.json seeds only an empty cache", () => {
     rmWithRetry(fixtureRoot);
   });
 
-  it("keeps a symbol-less cache that has content instead of importing atlas.json over it", async () => {
+  async function startAndStop(expectLog: RegExp): Promise<string[]> {
     const client = new Client({ name: "seed-client", version: "0.0.1" }, { capabilities: {} });
     await client.connect(transport);
-    await vi.waitFor(
-      () => expect(transport.stderrBuffer).toMatch(/Using existing local cache/),
-      { timeout: 5_000, interval: 25 },
-    );
-    expect(transport.stderrBuffer).not.toMatch(/Importing atlas\.json into fresh cache/);
+    await vi.waitFor(() => expect(transport.stderrBuffer).toMatch(expectLog), {
+      timeout: 5_000,
+      interval: 25,
+    });
     await client.close().catch(() => {});
     await transport.close();
-
     const db = openDatabase(pathJoin(fixtureRoot, ".contextatlas", "index.db"));
     try {
-      expect(listAllClaims(db).map((c) => c.claim)).toEqual(["claim only the cache holds"]);
+      return listAllClaims(db).map((c) => c.claim);
     } finally {
       db.close();
     }
+  }
+
+  it("atlas.committed: false keeps the cache instead of importing atlas.json over it", async () => {
+    const cfgPath = pathJoin(fixtureRoot, ".contextatlas.yml");
+    writeFileSync(
+      cfgPath,
+      readFileSync(cfgPath, "utf8").replace("committed: true", "committed: false"),
+      "utf8",
+    );
+    const claims = await startAndStop(/Using existing local cache/);
+    expect(transport.stderrBuffer).not.toMatch(/Importing atlas\.json into fresh cache/);
+    expect(transport.stderrBuffer).not.toMatch(/re-imported/);
+    expect(claims).toEqual(["claim only the cache holds"]);
+  }, 30_000);
+
+  it("atlas.committed: true re-imports an atlas.json the cache does not hold (a pull, a Skill refresh)", async () => {
+    const claims = await startAndStop(/atlas\.json changed since the local cache last imported or wrote it/);
+    expect(transport.stderrBuffer).not.toMatch(/Using existing local cache/);
+    expect(claims).toEqual([
+      "SmokeTestSymbol exists so the binary smoke test can validate end-to-end query serving",
+    ]);
   }, 30_000);
 });

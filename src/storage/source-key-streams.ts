@@ -23,6 +23,13 @@
  * same SHA, which the SHA check cannot see, so the rows are dropped
  * ({@link clearSourceKeyStreams}) and classification falls back to the
  * fresh-clone rules (review round 2; `atlas-baseline.ts`).
+ *
+ * A run changes rows as it goes (Stage 5 drops a deleted key's row; a
+ * stream re-keying a path replaces it), but writes atlas.json only at
+ * Stage 7. So each run saves the rows as they stood after its Stage 0
+ * import ({@link saveRunStartKeyStreams}, migration 8), and a resume
+ * after an interrupted run restores that copy with the re-imported
+ * atlas.json ({@link restoreRunStartKeyStreams}; review round 2.2).
  */
 
 import type { DatabaseInstance } from "./db.js";
@@ -79,4 +86,34 @@ export function deleteSourceKeyStream(
 /** Forget every record (a different atlas.json was imported). */
 export function clearSourceKeyStreams(db: DatabaseInstance): void {
   db.exec("DELETE FROM source_key_streams;");
+}
+
+/**
+ * Save the current rows as the run-start copy (replacing any earlier
+ * copy). Called by Stage 0 when a run starts from a freshly imported
+ * atlas.json.
+ */
+export function saveRunStartKeyStreams(db: DatabaseInstance): void {
+  db.exec(
+    "DELETE FROM source_key_streams_run_start; " +
+      "INSERT INTO source_key_streams_run_start (source_path, stream, source_sha) " +
+      "SELECT source_path, stream, source_sha FROM source_key_streams;",
+  );
+}
+
+/**
+ * Replace the current rows with the run-start copy: what an interrupted
+ * run changed is undone, as its claims and keys are by the re-import.
+ */
+export function restoreRunStartKeyStreams(db: DatabaseInstance): void {
+  db.exec(
+    "DELETE FROM source_key_streams; " +
+      "INSERT INTO source_key_streams (source_path, stream, source_sha) " +
+      "SELECT source_path, stream, source_sha FROM source_key_streams_run_start;",
+  );
+}
+
+/** Drop the run-start copy (the run finished, or there is none to resume). */
+export function clearRunStartKeyStreams(db: DatabaseInstance): void {
+  db.exec("DELETE FROM source_key_streams_run_start;");
 }

@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -466,5 +466,63 @@ describe("runValidateExtractionSubcommand — docs outside source.root (ADR-08; 
     expect(stderr).toContain("ADR-02-gone.md");
     expect(stderr).not.toContain("README.md");
     expect(stderr).not.toContain("docs/guide.md");
+  });
+
+  it("a deleted docs page whose file name looks like an ADR's is exempt, not checked as an ADR (review round 2.2)", async () => {
+    // docs/rfcs/0001-first-rfc.md (Nygard-style name) and a dated page
+    // were extracted by `index` from docs.include and deleted since.
+    // Read against the ADR directory they would be adrs/docs/..., an
+    // ADR-named path there; read against the config root they are the
+    // docs.include pages they were.
+    const result = await validate({
+      ...base,
+      source_shas: {
+        ...base.source_shas,
+        "docs/rfcs/0001-first-rfc.md": "r1",
+        "docs/blog/2024-05-01-post.md": "b1",
+      },
+      claims: [
+        ...base.claims!,
+        ...Array.from({ length: 3 }, () => makeAdrClaim("docs/rfcs/0001-first-rfc.md")),
+      ],
+    });
+    expect(stderr).toBe("");
+    expect(result.exitCode).toBe(0);
+  });
+});
+
+describe("runValidateExtractionSubcommand — default layout keeps checking deleted ADRs (review round 2.2)", () => {
+  let fixture: Fixture;
+  let stderr: string;
+  beforeEach(async () => {
+    fixture = await makeFixture();
+    stderr = "";
+    // A broad docs glob that also matches the ADR directory.
+    const cfg = path.join(fixture.root, ".contextatlas.yml");
+    await writeFile(cfg, (await readFile(cfg, "utf8")).replace("include: []", "include: [docs/**/*.md]"));
+  });
+  afterEach(async () => {
+    await fixture.cleanup();
+  });
+
+  it("a deleted ADR whose path a docs.include glob also matches is still checked", async () => {
+    const adrPath = "docs/adr/ADR-01-foo.md";
+    await writeFile(path.join(fixture.root, adrPath), "# ADR-01\n");
+    await writeAtlas(fixture, {
+      version: "1.4",
+      source_shas: { [adrPath]: "a", "docs/adr/ADR-02-gone.md": "g" },
+      claims: [
+        ...Array.from({ length: 8 }, () => makeAdrClaim(adrPath)),
+        ...Array.from({ length: 3 }, () => makeAdrClaim("docs/adr/ADR-02-gone.md")),
+      ],
+    });
+    const result = await runValidateExtractionSubcommand({
+      configRoot: fixture.root,
+      configFile: null,
+      writeStdout: () => {},
+      writeStderr: (c) => (stderr += c),
+    });
+    expect(result.exitCode).toBe(2);
+    expect(stderr).toContain("docs/adr/ADR-02-gone.md: 3 claims");
   });
 });

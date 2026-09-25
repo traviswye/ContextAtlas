@@ -199,7 +199,10 @@ load-bearing empirical findings).
   ADR/docs only. A docstring error's `sourcePath` is the file (the
   symbol is named in `error`); a commit error's is `commit:<sha>`.
 - `index --full` re-extracts docstrings as well as ADRs/docs (v1.2
-  Phase 2). Commits are never re-extracted by `--full`.
+  Phase 2). Commits are never re-extracted by `--full`. The
+  `validate-extraction` failure message, which suggests `--full`, says
+  so and gives an ADR-only route (`extraction.streams: [adr]` for one
+  run).
 - Commit claims use one key form, `commit:<sha>`, as `source`,
   `source_path` and `source_shas` key on both paths (v1.2 Phase 2).
   - `/index-atlas` used to write the bare sha. Every `index` run now
@@ -229,7 +232,8 @@ load-bearing empirical findings).
   fails the stream: for a docstring file it is reported in
   `extraction_errors` and the file is retried; for a commit it is
   pinned with only a warning, and no summary field reports it. The
-  ADR/docs stream's all-failed error follows the same rule (review).
+  message quotes the first failed call's error. The ADR/docs stream's
+  all-failed error follows the same rule (review).
 - `atlas.committed: false` (v1.2 Phase 2 review): `index` no longer
   imports a leftover `atlas.json` over a non-empty local cache. The
   file only seeds an empty cache, and is otherwise ignored with a
@@ -243,12 +247,24 @@ load-bearing empirical findings).
   such as README.md, wherever they are stored relative to), an
   existing file the walk does not return, or a deleted page. Only a
   missing file whose path names an ADR under `adrs.path` is still
-  checked.
+  checked, and not when the path, read relative to the config root,
+  lies outside `source.root` and matches a `docs.include` glob (a
+  deleted `docs/rfcs/0001-x.md` in the ADR-08 layout is a docs page).
 - `validate-atlas` (v1.2 Phase 2 review) warns (exit code unchanged)
   when a claim's `symbol_ids` names a symbol `symbols` does not list.
   Such an atlas cannot be loaded until `contextatlas resolve-symbols`
-  runs, which rebuilds `symbols` and keeps every link whose symbol
-  still exists.
+  runs, which rebuilds `symbols` and keeps every link whose symbol it
+  can list (see the `resolve-symbols` entry under "Fixed" for files it
+  cannot list).
+- The local cache records which of the ADR/docs and docstring streams
+  keyed each source path (v1.2 Phase 2 review; cache-only tables,
+  local cache migrations 7 and 8, never exported). Both streams key a
+  file by path at the same SHA, so a file keyed with no claims by one
+  looked unchanged to the other once `docs.include` changed.
+  Classification of such keys now uses the record, which counts only
+  while `atlas.json` is the file this cache last imported or wrote, and
+  is rolled back with an interrupted run's work. A fresh clone has no
+  records and classifies as before.
 - `list-extraction-sources` (v1.2 Phase 2 review) leaves a source file
   out of the manifest when `getDocstring` fails for any of its
   symbols, so `/index-atlas` keeps that file's claims and key and the
@@ -257,11 +273,18 @@ load-bearing empirical findings).
   - carries the baseline `symbols` forward, or writes `symbols: []`
     when that array is too large to re-write, and keeps preserved
     `symbol_ids` either way (resolve-symbols rebuilds the list);
+  - after writing `symbols: []`, runs `resolve-symbols` right after
+    `validate-atlas`, before `validate-extraction`, so the atlas does
+    not stay unloadable while extraction depth is fixed;
   - carries the baseline's `extracted_at_sha` and `git_commits`
     forward;
   - re-runs `validate-atlas` after `resolve-symbols`;
   - drops a deleted source file's key and claims even while the
-    docstring stream is disabled, as `index` does.
+    docstring stream is disabled, as `index` does;
+  - recognises an ADR key the way it is stored (relative to
+    `source_root`, or to the ADR directory when ADRs live outside
+    `source.root`), not by an `adrs.path` prefix, so a deleted or
+    renamed ADR's key is dropped in those layouts too.
 
 ### Removed
 
@@ -354,8 +377,13 @@ load-bearing empirical findings).
   failed`).
   - Links to missing symbols are now dropped, and the claims left
     with no link are reported as orphaned.
-  - The earlier symbols of files whose listing failed are now kept
-    instead of dropped.
+  - The earlier symbols of files whose listing failed, or whose
+    language is not configured, are now kept instead of dropped, and
+    so are the links to them. When `symbols` does not list a symbol a
+    claim links (an `/index-atlas` refresh that wrote `symbols: []`),
+    its record is taken from the `atlas.json` committed at HEAD; if
+    there is none and the file could not be listed, `resolve-symbols`
+    exits 1, names the files and writes nothing (v1.2 Phase 2 review).
 - `contextatlas index --json` printed a second, plain-text line on
   stdout after the JSON object when the run exported: the
   `validate-extraction` result (v1.2 Phase 2). That line now goes to
@@ -410,57 +438,29 @@ load-bearing empirical findings).
   and `atlas.json` unchanged, it still imports `atlas.json`, then
   carries over the sources the interrupted run extracted (a commit
   only when HEAD reaches it, so another branch's commits stay out),
-  extracts only what is left, and exports. Nothing the interrupted run
-  deleted or pruned is carried: the run recomputes that against the
-  current tree and config and reports the orphans itself. A changed
-  `atlas.json` is imported without carrying anything.
+  extracts only what is left, and exports. A source is carried only
+  while the working tree still has the content it was extracted from,
+  so a reverted edit or a deleted scratch file is neither billed again
+  nor exported. Nothing the interrupted run deleted or pruned is
+  carried: the run recomputes that against the current tree and config
+  and reports the orphans itself. A changed `atlas.json` is imported
+  without carrying anything.
 - With `atlas.committed: false` and an `atlas.json` left over from the
   committed workflow, every `index` re-extracted everything newer
   than that file (v1.2 Phase 2 review). See "Changed".
-- A commit whose response was malformed JSON was never pinned (v1.2
-  Phase 2 review): the client throws `ParseError` for it, which the
-  commit stream treated as an API failure. The commit was billed again
-  on every run, its tokens were missing from `cost_usd`, and when it
-  was the only pending commit `index` exited 1 blaming the API key.
-  It is now pinned like any null result. The tokens of a response
-  that does not parse are counted in every stream (`ParseError` now
-  carries its usage).
-- One docstring that always came back unparseable made every later
-  `index` exit 1, even with nothing changed (v1.2 Phase 2 review).
-  Unparseable results no longer count toward a stream failure; the
-  file is still reported and retried.
-- The stream-failure message could quote a docstring read error (an
-  LSP timeout) as the first failed call and blame the API key (v1.2
-  Phase 2 review). It now quotes the first failed call.
-- A source file keyed with no claims by one of the prose and docstring
-  streams was never extracted by the other after `docs.include`
-  changed (v1.2 Phase 2 review), because both key by path at the same
-  SHA. The local cache now records which stream keyed each path, in a
-  cache-only `source_key_streams` table that is never exported (local
-  cache migration 7), and classification uses it. This includes
-  following the `docs.include` collision warning's own advice. The
-  records only count while `atlas.json` is the file this cache last
-  imported or wrote; after a pull or branch switch they are dropped,
-  so they cannot re-bill or delete another writer's key.
+- The tokens of a response that did not parse (malformed JSON) were
+  left out of `cost_usd` and the `--budget-warn` check (v1.2 Phase 2
+  review). They are counted now: `ParseError` carries the response's
+  usage.
 - `contextatlas index` exited 1 after exporting on repositories whose
   `docs.include` pages had fewer than 8 claims, or none (v1.2 Phase 2
   review; the CLI side predates Phase 2): `validate-extraction` held
   them to the ADR depth floor. An `/index-atlas` refresh that kept
   those pages, as it must, could never pass its gate.
-- The `validate-extraction` failure message told users to run
-  `index --full`, which since Phase 2 also re-extracts every docstring
-  file (v1.2 Phase 2 review). It now says so and gives an ADR-only
-  route.
 - `init` told users to re-run `init` after an `index` that exported
   and then exited 1 (v1.2 Phase 2 review). A re-run skips extraction
   once `atlas.json` matches HEAD, so the failed work was never
   retried. `init` now says to run `contextatlas index` first.
-- An `/index-atlas` refresh wrote preserved `symbol_ids` next to
-  `symbols: []`, an atlas that cannot be imported until
-  `resolve-symbols` runs (v1.2 Phase 2 review). An interrupted or
-  gate-blocked refresh left the MCP server failing at startup with a
-  raw SQLite error. The refresh now carries `symbols` forward when it
-  can, and `validate-atlas` warns about such an atlas. See "Changed".
 - A `getDocstring` failure in `list-extraction-sources` made an
   `/index-atlas` refresh drop that symbol's claims and pin the file's
   new SHA (v1.2 Phase 2 review). See "Changed".
@@ -468,7 +468,10 @@ load-bearing empirical findings).
   regenerate it, or `committed` switched back to true), an `index` run
   that changed nothing never wrote `atlas.json`: it logged "atlas.json
   untouched" and exited 0 (v1.2 Phase 2 review). It now always writes
-  it in that case.
+  it in that case. The local cache is its baseline then, and it
+  survives a branch switch: commits it extracted that git knows but
+  HEAD does not reach (another branch) are now left out, where before
+  they reached this branch's `atlas.json` and stayed there.
 - One ADR or docs page whose response was malformed JSON made `index`
   fail with "Extraction failed for all 1 document(s)" on every run
   while it was the only changed prose file, blaming the API key (v1.2
@@ -476,10 +479,6 @@ load-bearing empirical findings).
   docstring and commit streams. The page is now reported in
   `extraction_errors` and retried; only API or network errors count
   as the all-failed case.
-- `validate-extraction` checked `docs.include` pages stored relative
-  to the config root as ADRs when `source.root` is a subdirectory (the
-  ADR-08 layout), so `index` exited 1 after every exporting run there
-  (v1.2 Phase 2 review). See "Changed".
 - An `/index-atlas` refresh of an atlas built by `index` dropped its
   `extracted_at_sha` and `git_commits`: the MCP tools lost recent
   commits and co-change files for everyone loading that atlas, and
@@ -488,6 +487,23 @@ load-bearing empirical findings).
   that had claims but no symbols (a docs-only repo, or every source
   excluded), on every start, so with `atlas.committed: false` the next
   `index` billed the difference again (v1.2 Phase 2 review).
+- With `atlas.committed: true` the MCP server never re-imported a
+  changed `atlas.json` into a cache that had symbols (v1.2 Phase 2
+  review). After a `git pull` or an `/index-atlas` refresh it kept
+  serving the old atlas with no warning, and without an API key the
+  only way to refresh it was deleting `index.db`. It now imports
+  `atlas.json` at startup whenever the file differs from the one the
+  cache last imported or wrote (a cache from an earlier release
+  re-imports once), except while a `contextatlas index` run over the
+  cache is unfinished, when it serves the cache with a warning. An
+  `atlas.json` that cannot be imported (a merge conflict) leaves the
+  cache in service, with a warning. With `atlas.committed: false` a
+  non-empty cache is kept, as before.
+- An `atlas.json` whose claims link symbols its `symbols` array does
+  not list failed to load with a bare `FOREIGN KEY constraint failed`
+  (in the MCP server, `index` and `init`). The error now says how
+  many claims are affected and to run `contextatlas resolve-symbols`
+  (v1.2 Phase 2 review).
 
 ### Security
 

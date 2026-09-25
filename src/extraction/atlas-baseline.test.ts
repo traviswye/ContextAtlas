@@ -33,11 +33,13 @@ import { deleteSymbolsByIds, getSymbol, upsertSymbol } from "../storage/symbols.
 import type { AtlasClaimEntry, AtlasFileV1, AtlasSymbolEntry } from "../storage/types.js";
 
 import {
+  type AtlasBaselineInput,
   KEY_STREAMS_ATLAS_KEY,
   loadAtlasBaseline,
   markRunFinished,
   recordAtlasWritten,
   RUN_IN_PROGRESS_KEY,
+  RUN_START_KEY_STREAMS_KEY,
 } from "./atlas-baseline.js";
 
 function atlasWith(
@@ -102,8 +104,14 @@ describe("loadAtlasBaseline", () => {
     writeFileSync(atlasPath, text);
     return text;
   };
-  const load = (extra: { isCommitReachable?: (sha: string) => boolean } = {}) =>
-    loadAtlasBaseline(db, { atlasAbsPath: atlasPath, committed: true, ...extra });
+  /** Stage 0 as the pipeline runs it; by default every stored file unit is still in the tree. */
+  const load = (extra: Partial<AtlasBaselineInput> = {}) =>
+    loadAtlasBaseline(db, {
+      atlasAbsPath: atlasPath,
+      committed: true,
+      isSourceCurrent: () => true,
+      ...extra,
+    });
   /** A unit a run stores: key + one claim. */
   const storeUnit = (key: string, sha: string, text: string, source = `docstring:${key}`): void => {
     insertClaim(db, {
@@ -208,7 +216,9 @@ describe("loadAtlasBaseline", () => {
       load();
       storeUnit(`commit:${onBranch}`, onBranch, "reachable", `commit:${onBranch}`);
       storeUnit(`commit:${elsewhere}`, elsewhere, "other branch", `commit:${elsewhere}`);
-      const r = load({ isCommitReachable: (sha) => sha === onBranch });
+      const r = load({
+        commitReachability: (sha) => (sha === onBranch ? "reachable" : "unreachable"),
+      });
       expect(r.resumed).toBe(true);
       expect(Object.keys(listSourceShas(db)).sort()).toEqual([`commit:${onBranch}`, "docs/a.md"]);
       expect(listAllClaims(db).map((c) => c.claim)).toEqual(["reachable"]);
@@ -279,6 +289,116 @@ describe("loadAtlasBaseline", () => {
       recordSourceKeyStream(db, "src/a.ts", "docstring", "x");
       load();
       expect(listSourceKeyStreams(db).get("src/a.ts")?.stream).toBe("docstring");
+    });
+  });
+
+  describe("review round 2.2", () => {
+    it("a resume leaves out a file unit whose content the working tree no longer has", () => {
+      writeAtlas({ "docs/adr/ADR-01.md": "adr-1", "src/a.ts": "sha-a" }, [], [adrClaim("committed", [])]);
+      load();
+      // The dead run extracted WIP versions of both files; the user then
+      // reverted src/a.ts but kept the ADR edit.
+      storeUnit("src/a.ts", "sha-a-wip", "WIP claim");
+      deleteClaimsBySourcePath(db, "docs/adr/ADR-01.md");
+      storeUnit("docs/adr/ADR-01.md", "adr-1-wip", "WIP ADR claim", "adr:ADR-01.md");
+
+      const r = load({ isSourceCurrent: (key) => key === "docs/adr/ADR-01.md" });
+      expect(r.resumed).toBe(true);
+      expect(listSourceShas(db)).toEqual({ "docs/adr/ADR-01.md": "adr-1-wip", "src/a.ts": "sha-a" });
+      expect(listAllClaims(db).map((c) => c.claim)).toEqual(["WIP ADR claim"]);
+    });
+
+    it("nothing still in the tree: not a resume, and atlas.json stands", () => {
+      writeAtlas({ "src/a.ts": "sha-a" });
+      load();
+      storeUnit("src/a.ts", "sha-a-wip", "WIP claim");
+      storeUnit("src/scratch.ts", "sha-s", "scratch claim"); // deleted since
+      const r = load({ isSourceCurrent: () => false });
+      expect(r).toEqual({ imported: true, resumed: false, mustExport: false });
+      expect(listSourceShas(db)).toEqual({ "src/a.ts": "sha-a" });
+      expect(listAllClaims(db)).toEqual([]);
+    });
+
+    it("a resume rolls the key-stream records back: a record Stage 5 deleted comes back", () => {
+      const text = writeAtlas({ "src/a.ts": "S" });
+      recordAtlasWritten(db, text);
+      recordSourceKeyStream(db, "src/a.ts", "prose", "S");
+      load();
+      deleteSourceSha(db, "src/a.ts"); // Stage 5 of the dead run
+      expect(listSourceKeyStreams(db).get("src/a.ts")).toBeUndefined();
+
+      load();
+      expect(listSourceKeyStreams(db).get("src/a.ts")).toEqual({ stream: "prose", sha: "S" });
+    });
+
+    it("a resume rolls the key-stream records back: a same-SHA re-key by the other stream is undone with its claims", () => {
+      const text = writeAtlas({ "src/a.ts": "S" });
+      recordAtlasWritten(db, text);
+      recordSourceKeyStream(db, "src/a.ts", "docstring", "S");
+      load();
+      // The dead run's prose stream keyed the file at the same SHA.
+      storeUnit("src/a.ts", "S", "prose claim", "adr:a.ts");
+      recordSourceKeyStream(db, "src/a.ts", "prose", "S");
+
+      load();
+      expect(listAllClaims(db)).toEqual([]);
+      expect(listSourceKeyStreams(db).get("src/a.ts")).toEqual({ stream: "docstring", sha: "S" });
+    });
+
+    it("a carried unit brings its own record", () => {
+      const text = writeAtlas({ "src/a.ts": "S" });
+      recordAtlasWritten(db, text);
+      recordSourceKeyStream(db, "src/a.ts", "prose", "S");
+      load();
+      storeUnit("src/a.ts", "S2", "docstring claim");
+      recordSourceKeyStream(db, "src/a.ts", "docstring", "S2");
+
+      expect(load().resumed).toBe(true);
+      expect(listSourceKeyStreams(db).get("src/a.ts")).toEqual({ stream: "docstring", sha: "S2" });
+    });
+
+    it("a run-start copy taken for another atlas.json is not restored: the records are dropped", () => {
+      writeAtlas({ "src/a.ts": "S" });
+      load();
+      recordSourceKeyStream(db, "src/a.ts", "prose", "S");
+      setCacheMeta(db, RUN_START_KEY_STREAMS_KEY, "another-file");
+      load();
+      expect(listSourceKeyStreams(db).size).toBe(0);
+    });
+
+    it("markRunFinished drops the run-start copy", () => {
+      const text = writeAtlas({ "src/a.ts": "S" });
+      recordAtlasWritten(db, text);
+      recordSourceKeyStream(db, "src/a.ts", "prose", "S");
+      load();
+      markRunFinished(db);
+      expect(getCacheMeta(db, RUN_START_KEY_STREAMS_KEY)).toBeUndefined();
+      const copy = db.prepare("SELECT COUNT(*) AS n FROM source_key_streams_run_start").get() as { n: number };
+      expect(copy.n).toBe(0);
+    });
+
+    it("no atlas.json: commits of another branch are dropped; reachable and unknown commits stay", () => {
+      const reachable = "a".repeat(40);
+      const elsewhere = "b".repeat(40);
+      const unknown = "c".repeat(40);
+      storeUnit(`commit:${reachable}`, reachable, "on this branch", `commit:${reachable}`);
+      storeUnit(`commit:${elsewhere}`, elsewhere, "another branch", `commit:${elsewhere}`);
+      storeUnit(unknown, unknown, "beyond a shallow clone", `commit:${unknown}`); // legacy bare key
+      setSourceSha(db, "docs/a.md", "s1");
+      const r = load({
+        commitReachability: (sha) =>
+          sha === reachable ? "reachable" : sha === elsewhere ? "unreachable" : "unknown",
+      });
+      expect(r).toEqual({ imported: false, resumed: false, mustExport: true });
+      expect(Object.keys(listSourceShas(db)).sort()).toEqual([
+        unknown,
+        `commit:${reachable}`,
+        "docs/a.md",
+      ]);
+      expect(listAllClaims(db).map((c) => c.claim).sort()).toEqual([
+        "beyond a shallow clone",
+        "on this branch",
+      ]);
     });
   });
 

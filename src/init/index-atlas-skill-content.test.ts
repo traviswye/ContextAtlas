@@ -152,6 +152,17 @@ describe("/index-atlas SKILL.md — refresh Deleted-sources rule (L-12 ii)", () 
     expect(content).toContain("disabled_streams");
     expect(step).toContain("disabled_streams");
   });
+
+  it("recognises ADR keys the way they are stored, not by an `adrs.path` prefix (review round 2.2)", () => {
+    // Keys are relative to source_root, or to the ADR directory in the
+    // ADR-08 layout: a renamed ADR's old key must still read as an ADR key.
+    expect(step).not.toMatch(/\*\*ADR keys\*\* \(paths under `adrs\.path`/);
+    expect(step).toMatch(/NOT always a\s+path starting with `adrs\.path`/);
+    expect(step).toMatch(/relative to the manifest's\s+`source_root`/);
+    expect(step).toMatch(/relative to the ADR directory\s+itself/);
+    expect(step).toMatch(/just `ADR-03-x\.md`/);
+    expect(step).toMatch(/matches a `docs\.include` glob is a\s+docs-bucket page/);
+  });
 });
 
 describe("/index-atlas SKILL.md — refresh keeps preserved links", () => {
@@ -243,6 +254,20 @@ describe("/index-atlas SKILL.md — review fixes (v1.2 Phase 2)", () => {
     const invariants = section("### Schema invariants (MANDATORY)");
     expect(invariants).toMatch(/NEVER empty them/);
     expect(content).not.toMatch(/give those claims `symbol_ids: \[\]`/);
+  });
+
+  it("a `symbols: []` refresh runs resolve-symbols before validate-extraction (review round 2.2)", () => {
+    const step1 = section("### Phase C step 1 — MANDATORY validate-atlas gate");
+    // The unloadable atlas is repaired before the gate that can loop.
+    expect(step1).toMatch(/repair it now, before step 2/);
+    expect(step1).toMatch(/```bash\ncontextatlas resolve-symbols\ncontextatlas validate-atlas\n```/);
+    expect(step1).toMatch(/exits 1/);
+    const invariants = section("### Schema invariants (MANDATORY)");
+    expect(invariants).toMatch(/run resolve-symbols right away \(Phase C step 1\),\s+before validate-extraction/);
+    expect(invariants).not.toMatch(/never stop before Phase C step 3/);
+    const failures = section("## Failure modes");
+    expect(failures).toMatch(/Run `contextatlas resolve-symbols` right away, before\s+validate-extraction/);
+    expect(failures).not.toMatch(/Continue to Phase C step 3, which repairs it/);
   });
 
   it("Phase C step 2 says kept docs-bucket prose is exempt and must not be dropped to pass the gate", () => {

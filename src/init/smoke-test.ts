@@ -158,8 +158,11 @@ export async function runSmokeTest(
     let symbols = listAllSymbols(db);
     if (isCacheEmpty(db)) {
       // Cache empty — import from atlas.json if present. "Empty" is the
-      // rule the MCP server and `contextatlas index` share: a cache with
-      // claims or source keys but no symbols is not replaced.
+      // rule the MCP server and `contextatlas index` use to seed a cache:
+      // a cache with claims or source keys but no symbols is not
+      // replaced here. (The MCP server also re-imports a changed
+      // atlas.json with atlas.committed: true; this smoke check only
+      // needs a loadable cache with one symbol.)
       try {
         importAtlasFile(db, atlasJsonPath);
       } catch (err) {

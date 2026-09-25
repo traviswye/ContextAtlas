@@ -168,23 +168,34 @@ export function parseGitLog(stdout: string): GitCommit[] {
 }
 
 /**
- * Whether `sha` is the current HEAD or one of its ancestors in the
- * repository at `repoRoot` (`git merge-base --is-ancestor`). False when
- * it is not, when git does not know the object, and when git cannot run
- * (v1.2 Phase 2 review round 2: a resumed `index` run carries over only
- * the commits of the checkout it runs on).
+ * Where a commit stands relative to the current HEAD of the repository
+ * at `repoRoot` (`git merge-base --is-ancestor`, which exits 0, 1 or
+ * 128 for these):
+ *   - "reachable": HEAD or one of its ancestors;
+ *   - "unreachable": git knows the commit, and HEAD does not reach it
+ *     (another branch);
+ *   - "unknown": git does not know the object (for example beyond a
+ *     shallow clone's history), or git cannot run.
+ * A resumed `index` run carries over only "reachable" commits (review
+ * round 2); with no atlas.json only "unreachable" ones are dropped from
+ * the cache baseline (review round 2.2).
  */
-export function isAncestorOfHead(
+export type CommitReachability = "reachable" | "unreachable" | "unknown";
+
+export function commitReachability(
   repoRoot: string,
   sha: string,
   gitBinary = "git",
-): boolean {
+): CommitReachability {
   const result = spawnSync(
     gitBinary,
     ["merge-base", "--is-ancestor", sha, "HEAD"],
     { cwd: repoRoot, encoding: "utf8", windowsHide: true },
   );
-  return result.error === undefined && result.status === 0;
+  if (result.error !== undefined) return "unknown";
+  if (result.status === 0) return "reachable";
+  if (result.status === 1) return "unreachable";
+  return "unknown";
 }
 
 function isGitTree(repoRoot: string, gitBinary: string): boolean {

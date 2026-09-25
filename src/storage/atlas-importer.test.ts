@@ -199,22 +199,41 @@ describe("importAtlas", () => {
     importAtlasFile(db, FIXTURE_PATH);
     const beforeSymbols = listAllSymbols(db);
 
-    // Construct an atlas whose claim references a symbol that is NOT in
-    // the atlas's own symbols array — foreign key violation mid-transaction.
+    // Construct an atlas whose last claim has no text — a NOT NULL
+    // violation mid-transaction, after the tables were cleared.
     const bad = loadFixture();
     bad.claims.push({
       source: "BAD",
       source_path: "docs/bad.md",
       source_sha: "x",
       severity: "hard",
-      claim: "points to nowhere",
-      symbol_ids: ["sym:ts:src/nonexistent.ts:Ghost"],
+      claim: null as unknown as string,
+      symbol_ids: [],
     });
     expect(() => importAtlas(db, bad)).toThrow();
 
     // Because the transaction rolled back, the DB must still reflect the
     // last successful import — NOT a half-cleared, half-populated state.
     expect(listAllSymbols(db)).toEqual(beforeSymbols);
+  });
+
+  it("a claim linking a symbol `symbols` does not list fails with a message naming resolve-symbols (review round 2.2)", () => {
+    importAtlasFile(db, FIXTURE_PATH);
+    const beforeClaims = listAllClaims(db);
+    const bad = loadFixture();
+    bad.claims.push({
+      source: "adr:ADR-09.md",
+      source_path: "docs/adr/ADR-09.md",
+      source_sha: "x",
+      severity: "hard",
+      claim: "points to a symbol a symbols: [] refresh left out",
+      symbol_ids: ["sym:ts:src/nonexistent.ts:Ghost"],
+    });
+    expect(() => importAtlas(db, bad)).toThrow(
+      /1 claim links symbols that atlas\.json's `symbols` does not list \(sym:ts:src\/nonexistent\.ts:Ghost\).*contextatlas resolve-symbols/s,
+    );
+    expect(() => importAtlas(db, bad)).not.toThrow(/FOREIGN KEY/);
+    expect(listAllClaims(db)).toEqual(beforeClaims);
   });
 });
 

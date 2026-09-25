@@ -624,15 +624,22 @@ Exceptions (v1.2 Phase 2 review fixes; `atlas-baseline.ts`):
   imports atlas.json, then carries over the units the interrupted run
   stored: the keys whose SHA differs from atlas.json's, with their
   claims (`unsaved-work.ts`). A commit is carried only when HEAD
-  reaches it. The run then extracts only what is left and exports.
-  What the interrupted run deleted or pruned is not carried: this run
-  recomputes it against the current tree and config.
+  reaches it, and a file's unit only while the working tree still has
+  that content (a reverted WIP edit or a deleted scratch file is left
+  to atlas.json). The cache-only key-stream records go back to their
+  state when the interrupted run started. The run then extracts only
+  what is left and exports. What the interrupted run deleted or pruned
+  is not carried: this run recomputes it against the current tree and
+  config.
 - **`atlas.committed: false`.** The cache is the source of truth, so a
   leftover atlas.json only seeds an empty cache (the rule the MCP
   server and the init smoke test share: no symbols, claims or source
   keys) and is otherwise ignored with a warning.
 - **`atlas.committed: true` and no atlas.json.** The cache is the
-  baseline, and the run writes atlas.json even if nothing changed.
+  baseline, and the run writes atlas.json even if nothing changed. The
+  gitignored cache survives a branch switch, so commits it extracted
+  that git knows but HEAD does not reach (another branch) are dropped
+  first.
 
 **Per-stream baseline and structural refresh (v1.2).** `source_shas`
 holds keys for three claim streams:
@@ -910,7 +917,13 @@ Key properties of atlas.json:
 SQLite binary, gitignored, never committed. This is the query-time
 performance layer — fast joins, indexed lookups, compact storage.
 Every developer has their own index.db; it's rebuilt from atlas.json
-on demand.
+on demand. With `atlas.committed: true` the MCP server imports
+atlas.json at startup whenever it differs from the file the cache last
+imported or wrote (a pull, an `/index-atlas` refresh), except while an
+`index` run over the cache is unfinished or the file cannot be
+imported (then it serves the cache as it stands, with a warning); with
+`committed: false` it only seeds an empty cache (v1.2 Phase 2 review
+round 2.2; `server-cache-load.ts`).
 
 SQLite schema:
 

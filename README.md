@@ -375,9 +375,11 @@ What ContextAtlas does and doesn't send off your machine:
   docs only. The `/index-atlas` Skill processes the same sources
   inside your Claude Code session.
 - `contextatlas generate-adrs` (CLI) sends a structural inventory
-  instead: source file paths and top-level symbol names, plus
-  `README.md`, `DESIGN.md` and `CLAUDE.md` verbatim and any
-  `--reference-context` documents.
+  instead: source file paths and the symbol names the language server
+  lists for each file (top-level declarations plus class, interface
+  and namespace members, exported or not), plus `README.md`,
+  `DESIGN.md` and `CLAUDE.md` verbatim and any `--reference-context`
+  documents.
 
 **Never sent anywhere:**
 - Your source code, apart from the docstring text above

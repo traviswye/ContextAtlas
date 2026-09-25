@@ -195,6 +195,21 @@ export function walkProseFiles(
 }
 
 /**
+ * A test for config-root-relative, forward-slash paths against the
+ * `docs.include` globs, matched the way `walkProseFiles` globs them
+ * (dot files included; a leading `./` ignored). Used to recognise a
+ * docs page that no longer exists (v1.2 Phase 2 review round 2.2).
+ */
+export function docsIncludeMatcher(
+  patterns: readonly string[],
+): (configRelPath: string) => boolean {
+  const matchers = patterns.map(
+    (p) => new Minimatch(p.replace(/^\.\//, ""), { dot: true }),
+  );
+  return (configRelPath) => matchers.some((m) => m.match(configRelPath));
+}
+
+/**
  * Compute the stored relPath for a prose file (ADR or doc).
  *
  * Scoped-relaxation helper: keeps `toRelativePath`'s strict

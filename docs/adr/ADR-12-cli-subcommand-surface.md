@@ -879,7 +879,7 @@ commit columns for stages 1, 2 and 6.
 
 | Stage [DESIGN] | prose (precedent) | docstring | commit |
 |---|---|---|---|
-| 0 import [Stage 0] | Imported with the atlas; an unfinished run's stored units are carried over the import; with `atlas.committed: false`, only into an empty cache (review fixes, rounds 1 and 2) | Symmetric to prose | Symmetric to prose; a carried commit must be reachable from HEAD |
+| 0 import [Stage 0] | Imported with the atlas; an unfinished run's stored units are carried over the import while the working tree still has their content, and the key-stream records roll back with it; with `atlas.committed: false`, only into an empty cache (review fixes, rounds 1, 2 and 2.2) | Symmetric to prose | Symmetric to prose, except that a carried commit must be reachable from HEAD; with no `atlas.json`, commits HEAD cannot reach (another branch) are dropped from the cache baseline |
 | 0.5 key migration | Not applicable | Not applicable | Divergent: bare-sha keys and claim paths become `commit:<sha>`, because two paths wrote two forms; counts as a modification |
 | 1 collect [Stage 1] | `walkProseFiles` | Divergent: reuses the Stage 3 source walk (`walkSourceFiles` + exclude patterns); no second walker | Divergent: `git log --no-merges` + commit filter (`parseCommitLog`), because commits live in git history, not the filesystem; skipped without a git HEAD |
 | 1b classify | By claim source; a zero-claim key by the stream this cache recorded writing it, then the prose walk and key shape (review fixes) | Symmetric to prose | Symmetric to prose (Phase 1; both key forms recognized; never recorded) |
@@ -1088,7 +1088,9 @@ below are also part of Phase 2.
   repo, or every source excluded), every server start replaced the
   authoritative cache with a leftover `atlas.json`, and the next
   `index` billed the difference again. All three now use
-  `isCacheEmpty` (no symbols, claims or source keys).
+  `isCacheEmpty` (no symbols, claims or source keys). (Round 2.2: with
+  `atlas.committed: true` the server also re-imports an `atlas.json`
+  the cache does not hold.)
 - **Key-stream records after another `atlas.json`.** After a pull or a
   branch switch replaced `atlas.json`, the `source_key_streams`
   records still outranked the fallback classification, although the
@@ -1123,12 +1125,15 @@ below are also part of Phase 2.
   under `adrs.path` (an ADR naming convention) and the file is missing.
 - **`validate-atlas` dangling links are a warning (exit 0).** As an
   error the check ran before `resolve-symbols`, the step that repairs
-  such an atlas without loss (it rebuilds `symbols` and keeps every
-  link whose symbol still exists). Its other remedy, emptying
-  `symbol_ids`, lost the links for good on claims without
-  `symbol_candidates`, which is every CLI claim from before v1.2. The
-  warning names `resolve-symbols` as the fix and says not to empty the
-  links.
+  such an atlas (it rebuilds `symbols` and keeps every link whose
+  symbol it can still list). Its other remedy, emptying `symbol_ids`,
+  lost the links for good on claims without `symbol_candidates`, which
+  is every CLI claim from before v1.2. The warning names
+  `resolve-symbols` as the fix and says not to empty the links. (As
+  first written, this entry said resolve-symbols repairs such an atlas
+  "without loss". It did not: with `symbols: []` it dropped links into
+  files it could not list. Round 2.2 below fixes that, and runs it
+  before validate-extraction.)
 - **`/index-atlas` SKILL.md.** A refresh may write `symbols: []` when
   the baseline `symbols` array is too large to re-write (preserved
   `symbol_ids` stay; resolve-symbols rebuilds the list), re-runs
@@ -1136,3 +1141,99 @@ below are also part of Phase 2.
   `extracted_at_sha` and `git_commits` forward. Before, a refresh of a
   CLI-built atlas dropped the git signal the MCP tools serve, and only
   a paid `index` restored it.
+
+### Review fixes, round 2.2 (2026-09-25)
+
+A review of the round-2 fixes found these defects; the fixes below are
+also part of Phase 2.
+
+- **A resume carried content the tree no longer has.** A unit was
+  carried whenever its SHA differed from `atlas.json`'s. After an
+  interrupted run on WIP edits and a `git stash` or a branch switched
+  back (with `atlas.json` unchanged), the next run billed the reverted
+  files again, and when that call failed or the stream was off it
+  exported claims and a SHA of content that exists in neither the tree
+  nor git. A scratch file extracted and then deleted rewrote
+  `atlas.json` with only `generated_at` changed. A prose or docstring
+  unit is now carried only while the file its key names (from the
+  source root, the ADR directory or the config root, as the walkers
+  store keys) still has the unit's SHA (`source-key-files.ts`); other
+  units are left to `atlas.json`. Commits keep the reachability rule.
+- **The key-stream records did not roll back with a resume.** Stage 5
+  deletes a key's record with the key, and a stream re-keying a path
+  at the same SHA replaces it; the resume restores the claims and keys
+  from `atlas.json` but kept the records as the dead run left them.
+  A narrowed `docs.include` then hid a file from the docstring stream
+  for good, and a same-SHA switch between the prose and docstring
+  streams lost the paid claims for good (each direction worked under
+  the round-1 whole-cache resume). Each run now saves the records as
+  they stand after its Stage 0 import (local cache migration 8, the
+  cache-only `source_key_streams_run_start` table, with the file's
+  SHA-256 in `_meta` key `index.run_start_key_streams_atlas_sha256`);
+  a resume restores that copy, then each carried unit's own record.
+  The file whose re-key was undone is extracted again (one call).
+- **`atlas.committed: true` without `atlas.json` exported another
+  branch's commits.** The cache survives a checkout. When `atlas.json`
+  exists on another branch only, the cache (holding that branch's
+  commit keys) was the baseline, and LOCK 2.b kept those keys in this
+  branch's new `atlas.json` for good. Stage 0 now drops, with their
+  claims, commit keys that git knows and HEAD does not reach
+  (`git merge-base --is-ancestor` exit 1). A commit git does not know
+  (beyond a shallow clone) or a tree where git cannot run keeps its key
+  (`foreign-commits.ts`).
+- **The MCP server never re-imported a changed `atlas.json`** (since
+  v0.2 for a cache with symbols; since round 2 also for one without).
+  After a `git pull` or an `/index-atlas` refresh it served the old
+  cache with no warning, and a teammate without an API key had no way
+  to refresh it but deleting `index.db` (`index` fails at setup before
+  Stage 0). With `atlas.committed: true` the server now imports
+  `atlas.json` at startup whenever its SHA-256 differs from the file
+  the cache last imported or wrote (`_meta`
+  `index.key_streams_atlas_sha256`; a cache from before v1.2 has none
+  and re-imports once), except while an `index` run over the cache is
+  unfinished, when it serves the cache with a warning. A re-import that
+  fails (a conflicted `atlas.json`, claims linking unlisted symbols)
+  leaves the cache as it was and warns. With `committed: false` a
+  non-empty cache is kept, as before (`server-cache-load.ts`).
+- **A `symbols: []` refresh atlas lost links in `resolve-symbols`.** The
+  prune rules keep the prior symbols of a file the run cannot list
+  (listing failed, language not configured), but with `symbols: []`
+  there were none, so every link into such a file was dropped as
+  dangling, and a preserved claim without `symbol_candidates` (every
+  CLI claim from before v1.2) could not be linked again.
+  `resolve-symbols` now takes the prior records of claim links
+  `symbols` does not list from the `atlas.json` committed at HEAD
+  (`git show HEAD:<atlas>`), and when a link into an unverified file
+  still has no record it exits 1 and writes nothing, naming the files
+  (`atlas-symbol-reconcile.ts`). A link into a deleted, excluded or
+  freshly listed file is still dropped.
+- **A `symbols: []` refresh atlas stayed unloadable behind the
+  validate-extraction gate.** The Skill ran resolve-symbols only after
+  validate-extraction passed, and that gate can send the agent back to
+  Phase B or stop the session, leaving an `atlas.json` the MCP server
+  and `index` could not import (a bare `FOREIGN KEY constraint
+  failed`). The Skill now runs resolve-symbols (and validate-atlas
+  again) right after the validate-atlas warning, before
+  validate-extraction; the importer names `resolve-symbols` when a
+  claim links a symbol `symbols` does not list.
+- **`validate-extraction` checked a deleted docs page as an ADR.** In
+  the ADR-08 layout a docs page outside `source.root` is stored
+  relative to the config root; once deleted, the check also resolved it
+  against the ADR directory, where a name like `docs/rfcs/0001-x.md` or
+  a dated blog page reads as a missing ADR, so a Skill refresh that
+  must keep it could never pass. A missing path that, read relative to
+  the config root, lies outside the source root and matches a
+  `docs.include` glob is now a docs page. The default layout (source
+  root = config root) is unchanged, so a deleted ADR there is still
+  checked even when a broad `docs.include` glob matches it.
+- **SKILL refresh rule 4 recognised ADR keys by an `adrs.path`
+  prefix.** Keys are stored relative to `source_root`, or to the ADR
+  directory in the ADR-08 layout, so with `source.root` set or external
+  ADRs a renamed or deleted ADR's key read as a docs-bucket key and was
+  kept with its stale claims, passing both gates. The rule now
+  describes how ADR keys are stored, with an example per layout.
+- **Documentation.** The ADR-02 2026-09-25 entry now names the second
+  CLI/Skill difference (the `docs.include` collision skip the manifest
+  does not apply) and the assumption behind the L-14 parity bar; the
+  CHANGELOG "Fixed" section lists only fixes of released behaviour; the
+  README privacy note says `generate-adrs` sends member names too.

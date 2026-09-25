@@ -3,7 +3,9 @@
  *
  * Produces a structured text representation of the codebase that gets
  * concatenated into the GENERATE_ADRS_PROMPT as INPUT. The shape is
- * intentionally token-efficient — file paths + top-level symbols +
+ * intentionally token-efficient — file paths + the symbol names the
+ * language server lists for each file (top-level declarations plus one
+ * level of class, interface and namespace members; exported or not) +
  * architectural-narrative-rich documents (README.md + DESIGN.md +
  * CLAUDE.md) verbatim. Source file content is NOT included verbatim
  * (would explode token budget on large codebases); the LLM reasons

@@ -162,9 +162,13 @@ proceed until the atlas validates.
   listed and the atlas stays loadable. If the baseline `symbols` array
   is too large to re-write (thousands of entries), write `symbols: []`
   instead: `validate-atlas` then WARNS that claims link unlisted
-  symbols, and resolve-symbols (Phase C step 3) rebuilds the list and
-  keeps every link whose symbol still exists. Until it has run, such
-  an atlas cannot be loaded, so never stop before Phase C step 3.
+  symbols, and you run resolve-symbols right away (Phase C step 1),
+  before validate-extraction. It rebuilds the list and keeps every link
+  whose symbol still exists; for a file it cannot list (a listing
+  failure, a language not configured) it keeps the symbol recorded in
+  the atlas.json committed at HEAD, and if there is none it exits 1 and
+  writes nothing (see Phase C step 1). Until it has run, such an atlas
+  cannot be loaded.
 - `claims[].symbol_ids`: empty array on every claim you newly
   extract. Phase C resolve-symbols populates it. Refresh case:
   preserved baseline claims keep their existing `symbol_ids` exactly,
@@ -415,8 +419,8 @@ After all three streams complete:
    If the baseline `symbols` array is too large to re-write, write
    `symbols: []` but still keep every preserved `symbol_ids`: that
    atlas cannot be loaded until resolve-symbols has run, and
-   validate-atlas warns about it (Phase C step 1), so go on through
-   Phase C step 3 without stopping.
+   validate-atlas warns about it (Phase C step 1), which is where you
+   run resolve-symbols, before validate-extraction.
 
 Phase B complete when atlas.json contains claims from all
 extracted manifest sources (subject to refresh-case skip
@@ -469,8 +473,23 @@ DO NOT proceed to step 2 until validate-atlas exits 0.
 A WARNING (exit code 0) that claims link symbols `symbols` does not
 list is not a failure: it is expected when you wrote `symbols: []` on
 a refresh, or when the baseline atlas came from `resolve-symbols` 1.1.3
-or earlier. Proceed; resolve-symbols (step 3) repairs it. Do NOT empty
-those claims' `symbol_ids` to silence it.
+or earlier. Do NOT empty those claims' `symbol_ids` to silence it.
+Such an atlas cannot be loaded until resolve-symbols has run, and step
+2 can send you back to Phase B, so repair it now, before step 2:
+
+```bash
+contextatlas resolve-symbols
+contextatlas validate-atlas
+```
+
+The second validate-atlas must exit 0 without that warning. If
+resolve-symbols exits 1 saying claims link symbols in files it could
+not verify, re-run it (a listing failure is often transient). If it
+keeps failing for the same files, or their language is no longer
+configured, copy those files' entries from the baseline atlas's
+`symbols` array into atlas.json's `symbols` and re-run it. Step 3 runs
+resolve-symbols again, which links any claims you re-extract after
+step 2; running it twice is harmless.
 
 ### Phase C step 2 — MANDATORY validate-extraction gate (v0.7.1)
 
@@ -501,8 +520,11 @@ such as a docs-bucket page (`README.md`, `docs/**`) that `contextatlas
 index` extracted and refresh rule 4 keeps (even after the page was
 deleted), or a note in the ADR directory whose file name is not an
 ADR name. Only a missing file whose path names an ADR under
-`adrs.path` is still checked (refresh rule 4 drops those). Never drop
-kept keys or claims to make this gate pass.
+`adrs.path` is still checked (refresh rule 4 drops those); a missing
+path that, read relative to the config root, lies outside `source_root`
+and matches a `docs.include` glob is a docs page, even when its file
+name looks like an ADR's (`docs/rfcs/0001-x.md`). Never drop kept keys
+or claims to make this gate pass.
 
 If exit code is NON-ZERO, read stderr (per-invariant remediation
 guidance). Re-execute Phase B against the failing sources;
@@ -531,7 +553,9 @@ only).
 
 Then re-invoke `contextatlas validate-atlas`. It must exit 0 and must
 no longer warn that claims link symbols `symbols` does not list; if
-it does, resolve-symbols did not complete, so re-run it.
+it does, resolve-symbols did not complete, so re-run it. If
+resolve-symbols exits 1 because claims link symbols in files it could
+not verify, handle it as in step 1.
 
 ### Phase C step 4 — MANDATORY doctor verification
 
@@ -648,12 +672,28 @@ atlas.json (baseline). Phase B dispatches per source per stream:
    - **Keys of a stream in `manifest.summary.disabled_streams`**
      (other than the deleted source files above): NEVER drop. They
      stay frozen until the stream is re-enabled.
-   - **ADR keys** (paths under `adrs.path` in `.contextatlas.yml`):
-     drop the key and its claims only when the file no longer
-     exists (a deleted or renamed ADR). An existing file there that
-     the manifest does not list is a docs-bucket note, such as a
-     probe-findings page that does not follow an ADR naming
-     convention: keep it.
+   - **ADR keys**: drop the key and its claims only when the file no
+     longer exists (a deleted or renamed ADR). ADR keys are stored
+     the way the manifest writes `adr.path`, which is NOT always a
+     path starting with `adrs.path`: relative to the manifest's
+     `source_root` when the ADR directory (`adrs.path` in
+     `.contextatlas.yml`, relative to the manifest's `config_root`)
+     is inside `source_root`; otherwise (ADRs kept outside
+     `source.root`, the ADR-08 layout) relative to the ADR directory
+     itself. Examples: default layout, `docs/adr/ADR-03-x.md`;
+     `source.root: packages/core` with `adrs.path:
+     packages/core/docs/adr`, `docs/adr/ADR-03-x.md`; `source.root:
+     repo/` with `adrs.path: adrs/`, just `ADR-03-x.md`. So a key is
+     an ADR key when its file name follows an ADR naming convention
+     (`ADR-NN-*`, `NNNN-*`, a date prefix; `.md` or `.rst`) and the
+     path it names from that base lies inside the ADR directory.
+     Check that exact path with the Glob tool. Exception: in the
+     ADR-08 layout a key that, read relative to `config_root`, lies
+     outside `source_root` and matches a `docs.include` glob is a
+     docs-bucket page (`docs/rfcs/0001-x.md`); keep it. An existing
+     file in the ADR directory that the manifest does not list is a
+     docs-bucket note, such as a probe-findings page that does not
+     follow an ADR naming convention: keep it.
    - **Every other key — docs-bucket prose keys** (`docs.include`
      files such as `README.md`, `DESIGN.md` or other `docs/**`
      pages, extracted by `contextatlas index`; the manifest offers
@@ -754,8 +794,9 @@ Bundled helper scripts deferred to v0.8+ per v0.7 ship scope.
 - **`contextatlas validate-atlas` prints a WARNING that claims link
   symbols `symbols` does not list**: expected before resolve-symbols
   when `symbols` is `[]` on a refresh or the baseline predates v1.2;
-  exit code 0. Continue to Phase C step 3, which repairs it. Never
-  empty preserved `symbol_ids` to silence it.
+  exit code 0. Run `contextatlas resolve-symbols` right away, before
+  validate-extraction (Phase C step 1). Never empty preserved
+  `symbol_ids` to silence it.
 - **Manifest shape unexpected**: if the Read manifest's
   `manifest_version` is neither `"1"` nor `"2"` (or its shape does
   not match Phase A step 2), surface the gap to the user and stop. Substrate-currency between
@@ -780,7 +821,11 @@ Bundled helper scripts deferred to v0.8+ per v0.7 ship scope.
   contextatlas peer deps); atlas malformed (re-validate via
   validate-atlas); config invalid (run `contextatlas doctor` to
   diagnose). User can re-invoke `contextatlas resolve-symbols`
-  manually after fixing the issue.
+  manually after fixing the issue. Exit 1 saying claims link symbols
+  in files it could not verify (a listing failure, or a language not
+  configured) means atlas.json was left unchanged: re-run it, and if
+  it keeps failing, copy those files' entries from the baseline
+  atlas's `symbols` into atlas.json's `symbols` (Phase C step 1).
 - **`contextatlas doctor` reports `atlas.has_symbols` FAIL (Phase C
   step 4 verification)**: resolve-symbols was likely skipped or
   failed silently. Go back to Phase C step 3 and re-invoke. Do NOT

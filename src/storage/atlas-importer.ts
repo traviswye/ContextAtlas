@@ -185,6 +185,40 @@ function validateAtlas(atlas: AtlasFileV1): void {
       "importAtlas: git_commits must be an array when present.",
     );
   }
+  checkClaimLinks(atlas);
+}
+
+/**
+ * Claims link symbols through a foreign key, so a claim whose
+ * `symbol_ids` names a symbol `symbols` does not list cannot be stored.
+ * That is the state of an `/index-atlas` refresh that wrote `symbols: []`
+ * and has not run `resolve-symbols` yet. Name the fix instead of letting
+ * SQLite report a bare "FOREIGN KEY constraint failed" (v1.2 Phase 2
+ * review round 2.2).
+ */
+function checkClaimLinks(atlas: AtlasFileV1): void {
+  const listed = new Set<string>();
+  for (const s of atlas.symbols) listed.add(s.id);
+  const missing = new Set<string>();
+  let claims = 0;
+  for (const claim of atlas.claims) {
+    const unlisted = (claim.symbol_ids ?? []).filter((id) => !listed.has(id));
+    if (unlisted.length === 0) continue;
+    claims++;
+    for (const id of unlisted) missing.add(id);
+  }
+  if (missing.size === 0) return;
+  const examples = [...missing].sort().slice(0, 3).join(", ");
+  const more = missing.size > 3 ? `, and ${missing.size - 3} more` : "";
+  throw new Error(
+    `importAtlas: ${claims} claim${claims === 1 ? " links" : "s link"} symbols ` +
+      `that atlas.json's \`symbols\` does not list (${examples}${more}), so ` +
+      "the atlas cannot be loaded. This is what an /index-atlas refresh " +
+      "that wrote `symbols: []` looks like before `contextatlas " +
+      "resolve-symbols` has run: run `contextatlas resolve-symbols` (it " +
+      "rebuilds `symbols`), then retry. Do not empty the claims' " +
+      "`symbol_ids`: a claim without `symbol_candidates` cannot be linked again.",
+  );
 }
 
 /**

@@ -1569,18 +1569,34 @@ historical record per v0.5 + v0.6 + v0.7 inheritance discipline.
 
   | Substrate layer | CLI (`contextatlas index`) | Skill (`/index-atlas`) | Status |
   |---|---|---|---|
-  | Source-stream coverage (ADR + docstring + commit) | `walkProseFiles` + Stage 3 source walk + `parseCommitLog`, planned in `extraction-plan.ts` | Phase A list-extraction-sources manifest enumeration | EQUIVALENT for ADRs, docstrings and commits (same walkers and filters; both honour `extraction.streams`). `docs.include` prose is CLI-only until v1.2 Phase 6 |
+  | Source-stream coverage (ADR + docstring + commit) | `walkProseFiles` + Stage 3 source walk + `parseCommitLog`, planned in `extraction-plan.ts` | Phase A list-extraction-sources manifest enumeration | EQUIVALENT for ADRs, docstrings and commits (same walkers and filters, apart from the `docs.include` collision rule below; both honour `extraction.streams`). `docs.include` prose is CLI-only until v1.2 Phase 6 |
 
   The per-symbol filter is the same on both paths (`isExportedSymbol`,
   then a non-empty docstring), so the call sets match whenever no
-  docstring read fails. One difference remains: the CLI also keys
-  source files with no documented symbol, which the manifest does not
-  list; the SKILL.md refresh rule no longer drops keys its manifest
-  does not enumerate. (As first written, this entry named a second
-  one: on a failed docstring read the manifest skipped that symbol
-  while the CLI skipped the whole file for that run. The Phase 2
-  review fixes closed it: the manifest now leaves the whole file out
-  too; see ADR-12 "Review fixes (2026-09-25)".)
+  docstring read fails and no `docs.include` glob matches a source
+  file. Two differences remain:
+  - the CLI also keys source files with no documented symbol, which
+    the manifest does not list; the SKILL.md refresh rule no longer
+    drops keys its manifest does not enumerate;
+  - the CLI skips docstring extraction for a source file that a
+    `docs.include` glob also matches, and extracts it as prose instead
+    (with a warning; ADR-12 2026-09-25 Decision 2), while the manifest
+    lists that file's docstrings and `/index-atlas` extracts them. On a
+    repository whose `docs.include` matches source files, for example
+    `docs/**` over `docs/examples/*.ts`, the docstring call sets
+    therefore differ, and an `/index-atlas` refresh after such a file
+    changes replaces the prose claims the CLI keyed with docstring
+    claims. The L-14 parity bar (per-stream call counts equal a
+    `list-extraction-sources` enumeration) assumes no such overlap;
+    this repository's `docs.include` matches `.md` files only. (Named
+    in the Phase 2 review, round 2.2; whether the manifest should apply
+    the same skip is open.)
+
+  (As first written, this entry named a different second difference:
+  on a failed docstring read the manifest skipped that symbol while
+  the CLI skipped the whole file for that run. The Phase 2 review
+  fixes closed it: the manifest now leaves the whole file out too; see
+  ADR-12 "Review fixes (2026-09-25)".)
 
   **Pointers superseded** (the entries above stay as the historical
   record):
