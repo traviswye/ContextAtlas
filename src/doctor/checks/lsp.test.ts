@@ -5,7 +5,7 @@ import path from "node:path";
 
 import type { LanguageAdapter, Symbol as AtlasSymbol } from "../../types.js";
 import type { CheckContext } from "../types.js";
-import { lspChecks } from "./lsp.js";
+import { lspChecks, lspFailureDetail } from "./lsp.js";
 
 /**
  * Stub adapter for deep health check tests. Configurable per-call
@@ -238,5 +238,18 @@ describe("lspChecks deep_health_check", () => {
     expect(ids).toContain("lsp.typescript.executable_in_path");
     expect(ids).toContain("lsp.typescript.spawn_test");
     expect(ids).toContain("lsp.typescript.deep_health_check");
+  });
+});
+
+describe("lspFailureDetail (v1.2 Phase 9)", () => {
+  it("adds the TypeScript 6 remedy when the workspace TypeScript has no tsserver.js", () => {
+    const err = new Error(
+      "LSP 'initialize' error -32603: The TypeScript of the workspace (TypeScript 7.0.2 at \"x\") provides no tsserver.js.",
+    );
+    expect(lspFailureDetail(err)).toContain("npm i -D typescript@6");
+  });
+  it("passes other errors through unchanged", () => {
+    expect(lspFailureDetail(new Error("boom"))).toBe("boom");
+    expect(lspFailureDetail("plain")).toBe("plain");
   });
 });

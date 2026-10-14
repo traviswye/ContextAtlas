@@ -225,7 +225,7 @@ async function checkSpawn(
         category: "lsp",
         status: "fail",
         message: `spawn test failed`,
-        detail: err instanceof Error ? err.message : String(err),
+        detail: lspFailureDetail(err),
       };
     }
   })();
@@ -280,7 +280,7 @@ async function checkDeepHealth(
         category: "lsp",
         status: "fail",
         message: `initialize failed`,
-        detail: err instanceof Error ? err.message : String(err),
+        detail: lspFailureDetail(err),
       };
     }
 
@@ -380,4 +380,21 @@ async function checkDeepHealth(
   );
 
   return Promise.race([work, timeout]);
+}
+
+/**
+ * The error text, plus a remedy for a failure with a known cause.
+ * TypeScript 7 (the native port; npm `latest` at 7.0.2 on 2026-10-14)
+ * ships no tsserver.js, so typescript-language-server cannot start on
+ * it (v1.2 Phase 9 fresh-repo sweep).
+ */
+export function lspFailureDetail(err: unknown): string {
+  const text = err instanceof Error ? err.message : String(err);
+  if (/provides no tsserver\.js/.test(text)) {
+    return (
+      `${text} TypeScript 7 has no tsserver.js, which typescript-language-server needs. ` +
+      "Install TypeScript 6 in the repository: `npm i -D typescript@6`."
+    );
+  }
+  return text;
 }

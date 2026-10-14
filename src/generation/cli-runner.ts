@@ -25,6 +25,7 @@ import { loadConfig } from "../config/parser.js";
 import { mkdirSync } from "node:fs";
 import { log } from "../mcp/logger.js";
 import { openDatabase } from "../storage/db.js";
+import { ensureCacheIgnored } from "../extraction/local-state.js";
 import type { LanguageAdapter, LanguageCode } from "../types.js";
 
 import type { ExtractionClient } from "../extraction/anthropic-client.js";
@@ -136,6 +137,7 @@ export async function runGenerateAdrsSubcommand(
 
   const cachePath = pathResolve(options.configRoot, config.atlas.localCache);
   mkdirSync(dirname(cachePath), { recursive: true });
+  ensureCacheIgnored(options.configRoot, config.atlas.localCache);
   const db = openDatabase(cachePath);
 
   const adapters = new Map<LanguageCode, LanguageAdapter>();

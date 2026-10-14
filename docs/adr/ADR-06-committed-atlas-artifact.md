@@ -246,3 +246,34 @@ meant stopping the server and deleting the cache.
   run's stored units. That run's next checkpoint or rerun repairs it,
   at the cost of re-extracting those units. Phase 5's run lock is meant
   to cover the concurrent case.
+
+## Amendment (2026-10-14, v1.2 Phase 9): who writes atlas.json, and what is never committed
+
+Architecture: ADR-24 (tiered automatic refresh).
+
+### Decision
+
+1. **Hooks never write atlas.json (L-21).** The scope planned to let
+   hooks regenerate atlas.json. Instead, hook-started Tier 0 runs are
+   cache-only (`index --structural --no-export`). atlas.json changes
+   only on an explicit `contextatlas index` or a Tier 1
+   `refresh-claims` run, so committing it stays a deliberate act.
+2. **`.contextatlas/local/` is never committed.** It holds the
+   pending queue, run log, run lock, Tier 1 ledger, hook logs and
+   docstring digests, and carries its own `.gitignore` (`*`). The v1.3
+   session overlay will live there too, so atlas.json stays free of
+   per-user state.
+3. **The local cache is never committed either.** `init`, and every
+   `index` run that exports, add the cache file (`atlas.local_cache`,
+   when it sits directly in `.contextatlas/`) and its SQLite side files
+   to `.contextatlas/.gitignore`, creating that file if needed. The
+   repository's root `.gitignore` is not edited. Before this, a fresh
+   repository committed `index.db` on its first `git add -A`, and the
+   v1.2 hooks then left it modified after every commit. A cache that
+   is already tracked stays tracked until
+   `git rm --cached .contextatlas/index.db`.
+
+### Consequences
+
+- `.contextatlas/` holds two committed files, `atlas.json` and
+  `.gitignore`, plus local state that git ignores.

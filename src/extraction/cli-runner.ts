@@ -40,7 +40,7 @@ import type {
 } from "./pipeline.js";
 import { runValidateExtractionSubcommand } from "./cli-validate-extraction.js";
 import { loadDocstringDigests } from "./docstring-digests.js";
-import { appendRunLog, writePendingQueue } from "./local-state.js";
+import { appendRunLog, ensureCacheIgnored, writePendingQueue } from "./local-state.js";
 import {
   acquireRunLock,
   acquireWaiterSlot,
@@ -248,6 +248,9 @@ async function runIndexLocked(options: IndexCliOptions): Promise<IndexCliResult>
 
   const cachePath = pathResolve(options.configRoot, config.atlas.localCache);
   mkdirSync(dirname(cachePath), { recursive: true });
+  // Explicit runs only: a hook's cache-only run leaves the tree untouched
+  // (L-21). `init` also writes it (v1.2 Phase 9).
+  if (options.noExport !== true) ensureCacheIgnored(options.configRoot, config.atlas.localCache);
 
   const db = openDatabase(cachePath);
 

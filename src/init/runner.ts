@@ -31,6 +31,7 @@ import { dirname, resolve as pathResolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { loadConfig } from "../config/parser.js";
+import { ensureCacheIgnored } from "../extraction/local-state.js";
 import { detectLanguagesFromFilesystem } from "../doctor/checks/state-detection.js";
 import { collectChecks } from "../doctor/runner.js";
 import type { DoctorResult } from "../doctor/types.js";
@@ -252,6 +253,9 @@ export async function runInitSubcommand(
       configForAdrDir.adrs.path,
     );
     mkdirSync(adrDirAbs, { recursive: true });
+    // v1.2 Phase 9: keep the local cache out of the first commit (a
+    // fresh repo committed index.db, and the hooks then dirtied it).
+    ensureCacheIgnored(options.configRoot, configForAdrDir.atlas.localCache);
   } catch (err) {
     log.warn("init: failed to ensure ADR directory exists; init proceeds", {
       err: String(err),

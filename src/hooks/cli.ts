@@ -157,7 +157,7 @@ function formatStatus(configRoot: string, hooksDir: string): string {
     const oldest = pending.map((e) => e.first_seen).sort()[0];
     lines.push(
       `pending sources: ${pending.length} (${[...byStream].map(([s, n]) => `${s} ${n}`).join(", ")}; ` +
-        `oldest since ${oldest}). Run \`contextatlas index\` to extract them.`,
+        `oldest since ${oldest}). Run \`contextatlas refresh-claims\` (subscription) or \`contextatlas index\` (API) to extract them.`,
     );
   }
   const last = lastRun(configRoot);

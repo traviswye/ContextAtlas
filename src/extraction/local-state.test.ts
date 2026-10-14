@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   RUN_LOG_MAX_LINES,
   appendRunLog,
+  ensureCacheIgnored,
   localStateDir,
   pendingQueuePath,
   readPendingQueue,
@@ -87,5 +88,38 @@ describe("local state (v1.2 Phase 3)", () => {
     expect(lines).toHaveLength(RUN_LOG_MAX_LINES);
     expect(JSON.parse(lines[0]!).at).toBe("run-3");
     expect(JSON.parse(lines.at(-1)!).at).toBe(`run-${RUN_LOG_MAX_LINES + 2}`);
+  });
+});
+
+describe("ensureCacheIgnored (v1.2 Phase 9)", () => {
+  let root: string;
+  beforeEach(() => {
+    root = mkdtempSync(pathJoin(tmpdir(), "ca-cache-ignore-"));
+  });
+  afterEach(() => {
+    rmSync(root, { recursive: true, force: true });
+  });
+  const ignorePath = () => pathJoin(root, ".contextatlas", ".gitignore");
+
+  it("creates .contextatlas/.gitignore for the cache and its side files, once", () => {
+    expect(ensureCacheIgnored(root, ".contextatlas/index.db")).toBe(true);
+    const text = readFileSync(ignorePath(), "utf8");
+    expect(text.split("\n").filter((l) => !l.startsWith("#"))).toEqual(["index.db", "index.db-*", ""]);
+    expect(text).not.toContain("atlas.json");
+    expect(ensureCacheIgnored(root, ".contextatlas/index.db")).toBe(false);
+    expect(readFileSync(ignorePath(), "utf8")).toBe(text);
+  });
+
+  it("appends to an existing file without a trailing newline, and adds only what is missing", () => {
+    mkdirSync(pathJoin(root, ".contextatlas"), { recursive: true });
+    writeFileSync(ignorePath(), "custom\r\nindex.db");
+    expect(ensureCacheIgnored(root, "./.contextatlas/index.db")).toBe(true);
+    expect(readFileSync(ignorePath(), "utf8")).toBe("custom\r\nindex.db\nindex.db-*\n");
+  });
+
+  it("leaves a cache outside .contextatlas/ alone", () => {
+    expect(ensureCacheIgnored(root, "cache/index.db")).toBe(false);
+    expect(ensureCacheIgnored(root, ".contextatlas/sub/index.db")).toBe(false);
+    expect(existsSync(ignorePath())).toBe(false);
   });
 });
