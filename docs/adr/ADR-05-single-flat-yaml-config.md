@@ -164,3 +164,20 @@ not content.
   and commit model calls by default, including `init`'s first run. The
   run prints a cost preview to stderr first (ADR-12 2026-09-25
   amendment). `streams: [adr]` restores prose-only extraction.
+
+## Amendment (2026-10-14, v1.2 Phase 6): `refresh:`
+
+A new optional top-level section holds the Tier 1 cost controls
+(`src/config/refresh.ts`; `docs/cycles/v1_2/v1.2-SCOPE.md` Phase 6).
+Unknown keys and out-of-range values are rejected with the key name.
+
+| Key | Default | Meaning |
+|---|---|---|
+| `auto_claims` | `true` | `false` stops automatic Tier 1 runs (the pre-push hook and `refresh-claims --if-due`). Tier 0 keeps running. |
+| `max_sources_per_run` | `25` | Pending sources one run extracts; the rest stay queued. |
+| `max_turns` | `80` | `claude -p --max-turns` for the session. |
+| `min_interval_minutes` | `60` | `--if-due`: at most one automatic session per interval. |
+| `max_utilization` | `0.8` | `--if-due`: skip while the subscription usage the last session recorded is at or above this fraction, until that window resets. |
+
+A manual `contextatlas refresh-claims` ignores `auto_claims`,
+`min_interval_minutes` and `max_utilization`, but honours the two caps.

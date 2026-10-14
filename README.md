@@ -528,6 +528,7 @@ contextatlas hooks install      # once per clone (init offers it; --yes accepts)
 contextatlas hooks status       # hooks, run in progress, pending sources, last run
 contextatlas index --structural # by hand: refresh symbols + git signal, no model calls
 contextatlas index              # extract the pending sources (paid; preview first)
+contextatlas refresh-claims     # or extract them on your Claude subscription (Tier 1)
 ```
 
 The hooks run `contextatlas index --structural --no-export` in the
@@ -539,6 +540,28 @@ committed) until a model-calling `index` extracts them. A running
 MCP server serves the refreshed cache immediately, and reloads
 `atlas.json` by itself when a pull or an `index` run changes it
 (`atlas.committed: true`).
+
+**Tier 1 (claims, on your subscription).** The pre-push hook starts
+`contextatlas refresh-claims --if-due` in the background. When sources
+are pending, it runs the `/refresh-atlas` skill through headless
+Claude Code (`claude -p`, subscription login only; the run is stopped
+if it would bill an API key). It re-extracts at most
+`refresh.max_sources_per_run` of them. Changes that leave every
+docstring as it was are not re-extracted. Automatic runs respect
+`refresh.min_interval_minutes` and `refresh.max_utilization` (the
+subscription usage the last run saw). `refresh.auto_claims: false`
+turns them off. Every run is logged in
+`.contextatlas/local/refresh-log.jsonl`. To run it on a schedule
+instead of, or as well as, on push:
+
+```bash
+# cron (Linux/macOS): nightly at 02:30
+30 2 * * * cd /path/to/repo && contextatlas refresh-claims --if-due
+
+# Windows Task Scheduler
+schtasks /Create /SC DAILY /ST 02:30 /TN "ContextAtlas refresh" ^
+  /TR "cmd /c cd /d C:\path\to\repo && contextatlas refresh-claims --if-due"
+```
 
 ### MCP server registration
 

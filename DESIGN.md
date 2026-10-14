@@ -778,6 +778,28 @@ reads the tree when it starts. A lock whose process is gone, or that
 is older than six hours, is stale. The MCP server defers atlas reloads
 while a live run holds the lock.
 
+**Tier 1 claim refresh (v1.2 Phase 6).** `contextatlas
+refresh-claims` re-extracts the pending sources on the Claude
+subscription. It refreshes the queue (cache-only structural run),
+snapshots atlas.json, and runs `claude -p "/refresh-atlas
+--max-sources N"`:
+- permission mode `dontAsk`, with only the skill allowed and the
+  skill's own tool allowlist;
+- no API-key variables, and the child is stopped if it reports any
+  auth other than the subscription;
+- a PATH shim so the skill's `contextatlas` gates run this build.
+
+`/refresh-atlas` extracts only the `list-extraction-sources --pending`
+manifest. It replaces those sources' claims and keys and runs the
+Skill-path gates. A failed or invalid run restores the snapshot. A
+second structural run recomputes the queue. `--if-due` (the pre-push
+hook, schedulers) first checks `refresh.auto_claims`, the minimum
+interval and the last recorded subscription usage, from
+`.contextatlas/local/refresh-log.jsonl`, which logs every run. Before
+any of that, the docstring-unchanged filter keeps code-only edits out
+of the queue: a changed file whose documented symbols are unchanged
+keeps its claims and moves its key.
+
 ### Two-paths extraction architecture (v0.7+)
 
 The extraction pipeline above describes the canonical pipeline as a

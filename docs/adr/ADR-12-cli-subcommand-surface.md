@@ -1569,3 +1569,93 @@ Lead decisions L-21 and L-22 (`docs/cycles/v1_2/v1.2-SCOPE.md` §5).
   plus the working tree. Between hook runs, the cache can be ahead of
   atlas.json; a server restart reads it as current because
   `generated_at` is unchanged.
+
+## Amendment (2026-10-14, v1.2 Phase 6): Tier 1 — `refresh-claims`, `/refresh-atlas`, `--pending`, the docstring-unchanged filter
+
+Scope: `docs/cycles/v1_2/v1.2-SCOPE.md` Phase 6, the D-2 spike results
+and lead decision L-22. Config: ADR-05 2026-10-14 amendment (`refresh:`).
+
+### Decision
+
+1. **`list-extraction-sources --pending [--max-sources N]`.** The
+   manifest is limited to the first N entries of the pending queue
+   (queue order: adr, docstring, commit, then key). Only the queued
+   source files are listed through the language servers. An additive
+   `pending` section reports `queued`, `selected` and `remaining`, plus
+   `files_without_docstrings`: queued source files with no documented
+   exported symbol (every read succeeded). The Skill keys those with no
+   claims, as `contextatlas index` does, so they leave the queue. The
+   manifest version is unchanged. `--max-sources` needs `--pending`
+   here.
+2. **`/refresh-atlas`** (`.claude/skills/refresh-atlas/SKILL.md`,
+   shipped and copied by `init` with the other skills). It processes
+   the `--pending` manifest only. It replaces the claims and key of each
+   selected source and keeps everything else in atlas.json verbatim. It
+   reuses `/index-atlas`'s schema, Phase B rules and Phase C gates by
+   reference, loads `EXTRACTION_PROMPT` from the prompt artifact
+   (frozen-prompt load rule), and never asks a question: it ends with a
+   `REFRESHED ...` or `REFRESH-FAILED: ...` line. The frontmatter
+   pins `claude-opus-4-7` at `xhigh`, as `/index-atlas` does, until
+   Phase 7's calibration (D-3).
+3. **`contextatlas refresh-claims [--if-due] [--max-sources N]`.**
+   - `--if-due` (automatic triggers) first applies `refresh.auto_claims`,
+     `refresh.min_interval_minutes` and `refresh.max_utilization`
+     against the ledger. These checks cost nothing.
+   - A cache-only structural run refreshes the queue. With nothing
+     pending, no session starts.
+   - Under the run lock: snapshot atlas.json; write the `contextatlas`
+     shim (`.contextatlas/local/bin`, sh and `.cmd`, first on the
+     session's PATH, so the skill's gates run this build rather than an
+     older global install); spawn
+     `claude -p "/refresh-atlas --max-sources N" --output-format
+     stream-json --verbose --max-turns M --permission-mode dontAsk
+     --allowedTools "Skill(refresh-atlas)" --no-session-persistence`
+     without a shell and without `ANTHROPIC_API_KEY` /
+     `ANTHROPIC_AUTH_TOKEN`. Never `--bare`.
+   - The child is killed when `system:init` reports an `apiKeySource`
+     other than `"none"`, i.e. anything but the subscription login, and
+     when it runs longer than 60 minutes.
+   - The session counts as failed on a spawn error, an error result
+     (`error_max_turns` gets its own remedy), or a `REFRESH-FAILED:`
+     line. When it fails, or atlas.json changed and `validate-atlas`
+     rejects it, the snapshot is restored.
+   - A second cache-only structural run recomputes the queue. Sources
+     the session keyed with their current SHA leave; the overflow stays.
+   - One line goes to `.contextatlas/local/refresh-log.jsonl`: trigger,
+     outcome, reason, pending before and after, turns, Claude Code's
+     list-price estimate, denials, whether atlas.json was restored, and
+     the five-hour and seven-day usage the session reported.
+   - Exit codes: 0 refreshed, nothing pending or skipped; 1 the session
+     failed; 2 setup error (config, lock held on a manual run, no
+     atlas.json).
+4. **pre-push hook (L-22).** `hooks install` also manages pre-push,
+   which starts `refresh-claims --if-due --trigger pre-push` in the
+   background, so the push is never delayed. Output goes to
+   `.contextatlas/local/prepush-last.log`. Schedulers run
+   `contextatlas refresh-claims --if-due` (README recipes); there is no
+   resident daemon.
+5. **Docstring-unchanged filter.** With the CLI's digest store
+   (`.contextatlas/local/docstring-digests.json`), Stage 5b moves the
+   key of a changed source file whose documented exported symbols (id
+   and docstring text) are unchanged. It keeps the claims and makes no
+   model call, so code-only edits neither queue (Tier 0) nor re-extract
+   (paid CLI). A record keeps every recent SHA known to share the digest,
+   because a cache-only Tier 0 run carries a key without writing
+   atlas.json and the next Stage 0 import brings the older key back.
+   Records are written when the CLI stores a file, and bootstrapped by
+   LSP reads of files whose key already matches; on this repository the
+   bootstrap took about 12 seconds once. Off under `--full`. Library
+   callers that pass no store are unaffected. Summary key
+   `docstring_keys_carried`.
+
+### Consequences
+
+- Tier 1 runs on the subscription only: the environment strips API
+  keys, and the init check stops any session that would still bill one.
+- Cost stays bounded per run (`max_sources_per_run`, `max_turns`) and
+  over time (`min_interval_minutes`, `max_utilization`, `auto_claims`),
+  and every session is logged.
+- A failed session never leaves a broken atlas.json behind.
+- The noise filter covers code-only edits. Whitespace-only edits are a
+  special case of it. Vendored, generated and test paths were already
+  excluded from the docstring walk (`exclude_pattern`).
