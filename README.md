@@ -459,10 +459,10 @@ messages) like the Skill does; see `extraction.streams` under
   - **TypeScript** — `typescript-language-server` (declared as a
     **peer dependency** rather than a direct one, so you control the
     version). Install alongside ContextAtlas
-    (e.g. `npm i -D typescript-language-server@4 typescript@5`).
-    TypeScript 7, the native port, ships no `tsserver.js`, so
-    `typescript-language-server` cannot run on it. Use TypeScript 5
-    or 6 in the repository.
+    (e.g. `npm i -D typescript-language-server typescript@6`);
+    versions 4 to 6 are supported. TypeScript 7, the native port,
+    ships no `tsserver.js`, so `typescript-language-server` cannot run
+    on it. Use TypeScript 5 or 6 in the repository.
   - **Python** — Pyright on the PATH (also a peer dependency).
   - **Go** — `gopls` on the PATH (install via
     `go install golang.org/x/tools/gopls@latest`).

@@ -51,3 +51,6 @@ test*-results.json
 # Claude Code local settings (user-specific permission allowlist).
 # Team-shared .claude/settings.json remains trackable.
 .claude/settings.local.json
+
+# ContextAtlas: regenerable prompt artifacts (per `contextatlas init`)
+.contextatlas/prompts/
