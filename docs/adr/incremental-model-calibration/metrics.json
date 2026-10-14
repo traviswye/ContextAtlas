@@ -1,0 +1,153 @@
+{
+  "spentUsd": 10.20030260000004,
+  "stopped": null,
+  "servedBy": {
+    "baseline": [
+      "claude-opus-4-7"
+    ],
+    "opus-5-5": [
+      "claude-opus-5-5"
+    ],
+    "sonnet-5-5": [
+      "claude-sonnet-5-5"
+    ],
+    "haiku-5-5": [
+      "claude-haiku-5-5"
+    ],
+    "opus-5-5-low": [
+      "claude-opus-5-5"
+    ],
+    "sonnet-5-5-low": [
+      "claude-sonnet-5-5"
+    ]
+  },
+  "metrics": {
+    "baseline": {
+      "model": "claude-opus-4-7",
+      "effort": "default",
+      "calls": 105,
+      "parseRate": 1,
+      "failures": [],
+      "labeledSeverity": "6/6",
+      "coverage": 0.975625,
+      "contradictionsPerSource": 0.025,
+      "candidateRecall": 0.9477476888191173,
+      "claimsPerCall": 2.6095238095238096,
+      "severityMix": {
+        "hard": 87,
+        "soft": 47,
+        "context": 140
+      },
+      "costPerCallUsd": 0.020085047619047624,
+      "outputTokensPerCall": 457.93333333333334,
+      "msPerCall": 5622.980952380953
+    },
+    "opus-5-5": {
+      "model": "claude-opus-5-5",
+      "effort": "default",
+      "calls": 105,
+      "parseRate": 1,
+      "failures": [],
+      "labeledSeverity": "6/6",
+      "coverage": 0.9668333333333333,
+      "contradictionsPerSource": 0,
+      "candidateRecall": 0.7336899211899212,
+      "claimsPerCall": 2.895238095238095,
+      "severityMix": {
+        "hard": 92,
+        "soft": 45,
+        "context": 167
+      },
+      "costPerCallUsd": 0.016021942857142854,
+      "outputTokensPerCall": 456.22857142857146,
+      "msPerCall": 4498.971428571429
+    },
+    "sonnet-5-5": {
+      "model": "claude-sonnet-5-5",
+      "effort": "default",
+      "calls": 105,
+      "parseRate": 0.9619047619047619,
+      "failures": [
+        "parse: json-parse",
+        "parse: json-parse",
+        "parse: json-parse",
+        "parse: json-parse"
+      ],
+      "labeledSeverity": "5/6",
+      "coverage": 0.9033333333333334,
+      "contradictionsPerSource": 0,
+      "candidateRecall": 0.65739121989122,
+      "claimsPerCall": 2.1714285714285713,
+      "severityMix": {
+        "hard": 59,
+        "soft": 41,
+        "context": 128
+      },
+      "costPerCallUsd": 0.008057161904761906,
+      "outputTokensPerCall": 460.84761904761905,
+      "msPerCall": 3685.7428571428572
+    },
+    "haiku-5-5": {
+      "model": "claude-haiku-5-5",
+      "effort": "default",
+      "calls": 105,
+      "parseRate": 0.9904761904761905,
+      "failures": [
+        "parse: json-parse"
+      ],
+      "labeledSeverity": "0/6",
+      "coverage": 0.9719166666666669,
+      "contradictionsPerSource": 0.03333333333333333,
+      "candidateRecall": 0.8156981906981906,
+      "claimsPerCall": 3.380952380952381,
+      "severityMix": {
+        "hard": 55,
+        "soft": 51,
+        "context": 249
+      },
+      "costPerCallUsd": 0.0006724819047619047,
+      "outputTokensPerCall": 1000.0952380952381,
+      "msPerCall": 4562.495238095238
+    },
+    "opus-5-5-low": {
+      "model": "claude-opus-5-5",
+      "effort": "low",
+      "calls": 105,
+      "parseRate": 1,
+      "failures": [],
+      "labeledSeverity": "6/6",
+      "coverage": 0.9619166666666668,
+      "contradictionsPerSource": 0,
+      "candidateRecall": 0.6949994449994451,
+      "claimsPerCall": 2.6476190476190475,
+      "severityMix": {
+        "hard": 91,
+        "soft": 44,
+        "context": 143
+      },
+      "costPerCallUsd": 0.014674323809523809,
+      "outputTokensPerCall": 388.84761904761905,
+      "msPerCall": 4038.8
+    },
+    "sonnet-5-5-low": {
+      "model": "claude-sonnet-5-5",
+      "effort": "low",
+      "calls": 105,
+      "parseRate": 1,
+      "failures": [],
+      "labeledSeverity": "6/6",
+      "coverage": 0.9336666666666666,
+      "contradictionsPerSource": 0,
+      "candidateRecall": 0.659472471972472,
+      "claimsPerCall": 2,
+      "severityMix": {
+        "hard": 63,
+        "soft": 41,
+        "context": 106
+      },
+      "costPerCallUsd": 0.006619828571428572,
+      "outputTokensPerCall": 317.1142857142857,
+      "msPerCall": 3097.8571428571427
+    }
+  }
+}

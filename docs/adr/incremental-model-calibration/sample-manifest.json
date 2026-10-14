@@ -1,0 +1,105 @@
+{
+  "generated_at": "2026-10-14T18:07:52.220Z",
+  "docstringFiles": [
+    {
+      "lang": "typescript",
+      "repo": "hono",
+      "path": "src/adapter/aws-lambda/conninfo.ts",
+      "symbols": 1
+    },
+    {
+      "lang": "typescript",
+      "repo": "hono",
+      "path": "src/adapter/aws-lambda/handler.ts",
+      "symbols": 2
+    },
+    {
+      "lang": "typescript",
+      "repo": "hono",
+      "path": "src/adapter/aws-lambda/types.ts",
+      "symbols": 1
+    },
+    {
+      "lang": "python",
+      "repo": "httpx",
+      "path": "httpx/_config.py",
+      "symbols": 2
+    },
+    {
+      "lang": "python",
+      "repo": "httpx",
+      "path": "httpx/_content.py",
+      "symbols": 3
+    },
+    {
+      "lang": "python",
+      "repo": "httpx",
+      "path": "httpx/_main.py",
+      "symbols": 1
+    },
+    {
+      "lang": "go",
+      "repo": "cobra",
+      "path": "active_help.go",
+      "symbols": 2
+    },
+    {
+      "lang": "go",
+      "repo": "cobra",
+      "path": "bash_completionsV2.go",
+      "symbols": 2
+    },
+    {
+      "lang": "go",
+      "repo": "cobra",
+      "path": "doc/md_docs.go",
+      "symbols": 4
+    },
+    {
+      "lang": "csharp",
+      "repo": "(private C# repository)",
+      "path": "(private C# file 1)",
+      "symbols": 4
+    },
+    {
+      "lang": "csharp",
+      "repo": "(private C# repository)",
+      "path": "(private C# file 2)",
+      "symbols": 2
+    },
+    {
+      "lang": "csharp",
+      "repo": "(private C# repository)",
+      "path": "(private C# file 3)",
+      "symbols": 3
+    }
+  ],
+  "adrs": [
+    "ContextAtlas-benchmarks/adrs/hono/ADR-03-onion-middleware-compose.md",
+    "ContextAtlas-benchmarks/adrs/httpx/ADR-04-generator-based-auth-flow.md",
+    "ContextAtlas-benchmarks/adrs/cobra/ADR-03-hook-lifecycle.md",
+    "contextatlas/docs/adr/ADR-04-compact-output-default.md"
+  ],
+  "commits": [
+    {
+      "repo": "hono",
+      "sha": "190f6e28e2ca85ce3d1f2f54db1310f5f3eab134",
+      "subject": "Merge commit from fork"
+    },
+    {
+      "repo": "httpx",
+      "sha": "cabd1c095e52e2f67ab63ec17941d3a539d7c877",
+      "subject": "Deprecate `app=...` in favor of explicit `WSGITransport`/`ASGITransport`. (#3050)"
+    },
+    {
+      "repo": "cobra",
+      "sha": "70e53f62be77e03f376be845efacbd99c00024ca",
+      "subject": "Deprecate ExactValidArgs() and test combinations of args validators (#1643)"
+    },
+    {
+      "repo": "contextatlas",
+      "sha": "212569e414e10a83534af034325007cca34ff929",
+      "subject": "v0.4 Step 4: commit-message extraction implementation"
+    }
+  ]
+}
