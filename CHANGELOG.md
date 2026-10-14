@@ -15,6 +15,12 @@ load-bearing empirical findings).
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-10-14
+
+Automatic atlas freshness: the atlas refreshes itself in three cost
+tiers (ADR-24). This section also holds changes made after 0.9.0 that
+the 1.0.0 to 1.1.3 releases did not record here.
+
 ### Added
 
 - Community substrate: `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`
@@ -101,6 +107,57 @@ load-bearing empirical findings).
     30 s; `0` checkpoints after every stored unit). With
     `atlas.committed: true` it now also writes `atlas.json` during
     the run (see "Fixed"); the final `atlas.json` is the same.
+
+- Tier 0 structural refresh, `contextatlas index --structural`
+  (v1.2 Phase 3). It needs no API key and makes no model call.
+  - It refreshes symbols, prunes stale ones and the git signal, and
+    re-links orphaned claims from their stored `symbol_candidates`.
+  - Changed, added and new sources go to the pending queue,
+    `.contextatlas/local/pending.json`; each run is logged in
+    `runs.jsonl`. The directory ignores itself in git.
+  - `--no-export` (v1.2 Phase 5) updates the local cache only and
+    leaves `atlas.json` untouched.
+- MCP server hot reload (v1.2 Phase 4; ADR-06 2026-10-14). With
+  `atlas.committed: true` the server watches `atlas.json` and
+  re-imports it when it changes, so a pull or refresh reaches running
+  sessions without a restart.
+  - Tool calls in flight finish first, and a malformed file is
+    rejected.
+  - The server now starts through SDK v2 `serveStdio`, so clients of
+    the 2026-07-28 protocol can connect.
+- `contextatlas hooks install|uninstall|status` (v1.2 Phases 5 and 6).
+  - post-commit, post-merge and post-checkout start a background
+    `index --structural --no-export`.
+  - pre-push starts `refresh-claims --if-due`.
+  - Existing hook content is kept, and git never waits. `init` offers
+    the hooks (`--yes` installs them).
+  - A run lock, `.contextatlas/local/index.lock`, serializes runs.
+- Tier 1 incremental claim refresh (v1.2 Phase 6): `contextatlas
+  refresh-claims [--if-due] [--max-sources <n>]` and the
+  `/refresh-atlas` skill.
+  - Headless Claude Code re-extracts only the pending sources, on the
+    subscription; API keys are stripped from its environment.
+  - Runs are capped, and each one is logged in
+    `.contextatlas/local/refresh-log.jsonl`.
+  - A failed run restores `atlas.json`.
+- `refresh:` config section (ADR-05 2026-10-14): `auto_claims`,
+  `max_sources_per_run`, `max_turns`, `min_interval_minutes`,
+  `max_utilization`.
+- `list-extraction-sources --pending [--max-sources <n>]` (v1.2
+  Phase 6).
+- Calibrated model set (`src/config/models.ts`, v1.2 Phase 7).
+  `claude-opus-4-7` stays the default and is the only calibrated
+  model, after a pre-registered calibration of Opus, Sonnet and Haiku
+  5.5. Doctor checks that installed skills pin a calibrated model.
+- Doctor `freshness` checks (v1.2 Phase 8):
+  - local cache vs HEAD;
+  - pending sources by stream;
+  - orphaned claims;
+  - stale and unreachable source keys;
+  - hook state;
+  - Tier 1 ledger totals.
+- ADR-24 (tiered automatic refresh).
+- ESLint 9 flat config: `npm run lint` now lints (v1.2 Phase 9).
 
 ### Changed
 
@@ -329,6 +386,21 @@ load-bearing empirical findings).
     reconnect (with `atlas.committed: false` this discards anything
     only the cache holds; on a first build a restart is enough).
     `/prime-atlas` gives the same advice for a stale sentinel.
+
+- Source SHAs are computed on line-ending-normalized content (v1.2
+  Phase 3, F-9). A CRLF/LF flip from git autocrlf no longer causes
+  paid re-extraction. Existing keys are migrated without a model call.
+- `resolve-symbols` applies `extraction.exclude_pattern` (v1.2 Phase
+  3, F-8).
+- A code-only edit whose docstrings are unchanged no longer queues
+  docstring re-extraction (v1.2 Phase 6).
+- `atlas.exists` follows `atlas.committed`: with `false` it checks the
+  local cache, since `index` never writes `atlas.json` in that mode
+  (v1.2 Phase 8).
+- The `typescript-language-server` peer range is now `^4.3.0 ||
+  ^5.0.0 || ^6.0.0` (v1.2 Phase 9).
+- `init`, and every `index` run that exports, keep the local cache out
+  of git through `.contextatlas/.gitignore` (v1.2 Phase 9).
 
 ### Removed
 
@@ -589,6 +661,21 @@ load-bearing empirical findings).
   (`git checkout -- <atlas.path>`, or resolve the merge conflict), then
   refresh; with `atlas.committed: false`, to delete it if it cannot be
   restored.
+
+- Doctor `sha.atlas_vs_head` compared the commit of the contextatlas
+  build that wrote the atlas with HEAD. It reported drift on every
+  repository but contextatlas itself. It now reads `extracted_at_sha`
+  (v1.2 Phase 8).
+- `refresh-claims` started a Claude Code session before checking that
+  `.contextatlas/prompts/extraction.md` exists, then spent turns
+  failing on it. It now checks first (v1.2 Phase 8).
+- A fresh repository committed `.contextatlas/index.db` with its first
+  `git add -A`, and the hooks then left it modified after every commit
+  (v1.2 Phase 9).
+- TypeScript 7 (npm `latest`) ships no `tsserver.js`, so the
+  TypeScript adapter cannot start on it. Doctor now names the remedy
+  (`npm i -D typescript@6`), and the README install line uses
+  TypeScript 6 (v1.2 Phase 9).
 
 ### Security
 

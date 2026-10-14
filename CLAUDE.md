@@ -129,13 +129,14 @@ These are decisions already made. Do not relitigate them.
 
 ## Current Version
 
-- **Current:** v1.1.3 (tag `v1.1.3`, 2026-06-09; npm `latest`). The
-  v1.2 cycle (automatic atlas freshness) is in progress per
-  [`docs/cycles/v1_2/v1.2-SCOPE.md`](docs/cycles/v1_2/v1.2-SCOPE.md);
-  Phases 0-2 are complete (Phase 2 closed with its paid parity run on
-  2026-09-25); Phase 3 is next.
-  (Corrected 2026-09-25; this bullet had still named v0.8 as current.
-  The v0.8 text below is kept as the historical record.)
+- **Current:** v1.2.0 (tag `v1.2.0`, 2026-10-14). The v1.2 cycle
+  (automatic atlas freshness, ADR-24) closed after Phases 0-9 per
+  [`docs/cycles/v1_2/v1.2-SCOPE.md`](docs/cycles/v1_2/v1.2-SCOPE.md).
+  v1.3 (federation Shape 1 + local session overlay) is next per
+  [`docs/cycles/v1_3/v1.3-SCOPE.md`](docs/cycles/v1_3/v1.3-SCOPE.md).
+  (Updated 2026-10-14 from v1.1.3. On 2026-09-25 this bullet had been
+  corrected from v0.8; the v0.8 text below is kept as the historical
+  record.)
 - **v0.8:** shipped 2026-05-14 (tag `v0.8.0`); last
   substantive code/features cycle before v1.0 public launch.
   Cycle-engineering substrate at [`v1_1-HANDOFF.md`](v1_1-HANDOFF.md);
