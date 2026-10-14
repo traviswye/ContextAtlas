@@ -14,6 +14,7 @@ import type { LanguageAdapter, LanguageCode, SymbolKind } from "../types.js";
 import { createFindByIntentHandler } from "./handlers/find-by-intent.js";
 import { createGetSymbolContextHandler } from "./handlers/get-symbol-context.js";
 import { createImpactOfChangeHandler } from "./handlers/impact-of-change.js";
+import type { RequestGate } from "./atlas-reload.js";
 import { TOOL_NAMES, TOOLS, type ToolName } from "./schemas.js";
 
 export interface ServerRuntimeContext {
@@ -61,6 +62,13 @@ export interface CreateServerOptions {
    * `observabilityWriter` is provided; ignored otherwise.
    */
   observabilityCwd?: string;
+  /**
+   * Hot-reload gate (v1.2 Phase 4). When provided, every tool call runs
+   * through it, so an atlas swap waits for calls in flight and holds
+   * new ones until the re-import commits. Shared by every instance the
+   * `serveStdio` factory builds.
+   */
+  gate?: RequestGate;
 }
 
 type ToolHandler = (request: CallToolRequest) => Promise<CallToolResult>;
@@ -92,13 +100,15 @@ export function createServer(options: CreateServerOptions): Server {
 
   server.setRequestHandler("tools/call", async (request) => {
     const name = request.params.name;
-    const handler = handlers[name as ToolName];
-    if (!handler) {
+    const rawHandler = handlers[name as ToolName];
+    if (!rawHandler) {
       throw new ProtocolError(
         ProtocolErrorCode.MethodNotFound,
         `Unknown tool: '${name}'. Registered tools: ${Object.keys(handlers).join(", ")}.`,
       );
     }
+    const gate = options.gate;
+    const handler: ToolHandler = gate ? (req) => gate.run(() => rawHandler(req)) : rawHandler;
     if (!observe) {
       return handler(request);
     }

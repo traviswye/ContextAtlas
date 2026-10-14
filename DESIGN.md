@@ -976,17 +976,31 @@ Key properties of atlas.json:
 SQLite binary, gitignored, never committed. This is the query-time
 performance layer — fast joins, indexed lookups, compact storage.
 Every developer has their own index.db; it's rebuilt from atlas.json
-on demand. The MCP server imports atlas.json only into an empty cache
-(no symbols, claims or source keys), at startup; reload on change is
-v1.2 Phase 4. When it serves a cache whose `generated_at` differs
-from atlas.json's (after a pull, an `/index-atlas` refresh, or
-`atlas.committed: false` runs), it logs a warning at startup. To
-serve a changed atlas.json, stop the server (exit Claude Code, or
-disconnect `contextatlas` in `/mcp`), delete the cache while no
-`contextatlas index` is running, and restart: the cache is rebuilt
-from atlas.json with no API calls. With `atlas.committed: false`
-this discards anything only the cache holds (v1.2 Phase 2 review
-fixes).
+on demand.
+
+**Server loading and hot reload (v1.2 Phase 4).** With
+`atlas.committed: true` the MCP server treats atlas.json as the source
+of truth. At startup it imports atlas.json unless the cache already
+holds it (same `generated_at`). While running it watches atlas.json's
+directory, debounces change events and re-imports on a content change,
+so a pull, an `/index-atlas` refresh or a `contextatlas index` run
+reaches it without a restart. Three guards apply:
+- An atlas.json whose `generated_at` equals the cache's is skipped.
+  `contextatlas index` shares the cache and stamps `generated_at`
+  before each checkpoint, so its own writes are never re-imported over
+  units it stored after them.
+- The import is one transaction run through a request gate: tool calls
+  in flight finish against the previous atlas, and calls arriving
+  during the swap wait for it.
+- A malformed or partly written atlas.json rolls back: the server keeps
+  the previous atlas, warns, and retries on the next change.
+
+With `atlas.committed: false` the cache is the source of truth (lead
+decision L-19): atlas.json only seeds an empty cache, is never
+reloaded, and a mismatch logs a warning naming the two ways to serve
+it (delete the cache and restart, or set `committed: true`).
+`contextatlas index` writes that cache directly, and the server reads
+its writes through SQLite.
 
 SQLite schema:
 

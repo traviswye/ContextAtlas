@@ -32,7 +32,7 @@ import { dirname, join, resolve as pathResolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { LATEST_PROTOCOL_VERSION } from "@modelcontextprotocol/server";
-import { StdioServerTransport } from "@modelcontextprotocol/server/stdio";
+import { serveStdio, type StdioServerHandle } from "@modelcontextprotocol/server/stdio";
 
 import { createAdapter } from "./adapters/registry.js";
 import { HELP_TEXT, parseArgs } from "./cli-args.js";
@@ -46,6 +46,7 @@ import { runValidateExtractionSubcommand } from "./extraction/cli-validate-extra
 import { runGenerateAdrsSubcommand } from "./generation/cli-runner.js";
 import { runValidateAdrsSubcommand } from "./generation/cli-validate-adrs.js";
 import { runInitSubcommand } from "./init/runner.js";
+import { AtlasReloader, RequestGate } from "./mcp/atlas-reload.js";
 import { log } from "./mcp/logger.js";
 import { createServer } from "./mcp/server.js";
 import { TOOLS } from "./mcp/schemas.js";
@@ -321,11 +322,28 @@ export async function main(): Promise<void> {
   //    content is served as it is, never re-imported (reload on change
   //    is v1.2 Phase 4); when atlas.json's generated_at differs from the
   //    cache's, the server says how to load it (v1.2 Phase 2).
+  //
+  //    With atlas.committed: true (v1.2 Phase 4) atlas.json is the source
+  //    of truth: the reloader imports it now unless the cache already
+  //    holds it (same generated_at), and watches it once the server is
+  //    up. With false the cache is the truth (lead decision L-19): seed
+  //    only, never reload, warn on a mismatch.
   const atlasPath = pathResolve(configRoot, config.atlas.path);
   const symbolCount = (
     db.prepare("SELECT COUNT(*) AS n FROM symbols").get() as { n: number }
   ).n;
-  if (isCacheEmpty(db) && existsSync(atlasPath)) {
+  const gate = new RequestGate();
+  const reloader = config.atlas.committed
+    ? new AtlasReloader({ db, atlasPath, gate })
+    : null;
+  if (reloader !== null && existsSync(atlasPath)) {
+    const outcome = await reloader.reloadIfChanged();
+    if (outcome === "already-current") {
+      log.info(`Using existing local cache (${symbolCount} symbols; matches atlas.json)`);
+    } else if (outcome === "failed" && !isCacheEmpty(db)) {
+      log.warn("Serving the existing local cache; atlas.json failed to load (see above).");
+    }
+  } else if (isCacheEmpty(db) && existsSync(atlasPath)) {
     log.info(`Importing atlas.json into fresh cache`, { path: atlasPath });
     importAtlasFile(db, atlasPath);
     const newCount = (
@@ -345,14 +363,15 @@ export async function main(): Promise<void> {
     if (mismatch !== null) {
       log.warn(
         `atlas.json (generated_at ${mismatch.atlasJson}) is not the atlas the ` +
-          `local cache holds (generated_at ${mismatch.cache ?? "absent"}): a ` +
-          "pull, an /index-atlas refresh or atlas.committed: false runs changed " +
-          "one without the other. The server serves the local cache and " +
-          "imports atlas.json only into an empty cache. To serve atlas.json, " +
+          `local cache holds (generated_at ${mismatch.cache ?? "absent"}). With ` +
+          "atlas.committed: false the local cache is the source of truth, so " +
+          "the server serves it and neither imports nor watches atlas.json. To " +
+          "serve atlas.json instead (for example after an /index-atlas run), " +
           "stop the server (exit Claude Code, or disconnect `contextatlas` in " +
           `/mcp), delete the local cache (${cachePath}), and restart: it is ` +
-          "rebuilt from atlas.json with no API calls. With atlas.committed: " +
-          "false this discards anything only the cache holds.",
+          "rebuilt from atlas.json with no API calls, discarding anything only " +
+          "the cache holds. Or set atlas.committed: true to have the server " +
+          "reload atlas.json whenever it changes.",
         { path: atlasPath },
       );
     }
@@ -417,71 +436,79 @@ export async function main(): Promise<void> {
       )}`,
     );
   }
-  const server = createServer({
-    name: "ContextAtlas",
-    version,
-    context: {
-      db,
-      adapters,
-      gitRecentCommits: config.git.recentCommits,
-      ...(config.mcp?.symbolContextBM25 === true
-        ? { symbolContextBM25: true }
+  // 6b. Serve over stdio from a factory (v1.2 Phase 4, lead decision
+  //     L-20). serveStdio builds one instance per connection, plus a
+  //     discarded probe when a client opens with `server/discover`; it
+  //     serves 2025-era `initialize` clients exactly as the hand-wired
+  //     transport did, and 2026-07-28 clients too. Every instance shares
+  //     the cache, adapters and reload gate, so a hot reload reaches all.
+  const buildServer = ({ era }: { era: "legacy" | "modern" }): ReturnType<typeof createServer> => {
+    const server = createServer({
+      name: "ContextAtlas",
+      version,
+      context: {
+        db,
+        adapters,
+        gitRecentCommits: config.git.recentCommits,
+        ...(config.mcp?.symbolContextBM25 === true
+          ? { symbolContextBM25: true }
+          : {}),
+      },
+      gate,
+      ...(observabilityWriter
+        ? { observabilityWriter, observabilityCwd: configRoot }
         : {}),
-    },
-    ...(observabilityWriter
-      ? { observabilityWriter, observabilityCwd: configRoot }
-      : {}),
-  });
+    });
+    if (era === "modern") {
+      log.info("MCP connection: serving protocol revision 2026-07-28 (server/discover)");
+      return server;
+    }
+    // Fires on `notifications/initialized` of a 2025-era connection.
+    // getClientVersion / getNegotiatedProtocolVersion are @deprecated in
+    // SDK v2 in favour of the per-request envelope of 2026-07-28-era
+    // requests; for the 2025-era initialize handshake the SDK documents
+    // both as returning the initialize-scoped values. Client-supplied
+    // name/version go in the JSON-encoded meta so they cannot inject raw
+    // text into the log line. The SDK dispatches the notification even
+    // when the initialize request failed (no version negotiated); that is
+    // logged as a warning.
+    server.oninitialized = () => {
+      const clientInfo = server.getClientVersion();
+      const clientMeta = {
+        clientName: clientInfo?.name ?? null,
+        clientVersion: clientInfo?.version ?? null,
+      };
+      const negotiated = server.getNegotiatedProtocolVersion();
+      if (negotiated === undefined) {
+        log.warn(
+          "MCP client sent notifications/initialized without a successful " +
+            "initialize handshake (no protocol version negotiated)",
+          clientMeta,
+        );
+        return;
+      }
+      log.info(
+        `MCP client initialized (negotiated protocol version: ${negotiated})`,
+        clientMeta,
+      );
+    };
+    return server;
+  };
 
   log.info(`Registered tools: ${TOOLS.map((t) => t.name).join(", ")}`);
 
-  // Fires on `notifications/initialized`, i.e. once the handshake has
-  // completed and the negotiated version is fixed. getClientVersion /
-  // getNegotiatedProtocolVersion are @deprecated in SDK v2 in favour of
-  // the per-request `ctx.mcpReq.envelope` used by 2026-07-28-era
-  // requests; this hand-wired stdio server only serves the 2025-era
-  // initialize handshake, for which the SDK documents both accessors as
-  // returning the initialize-scoped values. Revisit if the entry point
-  // moves to serveStdio. Client-supplied name/version go in the
-  // JSON-encoded meta so they cannot inject raw text into the log line.
-  //
-  // The SDK dispatches `notifications/initialized` even when the
-  // preceding initialize request failed (e.g. invalid clientInfo), in
-  // which case no version was negotiated. Log that as a warning rather
-  // than a misleading success line.
-  server.oninitialized = () => {
-    const clientInfo = server.getClientVersion();
-    const clientMeta = {
-      clientName: clientInfo?.name ?? null,
-      clientVersion: clientInfo?.version ?? null,
-    };
-    const negotiated = server.getNegotiatedProtocolVersion();
-    if (negotiated === undefined) {
-      log.warn(
-        "MCP client sent notifications/initialized without a successful " +
-          "initialize handshake (no protocol version negotiated)",
-        clientMeta,
-      );
-      return;
-    }
-    log.info(
-      `MCP client initialized (negotiated protocol version: ${negotiated})`,
-      clientMeta,
-    );
-  };
-
-  // 7. Shutdown closes the server, adapters, and DB cleanly. Run-once:
-  //    a signal-driven shutdown calls server.close(), which closes the
-  //    transport and fires server.onclose (below) — the guard keeps
-  //    that second entry from re-running the teardown.
+  // 7. Shutdown stops the reloader and closes the connection, adapters
+  //    and DB. Run-once: several triggers can fire for one exit.
+  let handle: StdioServerHandle | null = null;
   let shuttingDown = false;
   const shutdown = (reason: string): void => {
     if (shuttingDown) return;
     shuttingDown = true;
     log.info(`Received ${reason}, shutting down`);
+    reloader?.stop();
     (async () => {
-      await server
-        .close()
+      await handle
+        ?.close()
         .catch((err: unknown) =>
           log.debug(`Error during server close: ${String(err)}`),
         );
@@ -500,17 +527,20 @@ export async function main(): Promise<void> {
   process.on("SIGINT", () => shutdown("SIGINT"));
   process.on("SIGTERM", () => shutdown("SIGTERM"));
 
-  // SDK v2's StdioServerTransport closes itself when stdin reaches EOF
-  // (or a stdout write fails) and fires onclose; requests still in
-  // flight at that point are aborted and NOT answered (SDK-documented;
-  // 0.5.0 ignored EOF and answered them). Without this hook the process
-  // would linger after the client hung up — the language-server child
-  // keeps the event loop alive. Exiting here follows the MCP stdio
-  // lifecycle (client closes stdin, then waits for the server to exit).
-  server.onclose = () => shutdown("stdin EOF / transport close");
+  // The MCP stdio lifecycle: the client closes stdin, then waits for the
+  // server to exit. The transport closes itself on stdin EOF (requests
+  // still in flight are aborted, not answered; SDK-documented), but the
+  // language-server children and the atlas watch keep the event loop
+  // alive, so exit explicitly. Keyed off stdin, not an instance's
+  // onclose: serveStdio closes a discarded `server/discover` probe
+  // instance while the connection stays up.
+  process.stdin.once("end", () => shutdown("stdin EOF"));
+  process.stdin.once("close", () => shutdown("stdin close"));
 
-  const transport = new StdioServerTransport();
-  await server.connect(transport);
+  handle = serveStdio(buildServer, {
+    onerror: (err) => log.debug(`stdio: ${err.message}`),
+  });
+  reloader?.start();
 
   log.info("Server ready — awaiting MCP client connection on stdio");
 }

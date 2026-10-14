@@ -196,3 +196,53 @@ degraded mode, but it's a supported degraded mode.
   of "committed: true" assumes ADRs are already committed, so the
   atlas adds no new exposure. This assumption should be documented
   but not enforced — teams know their own privacy situation.
+
+## Amendment (2026-10-14, v1.2 Phase 4): the MCP server reloads a committed atlas.json
+
+Lead decisions L-19 and L-20 (`docs/cycles/v1_2/v1.2-SCOPE.md` §5).
+Until this amendment the server imported atlas.json only into an empty
+local cache and warned when the two diverged; serving a pulled atlas
+meant stopping the server and deleting the cache.
+
+### Decision
+
+1. **`atlas.committed: true`: atlas.json is what the server serves.**
+   At startup the server imports atlas.json unless the cache already
+   holds it (equal `generated_at`). While running it watches
+   atlas.json's directory (writers replace the file by rename),
+   debounces events (500 ms) and re-imports when the content hash
+   changes (`AtlasReloader`, `src/mcp/atlas-reload.ts`).
+2. **The pipeline's own writes are not re-imported.** `contextatlas
+   index` shares the cache and stamps `generated_at` into it before
+   every checkpoint and final export. An atlas.json whose
+   `generated_at` equals the cache's is therefore skipped. Re-importing
+   a checkpoint would have deleted units the run stored after it.
+3. **Swap semantics.** `importAtlas` is a single transaction. It runs
+   through a `RequestGate`: it waits for tool calls in flight, and calls
+   that arrive meanwhile wait for the swap. A malformed or invalid
+   atlas.json rolls back; the previous state stays, a warning is
+   logged, and the next change retries.
+4. **`atlas.committed: false`: the cache stays the source of truth
+   (L-19).** atlas.json seeds an empty cache only and is never
+   reloaded. A mismatch logs a warning naming both remedies: delete
+   the cache and restart, or switch to `committed: true`.
+5. **Entry point (L-20).** The server is served by SDK v2
+   `serveStdio(factory)` with `legacy: 'serve'`. 2025-era clients are
+   served as before, and 2026-07-28 clients that open with
+   `server/discover` now connect instead of getting -32601. Every
+   instance the factory builds shares the cache, the adapters and the
+   gate, so a reload reaches all of them. Shutdown keys off stdin EOF
+   rather than an instance's `onclose`, because `serveStdio` closes a
+   discarded probe instance while the connection stays up.
+
+### Consequences
+
+- A pull or an `/index-atlas` refresh reaches a running server within
+  about a second, with no restart.
+- A reload replaces any cache-only state, by design under
+  `committed: true`, where the cache is derived from atlas.json.
+- If a `contextatlas index` run stamps `generated_at` and then fails to
+  write atlas.json, the server re-imports the older atlas.json over that
+  run's stored units. That run's next checkpoint or rerun repairs it,
+  at the cost of re-extracting those units. Phase 5's run lock is meant
+  to cover the concurrent case.
