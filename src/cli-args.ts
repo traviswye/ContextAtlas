@@ -38,6 +38,12 @@
  *                         regardless of staleness. Commits stay gated
  *                         by their source_shas key.
  *
+ *   --structural          (ADR-12 2026-10-14) Accepted only with
+ *                         `index`, not with --full. Tier 0 refresh:
+ *                         symbols, pruning, git signal and deletions,
+ *                         no model calls; changed sources go to the
+ *                         pending queue (.contextatlas/local/).
+ *
  *   --json                (ADR-12) Accepted only with `index`. Emit
  *                         the completion summary as a JSON object on
  *                         stdout instead of the default `key=value`
@@ -143,6 +149,12 @@ export interface ParsedArgs {
    * invocation. Per ADR-12.
    */
   full: boolean;
+  /**
+   * True when `--structural` was passed alongside `index` (v1.2 Phase
+   * 3, Tier 0). Rejected on any non-`index` invocation and with
+   * `--full`.
+   */
+  structural: boolean;
   /**
    * True when `--json` was passed alongside `index`. Switches the
    * completion summary from `key=value` lines to a single JSON
@@ -250,7 +262,7 @@ export const KNOWN_SUBCOMMANDS: readonly Subcommand[] = [
  */
 export const USAGE =
   `Usage: contextatlas [${KNOWN_SUBCOMMANDS.join("|")}] [--config-root <path>] [--config <file>] ` +
-  "[--check] [--full] [--json] [--cc-only] [--observe] [--budget-warn <usd>] [--verbose] " +
+  "[--check] [--full] [--structural] [--json] [--cc-only] [--observe] [--budget-warn <usd>] [--verbose] " +
   "[--narrow-attribution <drop|drop-with-fallback>] " +
   "(see ADR-08, ADR-11, ADR-12, ADR-20)";
 
@@ -289,6 +301,7 @@ Subcommand options (selected; see individual subcommand for full set):
     --budget-warn <usd>   Emit warning if cumulative cost exceeds threshold
   index:
     --full                Skip the SHA gate for ADR/docs + docstrings (commits stay key-gated)
+    --structural          Refresh symbols + git signal only, no model calls; queue changed sources
     --json                Print the run summary as one JSON object on stdout
     --verbose             Per-file unresolved-token detail on stderr
     --narrow-attribution <drop|drop-with-fallback>
@@ -326,6 +339,7 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
   let configFile: string | null = null;
   let check = false;
   let full = false;
+  let structural = false;
   let json = false;
   let budgetWarn: number | null = null;
   let verbose = false;
@@ -456,6 +470,14 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
         throw new Error(`Flag --full specified more than once. ${USAGE}`);
       }
       full = true;
+      i += 1;
+      continue;
+    }
+    if (arg === "--structural") {
+      if (structural) {
+        throw new Error(`Flag --structural specified more than once. ${USAGE}`);
+      }
+      structural = true;
       i += 1;
       continue;
     }
@@ -653,6 +675,7 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
       configFile,
       check,
       full,
+      structural,
       json,
       budgetWarn,
       verbose,
@@ -678,6 +701,17 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
   if (full && subcommand !== "index") {
     throw new Error(
       `Flag --full is only accepted with the 'index' subcommand. ${USAGE}`,
+    );
+  }
+  if (structural && subcommand !== "index") {
+    throw new Error(
+      `Flag --structural is only accepted with the 'index' subcommand. ${USAGE}`,
+    );
+  }
+  if (structural && full) {
+    throw new Error(
+      "Flags --structural and --full cannot be combined: --structural makes " +
+        "no model calls, --full re-extracts everything. Pass one of them.",
     );
   }
   if (
@@ -742,6 +776,7 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
     configFile,
     check,
     full,
+    structural,
     json,
     budgetWarn,
     verbose,

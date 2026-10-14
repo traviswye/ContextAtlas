@@ -20,6 +20,7 @@
  *   contextatlas --check                            # staleness probe; exits without starting MCP
  *   contextatlas index                              # run extraction pipeline
  *   contextatlas index --full                       # force full re-extract
+ *   contextatlas index --structural                 # Tier 0: no model calls; queue changes
  *   contextatlas index --json                       # JSON summary instead of key=value
  *
  * See ADR-08 for --config-root / --config / source-root, ADR-11 for
@@ -215,6 +216,7 @@ export async function main(): Promise<void> {
       configRoot,
       configFile: configFileArg,
       full: parsed.full,
+      structural: parsed.structural,
       json: parsed.json,
       verbose: parsed.verbose,
       budgetWarnOverride: parsed.budgetWarn,

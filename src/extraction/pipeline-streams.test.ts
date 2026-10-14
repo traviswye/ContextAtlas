@@ -22,6 +22,7 @@ import {
   mkdirSync,
   mkdtempSync,
   readFileSync,
+  rmSync,
   writeFileSync,
 } from "node:fs";
 import { rm } from "node:fs/promises";
@@ -843,6 +844,121 @@ describe("runExtractionPipeline — v1.2 Phase 2 streams", () => {
   // -------------------------------------------------------------------
   // Run-level behaviour
   // -------------------------------------------------------------------
+
+  // -------------------------------------------------------------------
+  // Structural refresh (v1.2 Phase 3, Tier 0)
+  // -------------------------------------------------------------------
+
+  describe("structural refresh (v1.2 Phase 3)", () => {
+    function structuralFixture() {
+      write("docs/adr/ADR-01.md", "ADR v1\n");
+      write("docs/adr/ADR-02.md", "ADR two\n");
+      write("src/a.ts", "export function Foo() {}\n");
+      const Foo = tsSym("src/a.ts", "Foo");
+      const listing: Record<string, AtlasSymbol[]> = { "src/a.ts": [Foo] };
+      const docs: Record<SymbolId, Docstring> = { [Foo.id]: "Foo doc" };
+      const adapter = streamAdapter(tmp, listing, docs);
+      return { Foo, listing, docs, adapter };
+    }
+    const reply = (body: string): Reply => oneClaim(`claim for ${body.trim()}`);
+
+    it("makes no model call: changed and new sources are pending, their keys and claims stay; deletions and symbol moves apply and export", async () => {
+      const f = structuralFixture();
+      await run(f.adapter, recordingClient(reply).client);
+      const keysBefore = listSourceShas(db);
+      const claimsBefore = claimTexts();
+
+      write("docs/adr/ADR-01.md", "ADR v2\n");
+      write("src/a.ts", "// moved\nexport function Foo() {}\n");
+      write("src/b.ts", "export function Bar() {}\n");
+      rmSync(pathJoin(tmp, "docs", "adr", "ADR-02.md"));
+      f.listing["src/a.ts"] = [tsSym("src/a.ts", "Foo", 2)];
+      f.listing["src/b.ts"] = [tsSym("src/b.ts", "Bar")];
+
+      freshDb();
+      const rec = recordingClient(() => "throw");
+      const result = await run(f.adapter, rec.client, { structural: true });
+
+      expect(rec.bodies).toEqual([]);
+      expect(result.apiCalls).toBe(0);
+      expect(result.pendingUnits).toEqual([
+        { key: "docs/adr/ADR-01.md", stream: "adr", reason: "changed", sha: computeFileSha(pathJoin(tmp, "docs", "adr", "ADR-01.md")) },
+        { key: "src/a.ts", stream: "docstring", reason: "changed", sha: computeFileSha(pathJoin(tmp, "src", "a.ts")) },
+        { key: "src/b.ts", stream: "docstring", reason: "added", sha: computeFileSha(pathJoin(tmp, "src", "b.ts")) },
+      ]);
+      const keys = listSourceShas(db);
+      expect(keys["docs/adr/ADR-01.md"]).toBe(keysBefore["docs/adr/ADR-01.md"]);
+      expect(keys["src/a.ts"]).toBe(keysBefore["src/a.ts"]);
+      expect(keys["src/b.ts"]).toBeUndefined();
+      expect(keys["docs/adr/ADR-02.md"]).toBeUndefined();
+      expect(claimTexts()).toEqual(claimsBefore.filter((c) => c !== "claim for ADR two"));
+      expect(result.filesDeleted).toBe(1);
+      expect(result.atlasExported).toBe(true);
+      const exported = readAtlas();
+      expect(exported.symbols.find((s) => s.name === "Foo")?.line).toBe(2);
+      expect(exported.symbols.map((s) => s.name).sort()).toEqual(["Bar", "Foo"]);
+
+      // Unchanged since: the same queue, no export, byte-identical atlas.
+      const bytes = readFileSync(atlasPath(), "utf8");
+      freshDb();
+      const again = await run(f.adapter, recordingClient(() => "throw").client, { structural: true });
+      expect(again.pendingUnits.map((u) => u.key)).toEqual(["docs/adr/ADR-01.md", "src/a.ts", "src/b.ts"]);
+      expect(again.atlasExported).toBe(false);
+      expect(readFileSync(atlasPath(), "utf8")).toBe(bytes);
+
+      // A model-calling run extracts exactly the pending sources and clears them.
+      freshDb();
+      const full = recordingClient(reply);
+      const after = await run(f.adapter, full.client);
+      expect(full.bodies.sort()).toEqual(["ADR v2\n", "Foo doc"]);
+      expect(after.pendingUnits).toEqual([]);
+    });
+
+    it("a symbol-only change (same file SHA) re-exports in a structural run", async () => {
+      const f = structuralFixture();
+      await run(f.adapter, recordingClient(reply).client);
+      f.listing["src/a.ts"] = [tsSym("src/a.ts", "Foo", 3)];
+      freshDb();
+      const result = await run(f.adapter, recordingClient(() => "throw").client, { structural: true });
+      expect(result.pendingUnits).toEqual([]);
+      expect(result.atlasExported).toBe(true);
+      expect(readAtlas().symbols.find((s) => s.name === "Foo")?.line).toBe(3);
+    });
+
+    it("queues filter-passing commits not keyed yet as commit:<sha>, without keying them", async () => {
+      const [design] = initGitRepo(tmp, ["design: split the router"]);
+      const rec = recordingClient(() => "throw");
+      const result = await run(streamAdapter(tmp, {}), rec.client, { gitBinary: "git", structural: true });
+      expect(rec.bodies).toEqual([]);
+      expect(result.pendingUnits).toEqual([
+        { key: `commit:${design}`, stream: "commit", reason: "added", sha: design },
+      ]);
+      expect(listSourceShas(db)[`commit:${design}`]).toBeUndefined();
+    });
+
+    it("a failed source of a model-calling run stays pending; disabled streams queue nothing", async () => {
+      const f = structuralFixture();
+      const result = await run(f.adapter, recordingClient((b) => (b === "Foo doc" ? "throw" : reply(b))).client);
+      expect(result.pendingUnits.map((u) => [u.key, u.stream, u.reason])).toEqual([
+        ["src/a.ts", "docstring", "added"],
+      ]);
+      freshDb();
+      const adrOnly = await run(f.adapter, recordingClient(() => "throw").client, {
+        structural: true,
+        streams: new Set<ExtractionStream>(["adr"]),
+      });
+      expect(adrOnly.pendingUnits).toEqual([]);
+    });
+
+    it("rejects structural together with skipShaDiff (--full)", async () => {
+      await expect(
+        run(streamAdapter(tmp, {}), recordingClient(() => "throw").client, {
+          structural: true,
+          skipShaDiff: true,
+        }),
+      ).rejects.toThrow(/cannot also re-extract everything/);
+    });
+  });
 
   describe("run level", () => {
     const budgetWarnings = (lines: string[]) => lines.filter((l) => l.includes("budget warning"));

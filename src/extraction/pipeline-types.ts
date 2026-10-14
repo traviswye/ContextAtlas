@@ -15,6 +15,7 @@ import type {
 
 import type { ExtractionClient } from "./anthropic-client.js";
 import type { CostPreview } from "./cost-preview.js";
+import type { PendingUnit } from "./local-state.js";
 import type { OrphanedClaimSource } from "./symbol-prune.js";
 
 export interface ExtractionPipelineDeps {
@@ -88,6 +89,14 @@ export interface ExtractionPipelineDeps {
    * changes, suspected extraction quality issues. Default: false.
    */
   skipShaDiff?: boolean;
+  /**
+   * Tier 0 structural refresh (`contextatlas index --structural`, v1.2
+   * Phase 3): run the walks, symbol upsert and prune, git signal and
+   * deletions, but make no model call. Changed and new sources are
+   * reported in `pendingUnits` instead of extracted; their keys and
+   * claims stay as they were. Not combinable with `skipShaDiff`.
+   */
+  structural?: boolean;
   /**
    * Optional USD ceiling. When set and cumulative extraction cost
    * across all streams exceeds this value during a run, a single
@@ -321,6 +330,12 @@ export interface ExtractionPipelineResult {
    * line-ending hash to the normalized SHA (F-9, v1.2 Phase 3).
    */
   lineEndingKeysMigrated: number;
+  /**
+   * Sources this run planned but did not key with their current SHA
+   * (v1.2 Phase 3): every planned source after a structural run, the
+   * failed ones otherwise. The CLI writes them to the pending queue.
+   */
+  pendingUnits: PendingUnit[];
   /**
    * Docstring / commit streams in which every attempted call failed
    * (L-10 ii). Not a summary key: `contextatlas index` exits 1 on it.

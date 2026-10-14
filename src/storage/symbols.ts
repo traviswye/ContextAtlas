@@ -6,6 +6,8 @@
  * to storage.
  */
 
+import { createHash } from "node:crypto";
+
 import {
   LANG_CODES_INVERSE,
   type LanguageCode,
@@ -203,6 +205,24 @@ export function listAllSymbols(db: DatabaseInstance): AtlasSymbol[] {
     .prepare("SELECT * FROM symbols ORDER BY id")
     .all() as SymbolRow[];
   return rows.map(rowToSymbol);
+}
+
+/**
+ * SHA-256 over every stored symbol's exported fields, in id order. Two
+ * equal digests mean the `symbols` part of an export is unchanged, so
+ * `index` can tell whether a run moved, added or removed symbols without
+ * exporting (v1.2 Phase 3: a structural run re-exports on that alone).
+ */
+export function symbolTableDigest(db: DatabaseInstance): string {
+  const hash = createHash("sha256");
+  const rows = db
+    .prepare(
+      "SELECT id, name, kind, path, line, signature, parent_id, file_sha FROM symbols ORDER BY id",
+    )
+    .raw()
+    .iterate() as IterableIterator<unknown[]>;
+  for (const row of rows) hash.update(JSON.stringify(row)).update("\n");
+  return hash.digest("hex");
 }
 
 export function clearSymbols(db: DatabaseInstance): void {

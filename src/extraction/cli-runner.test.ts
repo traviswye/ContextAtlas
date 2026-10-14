@@ -129,6 +129,34 @@ describe("runIndexSubcommand (ADR-12)", () => {
     expect(stdout.joined()).toBe(""); // no summary printed on setup failure
   });
 
+  it("--structural needs no API key, writes the pending queue and a run-log line under a self-ignoring .contextatlas/local/", async () => {
+    writeFileSync(pathJoin(tmp, "docs", "adr", "ADR-01-a.md"), "# ADR\n");
+    const stdout = captureStdout();
+    const result = await runIndexSubcommand({
+      configRoot: tmp,
+      configFile: null,
+      full: false,
+      structural: true,
+      json: false,
+      contextatlasVersion: "0.0.1-test",
+      contextatlasCommitSha: null,
+      readEnv: () => undefined,
+      writeStdout: stdout.writer,
+    });
+    expect(result.exitCode).toBe(0);
+    expect(stdout.joined()).toMatch(/^api_calls=0$/m);
+    expect(stdout.joined()).toMatch(/^pending_sources=1$/m);
+    const local = pathJoin(tmp, ".contextatlas", "local");
+    const queue = JSON.parse(readFileSync(pathJoin(local, "pending.json"), "utf8"));
+    expect(queue.entries.map((e: { key: string; stream: string; reason: string }) => [e.key, e.stream, e.reason])).toEqual([
+      ["docs/adr/ADR-01-a.md", "adr", "added"],
+    ]);
+    const runs = readFileSync(pathJoin(local, "runs.jsonl"), "utf8").trim().split("\n");
+    expect(runs).toHaveLength(1);
+    expect(JSON.parse(runs[0]!)).toMatchObject({ mode: "structural", exit_code: 0, api_calls: 0, pending_sources: 1 });
+    expect(readFileSync(pathJoin(local, ".gitignore"), "utf8")).toMatch(/^\*$/m);
+  });
+
   it("returns exit code 2 when config is malformed", async () => {
     writeFileSync(pathJoin(tmp, ".contextatlas.yml"), "not: [valid: yaml");
     const stdout = captureStdout();
@@ -1028,7 +1056,7 @@ describe("runIndexSubcommand (ADR-12)", () => {
     "commit_keys_migrated",
   ];
   // v1.2 Phase 3 — appended after the Phase 2 keys.
-  const PHASE3_KEYS = ["line_ending_keys_migrated"];
+  const PHASE3_KEYS = ["line_ending_keys_migrated", "pending_sources"];
 
   it("key=value summary appends the v1.2 Phase 1 then Phase 2 keys after the existing keys (order unchanged)", async () => {
     const stdout = captureStdout();

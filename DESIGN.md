@@ -726,6 +726,34 @@ Library callers of `runExtractionPipeline` that do not pass
 `deps.streams` get prose only. See the ADR-12 2026-09-25 amendment
 for the stage table, failure semantics and summary keys.
 
+**Line-ending-stable keys (v1.2 Phase 3).** File SHAs hash the content
+with CRLF normalized to LF, so a checkout that only flips line endings
+(`core.autocrlf`) changes no key. A key written before Phase 3, or on a
+checkout with the other line endings, is rewritten to the normalized
+SHA without a model call (`line_ending_keys_migrated`).
+
+**Structural refresh and the pending queue (v1.2 Phase 3, Tier 0).**
+`contextatlas index --structural` runs the walks, the symbol upsert
+and prune, the git signal and the per-stream deletions, and makes no
+model call. It needs no API key and ignores `architecture`. Sources
+that a model-calling run would extract (changed or new prose and
+docstring files, filter-passing commits not keyed yet) keep their
+keys and claims and go to the pending queue instead. It re-exports
+`atlas.json` when the exported symbols, keys or git signal changed,
+and leaves it byte-identical otherwise. It skips
+`validate-extraction`, since it changes no claims.
+
+Every CLI `index` run replaces `.contextatlas/local/pending.json` with
+the sources it planned but did not key with their current SHA: all of
+them after `--structural`, the failed ones after a model-calling run.
+One entry per source key, so repeated edits of a file are one entry;
+`first_seen` carries over while a key stays pending. The run also
+appends one line to `.contextatlas/local/runs.jsonl` (mode, exit code,
+calls, cost, pending count; last 500 runs). The directory holds its
+own `.gitignore` (`*`) and is never committed (ADR-06). Library
+callers of `runExtractionPipeline` get the units in
+`result.pendingUnits` and no files.
+
 ### Two-paths extraction architecture (v0.7+)
 
 The extraction pipeline above describes the canonical pipeline as a

@@ -43,7 +43,8 @@ import {
 } from "./docstring-read.js";
 import type { ProseFile, SourceFile } from "./file-walker.js";
 import type { SymbolInventoryWithCoverage } from "./resolver.js";
-import { hasCommitKey } from "./source-keys.js";
+import type { PendingUnit } from "./local-state.js";
+import { commitSourceKey, hasCommitKey } from "./source-keys.js";
 
 /** One docstring file Stage 6c will (re-)extract. */
 export interface PlannedDocstringFile {
@@ -119,18 +120,28 @@ export interface PlanDocstringInput {
   prosePaths?: ReadonlySet<string>;
 }
 
+/** A docstring file selected for (re-)extraction, before any read. */
+export interface SelectedDocstringFile {
+  readonly file: SourceFile;
+  readonly adapter: LanguageAdapter;
+}
+
+export interface DocstringSelection {
+  /** Files to (re-)extract, in walk order. */
+  readonly files: readonly SelectedDocstringFile[];
+  /** Walked, listed files skipped because their SHA matches the key. */
+  readonly filesUnchanged: number;
+}
+
 /**
- * Plan the docstring stream and read the planned files' docstrings
- * (LSP only). Files are taken in walk order; each file's symbols come
- * from the Stage 3 inventory, so nothing is listed twice.
+ * Select the docstring stream's files without reading anything: walked
+ * files whose listing succeeded, that a configured adapter owns, that
+ * are not also prose files, and whose SHA differs from the key (every
+ * one under `--full`). A `--structural` run queues exactly these.
  */
-export async function planDocstringWork(
-  input: PlanDocstringInput,
-): Promise<DocstringWorkPlan> {
-  const symbolsByPath = groupSymbolsByPath(input.inventory.allSymbols);
-  const files: PlannedDocstringFile[] = [];
+export function selectDocstringFiles(input: PlanDocstringInput): DocstringSelection {
+  const files: SelectedDocstringFile[] = [];
   let filesUnchanged = 0;
-  let calls = 0;
   let proseCollisions = 0;
 
   for (const file of input.sourceFiles) {
@@ -145,27 +156,48 @@ export async function planDocstringWork(
       filesUnchanged++;
       continue;
     }
+    files.push({ file, adapter });
+  }
+
+  if (proseCollisions > 0) warnProseCollisions(proseCollisions);
+  return { files, filesUnchanged };
+}
+
+/**
+ * Plan the docstring stream and read the planned files' docstrings
+ * (LSP only). Files are taken in walk order; each file's symbols come
+ * from the Stage 3 inventory, so nothing is listed twice.
+ */
+export async function planDocstringWork(
+  input: PlanDocstringInput,
+): Promise<DocstringWorkPlan> {
+  const symbolsByPath = groupSymbolsByPath(input.inventory.allSymbols);
+  const selection = selectDocstringFiles(input);
+  const files: PlannedDocstringFile[] = [];
+  let calls = 0;
+
+  for (const { file, adapter } of selection.files) {
     const symbols = symbolsByPath.get(file.relPath) ?? [];
     const docstrings = await readFileDocstrings(adapter, symbols);
     if (docstrings.errors.length === 0) calls += docstrings.entries.length;
     files.push({ relPath: file.relPath, sha: file.sha, adapter, symbols, docstrings });
   }
+  return { files, filesUnchanged: selection.filesUnchanged, calls };
+}
 
-  if (proseCollisions > 0) {
-    log.warn(
-      `pipeline: skipped docstring extraction for ${proseCollisions} source ` +
-        "file(s) that docs.include also matches; they are extracted as prose " +
-        "only. Narrow the docs.include globs to documentation files to " +
-        "extract their docstrings. When a docs.include change moves a file " +
-        "between the prose and docstring streams, a file one stream keyed " +
-        "with no claims looks unchanged to the other: remove that path's " +
-        "entry from source_shas (in atlas.json with atlas.committed: true, " +
-        "in the local cache with false), or run `contextatlas index --full` " +
-        "once (it re-extracts every ADR, docs page and docstring file).",
-      { proseCollisions },
-    );
-  }
-  return { files, filesUnchanged, calls };
+function warnProseCollisions(proseCollisions: number): void {
+  log.warn(
+    `pipeline: skipped docstring extraction for ${proseCollisions} source ` +
+      "file(s) that docs.include also matches; they are extracted as prose " +
+      "only. Narrow the docs.include globs to documentation files to " +
+      "extract their docstrings. When a docs.include change moves a file " +
+      "between the prose and docstring streams, a file one stream keyed " +
+      "with no claims looks unchanged to the other: remove that path's " +
+      "entry from source_shas (in atlas.json with atlas.committed: true, " +
+      "in the local cache with false), or run `contextatlas index --full` " +
+      "once (it re-extracts every ADR, docs page and docstring file).",
+    { proseCollisions },
+  );
 }
 
 function adapterFor(
@@ -269,4 +301,51 @@ export function planCommitWork(input: PlanCommitInput): CommitWorkPlan {
     filtered: filtered.length,
     skippedIdempotent: filtered.length - pending.length,
   };
+}
+
+export interface PendingUnitsInput {
+  /** Prose files the run planned (Stage 2 changed + added, `adr` on). */
+  prose: readonly { relPath: string; sha: string }[];
+  /** Docstring files the run selected (null: stream off). */
+  docstring: readonly { relPath: string; sha: string }[] | null;
+  /** Filter-passing commits not keyed before the run (null: stream off or skipped). */
+  commits: readonly CommitMetadata[] | null;
+  /** The run's baseline keys (prose and docstring parts). */
+  baselineProse: Readonly<Record<string, string>>;
+  baselineDocstring: Readonly<Record<string, string>>;
+  /** `source_shas` after the run. */
+  keysNow: Readonly<Record<string, string>>;
+  hasCommitKey: (sha: string) => boolean;
+}
+
+/**
+ * Sources the run planned but did not key with their current SHA (v1.2
+ * Phase 3): all planned sources after a `--structural` run, the failed
+ * ones after a model-calling run. The CLI writes them to the pending
+ * queue (`local-state.ts`).
+ */
+export function collectPendingUnits(input: PendingUnitsInput): PendingUnit[] {
+  const units: PendingUnit[] = [];
+  const files = (
+    stream: ExtractionStream,
+    planned: readonly { relPath: string; sha: string }[],
+    baseline: Readonly<Record<string, string>>,
+  ): void => {
+    for (const f of planned) {
+      if (input.keysNow[f.relPath] === f.sha) continue;
+      units.push({
+        key: f.relPath,
+        stream,
+        reason: baseline[f.relPath] === undefined ? "added" : "changed",
+        sha: f.sha,
+      });
+    }
+  };
+  files("adr", input.prose, input.baselineProse);
+  if (input.docstring) files("docstring", input.docstring, input.baselineDocstring);
+  for (const c of input.commits ?? []) {
+    if (input.hasCommitKey(c.sha)) continue;
+    units.push({ key: commitSourceKey(c.sha), stream: "commit", reason: "added", sha: c.sha });
+  }
+  return units;
 }

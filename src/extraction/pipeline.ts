@@ -72,7 +72,7 @@ import {
   setSourceSha,
 } from "../storage/claims.js";
 import type { DatabaseInstance } from "../storage/db.js";
-import { upsertSymbols } from "../storage/symbols.js";
+import { symbolTableDigest, upsertSymbols } from "../storage/symbols.js";
 import { replaceGitCommits } from "../storage/git.js";
 import { ATLAS_META_KEYS } from "../storage/atlas-importer.js";
 import type { ExtractionStream } from "../types.js";
@@ -84,9 +84,11 @@ import {
 } from "./atlas-export-stage.js";
 import { buildCostPreview } from "./cost-preview.js";
 import {
+  collectPendingUnits,
   planCommitWork,
   planDocstringWork,
   plannedCallCount,
+  selectDocstringFiles,
   staleDocstringKeys,
   type ExtractionPlan,
 } from "./extraction-plan.js";
@@ -105,7 +107,7 @@ import type {
 import { runProseStage, warnUnresolvedFrontmatter } from "./prose-stream.js";
 import { buildSymbolInventory } from "./resolver.js";
 import { RunCostTracker } from "./run-cost.js";
-import { normalizeCommitKeys, partitionSourceShas } from "./source-keys.js";
+import { hasCommitKey, normalizeCommitKeys, partitionSourceShas } from "./source-keys.js";
 import {
   runCommitStage,
   runDocstringStage,
@@ -145,6 +147,14 @@ export async function runExtractionPipeline(
   const batchSize = deps.batchSize ?? 3;
   const streams = deps.streams ?? LIBRARY_DEFAULT_STREAMS;
   const full = deps.skipShaDiff === true;
+  const structural = deps.structural === true;
+  if (structural && full) {
+    throw new Error(
+      "A structural run (`contextatlas index --structural`) makes no model " +
+        "calls, so it cannot also re-extract everything (`--full`). Pass one " +
+        "of the two flags.",
+    );
+  }
 
   // --- Stage 0: atlas-aware startup ------------------------------------
   // atlas.path is a config-file-relative path (it names where the
@@ -277,6 +287,10 @@ export async function runExtractionPipeline(
   });
 
   // --- Stage 4: upsert symbols ----------------------------------------
+  // The digest before Stage 4 and after the Stage 4a prune tells Stage 7
+  // whether the exported symbols changed (v1.2 Phase 3): a structural
+  // run re-exports on a moved, added or removed symbol alone.
+  const symbolsBefore = symbolTableDigest(db);
   upsertSymbols(db, inventory.allSymbols);
 
   // --- Stage 4a: prune stale symbols (v1.2 Phase 1, F-1) ---------------
@@ -287,6 +301,7 @@ export async function runExtractionPipeline(
   // configured keep their stored symbols.
   const coverage = coverageFromInventory({ repoRoot, sourceFiles, inventory, adapters });
   const prune = pruneStaleSymbols(db, coverage);
+  const symbolsChanged = symbolTableDigest(db) !== symbolsBefore;
 
   // --- Stage 4b: git signal (ADR-11) -----------------------------------
   // Full re-extract every run. `git log` is subprocess-fast, so the
@@ -344,29 +359,38 @@ export async function runExtractionPipeline(
   }
 
   // --- Plan + cost preview (v1.2 Phase 2) ------------------------------
-  const plan: ExtractionPlan = {
-    streams,
-    prose: proseToExtract,
-    docstring: streams.has("docstring")
-      ? await planDocstringWork({
-          sourceFiles,
-          inventory,
-          adapters,
-          baseline: baseline.docstring,
-          full,
-          prosePaths,
-        })
-      : null,
-    commit: streams.has("commit")
-      ? planCommitWork({
-          db,
-          repoRoot,
-          headSha: gitResult.headSha,
-          commitMessageFilter: config.extraction?.commitMessageFilter ?? [],
-          ...(deps.gitBinary !== undefined ? { gitBinary: deps.gitBinary } : {}),
-        })
-      : null,
+  // A structural run (v1.2 Phase 3, Tier 0) plans the same sources but
+  // extracts none: its plan is empty, so Stages 6-6d do nothing, and
+  // the sources go to the pending queue instead. It selects docstring
+  // files without the LSP docstring read.
+  const docstringInput = {
+    sourceFiles,
+    inventory,
+    adapters,
+    baseline: baseline.docstring,
+    full,
+    prosePaths,
   };
+  const docstringPlan =
+    streams.has("docstring") && !structural ? await planDocstringWork(docstringInput) : null;
+  const docstringCandidates: readonly { relPath: string; sha: string }[] | null =
+    !streams.has("docstring")
+      ? null
+      : structural
+        ? selectDocstringFiles(docstringInput).files.map(({ file }) => file)
+        : docstringPlan!.files;
+  const commitPlan = streams.has("commit")
+    ? planCommitWork({
+        db,
+        repoRoot,
+        headSha: gitResult.headSha,
+        commitMessageFilter: config.extraction?.commitMessageFilter ?? [],
+        ...(deps.gitBinary !== undefined ? { gitBinary: deps.gitBinary } : {}),
+      })
+    : null;
+  const plan: ExtractionPlan = structural
+    ? { streams, prose: [], docstring: null, commit: null }
+    : { streams, prose: proseToExtract, docstring: docstringPlan, commit: commitPlan };
   log.info("pipeline: extraction plan", {
     streams: [...streams],
     proseFiles: plan.prose.length,
@@ -502,6 +526,20 @@ export async function runExtractionPipeline(
     );
   }
 
+  // --- Stage 6a: pending sources (v1.2 Phase 3) -------------------------
+  // Planned sources not keyed with their current SHA: everything after
+  // a structural run, the failed ones otherwise. The CLI writes them to
+  // `.contextatlas/local/pending.json`.
+  const pendingUnits = collectPendingUnits({
+    prose: proseToExtract,
+    docstring: docstringCandidates,
+    commits: commitPlan?.status === "planned" ? commitPlan.pending : null,
+    baselineProse: baseline.prose,
+    baselineDocstring: baseline.docstring,
+    keysNow: listSourceShas(db),
+    hasCommitKey: (sha) => hasCommitKey(db, sha),
+  });
+
   // --- Stage 6b: orphaned-claim report (v1.2 Phase 1) ------------------
   // Counted after Stages 5-6d so claims those stages deleted or
   // re-extracted are not reported.
@@ -524,6 +562,7 @@ export async function runExtractionPipeline(
     diff.deleted.length > 0 ||
     gitChanged ||
     prune.symbolsPruned > 0 ||
+    symbolsChanged ||
     staleDocstring.length > 0 ||
     commitKeys.shasNormalized > 0 ||
     lineEndingKeys.length > 0 ||
@@ -589,6 +628,7 @@ export async function runExtractionPipeline(
     commitClaimsWritten: commit?.claimsWritten ?? 0,
     commitKeysMigrated: commitKeys.shasNormalized,
     lineEndingKeysMigrated: lineEndingKeys.length,
+    pendingUnits,
     failedStreams,
   };
 }

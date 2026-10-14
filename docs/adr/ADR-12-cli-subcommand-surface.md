@@ -1415,7 +1415,7 @@ simplification (`aae41d4`):
   `docs.include` reading in the ADR-08 layout). Replaced by walk
   membership (F1).
 
-## Amendment (2026-10-14, v1.2 Phase 3): line-ending-stable SHAs, `resolve-symbols` excludes
+## Amendment (2026-10-14, v1.2 Phase 3): line-ending-stable SHAs, `resolve-symbols` excludes, `index --structural`
 
 Lead decisions L-16 and L-17 (`docs/cycles/v1_2/v1.2-SCOPE.md` §5),
 taken at Phase 3 entry because Tier 0 (this phase) and the git hooks
@@ -1454,3 +1454,48 @@ walks with `computeExcludePatterns(config)`, as `index` and
 `list-extraction-sources` do. Before, the Skill path listed symbols
 from test files that the next CLI `index` pruned (Phase 1 prune rule
 4), so the two paths churned `atlas.json`.
+
+**5. `index --structural` (Tier 0).** A new `index` flag, rejected
+with `--full` and outside `index`. The run executes Stages 0 to 5
+(atlas import, key migrations, walks, symbol upsert and prune, git
+signal, per-stream deletions) and plans the claim streams as usual,
+but its extraction plan is empty, so Stages 6 to 6d make no call. The
+CLI runs it through `runStructuralRefresh` (`structural.ts`) with a
+client that throws on any call, instead of the configured extractor:
+no API key is read, and `architecture: claude-code-only` repositories
+get Tier 0 too. Docstring files are selected without the LSP
+docstring read (`selectDocstringFiles`). Changed and new sources keep
+their keys and claims. `extracted_at_sha` is stamped with HEAD as on
+any export; claim staleness is tracked by the pending queue, not by
+that field. `validate-extraction` is skipped.
+
+**6. Symbol-only changes export.** Stage 7 also re-exports when the
+digest of the exported symbol fields (`symbolTableDigest`) differs
+between the start of Stage 4 and the end of the Stage 4a prune. A
+structural run that only moves symbols inside an unchanged file, or
+whose changed file is pending, still writes the new lines. This
+applies to model-calling runs too; a run that changes nothing stays
+byte-identical.
+
+**7. Pending queue and run log.** Stage 6a computes
+`pendingUnits`: planned sources not keyed with their current SHA after
+the run (`collectPendingUnits`). The CLI writes them to
+`.contextatlas/local/pending.json` after every `index` run, replacing
+the previous queue and keeping `first_seen` for keys still pending,
+and appends a line to `.contextatlas/local/runs.jsonl` (trimmed to
+500). The directory creates its own `.gitignore` (`*`). Failing to
+write either file logs a warning and never fails the run. A disabled
+stream queues nothing. Summary key `pending_sources` is appended after
+`line_ending_keys_migrated`.
+
+### Consequences
+
+- Tier 0 is free and quick. On this repository it ran in about two
+  seconds with no API key and queued exactly the 18 files changed since
+  the Phase 2 parity run.
+- Phase 5's hooks can run `index --structural` after every commit,
+  merge and checkout without billing. Phase 6's Tier 1 reads the queue
+  instead of re-deriving it.
+- A structural export on a commit leaves `atlas.json` modified in the
+  working tree when HEAD moved (the git signal is part of the atlas).
+  Phase 5 decides how hooks treat that edit.

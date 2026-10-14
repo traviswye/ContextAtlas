@@ -39,11 +39,18 @@ import type {
   StreamFailure,
 } from "./pipeline.js";
 import { runValidateExtractionSubcommand } from "./cli-validate-extraction.js";
+import { appendRunLog, writePendingQueue } from "./local-state.js";
+import { runStructuralRefresh } from "./structural.js";
 
 export interface IndexCliOptions {
   configRoot: string;
   configFile: string | null;
   full: boolean;
+  /**
+   * `--structural` (v1.2 Phase 3, Tier 0): no model calls, no API key;
+   * changed sources go to the pending queue. Not with `full`.
+   */
+  structural?: boolean;
   json: boolean;
   /**
    * `--verbose` CLI flag. When true, the run emits per-file
@@ -246,10 +253,13 @@ export async function runIndexSubcommand(
         : {}),
     };
 
+    const structural = options.structural === true;
+    const startedAt = new Date();
     let pipelineResult: ExtractionPipelineResult;
     try {
-      const result = await extractor.extract(extractorContext);
-      pipelineResult = result.pipelineResult;
+      pipelineResult = structural
+        ? await runStructuralRefresh(extractorContext)
+        : (await extractor.extract(extractorContext)).pipelineResult;
     } catch (err) {
       if (err instanceof ExtractionSetupError) {
         log.error("index: extraction setup failed", { err: String(err) });
@@ -275,6 +285,29 @@ export async function runIndexSubcommand(
       printVerboseUnresolved(pipelineResult.unresolvedDetails, writeStderr);
     }
     printSummary(pipelineResult, options.json, writeStdout);
+
+    // Local state (v1.2 Phase 3): the pending queue now, the run log
+    // once the exit code is known. Never fails the run.
+    recordLocalState(() => {
+      writePendingQueue(options.configRoot, pipelineResult.pendingUnits, startedAt);
+    });
+    const finish = (exitCode: IndexExitCode): IndexCliResult => {
+      recordLocalState(() => {
+        appendRunLog(options.configRoot, {
+          at: startedAt.toISOString(),
+          mode: structural ? "structural" : options.full ? "full" : "incremental",
+          exit_code: exitCode,
+          wall_clock_ms: pipelineResult.wallClockMs,
+          api_calls: pipelineResult.apiCalls,
+          cost_usd: pipelineResult.costUsd,
+          atlas_exported: pipelineResult.atlasExported,
+          pending_sources: pipelineResult.pendingUnits.length,
+          symbols_pruned: pipelineResult.symbolsPruned,
+          extracted_at_sha: pipelineResult.extractedAtSha,
+        });
+      });
+      return { exitCode, pipelineResult };
+    };
 
     // A docstring or commit stream whose every call failed (L-10 ii):
     // the pipeline finished the other streams and exported, so the
@@ -324,7 +357,8 @@ export async function runIndexSubcommand(
       pipelineResult.atlasExported ||
       (config.atlas.committed &&
         existsSync(pathResolve(options.configRoot, config.atlas.path)));
-    if (committedAtlasOnDisk && options.clientOverride === undefined) {
+    // A structural run changes no claims, so it skips the check.
+    if (committedAtlasOnDisk && options.clientOverride === undefined && !structural) {
       const validateResult = await runValidateExtractionSubcommand({
         configRoot: options.configRoot,
         configFile: options.configFile,
@@ -358,14 +392,26 @@ export async function runIndexSubcommand(
             "",
           ].join("\n"),
         );
-        return { exitCode: 1, pipelineResult };
+        return finish(1);
       }
     }
 
-    return { exitCode: streamFailed ? 1 : 0, pipelineResult };
+    return finish(streamFailed ? 1 : 0);
   } finally {
     await shutdownAll(adapters);
     db.close();
+  }
+}
+
+function recordLocalState(write: () => void): void {
+  try {
+    write();
+  } catch (err) {
+    log.warn(
+      "index: could not write .contextatlas/local/ (pending queue or run " +
+        "log); the atlas is unaffected. Check that the directory is writable.",
+      { err: String(err) },
+    );
   }
 }
 
@@ -621,6 +667,7 @@ function printSummary(
       commit_keys_migrated: result.commitKeysMigrated,
       // v1.2 Phase 3 — appended per the ADR-12 additive-keys contract.
       line_ending_keys_migrated: result.lineEndingKeysMigrated,
+      pending_sources: result.pendingUnits.length,
     };
     writeStdout(JSON.stringify(payload, null, 2) + "\n");
     return;
@@ -661,6 +708,7 @@ function printSummary(
     `commit_keys_migrated=${result.commitKeysMigrated}`,
     // v1.2 Phase 3 — appended per the ADR-12 additive-keys contract.
     `line_ending_keys_migrated=${result.lineEndingKeysMigrated}`,
+    `pending_sources=${result.pendingUnits.length}`,
   ];
   writeStdout(lines.join("\n") + "\n");
 }

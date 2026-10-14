@@ -14,6 +14,7 @@ const EMPTY: ParsedArgs = {
   configFile: null,
   check: false,
   full: false,
+  structural: false,
   json: false,
   budgetWarn: null,
   verbose: false,
@@ -313,6 +314,19 @@ describe("parseArgs — `index` subcommand (ADR-12)", () => {
     );
     expect(() => parseArgs(["--check", "index"])).toThrow(
       /--check cannot be combined with subcommand 'index'/,
+    );
+  });
+
+  it("`index --structural` sets the structural flag; duplicates, other subcommands and --full reject", () => {
+    expect(parseArgs(["index", "--structural"]).structural).toBe(true);
+    expect(() => parseArgs(["index", "--structural", "--structural"])).toThrow(
+      /--structural specified more than once/,
+    );
+    expect(() => parseArgs(["doctor", "--structural"])).toThrow(
+      /--structural is only accepted with the 'index' subcommand/,
+    );
+    expect(() => parseArgs(["index", "--structural", "--full"])).toThrow(
+      /--structural and --full cannot be combined/,
     );
   });
 
