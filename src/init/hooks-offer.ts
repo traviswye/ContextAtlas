@@ -27,9 +27,10 @@ export interface HooksOfferOptions {
 }
 
 const QUESTION =
-  "Install git hooks that refresh ContextAtlas's local cache after each commit, " +
-  "merge and branch checkout? They run in the background, make no model calls " +
-  "and never modify atlas.json. [y/N] ";
+  "Install git hooks that keep ContextAtlas fresh? After each commit, merge and " +
+  "branch checkout they refresh the local cache (no model calls, atlas.json " +
+  "untouched); before each push they re-extract pending claims on your Claude " +
+  "subscription when due (turn off with refresh.auto_claims: false). [y/N] ";
 
 export async function offerGitHooks(options: HooksOfferOptions): Promise<HooksOfferOutcome> {
   let install = options.yes === true;

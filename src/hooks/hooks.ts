@@ -10,6 +10,11 @@
  * coalesces runs that pile up during a rebase. Output of the latest run
  * goes to `.contextatlas/local/hook-last.log`.
  *
+ * pre-push (v1.2 Phase 6, L-22) starts `contextatlas refresh-claims
+ * --if-due --trigger pre-push` the same way: Tier 1, gated by
+ * `refresh.auto_claims`, the interval and the usage ceiling; the push is
+ * never delayed. Its output goes to `.contextatlas/local/prepush-last.log`.
+ *
  *   - Location: `git rev-parse --git-path hooks`, which honours
  *     `core.hooksPath` and linked worktrees.
  *   - Chaining: existing hook content is kept. The block goes right
@@ -30,7 +35,7 @@ import { spawnSync } from "node:child_process";
 import { chmodSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { isAbsolute, resolve as pathResolve } from "node:path";
 
-export const MANAGED_HOOKS = ["post-commit", "post-merge", "post-checkout"] as const;
+export const MANAGED_HOOKS = ["post-commit", "post-merge", "post-checkout", "pre-push"] as const;
 export type ManagedHook = (typeof MANAGED_HOOKS)[number];
 
 const BEGIN = "# >>> contextatlas >>>";
@@ -84,18 +89,26 @@ export function buildHookBlock(hook: ManagedHook, cmd: HookCommand): string {
   const root = quote(cmd.configRoot);
   const entry = quote(cmd.entry);
   const localDir = quote(`${cmd.configRoot}/.contextatlas/local`);
-  const log = quote(`${cmd.configRoot}/.contextatlas/local/hook-last.log`);
+  const log = quote(
+    `${cmd.configRoot}/.contextatlas/local/${hook === "pre-push" ? "prepush-last.log" : "hook-last.log"}`,
+  );
   const config = cmd.configFile ? ` --config ${quote(cmd.configFile)}` : "";
+  const run =
+    hook === "pre-push"
+      ? "refresh-claims --if-due --trigger pre-push"
+      : "index --structural --no-export";
   // post-checkout: $3 is 1 for a branch checkout, 0 for a file checkout.
   const condition = hook === "post-checkout" ? ` && [ "$3" = "1" ]` : "";
   return [
     BEGIN,
     "# Managed by `contextatlas hooks install`; remove with `contextatlas hooks uninstall`.",
-    "# Refreshes the ContextAtlas local cache in the background (no model calls).",
+    hook === "pre-push"
+      ? "# Starts a Tier 1 claim refresh in the background when due (subscription; never delays the push)."
+      : "# Refreshes the ContextAtlas local cache in the background (no model calls).",
     `${ENTRY_TAG}${cmd.entry.replace(/\\/g, "/")}`,
     `if [ -f ${entry} ]${condition}; then`,
     `  mkdir -p ${localDir}`,
-    `  ( cd ${root} && nohup ${quote(cmd.node)} ${entry} index --structural --no-export --config-root ${root}${config} > ${log} 2>&1 < /dev/null & )`,
+    `  ( cd ${root} && nohup ${quote(cmd.node)} ${entry} ${run} --config-root ${root}${config} > ${log} 2>&1 < /dev/null & )`,
     "fi",
     END,
   ].join("\n");

@@ -151,11 +151,12 @@ describe("copySkillArtifacts (v1.1.2 cohort-UX hotfix)", () => {
     ).toThrow(/Skill source missing.*Reinstall contextatlas/);
   });
 
-  it("CANONICAL_SKILL_NAMES contains the three v1.1 skills", () => {
+  it("CANONICAL_SKILL_NAMES contains the v1.1 skills plus /refresh-atlas (v1.2 Phase 6)", () => {
     expect(CANONICAL_SKILL_NAMES).toEqual([
       "generate-adrs",
       "index-atlas",
       "prime-atlas",
+      "refresh-atlas",
     ]);
   });
 });

@@ -118,10 +118,13 @@ export function runConformanceSuite(
     // listSymbols
     // ---------------------------------------------------------------
 
+    // The first documentSymbol request after initialize can take longer
+    // than vitest's 5 s default while the server warms up (Roslyn under
+    // full-suite load; v1.2 Phase 6).
     it("listSymbols returns non-empty for the sample fixture", async () => {
       const symbols = await adapter.listSymbols(sampleAbs);
       expect(symbols.length).toBeGreaterThan(0);
-    });
+    }, 30_000);
 
     it("every returned symbol has the expected ID format", async () => {
       const symbols = await adapter.listSymbols(sampleAbs);

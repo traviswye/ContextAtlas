@@ -45,6 +45,7 @@ export const CANONICAL_SKILL_NAMES = [
   "generate-adrs",
   "index-atlas",
   "prime-atlas",
+  "refresh-atlas",
 ] as const;
 
 export type CanonicalSkillName = (typeof CANONICAL_SKILL_NAMES)[number];

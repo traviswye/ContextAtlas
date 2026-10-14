@@ -104,8 +104,12 @@ export async function runHooksSubcommand(options: HooksCliOptions): Promise<Hook
   out(
     "After each commit, merge and branch checkout, git now starts a background " +
       "`contextatlas index --structural --no-export`: the local cache is refreshed " +
-      "with no model calls, and atlas.json is not modified. Last run's output: " +
-      ".contextatlas/local/hook-last.log. Check with `contextatlas hooks status`.\n",
+      "with no model calls, and atlas.json is not modified. Before each push, git " +
+      "starts `contextatlas refresh-claims --if-due`: when sources are pending and " +
+      "it is due (refresh.* in .contextatlas.yml; refresh.auto_claims: false turns " +
+      "it off), Claude Code re-extracts them on your subscription. Logs: " +
+      ".contextatlas/local/hook-last.log and prepush-last.log. Check with " +
+      "`contextatlas hooks status`.\n",
   );
   return { exitCode: 0 };
 }

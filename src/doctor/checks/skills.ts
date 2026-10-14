@@ -126,7 +126,7 @@ export function skillFreshnessChecks(
   }
   if (missing.length > 0) {
     details.push(
-      "Run `contextatlas init` to install the missing skills (the /index-atlas, /generate-adrs and /prime-atlas slash commands). The CLI does not need them.",
+      "Run `contextatlas init` to install the missing skills (the /index-atlas, /generate-adrs, /prime-atlas and /refresh-atlas slash commands). The CLI does not need them.",
     );
   }
   return [

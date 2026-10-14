@@ -19,6 +19,8 @@ const EMPTY: ParsedArgs = {
   hooksAction: null,
   pending: false,
   maxSources: null,
+  ifDue: false,
+  trigger: null,
   json: false,
   budgetWarn: null,
   verbose: false,

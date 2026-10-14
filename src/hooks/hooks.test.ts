@@ -42,6 +42,13 @@ describe("hook block editing (v1.2 Phase 5)", () => {
     expect(stripHookBlock(withBlock)).toBe(existing);
   });
 
+  it("pre-push starts refresh-claims --if-due, logging to its own file (v1.2 Phase 6)", () => {
+    const block = buildHookBlock("pre-push", CMD);
+    expect(block).toContain("refresh-claims --if-due --trigger pre-push --config-root \"/repo\"");
+    expect(block).toContain("prepush-last.log");
+    expect(block).not.toContain("index --structural");
+  });
+
   it("runs post-checkout only for branch checkouts, and refuses unquotable paths", () => {
     expect(buildHookBlock("post-checkout", CMD)).toContain('[ "$3" = "1" ]');
     expect(buildHookBlock("post-commit", CMD)).not.toContain('"$3"');
@@ -64,6 +71,7 @@ describe("installHooks / uninstallHooks / hooksStatus", () => {
       ["post-commit", "created"],
       ["post-merge", "updated"],
       ["post-checkout", "created"],
+      ["pre-push", "created"],
     ]);
     expect(installHooks(dir, CMD).every((r) => r.action === "unchanged")).toBe(true);
     const status = hooksStatus(dir);
@@ -73,6 +81,7 @@ describe("installHooks / uninstallHooks / hooksStatus", () => {
       ["post-commit", "deleted"],
       ["post-merge", "removed"],
       ["post-checkout", "deleted"],
+      ["pre-push", "deleted"],
     ]);
     expect(existsSync(pathJoin(dir, "post-commit"))).toBe(false);
     expect(readFileSync(pathJoin(dir, "post-merge"), "utf8")).toBe("#!/bin/sh\necho mine\n");

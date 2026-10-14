@@ -46,6 +46,7 @@ import { runValidateExtractionSubcommand } from "./extraction/cli-validate-extra
 import { runGenerateAdrsSubcommand } from "./generation/cli-runner.js";
 import { runValidateAdrsSubcommand } from "./generation/cli-validate-adrs.js";
 import { runHooksSubcommand } from "./hooks/cli.js";
+import { runRefreshClaims } from "./refresh/runner.js";
 import { runInitSubcommand } from "./init/runner.js";
 import { liveRunLock } from "./extraction/run-lock.js";
 import { AtlasReloader, RequestGate } from "./mcp/atlas-reload.js";
@@ -234,6 +235,19 @@ export async function main(): Promise<void> {
 
   // v0.4 Stream B Step 8 — Doctor subcommand reports diagnostic-only
   // self-check on ContextAtlas configuration + state.
+  // v1.2 Phase 6 — Tier 1 incremental claim refresh.
+  if (subcommand === "refresh-claims") {
+    const result = await runRefreshClaims({
+      configRoot,
+      configFile: configFileArg,
+      ifDue: parsed.ifDue,
+      trigger: parsed.trigger ?? (parsed.ifDue ? "if-due" : "manual"),
+      ...(parsed.maxSources !== null ? { maxSources: parsed.maxSources } : {}),
+      contextatlasVersion: version,
+    });
+    process.exit(result.exitCode);
+  }
+
   // v1.2 Phase 5 — git hooks for Tier 0 structural refresh.
   if (subcommand === "hooks" && parsed.hooksAction !== null) {
     const result = await runHooksSubcommand({

@@ -120,7 +120,8 @@ export type Subcommand =
   | "validate-adrs"
   | "list-extraction-sources"
   | "validate-extraction"
-  | "hooks";
+  | "hooks"
+  | "refresh-claims";
 
 /** `contextatlas hooks <action>` (v1.2 Phase 5). */
 export type HooksAction = "install" | "uninstall" | "status";
@@ -239,6 +240,10 @@ export interface ParsedArgs {
   pending: boolean;
   /** `--max-sources <n>` (with `--pending`): take the first n queued sources. */
   maxSources: number | null;
+  /** `--if-due` (v1.2 Phase 6, `refresh-claims` only): apply the automatic-run gates. */
+  ifDue: boolean;
+  /** `--trigger <manual|if-due|pre-push>` (`refresh-claims` only; the hooks pass it). */
+  trigger: "manual" | "if-due" | "pre-push" | null;
   /**
    * True when `--yes` (or alias `--no-confirm`) was passed alongside
    * `generate-adrs`. Bypasses the pre-flight cost-estimate
@@ -274,6 +279,7 @@ export const KNOWN_SUBCOMMANDS: readonly Subcommand[] = [
   "list-extraction-sources",
   "validate-extraction",
   "hooks",
+  "refresh-claims",
 ];
 
 /**
@@ -309,6 +315,8 @@ Subcommands:
   validate-adrs         Validate docs/adr/*.md against canonical depth-floor invariants (no API key needed)
   hooks <install|uninstall|status>
                         Manage git hooks that refresh the local cache after commit/merge/checkout (no API calls)
+  refresh-claims [--if-due] [--max-sources <n>]
+                        Tier 1: re-extract pending sources via headless Claude Code (subscription; no API key)
   list-extraction-sources
                         Walk ADRs + source-symbols + filtered commits; emit JSON manifest for Skill consumption (no API key needed)
   validate-extraction   Validate atlas.json against extraction-quality invariants (per-ADR depth + source coverage; no API key needed)
@@ -376,6 +384,8 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
   let output: string | null = null;
   let pending = false;
   let maxSources: number | null = null;
+  let ifDue = false;
+  let trigger: ParsedArgs["trigger"] = null;
   let yes = false;
   let version = false;
   let help = false;
@@ -687,6 +697,21 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
       output = value;
       continue;
     }
+    if (arg === "--if-due") {
+      if (ifDue) throw new Error(`Flag --if-due specified more than once. ${USAGE}`);
+      ifDue = true;
+      i += 1;
+      continue;
+    }
+    if (arg === "--trigger") {
+      const value = argv[i + 1];
+      if (value !== "manual" && value !== "if-due" && value !== "pre-push") {
+        throw new Error(`Flag --trigger needs one of: manual, if-due, pre-push. ${USAGE}`);
+      }
+      trigger = value;
+      i += 2;
+      continue;
+    }
     if (arg === "--pending") {
       if (pending) throw new Error(`Flag --pending specified more than once. ${USAGE}`);
       pending = true;
@@ -753,6 +778,8 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
       output,
       pending,
       maxSources,
+      ifDue,
+      trigger,
       yes,
       version,
       help,
@@ -844,12 +871,20 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
       `Flag --output is only accepted with the 'list-extraction-sources' subcommand. ${USAGE}`,
     );
   }
-  if ((pending || maxSources !== null) && subcommand !== "list-extraction-sources") {
+  if (pending && subcommand !== "list-extraction-sources") {
     throw new Error(
-      `Flags --pending and --max-sources are only accepted with the 'list-extraction-sources' subcommand. ${USAGE}`,
+      `Flag --pending is only accepted with the 'list-extraction-sources' subcommand. ${USAGE}`,
     );
   }
-  if (maxSources !== null && !pending) {
+  if (maxSources !== null && subcommand !== "list-extraction-sources" && subcommand !== "refresh-claims") {
+    throw new Error(
+      `Flag --max-sources is only accepted with 'list-extraction-sources --pending' or 'refresh-claims'. ${USAGE}`,
+    );
+  }
+  if ((ifDue || trigger !== null) && subcommand !== "refresh-claims") {
+    throw new Error(`Flags --if-due and --trigger are only accepted with the 'refresh-claims' subcommand. ${USAGE}`);
+  }
+  if (maxSources !== null && !pending && subcommand === "list-extraction-sources") {
     throw new Error("Flag --max-sources needs --pending (it caps the pending sources).");
   }
   if (yes && subcommand !== "generate-adrs" && subcommand !== "init") {
@@ -877,6 +912,8 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
     output,
     pending,
     maxSources,
+    ifDue,
+    trigger,
     yes,
     version,
     help,
