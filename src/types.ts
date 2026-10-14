@@ -476,6 +476,11 @@ export interface ContextAtlasConfig {
     initializeTimeoutMs?: number;
   };
   /**
+   * Tier 1 cost controls (v1.2 Phase 6; `src/config/refresh.ts`).
+   * YAML keys are snake_case (`refresh.max_sources_per_run`).
+   */
+  refresh?: Partial<import("./config/refresh.js").RefreshConfig>;
+  /**
    * Optional MCP-server query-time knobs (v0.3 Theme 1.2 Fix 3).
    * These affect how the MCP server ranks/composes responses from
    * an already-extracted atlas; they do not affect extraction.

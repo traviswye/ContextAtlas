@@ -15,6 +15,7 @@ import {
   toCommitSource,
   type ExtractionSourcesManifest,
 } from "./cli-list-extraction-sources.js";
+import { writePendingQueue } from "./local-state.js";
 
 // ---------------------------------------------------------------------------
 // Test fixture — minimal typescript repo with one ADR + one source file
@@ -463,6 +464,69 @@ describe("runListExtractionSourcesSubcommand — extraction.streams", () => {
       "sym:ts:src/foo.ts:Foo",
     ]);
     expect(manifest.summary.symbols_with_docstrings).toBe(1);
+  });
+
+  it("--pending lists only queued sources, lists queued files without docstrings, and caps with --max-sources (v1.2 Phase 6)", async () => {
+    await writeFile(path.join(fixture.root, "src", "plain.ts"), "export const x = 1;\n");
+    await writeFile(path.join(fixture.root, "docs", "adr", "ADR-02-other.md"), "# ADR-02\n");
+    gitCommitAll(fixture.root, "design: introduce Foo");
+    const unit = (key: string, stream: "adr" | "docstring" | "commit") => ({ key, stream, reason: "changed" as const, sha: "s" });
+    writePendingQueue(fixture.root, [
+      unit("docs/adr/ADR-02-other.md", "adr"),
+      unit("src/foo.ts", "docstring"),
+      unit("src/plain.ts", "docstring"),
+    ]);
+    const fake = fakeAdapter(fixture.root);
+
+    const result = await runListExtractionSourcesSubcommand({
+      configRoot: fixture.root,
+      configFile: null,
+      pending: true,
+      writeStdout: (c) => (stdout += c),
+      writeStderr: (c) => (stderr += c),
+      createAdapterOverride: () => fake.adapter,
+    });
+
+    expect(result.exitCode).toBe(0);
+    const manifest = JSON.parse(stdout) as ExtractionSourcesManifest;
+    expect(manifest.sources.adrs.map((a) => a.path)).toEqual(["docs/adr/ADR-02-other.md"]);
+    expect(manifest.sources.docstrings.map((d) => d.symbol_id)).toEqual(["sym:ts:src/foo.ts:Foo"]);
+    // The commit is not queued, so it is not listed.
+    expect(manifest.sources.commits).toEqual([]);
+    expect(manifest.pending).toMatchObject({ queued: 3, selected: 3, remaining: 0 });
+    expect(manifest.pending?.files_without_docstrings.map((f) => f.source_path)).toEqual(["src/plain.ts"]);
+    // Only the two queued source files were listed through the adapter.
+    expect(fake.calls.listSymbols).toBe(2);
+
+    stdout = "";
+    await runListExtractionSourcesSubcommand({
+      configRoot: fixture.root,
+      configFile: null,
+      pending: true,
+      maxSources: 1,
+      writeStdout: (c) => (stdout += c),
+      writeStderr: () => {},
+      createAdapterOverride: () => fakeAdapter(fixture.root).adapter,
+    });
+    const capped = JSON.parse(stdout) as ExtractionSourcesManifest;
+    expect(capped.sources.adrs.map((a) => a.path)).toEqual(["docs/adr/ADR-02-other.md"]);
+    expect(capped.sources.docstrings).toEqual([]);
+    expect(capped.pending).toMatchObject({ queued: 3, selected: 1, remaining: 2 });
+  });
+
+  it("--pending with an empty queue lists nothing", async () => {
+    const result = await runListExtractionSourcesSubcommand({
+      configRoot: fixture.root,
+      configFile: null,
+      pending: true,
+      writeStdout: (c) => (stdout += c),
+      writeStderr: () => {},
+      createAdapterOverride: () => fakeAdapter(fixture.root).adapter,
+    });
+    expect(result.exitCode).toBe(0);
+    const manifest = JSON.parse(stdout) as ExtractionSourcesManifest;
+    expect(manifest.sources).toEqual({ adrs: [], docstrings: [], commits: [] });
+    expect(manifest.pending).toMatchObject({ queued: 0, selected: 0, remaining: 0, files_without_docstrings: [] });
   });
 
   it("passes lsp.initialize_timeout_ms to the adapters, as index and resolve-symbols do (review round 2.3)", async () => {

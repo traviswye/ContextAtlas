@@ -89,7 +89,8 @@ import {
   type CommitMetadata,
 } from "./commit-log.js";
 import { readFileDocstrings } from "./docstring-read.js";
-import { walkProseFiles, walkSourceFiles } from "./file-walker.js";
+import { walkProseFiles, walkSourceFiles, type SourceFile } from "./file-walker.js";
+import { readPendingQueue } from "./local-state.js";
 import { buildSymbolInventory } from "./resolver.js";
 import { commitSourceKey } from "./source-keys.js";
 
@@ -105,6 +106,14 @@ export interface ListExtractionSourcesCliOptions {
    * message goes to stdout instead.
    */
   outputPath?: string | null;
+  /**
+   * `--pending` (v1.2 Phase 6): list only sources in the pending queue
+   * (`.contextatlas/local/pending.json`), for `/refresh-atlas`. Only the
+   * queued source files are listed through the language servers.
+   */
+  pending?: boolean;
+  /** `--max-sources <n>`: with `pending`, take the first n queued sources. */
+  maxSources?: number;
   /** Test seam: stdout writer. */
   writeStdout?: (chunk: string) => void;
   /** Test seam: stderr writer. */
@@ -233,6 +242,26 @@ export interface ExtractionSourcesManifest {
      */
     disabled_streams: ExtractionStream[];
   };
+  /**
+   * Present only with `--pending` (v1.2 Phase 6; additive, the manifest
+   * version is unchanged).
+   */
+  pending?: PendingManifestSection;
+}
+
+export interface PendingManifestSection {
+  /** Entries in the pending queue. */
+  queued: number;
+  /** Entries this manifest covers (`--max-sources` caps it). */
+  selected: number;
+  /** Queued entries left for a later run. */
+  remaining: number;
+  /**
+   * Selected source files with no documented exported symbol (all reads
+   * succeeded). `/refresh-atlas` keys each as `source_path` → `file_sha`
+   * with no claims, as `contextatlas index` does, so it leaves the queue.
+   */
+  files_without_docstrings: Array<{ source_path: string; file_sha: string; legacy_shas: string[] }>;
 }
 
 /**
@@ -293,15 +322,45 @@ export async function runListExtractionSourcesSubcommand(
       }
     }
 
-    const adrs = streams.has("adr")
-      ? await collectAdrSources(sourceRoot, config, options.configRoot)
+    // --pending: the queue's first `maxSources` entries (queue order:
+    // adr, docstring, commit, then key).
+    const queue = options.pending === true ? readPendingQueue(options.configRoot) : null;
+    const selected =
+      queue === null ? null : queue.slice(0, options.maxSources ?? queue.length);
+    const selectedKeys = (stream: ExtractionStream): Set<string> | null =>
+      selected === null
+        ? null
+        : new Set(selected.filter((e) => e.stream === stream).map((e) => e.key));
+    const adrKeys = selectedKeys("adr");
+    const docstringKeys = selectedKeys("docstring");
+    const commitKeys = selectedKeys("commit");
+
+    const adrs = streams.has("adr") && adrKeys?.size !== 0
+      ? (await collectAdrSources(sourceRoot, config, options.configRoot)).filter(
+          (a) => adrKeys === null || adrKeys.has(a.path),
+        )
       : [];
-    const docstrings = streams.has("docstring")
-      ? await collectDocstringSources(sourceRoot, config, adapters)
+    const docstringRead = streams.has("docstring") && docstringKeys?.size !== 0
+      ? await collectDocstringSources(sourceRoot, config, adapters, docstringKeys)
+      : { docstrings: [], failedPaths: new Set<string>(), files: [] };
+    const docstrings = docstringRead.docstrings;
+    const commits = streams.has("commit") && commitKeys?.size !== 0
+      ? collectCommitSources(sourceRoot, config).filter(
+          (c) => commitKeys === null || commitKeys.has(c.source_key),
+        )
       : [];
-    const commits = streams.has("commit")
-      ? collectCommitSources(sourceRoot, config)
-      : [];
+    let pendingSection: PendingManifestSection | undefined;
+    if (queue !== null && selected !== null) {
+      const withDocstrings = new Set(docstrings.map((d) => d.source_path));
+      pendingSection = {
+        queued: queue.length,
+        selected: selected.length,
+        remaining: queue.length - selected.length,
+        files_without_docstrings: docstringRead.files
+          .filter((f) => !withDocstrings.has(f.relPath) && !docstringRead.failedPaths.has(f.relPath))
+          .map((f) => ({ source_path: f.relPath, file_sha: f.sha, legacy_shas: f.legacyShas })),
+      };
+    }
 
     const manifestVersion: ManifestVersion = disabled.length > 0 ? "2" : "1";
     if (manifestVersion === "2") {
@@ -325,6 +384,7 @@ export async function runListExtractionSourcesSubcommand(
         filtered_commits: commits.length,
         disabled_streams: disabled,
       },
+      ...(pendingSection !== undefined ? { pending: pendingSection } : {}),
     };
 
     const manifestJson = JSON.stringify(manifest, null, 2);
@@ -391,7 +451,8 @@ async function collectDocstringSources(
   sourceRoot: string,
   config: ContextAtlasConfig,
   adapters: ReadonlyMap<LanguageCode, LanguageAdapter>,
-): Promise<DocstringSource[]> {
+  onlyPaths: ReadonlySet<string> | null = null,
+): Promise<{ docstrings: DocstringSource[]; failedPaths: Set<string>; files: SourceFile[] }> {
   const excludePatterns = computeExcludePatterns(config);
   const allExtensions = new Set<string>();
   for (const adapter of adapters.values()) {
@@ -402,7 +463,11 @@ async function collectDocstringSources(
     [...allExtensions],
     excludePatterns,
   );
-  const inventory = await buildSymbolInventory(adapters, sourceFiles);
+  const files =
+    onlyPaths === null ? sourceFiles : sourceFiles.filter((f) => onlyPaths.has(f.relPath));
+  const failedPaths = new Set<string>();
+  const inventory = await buildSymbolInventory(adapters, files);
+  for (const p of inventory.failedPaths) failedPaths.add(p);
   const legacyShasByPath = new Map(sourceFiles.map((f) => [f.relPath, f.legacyShas]));
 
   const docstrings: DocstringSource[] = [];
@@ -428,6 +493,7 @@ async function collectDocstringSources(
           "server answers.",
         { relPath, errors: read.errors.map((e) => e.error) },
       );
+      failedPaths.add(relPath);
       continue;
     }
     const byId = new Map(fileSymbols.map((sym) => [sym.id, sym]));
@@ -447,7 +513,7 @@ async function collectDocstringSources(
       });
     }
   }
-  return docstrings;
+  return { docstrings, failedPaths, files };
 }
 
 /**

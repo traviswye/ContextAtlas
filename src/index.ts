@@ -174,6 +174,8 @@ export async function main(): Promise<void> {
       configRoot,
       configFile: configFileArg,
       outputPath: parsed.output,
+      pending: parsed.pending,
+      ...(parsed.maxSources !== null ? { maxSources: parsed.maxSources } : {}),
     });
     process.exit(result.exitCode);
   }

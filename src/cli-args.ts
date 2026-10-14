@@ -233,6 +233,13 @@ export interface ParsedArgs {
    */
   output: string | null;
   /**
+   * `--pending` (v1.2 Phase 6, `list-extraction-sources` only): limit
+   * the manifest to sources in the pending queue.
+   */
+  pending: boolean;
+  /** `--max-sources <n>` (with `--pending`): take the first n queued sources. */
+  maxSources: number | null;
+  /**
    * True when `--yes` (or alias `--no-confirm`) was passed alongside
    * `generate-adrs`. Bypasses the pre-flight cost-estimate
    * confirmation prompt — required for CI/CD / non-interactive
@@ -367,6 +374,8 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
   let observe = false;
   let referenceContext: string | null = null;
   let output: string | null = null;
+  let pending = false;
+  let maxSources: number | null = null;
   let yes = false;
   let version = false;
   let help = false;
@@ -678,6 +687,25 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
       output = value;
       continue;
     }
+    if (arg === "--pending") {
+      if (pending) throw new Error(`Flag --pending specified more than once. ${USAGE}`);
+      pending = true;
+      i += 1;
+      continue;
+    }
+    if (arg === "--max-sources" || arg.startsWith("--max-sources=")) {
+      if (maxSources !== null) {
+        throw new Error(`Flag --max-sources specified more than once. ${USAGE}`);
+      }
+      const value = arg.startsWith("--max-sources=") ? arg.slice("--max-sources=".length) : argv[i + 1];
+      i += arg.startsWith("--max-sources=") ? 1 : 2;
+      const n = Number(value);
+      if (value === undefined || !Number.isInteger(n) || n < 1) {
+        throw new Error(`Flag --max-sources requires a positive integer. ${USAGE}`);
+      }
+      maxSources = n;
+      continue;
+    }
     if (arg === "--yes" || arg === "--no-confirm") {
       if (yes) {
         throw new Error(
@@ -723,6 +751,8 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
       observe,
       referenceContext,
       output,
+      pending,
+      maxSources,
       yes,
       version,
       help,
@@ -814,6 +844,14 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
       `Flag --output is only accepted with the 'list-extraction-sources' subcommand. ${USAGE}`,
     );
   }
+  if ((pending || maxSources !== null) && subcommand !== "list-extraction-sources") {
+    throw new Error(
+      `Flags --pending and --max-sources are only accepted with the 'list-extraction-sources' subcommand. ${USAGE}`,
+    );
+  }
+  if (maxSources !== null && !pending) {
+    throw new Error("Flag --max-sources needs --pending (it caps the pending sources).");
+  }
   if (yes && subcommand !== "generate-adrs" && subcommand !== "init") {
     throw new Error(
       `Flag --yes / --no-confirm is only accepted with the 'generate-adrs' or 'init' subcommand. ${USAGE}`,
@@ -837,6 +875,8 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
     observe,
     referenceContext,
     output,
+    pending,
+    maxSources,
     yes,
     version,
     help,

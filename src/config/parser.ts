@@ -21,6 +21,7 @@ import type {
   LanguageCode,
 } from "../types.js";
 import { normalizePath } from "../utils/paths.js";
+import { validateRefresh } from "./refresh.js";
 
 import {
   DEFAULT_ADRS_FORMAT,
@@ -71,6 +72,7 @@ export const TOP_LEVEL_KEYS = [
   "mcp",
   "observability",
   "lsp",
+  "refresh",
 ] as const;
 const TOP_LEVEL_KEY_SET = new Set<string>(TOP_LEVEL_KEYS);
 
@@ -200,6 +202,7 @@ function validate(
   const mcp = validateMcp(parsed.mcp, configPath);
   const observability = validateObservability(parsed.observability, configPath);
   const lsp = validateLsp(parsed.lsp, configPath);
+  const refresh = validateRefresh(parsed.refresh, configPath);
 
   const out: ContextAtlasConfig = {
     version: 1,
@@ -216,6 +219,7 @@ function validate(
   if (mcp !== undefined) out.mcp = mcp;
   if (observability !== undefined) out.observability = observability;
   if (lsp !== undefined) out.lsp = lsp;
+  if (refresh !== undefined) out.refresh = refresh;
   return out;
 }
 
