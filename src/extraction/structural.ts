@@ -28,6 +28,7 @@ export const refusingClient: ExtractionClient = {
 
 export function runStructuralRefresh(
   context: ExtractorContext,
+  options: { noExport?: boolean } = {},
 ): Promise<ExtractionPipelineResult> {
   return runExtractionPipeline({
     repoRoot: context.sourceRoot,
@@ -40,6 +41,7 @@ export function runStructuralRefresh(
     contextatlasCommitSha: context.contextatlasCommitSha,
     streams: resolveExtractionStreams(context.config),
     structural: true,
+    ...(options.noExport === true ? { noExport: true } : {}),
     ...(context.gitBinary !== undefined ? { gitBinary: context.gitBinary } : {}),
   });
 }

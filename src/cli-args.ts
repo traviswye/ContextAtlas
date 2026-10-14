@@ -44,6 +44,10 @@
  *                         no model calls; changed sources go to the
  *                         pending queue (.contextatlas/local/).
  *
+ *   --no-export           (v1.2 Phase 5) Only with `index --structural`:
+ *                         refresh the local cache, leave atlas.json
+ *                         untouched. The git hooks run this.
+ *
  *   --json                (ADR-12) Accepted only with `index`. Emit
  *                         the completion summary as a JSON object on
  *                         stdout instead of the default `key=value`
@@ -155,6 +159,8 @@ export interface ParsedArgs {
    * `--full`.
    */
   structural: boolean;
+  /** True when `--no-export` was passed (only with `index --structural`). */
+  noExport: boolean;
   /**
    * True when `--json` was passed alongside `index`. Switches the
    * completion summary from `key=value` lines to a single JSON
@@ -262,7 +268,7 @@ export const KNOWN_SUBCOMMANDS: readonly Subcommand[] = [
  */
 export const USAGE =
   `Usage: contextatlas [${KNOWN_SUBCOMMANDS.join("|")}] [--config-root <path>] [--config <file>] ` +
-  "[--check] [--full] [--structural] [--json] [--cc-only] [--observe] [--budget-warn <usd>] [--verbose] " +
+  "[--check] [--full] [--structural] [--no-export] [--json] [--cc-only] [--observe] [--budget-warn <usd>] [--verbose] " +
   "[--narrow-attribution <drop|drop-with-fallback>] " +
   "(see ADR-08, ADR-11, ADR-12, ADR-20)";
 
@@ -302,6 +308,7 @@ Subcommand options (selected; see individual subcommand for full set):
   index:
     --full                Skip the SHA gate for ADR/docs + docstrings (commits stay key-gated)
     --structural          Refresh symbols + git signal only, no model calls; queue changed sources
+    --no-export           With --structural: update the local cache only, not atlas.json
     --json                Print the run summary as one JSON object on stdout
     --verbose             Per-file unresolved-token detail on stderr
     --narrow-attribution <drop|drop-with-fallback>
@@ -340,6 +347,7 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
   let check = false;
   let full = false;
   let structural = false;
+  let noExport = false;
   let json = false;
   let budgetWarn: number | null = null;
   let verbose = false;
@@ -478,6 +486,14 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
         throw new Error(`Flag --structural specified more than once. ${USAGE}`);
       }
       structural = true;
+      i += 1;
+      continue;
+    }
+    if (arg === "--no-export") {
+      if (noExport) {
+        throw new Error(`Flag --no-export specified more than once. ${USAGE}`);
+      }
+      noExport = true;
       i += 1;
       continue;
     }
@@ -676,6 +692,7 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
       check,
       full,
       structural,
+      noExport,
       json,
       budgetWarn,
       verbose,
@@ -706,6 +723,12 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
   if (structural && subcommand !== "index") {
     throw new Error(
       `Flag --structural is only accepted with the 'index' subcommand. ${USAGE}`,
+    );
+  }
+  if (noExport && (subcommand !== "index" || !structural)) {
+    throw new Error(
+      "Flag --no-export is only accepted with `index --structural`: a run that " +
+        "extracts must write atlas.json.",
     );
   }
   if (structural && full) {
@@ -777,6 +800,7 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
     check,
     full,
     structural,
+    noExport,
     json,
     budgetWarn,
     verbose,

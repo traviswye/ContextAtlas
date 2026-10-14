@@ -98,6 +98,13 @@ export interface ExtractionPipelineDeps {
    */
   structural?: boolean;
   /**
+   * With `structural`: skip Stage 7, so neither atlas.json nor
+   * atlas_meta changes and the refresh lives in the local cache only
+   * (v1.2 Phase 5, L-21; `contextatlas index --structural --no-export`,
+   * run by the git hooks). Rejected without `structural`.
+   */
+  noExport?: boolean;
+  /**
    * Optional USD ceiling. When set and cumulative extraction cost
    * across all streams exceeds this value during a run, a single
    * warning is logged to stderr and no further warnings fire for the

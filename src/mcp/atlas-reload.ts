@@ -22,6 +22,9 @@
  *   - Swap: the import is one transaction (`importAtlas`), run through
  *     {@link RequestGate.exclusive}: tool calls in flight finish against
  *     the previous state first, and calls arriving meanwhile wait.
+ *   - Runs in progress: while a `contextatlas index` run holds the run
+ *     lock (v1.2 Phase 5), a reload is deferred and retried, so a pull
+ *     mid-run cannot replace the cache the run is writing.
  *   - Failure: a malformed or partially written atlas.json throws inside
  *     the transaction, which rolls back. The server keeps serving the
  *     previous state, warns, and retries on the next change.
@@ -78,6 +81,7 @@ export class RequestGate {
 
 export type ReloadOutcome =
   | "reloaded"
+  | "deferred"
   | "unchanged"
   | "already-current"
   | "missing"
@@ -89,6 +93,10 @@ export interface AtlasReloaderOptions {
   gate: RequestGate;
   /** Quiet period after the last change event. Default 500 ms. */
   debounceMs?: number;
+  /** True while a `contextatlas index` run holds the run lock. */
+  isIndexRunning?: () => boolean;
+  /** Delay before retrying a deferred reload. Default 2000 ms. */
+  retryMs?: number;
 }
 
 export class AtlasReloader {
@@ -96,6 +104,8 @@ export class AtlasReloader {
   private readonly atlasPath: string;
   private readonly gate: RequestGate;
   private readonly debounceMs: number;
+  private readonly isIndexRunning: () => boolean;
+  private readonly retryMs: number;
   private lastHash: string | null = null;
   private watcher: FSWatcher | null = null;
   private timer: NodeJS.Timeout | null = null;
@@ -106,6 +116,8 @@ export class AtlasReloader {
     this.atlasPath = options.atlasPath;
     this.gate = options.gate;
     this.debounceMs = options.debounceMs ?? 500;
+    this.isIndexRunning = options.isIndexRunning ?? (() => false);
+    this.retryMs = options.retryMs ?? 2000;
   }
 
   /**
@@ -152,16 +164,21 @@ export class AtlasReloader {
     this.watcher = null;
   }
 
-  private schedule(): void {
+  private schedule(delayMs: number = this.debounceMs): void {
     if (this.timer) clearTimeout(this.timer);
     this.timer = setTimeout(() => {
       this.timer = null;
       void this.reloadIfChanged();
-    }, this.debounceMs);
+    }, delayMs);
+    this.timer.unref();
   }
 
   private async reloadOnce(): Promise<ReloadOutcome> {
     if (!existsSync(this.atlasPath)) return "missing";
+    if (this.isIndexRunning()) {
+      this.schedule(this.retryMs);
+      return "deferred";
+    }
     let text: string;
     try {
       text = readFileSync(this.atlasPath, "utf8");

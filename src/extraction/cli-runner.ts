@@ -40,6 +40,12 @@ import type {
 } from "./pipeline.js";
 import { runValidateExtractionSubcommand } from "./cli-validate-extraction.js";
 import { appendRunLog, writePendingQueue } from "./local-state.js";
+import {
+  acquireRunLock,
+  acquireWaiterSlot,
+  waitForRunLock,
+  type RunLockInfo,
+} from "./run-lock.js";
 import { runStructuralRefresh } from "./structural.js";
 
 export interface IndexCliOptions {
@@ -51,6 +57,13 @@ export interface IndexCliOptions {
    * changed sources go to the pending queue. Not with `full`.
    */
   structural?: boolean;
+  /**
+   * `--no-export` (v1.2 Phase 5, with `structural` only): refresh the
+   * local cache and leave atlas.json untouched. The git hooks run this.
+   */
+  noExport?: boolean;
+  /** Test seam — how often a waiting structural run polls the lock. */
+  lockPollMs?: number;
   json: boolean;
   /**
    * `--verbose` CLI flag. When true, the run emits per-file
@@ -140,6 +153,72 @@ export interface IndexCliResult {
 export async function runIndexSubcommand(
   options: IndexCliOptions,
 ): Promise<IndexCliResult> {
+  const writeStderr =
+    options.writeStderr ?? ((chunk) => process.stderr.write(chunk));
+  if (options.noExport === true && options.structural !== true) {
+    writeStderr(
+      "contextatlas index: --no-export is only accepted with --structural. A run " +
+        "that extracts must write atlas.json, or the next run would discard its " +
+        "paid work.\n",
+    );
+    return { exitCode: 2 };
+  }
+
+  // One `index` run at a time per repository (v1.2 Phase 5): a hook's
+  // Tier 0 run skips quietly while another run holds the lock; any other
+  // run refuses to start.
+  let lock: ReturnType<typeof acquireRunLock>;
+  try {
+    lock = acquireRunLock(
+      options.configRoot,
+      options.structural === true ? "structural" : options.full ? "full" : "incremental",
+    );
+  } catch (err) {
+    log.error("index: could not take the run lock", { err: String(err) });
+    return { exitCode: 2 };
+  }
+  if (!lock.acquired && options.structural === true) {
+    // Coalesce structural runs (hooks fire on every commit of a rebase):
+    // one waits for the running run, the rest exit; the waiter reads the
+    // tree when it starts, so it covers their changes too.
+    const describe = (h: RunLockInfo) => `pid ${h.pid}, ${h.mode}, started ${h.started_at}`;
+    const slot = acquireWaiterSlot(options.configRoot, "structural");
+    if (!slot.acquired) {
+      writeStderr(
+        `contextatlas index --structural: another index run is in progress and a ` +
+          `structural run is already queued after it (${describe(slot.holder)}); skipped.\n`,
+      );
+      return { exitCode: 0 };
+    }
+    writeStderr(
+      `contextatlas index --structural: waiting for the index run in progress ` +
+        `(${describe(lock.holder)}).\n`,
+    );
+    try {
+      lock = await waitForRunLock(options.configRoot, "structural", {
+        ...(options.lockPollMs !== undefined ? { pollMs: options.lockPollMs } : {}),
+      });
+    } finally {
+      slot.release();
+    }
+  }
+  if (!lock.acquired) {
+    const who = `pid ${lock.holder.pid} on ${lock.holder.host}, ${lock.holder.mode}, started ${lock.holder.started_at}`;
+    writeStderr(
+      `contextatlas index: another index run is in progress (${who}). Wait for ` +
+        "it to finish and re-run. If no such run exists (it was killed), delete " +
+        ".contextatlas/local/index.lock.\n",
+    );
+    return { exitCode: 2 };
+  }
+  try {
+    return await runIndexLocked(options);
+  } finally {
+    lock.release();
+  }
+}
+
+async function runIndexLocked(options: IndexCliOptions): Promise<IndexCliResult> {
   const readEnv = options.readEnv ?? ((name) => process.env[name]);
   const writeStdout =
     options.writeStdout ?? ((chunk) => process.stdout.write(chunk));
@@ -258,7 +337,7 @@ export async function runIndexSubcommand(
     let pipelineResult: ExtractionPipelineResult;
     try {
       pipelineResult = structural
-        ? await runStructuralRefresh(extractorContext)
+        ? await runStructuralRefresh(extractorContext, { noExport: options.noExport === true })
         : (await extractor.extract(extractorContext)).pipelineResult;
     } catch (err) {
       if (err instanceof ExtractionSetupError) {

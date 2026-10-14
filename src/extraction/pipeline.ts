@@ -149,6 +149,14 @@ export async function runExtractionPipeline(
   const streams = deps.streams ?? LIBRARY_DEFAULT_STREAMS;
   const full = deps.skipShaDiff === true;
   const structural = deps.structural === true;
+  const noExport = deps.noExport === true;
+  if (noExport && !structural) {
+    throw new Error(
+      "noExport is only valid for a structural run (`contextatlas index " +
+        "--structural --no-export`): a run that extracts must export, or the " +
+        "next run's Stage 0 import would discard its paid work.",
+    );
+  }
   if (structural && full) {
     throw new Error(
       "A structural run (`contextatlas index --structural`) makes no model " +
@@ -580,7 +588,14 @@ export async function runExtractionPipeline(
     (docstring?.filesStored ?? 0) > 0 ||
     (commit?.commitsKeyed ?? 0) > 0;
   let atlasExported = false;
-  if (didModify) {
+  if (noExport) {
+    // Cache-only structural run (v1.2 Phase 5, lead decision L-21; the
+    // git hooks run this). atlas_meta keeps atlas.json's generated_at, so
+    // the MCP server, which reads this cache directly, never reloads
+    // atlas.json over the refresh; the next run's Stage 0 import rebuilds
+    // the same state from atlas.json plus the tree.
+    log.info("pipeline: cache-only run (--no-export); atlas.json and atlas_meta untouched");
+  } else if (didModify) {
     atlasExported = finalizeAtlas(db, {
       atlasAbsPath,
       committed: config.atlas.committed,

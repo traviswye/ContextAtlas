@@ -46,6 +46,7 @@ import { runValidateExtractionSubcommand } from "./extraction/cli-validate-extra
 import { runGenerateAdrsSubcommand } from "./generation/cli-runner.js";
 import { runValidateAdrsSubcommand } from "./generation/cli-validate-adrs.js";
 import { runInitSubcommand } from "./init/runner.js";
+import { liveRunLock } from "./extraction/run-lock.js";
 import { AtlasReloader, RequestGate } from "./mcp/atlas-reload.js";
 import { log } from "./mcp/logger.js";
 import { createServer } from "./mcp/server.js";
@@ -218,6 +219,7 @@ export async function main(): Promise<void> {
       configFile: configFileArg,
       full: parsed.full,
       structural: parsed.structural,
+      noExport: parsed.noExport,
       json: parsed.json,
       verbose: parsed.verbose,
       budgetWarnOverride: parsed.budgetWarn,
@@ -334,12 +336,22 @@ export async function main(): Promise<void> {
   ).n;
   const gate = new RequestGate();
   const reloader = config.atlas.committed
-    ? new AtlasReloader({ db, atlasPath, gate })
+    ? new AtlasReloader({
+        db,
+        atlasPath,
+        gate,
+        isIndexRunning: () => liveRunLock(configRoot) !== null,
+      })
     : null;
   if (reloader !== null && existsSync(atlasPath)) {
     const outcome = await reloader.reloadIfChanged();
     if (outcome === "already-current") {
       log.info(`Using existing local cache (${symbolCount} symbols; matches atlas.json)`);
+    } else if (outcome === "deferred") {
+      log.info(
+        "A contextatlas index run is in progress; serving the local cache until " +
+          "it finishes, then atlas.json is checked again.",
+      );
     } else if (outcome === "failed" && !isCacheEmpty(db)) {
       log.warn("Serving the existing local cache; atlas.json failed to load (see above).");
     }

@@ -147,7 +147,8 @@ function writeAtomic(configRoot: string, path: string, text: string): void {
   renameSync(tmp, path);
 }
 
-function ensureLocalStateDir(configRoot: string): void {
+/** Create `.contextatlas/local/` and its `.gitignore` when missing. */
+export function ensureLocalStateDir(configRoot: string): void {
   const dir = localStateDir(configRoot);
   mkdirSync(dir, { recursive: true });
   const ignore = pathResolve(dir, ".gitignore");

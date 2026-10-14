@@ -1,5 +1,6 @@
 import { spawnSync } from "node:child_process";
 import {
+  existsSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
@@ -18,6 +19,7 @@ import {
   runIndexSubcommand,
 } from "./cli-runner.js";
 import { computeFileSha } from "./file-walker.js";
+import { acquireRunLock } from "./run-lock.js";
 
 /**
  * Integration harness for `contextatlas index` that avoids spawning
@@ -128,6 +130,76 @@ describe("runIndexSubcommand (ADR-12)", () => {
     expect(result.exitCode).toBe(2);
     expect(stdout.joined()).toBe(""); // no summary printed on setup failure
   });
+
+  it("the run lock: a held lock refuses a model-calling run (exit 2), queues one structural run, and skips the next", async () => {
+    const lock = acquireRunLock(tmp, "full");
+    expect(lock.acquired).toBe(true);
+    const base = {
+      configRoot: tmp,
+      configFile: null,
+      full: false,
+      json: false,
+      contextatlasVersion: "0.0.1-test",
+      contextatlasCommitSha: null,
+      readEnv: () => undefined,
+      writeStdout: () => {},
+    };
+    const err: string[] = [];
+    const refused = await runIndexSubcommand({ ...base, writeStderr: (c) => err.push(c) });
+    expect(refused.exitCode).toBe(2);
+    expect(err.join("")).toMatch(/another index run is in progress/);
+
+    // First structural run waits; a second one exits while it waits.
+    const waiterErr: string[] = [];
+    const waiter = runIndexSubcommand({
+      ...base,
+      structural: true,
+      noExport: true,
+      lockPollMs: 20,
+      writeStderr: (c) => waiterErr.push(c),
+    });
+    await vi.waitFor(() => expect(waiterErr.join("")).toMatch(/waiting for the index run/), {
+      timeout: 5_000,
+      interval: 10,
+    });
+    const skippedErr: string[] = [];
+    const skipped = await runIndexSubcommand({
+      ...base,
+      structural: true,
+      writeStderr: (c) => skippedErr.push(c),
+    });
+    expect(skipped.exitCode).toBe(0);
+    expect(skippedErr.join("")).toMatch(/already queued after it/);
+
+    if (lock.acquired) lock.release();
+    const ran = await waiter;
+    expect(ran.exitCode).toBe(0);
+    expect(ran.pipelineResult?.apiCalls).toBe(0);
+    expect(existsSync(pathJoin(tmp, ".contextatlas", "local", "index.lock"))).toBe(false);
+    expect(existsSync(pathJoin(tmp, ".contextatlas", "local", "index.next"))).toBe(false);
+  }, 60_000);
+
+  it("--structural --no-export refreshes the cache but leaves atlas.json and atlas_meta untouched; --no-export alone is rejected", async () => {
+    writeFileSync(pathJoin(tmp, "docs", "adr", "ADR-01-a.md"), "# ADR\n");
+    const base = {
+      configRoot: tmp,
+      configFile: null,
+      full: false,
+      json: false,
+      contextatlasVersion: "0.0.1-test",
+      contextatlasCommitSha: null,
+      readEnv: () => undefined,
+      writeStdout: () => {},
+    };
+    const rejected = await runIndexSubcommand({ ...base, noExport: true, writeStderr: () => {} });
+    expect(rejected.exitCode).toBe(2);
+
+    const result = await runIndexSubcommand({ ...base, structural: true, noExport: true });
+    expect(result.exitCode).toBe(0);
+    expect(result.pipelineResult?.atlasExported).toBe(false);
+    expect(existsSync(pathJoin(tmp, ".contextatlas", "atlas.json"))).toBe(false);
+    expect(result.pipelineResult?.pendingUnits.map((u) => u.key)).toEqual(["docs/adr/ADR-01-a.md"]);
+  }, 60_000);
 
   it("--structural needs no API key, writes the pending queue and a run-log line under a self-ignoring .contextatlas/local/", async () => {
     writeFileSync(pathJoin(tmp, "docs", "adr", "ADR-01-a.md"), "# ADR\n");

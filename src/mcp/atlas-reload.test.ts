@@ -111,6 +111,23 @@ describe("AtlasReloader (v1.2 Phase 4)", () => {
     expect(claims()).toEqual(["second"]);
   });
 
+  it("defers while an index run holds the lock, then reloads by itself once it ends", async () => {
+    let running = true;
+    const deferring = new AtlasReloader({
+      db,
+      atlasPath: path(),
+      gate: new RequestGate(),
+      isIndexRunning: () => running,
+      retryMs: 20,
+    });
+    write(atlas("t1", "after the run"));
+    expect(await deferring.reloadIfChanged()).toBe("deferred");
+    expect(claims()).toEqual([]);
+    running = false;
+    await expect.poll(() => claims(), { timeout: 5_000, interval: 20 }).toEqual(["after the run"]);
+    deferring.stop();
+  });
+
   it("reloads after a write observed by the watch (debounced)", async () => {
     write(atlas("t1", "first"));
     await reloader.reloadIfChanged();
