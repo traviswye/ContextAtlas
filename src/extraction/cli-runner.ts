@@ -39,6 +39,7 @@ import type {
   StreamFailure,
 } from "./pipeline.js";
 import { runValidateExtractionSubcommand } from "./cli-validate-extraction.js";
+import { loadDocstringDigests } from "./docstring-digests.js";
 import { appendRunLog, writePendingQueue } from "./local-state.js";
 import {
   acquireRunLock,
@@ -311,7 +312,9 @@ async function runIndexLocked(options: IndexCliOptions): Promise<IndexCliResult>
     // implementation per config.architecture; legacy alias emits
     // deprecation warning at factory-time per Q1.0.8.
     const extractor = getExtractor(config);
+    const digests = loadDocstringDigests(options.configRoot);
     const extractorContext: ExtractorContext = {
+      docstringDigests: digests,
       config,
       configRoot: options.configRoot,
       sourceRoot,
@@ -369,6 +372,7 @@ async function runIndexLocked(options: IndexCliOptions): Promise<IndexCliResult>
     // once the exit code is known. Never fails the run.
     recordLocalState(() => {
       writePendingQueue(options.configRoot, pipelineResult.pendingUnits, startedAt);
+      digests.save();
     });
     const finish = (exitCode: IndexExitCode): IndexCliResult => {
       recordLocalState(() => {
@@ -748,6 +752,7 @@ function printSummary(
       line_ending_keys_migrated: result.lineEndingKeysMigrated,
       pending_sources: result.pendingUnits.length,
       claims_relinked: result.claimsRelinked,
+      docstring_keys_carried: result.docstringKeysCarried,
     };
     writeStdout(JSON.stringify(payload, null, 2) + "\n");
     return;
@@ -790,6 +795,7 @@ function printSummary(
     `line_ending_keys_migrated=${result.lineEndingKeysMigrated}`,
     `pending_sources=${result.pendingUnits.length}`,
     `claims_relinked=${result.claimsRelinked}`,
+    `docstring_keys_carried=${result.docstringKeysCarried}`,
   ];
   writeStdout(lines.join("\n") + "\n");
 }

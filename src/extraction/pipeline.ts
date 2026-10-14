@@ -84,6 +84,7 @@ import {
 } from "./atlas-export-stage.js";
 import { relinkUnlinkedClaims } from "./claim-relink.js";
 import { buildCostPreview } from "./cost-preview.js";
+import { carryUnchangedDocstringKeys, recordDocstringDigests } from "./docstring-digests.js";
 import {
   collectPendingUnits,
   planCommitWork,
@@ -367,6 +368,30 @@ export async function runExtractionPipeline(
     deleteSourceSha(db, key);
   }
 
+  // --- Stage 5b: docstring-unchanged keys (v1.2 Phase 6) --------------
+  // With the CLI's digest store, a changed source file whose documented
+  // symbols are unchanged keeps its claims and moves its key, instead of
+  // being re-extracted or queued (docstring-digests.ts). Not under --full.
+  const digests = deps.docstringDigests;
+  const docstringKeysCarried =
+    digests !== undefined && streams.has("docstring") && !full
+      ? await carryUnchangedDocstringKeys({
+          sourceFiles,
+          inventory,
+          adapters,
+          baseline: baseline.docstring,
+          full: false,
+          prosePaths,
+          store: digests,
+          setKey,
+        })
+      : [];
+  if (docstringKeysCarried.length > 0) {
+    log.info("pipeline: kept claims of changed files whose docstrings are unchanged", {
+      count: docstringKeysCarried.length,
+    });
+  }
+
   // --- Plan + cost preview (v1.2 Phase 2) ------------------------------
   // A structural run (v1.2 Phase 3, Tier 0) plans the same sources but
   // extracts none: its plan is empty, so Stages 6-6d do nothing, and
@@ -539,13 +564,25 @@ export async function runExtractionPipeline(
   // Planned sources not keyed with their current SHA: everything after
   // a structural run, the failed ones otherwise. The CLI writes them to
   // `.contextatlas/local/pending.json`.
+  const keysNow = listSourceShas(db);
+  if (digests !== undefined && streams.has("docstring")) {
+    await recordDocstringDigests({
+      sourceFiles,
+      inventory,
+      adapters,
+      prosePaths,
+      keysNow,
+      store: digests,
+      reads: new Map((plan.docstring?.files ?? []).map((f) => [f.relPath, f.docstrings])),
+    });
+  }
   const pendingUnits = collectPendingUnits({
     prose: proseToExtract,
     docstring: docstringCandidates,
     commits: commitPlan?.status === "planned" ? commitPlan.pending : null,
     baselineProse: baseline.prose,
     baselineDocstring: baseline.docstring,
-    keysNow: listSourceShas(db),
+    keysNow,
     hasCommitKey: (sha) => hasCommitKey(db, sha),
   });
 
@@ -585,6 +622,7 @@ export async function runExtractionPipeline(
     staleDocstring.length > 0 ||
     commitKeys.shasNormalized > 0 ||
     lineEndingKeys.length > 0 ||
+    docstringKeysCarried.length > 0 ||
     (docstring?.filesStored ?? 0) > 0 ||
     (commit?.commitsKeyed ?? 0) > 0;
   let atlasExported = false;
@@ -654,6 +692,7 @@ export async function runExtractionPipeline(
     commitClaimsWritten: commit?.claimsWritten ?? 0,
     commitKeysMigrated: commitKeys.shasNormalized,
     lineEndingKeysMigrated: lineEndingKeys.length,
+    docstringKeysCarried: docstringKeysCarried.length,
     pendingUnits,
     claimsRelinked,
     failedStreams,

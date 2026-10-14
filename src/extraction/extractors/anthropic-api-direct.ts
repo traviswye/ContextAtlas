@@ -75,6 +75,9 @@ export class AnthropicAPIDirectExtractor implements Extractor {
         ? { onCostPreview: context.onCostPreview }
         : {}),
       ...(context.full ? { skipShaDiff: true } : {}),
+      ...(context.docstringDigests !== undefined
+        ? { docstringDigests: context.docstringDigests }
+        : {}),
       ...(context.budgetWarnUsd !== undefined
         ? { budgetWarnUsd: context.budgetWarnUsd }
         : {}),

@@ -42,6 +42,9 @@ export function runStructuralRefresh(
     streams: resolveExtractionStreams(context.config),
     structural: true,
     ...(options.noExport === true ? { noExport: true } : {}),
+    ...(context.docstringDigests !== undefined
+      ? { docstringDigests: context.docstringDigests }
+      : {}),
     ...(context.gitBinary !== undefined ? { gitBinary: context.gitBinary } : {}),
   });
 }

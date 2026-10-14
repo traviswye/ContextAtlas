@@ -105,6 +105,12 @@ export interface ExtractionPipelineDeps {
    */
   noExport?: boolean;
   /**
+   * Docstring digest store (v1.2 Phase 6; the CLI passes the
+   * `.contextatlas/local/` one). Enables the docstring-unchanged filter
+   * and is updated by the run; omitted, the SHA gate alone decides.
+   */
+  docstringDigests?: import("./docstring-digests.js").DocstringDigestStore;
+  /**
    * Optional USD ceiling. When set and cumulative extraction cost
    * across all streams exceeds this value during a run, a single
    * warning is logged to stderr and no further warnings fire for the
@@ -337,6 +343,11 @@ export interface ExtractionPipelineResult {
    * line-ending hash to the normalized SHA (F-9, v1.2 Phase 3).
    */
   lineEndingKeysMigrated: number;
+  /**
+   * Changed docstring files whose documented symbols were unchanged:
+   * claims kept, key moved, no model call (v1.2 Phase 6).
+   */
+  docstringKeysCarried: number;
   /**
    * Sources this run planned but did not key with their current SHA
    * (v1.2 Phase 3): every planned source after a structural run, the

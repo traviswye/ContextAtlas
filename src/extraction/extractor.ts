@@ -102,6 +102,8 @@ export interface ExtractorContext {
    * formats it to stderr. Omitted: no preview.
    */
   onCostPreview?: (preview: CostPreview) => void;
+  /** Docstring digest store (v1.2 Phase 6); passed through to the pipeline. */
+  docstringDigests?: import("./docstring-digests.js").DocstringDigestStore;
   /**
    * Test seam: git binary for the git signal and the commit stream.
    * Default `"git"` on PATH.

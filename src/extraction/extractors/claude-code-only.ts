@@ -70,6 +70,7 @@ export class ClaudeCodeOnlyExtractor implements Extractor {
         commitClaimsWritten: 0,
         commitKeysMigrated: 0,
         lineEndingKeysMigrated: 0,
+        docstringKeysCarried: 0,
         pendingUnits: [],
         claimsRelinked: 0,
         failedStreams: [],

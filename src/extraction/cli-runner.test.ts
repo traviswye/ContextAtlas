@@ -1128,7 +1128,7 @@ describe("runIndexSubcommand (ADR-12)", () => {
     "commit_keys_migrated",
   ];
   // v1.2 Phase 3 — appended after the Phase 2 keys.
-  const PHASE3_KEYS = ["line_ending_keys_migrated", "pending_sources", "claims_relinked"];
+  const PHASE3_KEYS = ["line_ending_keys_migrated", "pending_sources", "claims_relinked", "docstring_keys_carried"];
 
   it("key=value summary appends the v1.2 Phase 1 then Phase 2 keys after the existing keys (order unchanged)", async () => {
     const stdout = captureStdout();

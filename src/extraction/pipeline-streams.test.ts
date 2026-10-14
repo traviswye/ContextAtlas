@@ -50,6 +50,7 @@ import type {
 
 import { ParseError, type ExtractionClient } from "./anthropic-client.js";
 import type { CostPreview } from "./cost-preview.js";
+import type { DigestRecord, DocstringDigestStore } from "./docstring-digests.js";
 import { computeFileSha } from "./file-walker.js";
 import { runExtractionPipeline } from "./pipeline.js";
 import type { ExtractionResult } from "./prompt.js";
@@ -987,6 +988,78 @@ describe("runExtractionPipeline — v1.2 Phase 2 streams", () => {
       const again = await run(adapter, recordingClient(() => "throw").client, { structural: true });
       expect(again.claimsRelinked).toBe(0);
       expect(again.atlasExported).toBe(false);
+    });
+
+    it("docstring-unchanged filter: a code-only edit keeps claims and moves the key with no call; a docstring edit re-extracts (v1.2 Phase 6)", async () => {
+      const records = new Map<string, DigestRecord>();
+      const store: DocstringDigestStore = {
+        get: (p) => records.get(p),
+        set: (p, r) => void records.set(p, r),
+        delete: (p) => void records.delete(p),
+      };
+      write("src/a.ts", "export function Foo() {}\n");
+      const Foo = tsSym("src/a.ts", "Foo");
+      const docs: Record<SymbolId, Docstring> = { [Foo.id]: "Foo doc v1" };
+      const adapter = streamAdapter(tmp, { "src/a.ts": [Foo] }, docs);
+      await run(adapter, recordingClient(() => oneClaim("foo claim")).client, { docstringDigests: store });
+      expect(records.get("src/a.ts")?.shas).toEqual([computeFileSha(pathJoin(tmp, "src", "a.ts"))]);
+
+      // Code-only edit: structural queues nothing and carries the key.
+      write("src/a.ts", "export function Foo() { return 1; }\n");
+      const newSha = computeFileSha(pathJoin(tmp, "src", "a.ts"));
+      freshDb();
+      const structural = await run(adapter, recordingClient(() => "throw").client, {
+        structural: true,
+        noExport: true,
+        docstringDigests: store,
+      });
+      expect(structural.pendingUnits).toEqual([]);
+      expect(structural.docstringKeysCarried).toBe(1);
+      expect(structural.atlasExported).toBe(false);
+
+      // The cache-only run did not write atlas.json, so the next run starts
+      // from the old key again; the record knows both SHAs and carries it.
+      freshDb();
+      const paid = recordingClient(() => "throw");
+      const r2 = await run(adapter, paid.client, { docstringDigests: store });
+      expect(paid.bodies).toEqual([]);
+      expect(r2.docstringKeysCarried).toBe(1);
+      expect(listSourceShas(db)["src/a.ts"]).toBe(newSha);
+      expect(claimTexts()).toEqual(["foo claim"]);
+
+      // Docstring edit: re-extracted, record replaced.
+      docs[Foo.id] = "Foo doc v2";
+      write("src/a.ts", "export function Foo() { return 2; }\n");
+      freshDb();
+      const rec3 = recordingClient(() => oneClaim("foo claim v2"));
+      const r3 = await run(adapter, rec3.client, { docstringDigests: store });
+      expect(rec3.bodies).toEqual(["Foo doc v2"]);
+      expect(r3.docstringKeysCarried).toBe(0);
+      expect(claimTexts()).toEqual(["foo claim v2"]);
+      expect(records.get("src/a.ts")?.shas).toEqual([computeFileSha(pathJoin(tmp, "src", "a.ts"))]);
+    });
+
+    it("the filter bootstraps records for files keyed before it existed, and is off under --full", async () => {
+      write("src/a.ts", "export function Foo() {}\n");
+      const Foo = tsSym("src/a.ts", "Foo");
+      const adapter = streamAdapter(tmp, { "src/a.ts": [Foo] }, { [Foo.id]: "Foo doc" });
+      await run(adapter, recordingClient(() => oneClaim("c")).client);
+      const records = new Map<string, DigestRecord>();
+      const store: DocstringDigestStore = {
+        get: (p) => records.get(p),
+        set: (p, r) => void records.set(p, r),
+        delete: (p) => void records.delete(p),
+      };
+      freshDb();
+      await run(adapter, recordingClient(() => "throw").client, { structural: true, docstringDigests: store });
+      expect(records.has("src/a.ts")).toBe(true);
+
+      write("src/a.ts", "export function Foo() { return 1; }\n");
+      freshDb();
+      const full = recordingClient(() => oneClaim("c"));
+      const r = await run(adapter, full.client, { docstringDigests: store, skipShaDiff: true });
+      expect(r.docstringKeysCarried).toBe(0);
+      expect(full.bodies).toContain("Foo doc");
     });
 
     it("rejects structural together with skipShaDiff (--full)", async () => {
