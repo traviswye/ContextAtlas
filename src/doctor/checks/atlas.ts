@@ -21,6 +21,27 @@ export function atlasChecks(ctx: CheckContext): DoctorCheck[] {
   const atlasPath = pathResolve(ctx.repoRoot, config.atlas.path);
 
   // 1. atlas.exists
+  // With atlas.committed: false the local cache is the atlas and `index`
+  // never writes atlas.json (v1.2 Phase 8), so the cache must exist
+  // instead. A stray atlas.json in that mode is still checked below.
+  if (!config.atlas.committed && !existsSync(atlasPath)) {
+    const cacheExists = existsSync(pathResolve(ctx.repoRoot, config.atlas.localCache));
+    out.push({
+      id: "atlas.exists",
+      category: "atlas",
+      status: cacheExists ? "pass" : ctx.firstRun === true ? "warn" : "fail",
+      message: cacheExists
+        ? `atlas.committed: false; local cache at ${config.atlas.localCache}`
+        : `atlas.committed: false and no local cache at ${config.atlas.localCache}`,
+      ...(cacheExists
+        ? {}
+        : {
+            detail:
+              "Run `contextatlas index` to build the local cache. With atlas.committed: false it does not write atlas.json.",
+          }),
+    });
+    return out;
+  }
   if (!existsSync(atlasPath)) {
     // FO-7 fix part 2 (v0.7 Step 2.2.d Option iii hybrid): when
     // doctor runs as init's first-run gate-check, missing atlas.json

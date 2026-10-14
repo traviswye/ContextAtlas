@@ -424,6 +424,18 @@ async function detectGit(ctx: CheckContext): Promise<DoctorCheck[]> {
   }
 
   const atlasPath = pathJoin(ctx.repoRoot, ".contextatlas", "atlas.json");
+  if (ctx.config?.atlas.committed === false && !existsSync(atlasPath)) {
+    // No atlas.json by design (v1.2 Phase 8); `atlas.exists` checks the
+    // local cache and `freshness.local_cache_vs_head` its drift.
+    return [
+      {
+        id: "state-detection.git.atlas_consistent",
+        category: "state-detection",
+        status: "pass",
+        message: "atlas.committed: false; no atlas.json to compare",
+      },
+    ];
+  }
   const result = await detectAtlasOnlyAvailable(atlasPath, headSha);
 
   if (result === null) {

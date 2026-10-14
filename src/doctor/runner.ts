@@ -23,6 +23,7 @@ import type { ContextAtlasConfig } from "../types.js";
 import { atlasChecks } from "./checks/atlas.js";
 import { configChecks } from "./checks/config.js";
 import { extractionChecks } from "./checks/extraction.js";
+import { freshnessChecks } from "./checks/freshness.js";
 import { lspChecks } from "./checks/lsp.js";
 import { promptArtifactChecks } from "./checks/prompts.js";
 import { shaChecks } from "./checks/sha.js";
@@ -159,6 +160,7 @@ export async function collectChecks(
       checks.push(...(await lspChecks(ctx)));
     }
     checks.push(...extractionChecks(ctx));
+    if (config !== null) checks.push(...freshnessChecks(ctx));
     checks.push(...promptArtifactChecks(ctx));
     checks.push(...skillFreshnessChecks(ctx), ...skillModelChecks(ctx));
     checks.push(...(await stateDetectionChecks(ctx)));

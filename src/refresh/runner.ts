@@ -113,6 +113,17 @@ export async function runRefreshClaims(options: RefreshClaimsOptions): Promise<R
     if (!due.due) return record({ ...base, outcome: "skipped", reason: due.reason ?? "not due" }, 0);
   }
 
+  // The skill Reads the extraction prompt artifact first and fails
+  // without it, after the session has already spent turns (v1.2 Phase 8:
+  // a pre-push run spent 11 turns finding this out). Check it here.
+  const promptArtifact = ".contextatlas/prompts/extraction.md";
+  if (!existsSync(pathResolve(configRoot, promptArtifact))) {
+    const reason = `${promptArtifact} is missing; run contextatlas init`;
+    if (options.ifDue) return record({ ...base, outcome: "skipped", reason }, 0);
+    err(`contextatlas refresh-claims: ${reason}.\n`);
+    return { exitCode: 2 };
+  }
+
   const structural = options.structuralRefresh ?? defaultStructuralRefresh(options.contextatlasVersion);
   await structural(configRoot, options.configFile);
   const pendingBefore = readPendingQueue(configRoot).length;

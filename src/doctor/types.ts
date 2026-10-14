@@ -18,6 +18,7 @@ export type CheckCategory =
   | "sha"
   | "lsp"
   | "extraction"
+  | "freshness"
   | "state-detection";
 
 export interface DoctorCheck {

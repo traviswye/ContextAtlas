@@ -21,6 +21,7 @@ const CATEGORY_LABEL: Record<CheckCategory, string> = {
   sha: "SHA / Schema",
   lsp: "LSP",
   extraction: "Extraction prerequisites",
+  freshness: "Freshness",
   "state-detection": "State detection",
 };
 
@@ -52,6 +53,7 @@ export function formatText(result: DoctorResult): string {
     "sha",
     "lsp",
     "extraction",
+    "freshness",
     "state-detection",
   ];
   for (const cat of order) {

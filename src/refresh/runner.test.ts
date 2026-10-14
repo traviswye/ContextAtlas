@@ -67,6 +67,8 @@ describe("contextatlas refresh-claims (v1.2 Phase 6)", () => {
     root = mkdtempSync(pathJoin(tmpdir(), "ca-refresh-"));
     mkdirSync(pathJoin(root, "docs", "adr"), { recursive: true });
     mkdirSync(pathJoin(root, ".contextatlas", "local"), { recursive: true });
+    mkdirSync(pathJoin(root, ".contextatlas", "prompts"), { recursive: true });
+    writeFileSync(pathJoin(root, ".contextatlas", "prompts", "extraction.md"), "prompt\n");
     writeFileSync(pathJoin(root, ".contextatlas.yml"), CONFIG);
     fake = pathJoin(root, "fake-claude.cjs");
     writeFileSync(fake, FAKE_CLAUDE);
@@ -154,6 +156,20 @@ describe("contextatlas refresh-claims (v1.2 Phase 6)", () => {
     const maxturns = await run();
     expect(maxturns.exitCode).toBe(1);
     expect(maxturns.entry?.reason).toMatch(/refresh.max_turns/);
+  }, 120_000);
+
+  it("checks the prompt artifact before starting a session (no turns spent)", async () => {
+    await rm(pathJoin(root, ".contextatlas", "prompts"), { recursive: true, force: true });
+    const manual = await run();
+    expect(manual.exitCode).toBe(2);
+    expect(existsSync(pathJoin(root, ".contextatlas", "local", "fake-argv.json"))).toBe(false);
+
+    writeFileSync(pathJoin(root, ".contextatlas.yml"), CONFIG + "refresh:\n  min_interval_minutes: 0\n");
+    const due = await run({ ifDue: true, trigger: "pre-push" });
+    expect(due.exitCode).toBe(0);
+    expect(due.entry).toMatchObject({ outcome: "skipped", turns: 0 });
+    expect(due.entry?.reason).toMatch(/prompts\/extraction\.md is missing/);
+    expect(existsSync(pathJoin(root, ".contextatlas", "local", "fake-argv.json"))).toBe(false);
   }, 120_000);
 
   it("--if-due: skips when auto_claims is off, and does nothing (no session) when the queue is empty", async () => {

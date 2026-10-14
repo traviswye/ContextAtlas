@@ -1,9 +1,14 @@
 /**
  * SHA / Schema doctor checks.
  *
- * Compares atlas's contextatlas_commit_sha vs `git rev-parse HEAD`
- * (WARN on drift). Atlas schema version vs current ATLAS_VERSION
- * constant.
+ * Compares atlas's extracted_at_sha vs `git rev-parse HEAD` (WARN on
+ * drift). Atlas schema version vs current ATLAS_VERSION constant.
+ *
+ * Before v1.2 Phase 8 the drift check read
+ * `generator.contextatlas_commit_sha`, the commit of the contextatlas
+ * build that wrote the atlas, not the repository commit it describes. The
+ * two match only when contextatlas indexes itself; on any other
+ * repository the check always reported drift.
  */
 
 import { spawnSync } from "node:child_process";
@@ -28,16 +33,21 @@ export function shaChecks(ctx: CheckContext): DoctorCheck[] {
     return out; // Atlas check already handled malformed.
   }
 
-  const generator = (atlas.generator ?? {}) as Record<string, unknown>;
   const atlasSha =
-    typeof generator.contextatlas_commit_sha === "string"
-      ? (generator.contextatlas_commit_sha as string)
+    typeof atlas.extracted_at_sha === "string" && atlas.extracted_at_sha.length > 0
+      ? (atlas.extracted_at_sha as string)
       : null;
 
   // 1. sha.atlas_vs_head — WARN on drift.
   if (atlasSha === null) {
-    // Atlas-provenance check already noted missing field; skip
-    // here to avoid double-reporting.
+    out.push({
+      id: "sha.atlas_vs_head",
+      category: "sha",
+      status: "warn",
+      message: "atlas has no extracted_at_sha",
+      detail:
+        "The atlas was written outside a git tree or by a pre-1.1 extractor. Re-run extraction to record the commit it describes.",
+    });
   } else {
     const headSha = readGitHead(ctx.repoRoot);
     if (headSha === null) {

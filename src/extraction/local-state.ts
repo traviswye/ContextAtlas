@@ -140,6 +140,22 @@ export function appendRunLog(configRoot: string, entry: RunLogEntry): void {
   writeAtomic(configRoot, path, lines.slice(-RUN_LOG_MAX_LINES).join("\n") + "\n");
 }
 
+/** The run log, oldest first; damaged lines are skipped. Empty when missing. */
+export function readRunLog(configRoot: string): RunLogEntry[] {
+  const path = runLogPath(configRoot);
+  if (!existsSync(path)) return [];
+  const out: RunLogEntry[] = [];
+  for (const line of readFileSync(path, "utf8").split("\n")) {
+    if (line.trim().length === 0) continue;
+    try {
+      out.push(JSON.parse(line) as RunLogEntry);
+    } catch {
+      // A damaged line is skipped.
+    }
+  }
+  return out;
+}
+
 function writeAtomic(configRoot: string, path: string, text: string): void {
   ensureLocalStateDir(configRoot);
   const tmp = `${path}.tmp`;

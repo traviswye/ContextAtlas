@@ -1659,3 +1659,71 @@ and lead decision L-22. Config: ADR-05 2026-10-14 amendment (`refresh:`).
 - The noise filter covers code-only edits. Whitespace-only edits are a
   special case of it. Vendored, generated and test paths were already
   excluded from the docstring walk (`exclude_pattern`).
+
+## Amendment (2026-10-14, v1.2 Phase 8): doctor freshness checks
+
+Scope: `docs/cycles/v1_2/v1.2-SCOPE.md` Phase 8.
+
+### Decision
+
+1. **New doctor category `freshness`** (normal mode only; it needs the
+   config's paths). It reads local files and git only: no model call,
+   no write.
+   - `freshness.local_cache_vs_head`: commits between the last `index`
+     run in `runs.jsonl` (any mode) and HEAD, plus the time of the
+     last structural and the last extracting run. WARN when behind,
+     when the last run exited non-zero, or when no run is recorded.
+   - `freshness.pending_sources`: the pending queue by stream and the
+     age of its oldest entry. WARN when not empty.
+   - `freshness.orphaned_claims`: claims with no symbol link whose
+     `symbol_candidates` are not empty. Every run re-links the ones
+     that resolve, so what is left names symbols the tree does not
+     have. This covers the orphans of an interrupted run, which the
+     next run does not report again (Phase 2 review fixes).
+     Informational (PASS): doctor cannot tell a claim that lost its
+     links from one that never resolved, and re-extracting an
+     unchanged source would not change it.
+   - `freshness.stale_source_keys`: a non-`commit:` key whose file is
+     gone. `index` drops these. The Skill path can leave one behind,
+     and `validate-extraction` no longer checks for it (F1). WARN.
+   - `freshness.unreachable_commit_keys`: `commit:<sha>` keys that HEAD
+     cannot reach, typically a cache built on another branch. WARN.
+   - `freshness.hooks`: which managed hooks are installed. WARN only
+     for a block whose entry script is gone.
+   - `freshness.tier1_ledger`: `refresh-claims` run counts by outcome,
+     total turns, the list-price estimate and the last run. WARN when
+     the last run failed.
+   - `freshness.atlas_state`: WARN, only when the store cannot be
+     read; the orphan and key checks are then skipped.
+
+   The orphan and key checks read the store that is the source of
+   truth for the mode (L-19): `atlas.json` with `atlas.committed:
+   true`, the local cache (read-only) with `false`.
+2. **`atlas.exists` with `atlas.committed: false`** checks the local
+   cache instead of `atlas.json`, which `index` never writes in that
+   mode. It FAILs when the cache is missing (WARN at `init`'s
+   first-run gate), and `state-detection.git.atlas_consistent` passes
+   with no `atlas.json` to compare.
+3. **`sha.atlas_vs_head` reads `extracted_at_sha`.** It read
+   `generator.contextatlas_commit_sha`, the commit of the contextatlas
+   build that wrote the atlas. That matches the repository only when
+   contextatlas indexes itself, so on every other repository the check
+   reported drift. An atlas without `extracted_at_sha` now gets a WARN.
+4. **`refresh-claims` checks the prompt artifact before the session.**
+   A missing `.contextatlas/prompts/extraction.md` is a setup error
+   (exit 2), and with `--if-due` a `skipped` ledger entry (exit 0;
+   no session is started, so the interval is not consumed). Before
+   this, the skill found it out inside the session. On this repository
+   a pre-push run spent 11 turns ($1.20 list-price estimate) to fail
+   on it.
+
+`checkStaleness()` (`--check`, ADR-11) is unchanged: its exit-code
+contract covers `atlas.json` against HEAD, and the new reports belong
+to doctor.
+
+### Consequences
+
+- One `contextatlas doctor` shows how fresh the atlas is, what is
+  waiting for Tier 1, and what the automatic tiers last did and cost.
+- Pending sources keep doctor at WARN between Tier 1 runs. That is
+  intentional: those claims describe an older version of their source.
