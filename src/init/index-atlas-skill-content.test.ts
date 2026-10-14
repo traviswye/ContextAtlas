@@ -310,20 +310,22 @@ describe("/index-atlas SKILL.md — review fixes (v1.2 Phase 2)", () => {
     expect(gate).not.toMatch(/ADR-08\s+layout only/);
   });
 
-  it("Phase C step 5 gives one remedy for both modes: the server imports atlas.json only into an empty cache", () => {
+  it("Phase C step 5 splits by atlas.committed: hot reload with true (v1.2 Phase 4), a cache reset with false", () => {
     const step5 = section(
       "### Phase C step 5 — Tell the user how the MCP server picks up the refresh",
     );
-    expect(step5).toMatch(/does not reload it/);
-    expect(step5).toMatch(/imports `atlas\.json` only into an empty local\s+cache/);
-    expect(step5).toMatch(/closes Claude Code \(or\s+disconnects `contextatlas` in `\/mcp`\)/);
+    expect(step5).toMatch(/Read `atlas\.committed` in `\.contextatlas\.yml`/);
+    // committed: true — the server reloads atlas.json itself.
+    expect(step5).toMatch(/watches `atlas\.json` and re-imports it/);
+    expect(step5).toMatch(/with no restart/);
+    expect(step5).toMatch(/An older server loads the atlas only at startup/);
+    // committed: false — the cache-reset remedy, unchanged.
+    expect(step5).toMatch(/closes Claude Code \(or\s+disconnects `contextatlas` in\s+`\/mcp`\)/);
     expect(step5).toMatch(/deletes the local cache file/);
-    expect(step5).toMatch(/while no `contextatlas index` is running/);
-    expect(step5).toMatch(/with\s+no API calls/);
-    expect(step5).toMatch(/With `atlas\.committed: true` nothing is lost/);
-    expect(step5).toMatch(/`atlas\.committed: false` this discards anything only that cache holds/);
+    expect(step5).toMatch(/while no\s+`contextatlas index` is running/);
+    expect(step5).toMatch(/with no API calls/);
+    expect(step5).toMatch(/discards anything only that cache holds/);
     expect(step5).toMatch(/Do not delete it yourself/);
-    // The server no longer re-imports a changed atlas.json on restart.
-    expect(step5).not.toMatch(/At startup the server imports an `atlas\.json` that differs/);
+    expect(step5).not.toMatch(/With `atlas\.committed: true` nothing is lost/);
   });
 });

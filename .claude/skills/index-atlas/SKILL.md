@@ -559,24 +559,23 @@ until doctor confirms the atlas substrate is canonical.
 
 ### Phase C step 5 — Tell the user how the MCP server picks up the refresh
 
-The running `contextatlas` MCP server loaded the atlas when this
-Claude Code session started and does not reload it: until it
-restarts, `get_symbol_context`, `find_by_intent` and
-`impact_of_change` keep returning what it loaded (or `ERR not_found`
-on a first build). When you report success, tell the user:
+Read `atlas.committed` in `.contextatlas.yml` and tell the user the
+matching case when you report success:
 
-The running server imports `atlas.json` only into an empty local
-cache (at startup it warns when `atlas.json` differs from what its
-cache holds). To serve this refresh, the user closes Claude Code (or
-disconnects `contextatlas` in `/mcp`), deletes the local cache file
-(`atlas.local_cache` in `.contextatlas.yml`, default
-`.contextatlas/index.db`) while no `contextatlas index` is running,
-and restarts or reconnects; the cache is rebuilt from `atlas.json`
-with no API calls. With `atlas.committed: true` nothing is lost; with
-`atlas.committed: false` this discards anything only that cache holds
-(work of `contextatlas index` runs in that mode). On a first build,
-while the cache is still empty, restarting or reconnecting is enough.
-Do not delete it yourself.
+- **`atlas.committed: true` (the default).** A running `contextatlas`
+  MCP server (v1.2 or later) watches `atlas.json` and re-imports it
+  within about a second of the write, with no restart. Nothing else to
+  do. An older server loads the atlas only at startup; with one, the
+  user restarts it (or reconnects `contextatlas` in `/mcp`).
+- **`atlas.committed: false`.** The local cache is the server's source
+  of truth, and it does not reload `atlas.json`. To serve this refresh,
+  the user closes Claude Code (or disconnects `contextatlas` in
+  `/mcp`), deletes the local cache file (`atlas.local_cache` in
+  `.contextatlas.yml`, default `.contextatlas/index.db`) while no
+  `contextatlas index` is running, and restarts or reconnects. The
+  cache is rebuilt from `atlas.json` with no API calls, but this
+  discards anything only that cache holds (work of `contextatlas index`
+  runs in that mode). Do not delete it yourself.
 
 ### Substantive bash invocation rationale
 
@@ -774,9 +773,9 @@ This skill uses Claude Code session tools to perform extraction:
     — LSP bridge; atlas is INCOMPLETE without this step
   - **Phase C step 4 (MANDATORY)**: `contextatlas doctor` — final
     verification; atlas.has_symbols PASS required
-  - Phase C step 5 runs no command: it tells the user to stop the
-    MCP server, delete the local cache file and restart or reconnect
-    it so the refresh is served
+  - Phase C step 5 runs no command: it tells the user how the MCP
+    server picks up the refresh (automatic with `atlas.committed:
+    true`; a cache reset with `false`)
 
 The `Bash(contextatlas:*)` allowlist covers all five invocations.
 Bundled helper scripts deferred to v0.8+ per v0.7 ship scope.
