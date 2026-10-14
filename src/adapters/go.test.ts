@@ -498,9 +498,6 @@ describe("GoAdapter — integration against fixture (gopls v0.21.1+)", () => {
 
 import { lspChecks } from "../doctor/checks/lsp.js";
 import type { CheckContext } from "../doctor/types.js";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { join as pathJoin } from "node:path";
 
 describe("doctor deep health check via Go adapter (fixtures/go; gopls regression coverage)", () => {
   beforeAll(() => enrichGoPath());

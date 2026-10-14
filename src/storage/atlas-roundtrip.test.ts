@@ -37,7 +37,6 @@ describe("main repo atlas round-trip canary", () => {
       // Vitest doesn't expose a skip primitive from inside an
       // `it`, so we exit early with an informative log instead.
       // The test passes trivially; the signal lives in the logs.
-      // eslint-disable-next-line no-console
       console.log(
         `atlas-roundtrip: skipping, ${MAIN_REPO_ATLAS} not present`,
       );

@@ -28,8 +28,6 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { EXTRACTION_KEYS, loadConfig, TOP_LEVEL_KEYS } from "./parser.js";
 
 const FIXTURE_DIR = pathResolve("test/fixtures/config");
-const MINIMAL = pathJoin(FIXTURE_DIR, "minimal.yml");
-const FULL = pathJoin(FIXTURE_DIR, "full.yml");
 
 describe("loadConfig — happy paths", () => {
   it("accepts a minimal config and fills in defaults", () => {

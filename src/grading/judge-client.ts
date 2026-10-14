@@ -252,7 +252,6 @@ export function createJudgeClient(
     model: ModelId,
   ): Promise<{ text: string; usage: UsageInfo }> {
     let attempt = 0;
-    // eslint-disable-next-line no-constant-condition
     while (true) {
       try {
         const response = await anthropic.messages.create(

@@ -185,7 +185,6 @@ export function createExtractionClient(
     async extract(documentBody: string): Promise<ExtractionCallResult> {
       const prompt = EXTRACTION_PROMPT + documentBody + "\n---\n";
       let attempt = 0;
-      // eslint-disable-next-line no-constant-condition
       while (true) {
         try {
           // NOTE per ADR-02 / prompt.ts: no `thinking` parameter.
