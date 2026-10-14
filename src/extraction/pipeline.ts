@@ -69,6 +69,7 @@ import {
   deleteClaimsBySourcePath,
   deleteSourceSha,
   listSourceShas,
+  setSourceSha,
 } from "../storage/claims.js";
 import type { DatabaseInstance } from "../storage/db.js";
 import { upsertSymbols } from "../storage/symbols.js";
@@ -89,7 +90,12 @@ import {
   staleDocstringKeys,
   type ExtractionPlan,
 } from "./extraction-plan.js";
-import { diffShas, walkProseFiles, walkSourceFiles } from "./file-walker.js";
+import {
+  diffShas,
+  migrateLegacyShaKeys,
+  walkProseFiles,
+  walkSourceFiles,
+} from "./file-walker.js";
 import { DEFAULT_COMMIT_LIMIT, extractGitSignal } from "./git-extractor.js";
 import type {
   ExtractionPipelineDeps,
@@ -217,6 +223,14 @@ export async function runExtractionPipeline(
     commit: Object.keys(baseline.commit).length,
   });
 
+  // --- Stage 1c: line-ending key migration (v1.2 Phase 3, F-9) --------
+  // A prose key holding a raw-bytes or other-line-ending hash of the
+  // file's current content is rewritten to the normalized hash, so a
+  // CRLF/LF flip (or a key from before v1.2 Phase 3) is not a paid
+  // re-extraction. Docstring keys migrate after the Stage 3 walk.
+  const setKey = (relPath: string, sha: string): void => setSourceSha(db, relPath, sha);
+  const lineEndingKeys = migrateLegacyShaKeys(proseFiles, baseline.prose, setKey);
+
   // --- Stage 2: SHA diff (prose stream only) ---------------------------
   // `skipShaDiff` (from `contextatlas index --full`, ADR-12) rewrites
   // every prose file into `changed` so the extraction phase treats
@@ -250,6 +264,12 @@ export async function runExtractionPipeline(
   const excludePatterns = computeExcludePatterns(deps.config);
   const sourceFiles = walkSourceFiles(repoRoot, extensions, excludePatterns);
   const inventory = await buildSymbolInventory(adapters, sourceFiles);
+  lineEndingKeys.push(...migrateLegacyShaKeys(sourceFiles, baseline.docstring, setKey));
+  if (lineEndingKeys.length > 0) {
+    log.info("pipeline: migrated line-ending keys to normalized SHAs", {
+      count: lineEndingKeys.length,
+    });
+  }
   log.info("pipeline: symbol inventory built", {
     sourceFiles: sourceFiles.length,
     symbols: inventory.allSymbols.length,
@@ -492,7 +512,7 @@ export async function runExtractionPipeline(
   // Git state advancing counts as a modification: the committed atlas
   // carries `extracted_at_sha` + `git_commits`, so a new HEAD SHA means
   // the atlas is out of date even if no prose/source changed. A prune,
-  // a docstring-source deletion, a commit-key migration, a stored
+  // a docstring-source deletion, a commit-key or line-ending key migration, a stored
   // docstring file and a keyed commit all change the exported symbols,
   // claims or keys, so each counts too; a run that changed nothing
   // leaves atlas.json byte-identical. A committed atlas with no
@@ -506,6 +526,7 @@ export async function runExtractionPipeline(
     prune.symbolsPruned > 0 ||
     staleDocstring.length > 0 ||
     commitKeys.shasNormalized > 0 ||
+    lineEndingKeys.length > 0 ||
     (docstring?.filesStored ?? 0) > 0 ||
     (commit?.commitsKeyed ?? 0) > 0;
   let atlasExported = false;
@@ -567,6 +588,7 @@ export async function runExtractionPipeline(
       plan.commit?.status === "planned" ? plan.commit.skippedIdempotent : 0,
     commitClaimsWritten: commit?.claimsWritten ?? 0,
     commitKeysMigrated: commitKeys.shasNormalized,
+    lineEndingKeysMigrated: lineEndingKeys.length,
     failedStreams,
   };
 }

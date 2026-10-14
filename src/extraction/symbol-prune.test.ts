@@ -138,8 +138,8 @@ describe("coverageFromInventory", () => {
     const cov = coverageFromInventory({
       repoRoot: "/nonexistent-root",
       sourceFiles: [
-        { absPath: "/x/src/a.ts", relPath: "src/a.ts", sha: "1" },
-        { absPath: "/x/src/b.ts", relPath: "src/b.ts", sha: "2" },
+        { absPath: "/x/src/a.ts", relPath: "src/a.ts", sha: "1", legacyShas: [] },
+        { absPath: "/x/src/b.ts", relPath: "src/b.ts", sha: "2", legacyShas: [] },
       ],
       inventory: {
         byName: new Map(),

@@ -238,7 +238,7 @@ describe("plannedCallCount", () => {
     const plan: ExtractionPlan = {
       streams: new Set(["adr", "docstring", "commit"]),
       prose: [
-        { absPath: "/r/a.md", relPath: "a.md", sha: "1", bucket: "adr", format: "md" },
+        { absPath: "/r/a.md", relPath: "a.md", sha: "1", legacyShas: [], bucket: "adr", format: "md" },
       ],
       docstring: { files: [], filesUnchanged: 0, calls: 4 },
       commit: { status: "planned", pending: [{ sha: "s", date: "d", author: "a", subject: "x", body: "" }], filtered: 1, skippedIdempotent: 0 },

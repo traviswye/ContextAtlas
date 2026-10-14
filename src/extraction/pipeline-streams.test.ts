@@ -16,6 +16,7 @@
  */
 
 import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import {
   existsSync,
   mkdirSync,
@@ -350,6 +351,43 @@ describe("runExtractionPipeline — v1.2 Phase 2 streams", () => {
       expect(r3.docstringFilesUnchanged).toBe(1);
       expect(claimTexts()).toEqual(["bar v2", "foo v2"]);
       expect(listSourceShas(db)["src/a.ts"]).toBe(computeFileSha(pathJoin(tmp, "src", "a.ts")));
+    });
+
+    it("F-9: a line-ending flip is not a change, and raw-bytes keys from before v1.2 Phase 3 migrate without a call", async () => {
+      write("docs/adr/ADR-01.md", "# ADR\r\nRoutes stay pure.\r\n");
+      write("src/a.ts", "export function Foo() {}\r\n");
+      const Foo = tsSym("src/a.ts", "Foo");
+      const adapter = streamAdapter(tmp, { "src/a.ts": [Foo] }, { [Foo.id]: "Foo doc." });
+      await run(adapter, recordingClient(() => oneClaim("c")).client);
+      const normalized = listSourceShas(db);
+
+      // The checkout flips both files to LF: nothing to extract or migrate.
+      write("docs/adr/ADR-01.md", "# ADR\nRoutes stay pure.\n");
+      write("src/a.ts", "export function Foo() {}\n");
+      freshDb();
+      const flip = await run(adapter, recordingClient(() => "throw").client);
+      expect(flip.apiCalls).toBe(0);
+      expect(flip.lineEndingKeysMigrated).toBe(0);
+      expect(listSourceShas(db)).toEqual(normalized);
+
+      // An atlas keyed by raw CRLF bytes (pre-Phase 3) on an LF checkout.
+      const atlas = readAtlas();
+      const crlfSha = (s: string) => createHash("sha256").update(s).digest("hex");
+      atlas.source_shas["docs/adr/ADR-01.md"] = crlfSha("# ADR\r\nRoutes stay pure.\r\n");
+      atlas.source_shas["src/a.ts"] = crlfSha("export function Foo() {}\r\n");
+      writeFileSync(atlasPath(), JSON.stringify(atlas, null, 2) + "\n");
+      freshDb();
+      const migrated = await run(adapter, recordingClient(() => "throw").client);
+      expect(migrated.apiCalls).toBe(0);
+      expect(migrated.lineEndingKeysMigrated).toBe(2);
+      expect(migrated.atlasExported).toBe(true);
+      expect(readAtlas().source_shas).toEqual(normalized);
+      expect(claimTexts()).toEqual(["c", "c"]);
+
+      freshDb();
+      const again = await run(adapter, recordingClient(() => "throw").client);
+      expect(again.lineEndingKeysMigrated).toBe(0);
+      expect(again.atlasExported).toBe(false);
     });
 
     it("a file whose listSymbols failed is neither extracted nor re-keyed", async () => {

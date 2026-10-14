@@ -317,6 +317,11 @@ export interface ExtractionPipelineResult {
   /** Commits migrated from the legacy bare-sha key form (F-5, Stage 0.5). */
   commitKeysMigrated: number;
   /**
+   * Prose and docstring keys rewritten from a raw-bytes or other
+   * line-ending hash to the normalized SHA (F-9, v1.2 Phase 3).
+   */
+  lineEndingKeysMigrated: number;
+  /**
    * Docstring / commit streams in which every attempted call failed
    * (L-10 ii). Not a summary key: `contextatlas index` exits 1 on it.
    */

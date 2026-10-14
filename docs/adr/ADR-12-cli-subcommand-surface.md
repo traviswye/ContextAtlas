@@ -1414,3 +1414,43 @@ simplification (`aae41d4`):
   naming convention under `adrs.path`, and the config-root
   `docs.include` reading in the ADR-08 layout). Replaced by walk
   membership (F1).
+
+## Amendment (2026-10-14, v1.2 Phase 3): line-ending-stable SHAs, `resolve-symbols` excludes
+
+Lead decisions L-16 and L-17 (`docs/cycles/v1_2/v1.2-SCOPE.md` §5),
+taken at Phase 3 entry because Tier 0 (this phase) and the git hooks
+(Phase 5) run `index` on routine git operations.
+
+### Decision
+
+**1. File SHAs ignore line endings (F-9, L-17).** `computeFileSha`
+hashes the file with CRLF normalized to LF. Under
+`core.autocrlf=true` a checkout, stash or fresh clone flips line
+endings without changing content, and a raw-bytes hash made each flip
+a paid re-extraction. A lone CR is kept. Every walked prose and
+source file also carries `legacyShas`: the raw-bytes hash and the
+all-CRLF hash, when they differ from the normalized one. They cover
+keys written before this amendment and keys written on a checkout
+with the other line endings.
+
+**2. Legacy keys migrate without a model call.** Stage 1c (prose
+keys, after the baseline split) and the end of Stage 3 (docstring
+keys, after the source walk) rewrite a baseline key whose value is
+one of its file's `legacyShas` to the normalized SHA. The SHA-diff
+gates downstream then see the file as unchanged. A migration counts
+as a modification (Stage 7), so the new keys reach `atlas.json`; the
+next run is a no-op. Summary key `line_ending_keys_migrated` is
+appended after `commit_keys_migrated` (additive-keys contract).
+Claims keep the `source_sha` they were extracted with. Symbol
+`file_sha` values of CRLF files change once, with the next export.
+
+**3. Skill parity.** `list-extraction-sources` adds `legacy_shas` to
+ADR and docstring manifest entries (additive; `manifest_version`
+stays "1"). `/index-atlas` treats a baseline key equal to one of them
+as unchanged and writes the key as the entry's `sha` / `file_sha`.
+
+**4. `resolve-symbols` applies the exclude patterns (F-8, L-16).** It
+walks with `computeExcludePatterns(config)`, as `index` and
+`list-extraction-sources` do. Before, the Skill path listed symbols
+from test files that the next CLI `index` pruned (Phase 1 prune rule
+4), so the two paths churned `atlas.json`.

@@ -55,7 +55,7 @@ function sym(
 }
 
 function srcFile(relPath: string, sha = "sha-" + relPath): SourceFile {
-  return { absPath: "/tmp/" + relPath, relPath, sha };
+  return { absPath: "/tmp/" + relPath, relPath, sha, legacyShas: [] };
 }
 
 describe("buildSymbolInventory", () => {

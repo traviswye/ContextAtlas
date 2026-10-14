@@ -32,6 +32,8 @@ export interface ProseFile {
   absPath: string;
   relPath: string;
   sha: string;
+  /** Line-ending variants of `sha` an older key may hold (F-9); see `computeFileShas`. */
+  legacyShas: string[];
   bucket: ProseBucket;
   /**
    * File format inferred from extension. Present on ADR-bucket files
@@ -45,6 +47,8 @@ export interface SourceFile {
   absPath: string;
   relPath: string;
   sha: string;
+  /** Line-ending variants of `sha` an older key may hold (F-9); see `computeFileShas`. */
+  legacyShas: string[];
 }
 
 export interface ShaDiff {
@@ -76,9 +80,82 @@ const SOURCE_EXCLUDE_DIRS = new Set([
 // SHA helpers
 // ---------------------------------------------------------------------------
 
+/**
+ * SHA-256 of a file with CRLF line endings normalized to LF (v1.2
+ * Phase 3, F-9). Under `core.autocrlf=true` a checkout, stash or clone
+ * can flip a file's line endings without changing its content; hashing
+ * raw bytes made each flip a paid re-extraction.
+ */
 export function computeFileSha(absPath: string): string {
-  const content = readFileSync(absPath);
+  return computeFileShas(absPath).sha;
+}
+
+/**
+ * The normalized SHA plus `legacyShas`: the other hashes a key written
+ * by an earlier version, or on a checkout with other line endings, may
+ * hold for the same content — the raw bytes and the all-CRLF form.
+ * `migrateLegacyShaKeys` rewrites such a key to `sha` without
+ * re-extracting. Before v1.2 Phase 3 every key was a raw-bytes hash.
+ */
+export function computeFileShas(absPath: string): { sha: string; legacyShas: string[] } {
+  const raw = readFileSync(absPath);
+  const lf = crlfToLf(raw);
+  const sha = sha256(lf);
+  const legacy = new Set([sha256(raw), sha256(lfToCrlf(lf))]);
+  legacy.delete(sha);
+  return { sha, legacyShas: [...legacy] };
+}
+
+function sha256(content: Buffer): string {
   return createHash("sha256").update(content).digest("hex");
+}
+
+function crlfToLf(content: Buffer): Buffer {
+  if (!content.includes(0x0d)) return content;
+  const out = Buffer.allocUnsafe(content.length);
+  let n = 0;
+  for (let i = 0; i < content.length; i++) {
+    if (content[i] === 0x0d && content[i + 1] === 0x0a) continue;
+    out[n++] = content[i] as number;
+  }
+  return out.subarray(0, n);
+}
+
+function lfToCrlf(lf: Buffer): Buffer {
+  let lines = 0;
+  for (const byte of lf) if (byte === 0x0a) lines++;
+  if (lines === 0) return lf;
+  const out = Buffer.allocUnsafe(lf.length + lines);
+  let n = 0;
+  for (const byte of lf) {
+    if (byte === 0x0a) out[n++] = 0x0d;
+    out[n++] = byte;
+  }
+  return out;
+}
+
+/**
+ * Rewrite baseline keys that hold a legacy line-ending hash of their
+ * file's current content (`legacyShas`) to the normalized `sha`, in
+ * `baseline` and through `setKey`, so the SHA-diff gates downstream see
+ * the file as unchanged (v1.2 Phase 3, F-9). Returns the paths
+ * rewritten.
+ */
+export function migrateLegacyShaKeys(
+  files: readonly { relPath: string; sha: string; legacyShas: readonly string[] }[],
+  baseline: Record<string, string>,
+  setKey: (relPath: string, sha: string) => void,
+): string[] {
+  const migrated: string[] = [];
+  for (const file of files) {
+    const stored = baseline[file.relPath];
+    if (stored === undefined || stored === file.sha) continue;
+    if (!file.legacyShas.includes(stored)) continue;
+    baseline[file.relPath] = file.sha;
+    setKey(file.relPath, file.sha);
+    migrated.push(file.relPath);
+  }
+  return migrated;
 }
 
 export function diffShas(
@@ -158,7 +235,7 @@ export function walkProseFiles(
     out.push({
       absPath: adrFile.absPath,
       relPath: proseRelPath(adrFile.absPath, absSourceRoot, adrAbsDir),
-      sha: computeFileSha(adrFile.absPath),
+      ...computeFileShas(adrFile.absPath),
       bucket: "adr",
       format: adrFile.format,
     });
@@ -182,7 +259,7 @@ export function walkProseFiles(
       out.push({
         absPath,
         relPath: proseRelPath(absPath, absSourceRoot, absConfigRoot),
-        sha: computeFileSha(absPath),
+        ...computeFileShas(absPath),
         bucket: "doc",
       });
     }
@@ -286,7 +363,7 @@ export function walkSourceFiles(
           out.push({
             absPath: full,
             relPath,
-            sha: computeFileSha(full),
+            ...computeFileShas(full),
           });
         } catch {
           // Skip unreadable files.

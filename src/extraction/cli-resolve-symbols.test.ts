@@ -233,6 +233,36 @@ describe("runResolveSymbolsSubcommand (v0.7 Step 2.3.a.1)", () => {
   );
 
   it(
+    "F-8: skips files matching the exclude patterns, as `contextatlas index` does",
+    async () => {
+      writeFileSync(
+        pathJoin(tmp, "sample.test.ts"),
+        "export function onlyInTests(): number {\n  return 1;\n}\n",
+      );
+      writeFileSync(
+        pathJoin(tmp, ".contextatlas", "atlas.json"),
+        JSON.stringify(buildStubAtlas({}), null, 2),
+      );
+      const cap = captureStreams();
+      const result = await runResolveSymbolsSubcommand({
+        configRoot: tmp,
+        configFile: null,
+        writeStdout: cap.writeStdout,
+        writeStderr: cap.writeStderr,
+      });
+
+      expect(result.exitCode).toBe(0);
+      const enriched = JSON.parse(
+        readFileSync(pathJoin(tmp, ".contextatlas", "atlas.json"), "utf8"),
+      ) as AtlasFileV1;
+      const paths = new Set(enriched.symbols.map((s) => s.path));
+      expect(paths.has("sample.ts")).toBe(true);
+      expect(paths.has("sample.test.ts")).toBe(false);
+    },
+    30_000,
+  );
+
+  it(
     "resolves file-path-prefixed candidate via R8 name-form normalization",
     async () => {
       const atlas = buildStubAtlas({ withFilePathPrefixedCandidate: true });

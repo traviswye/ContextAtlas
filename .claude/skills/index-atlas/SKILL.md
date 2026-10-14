@@ -620,9 +620,12 @@ atlas.json (baseline). Phase B dispatches per source per stream:
    - If `baseline.source_shas[adr.path] === adr.sha` (UNCHANGED):
      SKIP extraction; preserved claims with matching
      `source_path === adr.path` carry forward unchanged.
-   - If `baseline.source_shas[adr.path] !== adr.sha` OR adr.path
-     absent from baseline (CHANGED or NEW): EXTRACT via Phase B
-     step 1.
+   - If `baseline.source_shas[adr.path]` is one of `adr.legacy_shas`
+     (UNCHANGED; only the line endings, or the hash form of an older
+     version, differ): SKIP extraction as above, and write the key as
+     `adr.path` → `adr.sha`.
+   - Otherwise, or when adr.path is absent from baseline (CHANGED or
+     NEW): EXTRACT via Phase B step 1.
 
 2. **Stream B (docstrings)** — for each `docstring` in
    manifest.sources.docstrings:
@@ -630,8 +633,11 @@ atlas.json (baseline). Phase B dispatches per source per stream:
      docstring.file_sha` (UNCHANGED file): SKIP extraction;
      preserved claims with matching
      `source_path === docstring.source_path` carry forward.
-   - If `baseline.source_shas[docstring.source_path] !==
-     docstring.file_sha` OR source_path absent from baseline
+   - If `baseline.source_shas[docstring.source_path]` is one of
+     `docstring.legacy_shas` (UNCHANGED file; line endings only):
+     SKIP extraction as above, and write the key as
+     `docstring.source_path` → `docstring.file_sha`.
+   - Otherwise, or when source_path is absent from baseline
      (CHANGED or NEW file): EXTRACT via Phase B step 2 for ALL
      docstring entries from that file.
    - File-granularity SHA-diff mirrors the CLI docstring stream's

@@ -619,6 +619,8 @@ function printSummary(
       commits_skipped: result.commitsSkipped,
       commit_claims_written: result.commitClaimsWritten,
       commit_keys_migrated: result.commitKeysMigrated,
+      // v1.2 Phase 3 — appended per the ADR-12 additive-keys contract.
+      line_ending_keys_migrated: result.lineEndingKeysMigrated,
     };
     writeStdout(JSON.stringify(payload, null, 2) + "\n");
     return;
@@ -657,6 +659,8 @@ function printSummary(
     `commits_skipped=${result.commitsSkipped}`,
     `commit_claims_written=${result.commitClaimsWritten}`,
     `commit_keys_migrated=${result.commitKeysMigrated}`,
+    // v1.2 Phase 3 — appended per the ADR-12 additive-keys contract.
+    `line_ending_keys_migrated=${result.lineEndingKeysMigrated}`,
   ];
   writeStdout(lines.join("\n") + "\n");
 }

@@ -69,6 +69,7 @@ export class ClaudeCodeOnlyExtractor implements Extractor {
         commitsSkipped: 0,
         commitClaimsWritten: 0,
         commitKeysMigrated: 0,
+        lineEndingKeysMigrated: 0,
         failedStreams: [],
       },
       costModel: this.costModel,

@@ -134,6 +134,12 @@ export interface AdrSource {
   source_type: "adr";
   path: string;
   sha: string;
+  /**
+   * Other line-ending hashes of the same content (F-9, v1.2 Phase 3;
+   * additive). A baseline key holding one of them is unchanged; the
+   * Skill rewrites it to `sha`.
+   */
+  legacy_shas: string[];
   content: string;
 }
 
@@ -154,6 +160,8 @@ export interface DocstringSource {
   symbol_kind: string;
   source_path: string;
   file_sha: string;
+  /** As `AdrSource.legacy_shas`, for the source file (additive). */
+  legacy_shas: string[];
   line: number;
   docstring: string;
 }
@@ -359,6 +367,7 @@ async function collectAdrSources(
         source_type: "adr",
         path: adr.relPath,
         sha: adr.sha,
+        legacy_shas: adr.legacyShas,
         content,
       });
     } catch (err) {
@@ -394,6 +403,7 @@ async function collectDocstringSources(
     excludePatterns,
   );
   const inventory = await buildSymbolInventory(adapters, sourceFiles);
+  const legacyShasByPath = new Map(sourceFiles.map((f) => [f.relPath, f.legacyShas]));
 
   const docstrings: DocstringSource[] = [];
   // Group the inventory's symbols by file so each file's getDocstring
@@ -431,6 +441,7 @@ async function collectDocstringSources(
         symbol_kind: sym.kind,
         source_path: sym.path,
         file_sha: sym.fileSha ?? "",
+        legacy_shas: legacyShasByPath.get(sym.path) ?? [],
         line: sym.line,
         docstring,
       });

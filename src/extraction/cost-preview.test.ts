@@ -62,7 +62,7 @@ describe("buildCostPreview + formatCostPreview", () => {
     writeFileSync(adr, "---\nid: ADR-01\n---\nbody text\n");
     return {
       streams: new Set(["adr", "docstring"]),
-      prose: [{ absPath: adr, relPath: "docs/adr/ADR-01.md", sha: "1", bucket: "adr", format: "md" }],
+      prose: [{ absPath: adr, relPath: "docs/adr/ADR-01.md", sha: "1", legacyShas: [], bucket: "adr", format: "md" }],
       docstring: {
         files: [
           {

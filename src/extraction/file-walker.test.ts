@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import {
   mkdirSync,
   mkdtempSync,
@@ -11,7 +12,9 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import {
   computeFileSha,
+  computeFileShas,
   diffShas,
+  migrateLegacyShaKeys,
   walkProseFiles,
   walkSourceFiles,
   type ProseFile,
@@ -46,11 +49,65 @@ describe("computeFileSha", () => {
   });
 });
 
+describe("computeFileShas (F-9)", () => {
+  let dir: string;
+  beforeEach(() => {
+    dir = mkdtempSync(pathJoin(tmpdir(), "ca-shas-"));
+  });
+  afterEach(() => {
+    rmSync(dir, { recursive: true, force: true });
+  });
+  const hash = (s: string) => createHash("sha256").update(s).digest("hex");
+  const at = (body: string) => {
+    const p = pathJoin(dir, "f.md");
+    writeFileSync(p, body);
+    return computeFileShas(p);
+  };
+
+  it("hashes CRLF and LF forms of the same text identically, as the LF hash", () => {
+    const lf = at("a\nb\n");
+    const crlf = at("a\r\nb\r\n");
+    expect(crlf.sha).toBe(lf.sha);
+    expect(lf.sha).toBe(hash("a\nb\n"));
+  });
+
+  it("lists the raw and all-CRLF hashes as legacy, never the normalized one", () => {
+    expect(at("a\nb\n").legacyShas).toEqual([hash("a\r\nb\r\n")]);
+    // Mixed endings: the raw bytes are a third form.
+    expect(at("a\r\nb\n").legacyShas.sort()).toEqual(
+      [hash("a\r\nb\n"), hash("a\r\nb\r\n")].sort(),
+    );
+    expect(at("no newline").legacyShas).toEqual([]);
+  });
+
+  it("keeps a lone CR (not part of CRLF) in the content", () => {
+    expect(at("a\rb").sha).toBe(hash("a\rb"));
+  });
+});
+
+describe("migrateLegacyShaKeys (F-9)", () => {
+  it("rewrites only keys that hold a legacy hash of the current content", () => {
+    const files = [
+      { relPath: "a.md", sha: "new-a", legacyShas: ["raw-a"] },
+      { relPath: "b.md", sha: "new-b", legacyShas: ["raw-b"] },
+      { relPath: "c.md", sha: "new-c", legacyShas: [] },
+      { relPath: "d.md", sha: "new-d", legacyShas: ["raw-d"] },
+    ];
+    const baseline: Record<string, string> = { "a.md": "raw-a", "b.md": "other", "c.md": "new-c" };
+    const writes: [string, string][] = [];
+    const migrated = migrateLegacyShaKeys(files, baseline, (p, s) => writes.push([p, s]));
+    expect(migrated).toEqual(["a.md"]);
+    expect(writes).toEqual([["a.md", "new-a"]]);
+    expect(baseline).toEqual({ "a.md": "new-a", "b.md": "other", "c.md": "new-c" });
+  });
+});
+
 describe("diffShas", () => {
   const f = (relPath: string, sha: string): ProseFile => ({
     absPath: `/irrelevant/${relPath}`,
     relPath,
     sha,
+    legacyShas: [],
     bucket: "adr",
   });
 

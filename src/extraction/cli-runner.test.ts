@@ -1027,6 +1027,8 @@ describe("runIndexSubcommand (ADR-12)", () => {
     "commit_claims_written",
     "commit_keys_migrated",
   ];
+  // v1.2 Phase 3 — appended after the Phase 2 keys.
+  const PHASE3_KEYS = ["line_ending_keys_migrated"];
 
   it("key=value summary appends the v1.2 Phase 1 then Phase 2 keys after the existing keys (order unchanged)", async () => {
     const stdout = captureStdout();
@@ -1045,7 +1047,7 @@ describe("runIndexSubcommand (ADR-12)", () => {
       .trim()
       .split(/\r?\n/)
       .map((line) => line.split("=")[0]);
-    expect(keys).toEqual([...V01_V03_KEYS, ...PHASE1_KEYS, ...PHASE2_KEYS]);
+    expect(keys).toEqual([...V01_V03_KEYS, ...PHASE1_KEYS, ...PHASE2_KEYS, ...PHASE3_KEYS]);
     expect(stdout.joined()).toMatch(/symbols_pruned=0/);
     expect(stdout.joined()).toMatch(/claims_orphaned=0/);
     // Default config: all three streams, canonical order.
@@ -1078,6 +1080,7 @@ describe("runIndexSubcommand (ADR-12)", () => {
       "docstring_sources_deleted",
       "unverified_symbol_files",
       ...PHASE2_KEYS,
+      ...PHASE3_KEYS,
     ]);
     expect(parsed.orphaned_claims_by_source).toEqual([]);
     expect(parsed.streams_enabled).toEqual(["adr", "docstring", "commit"]);

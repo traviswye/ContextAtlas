@@ -29,6 +29,7 @@ import { existsSync, mkdirSync, readFileSync } from "node:fs";
 import { dirname, resolve as pathResolve } from "node:path";
 
 import { createAdapter } from "../adapters/registry.js";
+import { computeExcludePatterns } from "../config/exclude-patterns.js";
 import { loadConfig } from "../config/parser.js";
 import { log } from "../mcp/logger.js";
 import { writeAtlasFileAtomic } from "../storage/atlas-exporter.js";
@@ -226,7 +227,15 @@ export async function runResolveSymbolsSubcommand(
     for (const adapter of adapters.values()) {
       for (const ext of adapter.extensions) allExtensions.add(ext);
     }
-    const sourceFiles = walkSourceFiles(sourceRoot, [...allExtensions]);
+    // The same exclude patterns as `contextatlas index` and
+    // list-extraction-sources (v1.2 Phase 3, F-8): without them the
+    // Skill path listed test-file symbols that the next CLI `index`
+    // pruned again, churning atlas.json between the two paths.
+    const sourceFiles = walkSourceFiles(
+      sourceRoot,
+      [...allExtensions],
+      computeExcludePatterns(config),
+    );
 
     const inventory: SymbolInventoryWithCoverage = await buildSymbolInventory(
       adapters,
