@@ -14,6 +14,7 @@
  * frontmatter, the raw docstring, the commit subject + body.
  */
 
+import { priceOf } from "../config/models.js";
 import { readFileSync } from "node:fs";
 
 import { disabledExtractionStreams } from "../config/streams.js";
@@ -24,8 +25,6 @@ import type { ExtractionPlan } from "./extraction-plan.js";
 import {
   computeCostUsd,
   estimateTokensFromChars,
-  OPUS_47_INPUT_USD_PER_MTOKEN,
-  OPUS_47_OUTPUT_USD_PER_MTOKEN,
 } from "./pricing.js";
 import {
   EXTRACTION_MODEL,
@@ -92,6 +91,7 @@ export function estimateStreamCost(
   stream: ExtractionStream,
   units: number,
   bodies: readonly string[],
+  model: string = EXTRACTION_MODEL,
 ): StreamCostEstimate {
   let inputTokens = 0;
   for (const body of bodies) {
@@ -109,13 +109,13 @@ export function estimateStreamCost(
     inputTokens,
     outputTokensLow,
     outputTokensHigh,
-    costLowUsd: computeCostUsd({ inputTokens, outputTokens: outputTokensLow }),
-    costHighUsd: computeCostUsd({ inputTokens, outputTokens: outputTokensHigh }),
+    costLowUsd: computeCostUsd({ inputTokens, outputTokens: outputTokensLow }, model),
+    costHighUsd: computeCostUsd({ inputTokens, outputTokens: outputTokensHigh }, model),
   };
 }
 
 /** Build the preview for a plan (reads the planned prose files). */
-export function buildCostPreview(plan: ExtractionPlan): CostPreview {
+export function buildCostPreview(plan: ExtractionPlan, model: string = EXTRACTION_MODEL): CostPreview {
   const streams: StreamCostEstimate[] = [];
   const skipped: Array<{ stream: ExtractionStream; reason: string }> = [];
 
@@ -151,7 +151,7 @@ export function buildCostPreview(plan: ExtractionPlan): CostPreview {
   const sum = (pick: (s: StreamCostEstimate) => number) =>
     streams.reduce((n, s) => n + pick(s), 0);
   return {
-    model: EXTRACTION_MODEL,
+    model,
     streams,
     disabled: disabledExtractionStreams(plan.streams),
     skipped,
@@ -181,8 +181,8 @@ export function formatCostPreview(preview: CostPreview): string {
       `estimated $${preview.costLowUsd.toFixed(2)} to $${preview.costHighUsd.toFixed(2)}`,
   );
   lines.push(
-    `  pricing: ${preview.model} at $${OPUS_47_INPUT_USD_PER_MTOKEN} input / ` +
-      `$${OPUS_47_OUTPUT_USD_PER_MTOKEN} output per million tokens; the ` +
+    `  pricing: ${preview.model} at $${priceOf(preview.model).inputUsdPerMTok} input / ` +
+      `$${priceOf(preview.model).outputUsdPerMTok} output per million tokens; the ` +
       "output range is a per-call prior, and cost_usd in the summary is the actual",
   );
   if (preview.disabled.length > 0) {

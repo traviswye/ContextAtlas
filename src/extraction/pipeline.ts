@@ -433,10 +433,10 @@ export async function runExtractionPipeline(
     pendingCommits: plan.commit?.status === "planned" ? plan.commit.pending.length : 0,
   });
   if (deps.onCostPreview && plannedCallCount(plan) > 0) {
-    deps.onCostPreview(buildCostPreview(plan));
+    deps.onCostPreview(buildCostPreview(plan, deps.extractionModel));
   }
 
-  const cost = new RunCostTracker(deps.budgetWarnUsd);
+  const cost = new RunCostTracker(deps.budgetWarnUsd, deps.extractionModel);
 
   // Checkpoint exports (committed only): each stored unit may export
   // atlas.json (at most every `checkpointIntervalMs`), and every stream
@@ -450,6 +450,7 @@ export async function runExtractionPipeline(
     contextatlasCommitSha: deps.contextatlasCommitSha,
     extractedAtSha: priorHeadSha,
     intervalMs: deps.checkpointIntervalMs ?? DEFAULT_CHECKPOINT_INTERVAL_MS,
+    ...(deps.extractionModel !== undefined ? { extractionModel: deps.extractionModel } : {}),
   });
 
   // --- Stage 6: prose stream (`adr`) -----------------------------------
@@ -640,6 +641,7 @@ export async function runExtractionPipeline(
       contextatlasVersion: deps.contextatlasVersion,
       contextatlasCommitSha: deps.contextatlasCommitSha,
       headSha: gitResult.headSha,
+      ...(deps.extractionModel !== undefined ? { extractionModel: deps.extractionModel } : {}),
     });
     // Logged here, not in finalizeAtlas, so a checkpoint logs only its
     // own line (ADR-12 Decision 10).

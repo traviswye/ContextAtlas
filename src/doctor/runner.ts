@@ -26,7 +26,7 @@ import { extractionChecks } from "./checks/extraction.js";
 import { lspChecks } from "./checks/lsp.js";
 import { promptArtifactChecks } from "./checks/prompts.js";
 import { shaChecks } from "./checks/sha.js";
-import { skillFreshnessChecks } from "./checks/skills.js";
+import { skillFreshnessChecks, skillModelChecks } from "./checks/skills.js";
 import { stateDetectionChecks } from "./checks/state-detection.js";
 import { formatJson } from "./output/json.js";
 import { formatText } from "./output/text.js";
@@ -145,7 +145,7 @@ export async function collectChecks(
     });
     checks.push(...extractionChecks(ctx));
     checks.push(...promptArtifactChecks(ctx));
-    checks.push(...skillFreshnessChecks(ctx));
+    checks.push(...skillFreshnessChecks(ctx), ...skillModelChecks(ctx));
     // H5 state-detection: filesystem-level dimensions run in both
     // limited + normal mode (graceful null-config handling per Q3.3.2 +
     // Q3.3.5 fallback patterns).
@@ -160,7 +160,7 @@ export async function collectChecks(
     }
     checks.push(...extractionChecks(ctx));
     checks.push(...promptArtifactChecks(ctx));
-    checks.push(...skillFreshnessChecks(ctx));
+    checks.push(...skillFreshnessChecks(ctx), ...skillModelChecks(ctx));
     checks.push(...(await stateDetectionChecks(ctx)));
   }
 

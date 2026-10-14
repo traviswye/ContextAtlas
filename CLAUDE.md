@@ -61,6 +61,12 @@ These are decisions already made. Do not relitigate them.
   DESIGN.md, and bumping the version.
 - **Extraction model:** `claude-opus-4-7` at default effort. Not extended
   thinking. See DESIGN.md section on extraction pipeline.
+  (v1.2 Phase 7, 2026-10-14: ADR-02 now freezes the prompt plus a
+  *calibrated model set* (`src/config/models.ts`). `claude-opus-4-7`
+  stays the default and is, so far, the only calibrated model. Adding
+  one needs calibration evidence under
+  `docs/adr/incremental-model-calibration/`; do not add a model to the
+  allowlist without it.)
 - **Pre-drafted extraction prompt:** `src/extraction/prompt.ts` holds
   the `EXTRACTION_PROMPT` constant — validated on two empirical bases:
   (1) pre-scaffolding ADR validation on 12 production-grade documents

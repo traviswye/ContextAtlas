@@ -105,6 +105,12 @@ export interface ExtractionPipelineDeps {
    */
   noExport?: boolean;
   /**
+   * The model `anthropicClient` calls (v1.2 Phase 7; `index.model`,
+   * calibrated). Used for cost and recorded as
+   * `generator.extraction_model`. Default EXTRACTION_MODEL.
+   */
+  extractionModel?: string;
+  /**
    * Docstring digest store (v1.2 Phase 6; the CLI passes the
    * `.contextatlas/local/` one). Enables the docstring-unchanged filter
    * and is updated by the run; omitted, the SHA gate alone decides.

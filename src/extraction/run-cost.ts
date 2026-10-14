@@ -27,7 +27,10 @@ export class RunCostTracker {
    *   exceeds it, one warning is logged for the whole run. Not a cap:
    *   the run continues.
    */
-  constructor(private readonly budgetWarnUsd: number | undefined) {}
+  constructor(
+    private readonly budgetWarnUsd: number | undefined,
+    private readonly model?: string,
+  ) {}
 
   /** Count attempted model calls, including ones that threw. */
   addCalls(n: number): void {
@@ -52,7 +55,7 @@ export class RunCostTracker {
   }
 
   get costUsd(): number {
-    return computeCostUsd(this.total);
+    return computeCostUsd(this.total, this.model);
   }
 
   /**

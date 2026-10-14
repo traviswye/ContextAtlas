@@ -12,6 +12,8 @@
 
 import type { ExtractionStream } from "../types.js";
 
+import { DEFAULT_MODELS } from "./models.js";
+
 export const DEFAULT_DOCS_INCLUDE = [
   "README.md",
   "docs/**/*.md",
@@ -20,7 +22,7 @@ export const DEFAULT_DOCS_INCLUDE = [
 
 export const DEFAULT_GIT_RECENT_COMMITS = 5;
 
-export const DEFAULT_INDEX_MODEL = "claude-opus-4-7";
+export const DEFAULT_INDEX_MODEL = DEFAULT_MODELS.extraction;
 
 export const DEFAULT_ADRS_FORMAT = "markdown-frontmatter" as const;
 

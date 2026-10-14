@@ -21,6 +21,7 @@ import type {
   LanguageCode,
 } from "../types.js";
 import { normalizePath } from "../utils/paths.js";
+import { isCalibrated, uncalibratedModelMessage } from "./models.js";
 import { validateRefresh } from "./refresh.js";
 
 import {
@@ -535,6 +536,9 @@ function validateIndex(
       configPath,
       `Invalid 'index.model': expected non-empty string, got ${describeType(model)}.`,
     );
+  }
+  if (!isCalibrated("extraction", model)) {
+    throw cfgError(configPath, uncalibratedModelMessage("extraction", model, "'index.model'"));
   }
   return { model };
 }

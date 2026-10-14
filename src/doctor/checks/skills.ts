@@ -27,6 +27,7 @@ import { dirname, join as pathJoin, resolve as pathResolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { CANONICAL_SKILL_NAMES } from "../../init/skill-copy.js";
+import { CALIBRATED_MODELS, isCalibrated, type ModelRole } from "../../config/models.js";
 import type { CheckContext, DoctorCheck } from "../types.js";
 
 const CHECK_ID = "extraction.skills_fresh";
@@ -136,6 +137,61 @@ export function skillFreshnessChecks(
       status: "warn",
       message: `Claude Code skills ${parts.join("; ")}`,
       detail: details.join(" "),
+    },
+  ];
+}
+
+/** Installed skills whose `model:` pin must be calibrated, by role (v1.2 Phase 7). */
+const SKILL_MODEL_ROLES: ReadonlyArray<readonly [string, ModelRole]> = [
+  ["index-atlas", "extraction"],
+  ["refresh-atlas", "extraction"],
+  ["generate-adrs", "generation"],
+];
+
+/** The `model:` value of a SKILL.md frontmatter block, or null. */
+export function frontmatterModel(text: string): string | null {
+  const match = /^---\n([\s\S]*?)\n---/.exec(text);
+  if (!match) return null;
+  const line = match[1]!.split("\n").find((l) => /^model:\s*/.test(l));
+  return line ? line.replace(/^model:\s*/, "").trim().replace(/^["']|["']$/g, "") : null;
+}
+
+/**
+ * `extraction.skill_models_calibrated` (v1.2 Phase 7): each installed
+ * extraction / generation skill pins a calibrated model. A skill's
+ * `model:` wins over the session's model and over `claude -p --model`, so
+ * the pin is what Tier 1 and the Skill path run. Missing skills are the
+ * freshness check's concern.
+ */
+export function skillModelChecks(ctx: CheckContext): DoctorCheck[] {
+  const problems: string[] = [];
+  for (const [name, role] of SKILL_MODEL_ROLES) {
+    const text = readNormalized(skillPath(ctx.repoRoot, name));
+    if (text === null) continue;
+    const model = frontmatterModel(text);
+    if (model === null) problems.push(`${name} has no model: pin (it would run on the session's model)`);
+    else if (!isCalibrated(role, model)) problems.push(`${name} pins ${model}, not calibrated for ${role}`);
+  }
+  if (problems.length === 0) {
+    return [
+      {
+        id: "extraction.skill_models_calibrated",
+        category: "extraction",
+        status: "pass",
+        message: "installed skills pin calibrated models",
+      },
+    ];
+  }
+  return [
+    {
+      id: "extraction.skill_models_calibrated",
+      category: "extraction",
+      status: "warn",
+      message: `skill model pins: ${problems.join("; ")}`,
+      detail:
+        `Calibrated models: extraction ${CALIBRATED_MODELS.extraction.join(", ")}; generation ` +
+        `${CALIBRATED_MODELS.generation.join(", ")} (ADR-02 2026-10-14 amendment). Restore the ` +
+        "package's SKILL.md (see extraction.skills_fresh) or set model: to a calibrated one.",
     },
   ];
 }

@@ -26,6 +26,7 @@
  *       printed to stderr)
  */
 
+import { CALIBRATED_MODELS } from "../config/models.js";
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { dirname, join, resolve as pathResolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -426,7 +427,7 @@ function validateAtlasShape(
     }
     if (typeof gen.extraction_model !== "string") {
       errors.push(
-        `\`generator.extraction_model\` missing or not a string. Expected "claude-opus-4-7" for Skill-path atlases.`,
+        `\`generator.extraction_model\` missing or not a string. Expected the model that extracted the atlas (calibrated: ${CALIBRATED_MODELS.extraction.join(", ")}).`,
       );
     }
   }

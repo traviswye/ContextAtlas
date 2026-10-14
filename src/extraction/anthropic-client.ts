@@ -165,6 +165,8 @@ export interface CreateExtractionClientOptions {
   maxBackoffMs?: number;
   /** For tests — inject a fake sleep. Default: real setTimeout. */
   sleep?: (ms: number) => Promise<void>;
+  /** Calibrated extraction model (`index.model`; default EXTRACTION_MODEL). */
+  model?: string;
 }
 
 export function createExtractionClient(
@@ -176,6 +178,7 @@ export function createExtractionClient(
     baseBackoffMs = 1_000,
     maxBackoffMs = 30_000,
     sleep = defaultSleep,
+    model = EXTRACTION_MODEL,
   } = options;
 
   return {
@@ -191,7 +194,7 @@ export function createExtractionClient(
           // disables SDK-internal retries — see module JSDoc.
           const response = await anthropic.messages.create(
             {
-              model: EXTRACTION_MODEL,
+              model,
               max_tokens: EXTRACTION_MAX_TOKENS,
               messages: [{ role: "user", content: prompt }],
             },

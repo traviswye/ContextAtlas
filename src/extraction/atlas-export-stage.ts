@@ -34,6 +34,8 @@ export interface FinalizeAtlasInput {
   contextatlasCommitSha: string | null | undefined;
   /** Git HEAD at extraction time, or null outside a git tree. */
   headSha: string | null;
+  /** The model the run's extraction client called (default EXTRACTION_MODEL). */
+  extractionModel?: string;
 }
 
 /** Update atlas_meta and export; returns whether atlas.json was written. */
@@ -46,7 +48,7 @@ export function finalizeAtlas(
   // called) rather than config.index.model (which is forward-compat
   // config that today isn't consulted by the client). Atlas metadata
   // should reflect what code did, not what config declared.
-  const extractionModel = EXTRACTION_MODEL;
+  const extractionModel = input.extractionModel ?? EXTRACTION_MODEL;
   const contextatlasVer = input.contextatlasVersion ?? "0.0.0";
 
   // Persist ALL generator + staleness fields to atlas_meta. Without
@@ -110,7 +112,8 @@ export interface CheckpointInput extends Omit<FinalizeAtlasInput, "headSha"> {
    * checkpoint keeps it; only Stage 7 stamps the current HEAD.
    */
   extractedAtSha: string | null;
-  /** See {@link DEFAULT_CHECKPOINT_INTERVAL_MS}; 0 exports after every unit. */
+  /** See {@link DEFAULT_CHECKPOINT_INTERVAL_MS  extractionModel?: string;
+}; 0 exports after every unit. */
   intervalMs: number;
   /** Test seam: the clock. Default `Date.now`. */
   now?: () => number;
@@ -153,6 +156,7 @@ export function createCheckpointer(
         contextatlasVersion: input.contextatlasVersion,
         contextatlasCommitSha: input.contextatlasCommitSha,
         headSha: input.extractedAtSha,
+        ...(input.extractionModel !== undefined ? { extractionModel: input.extractionModel } : {}),
       });
       log.info("pipeline: checkpoint: atlas.json holds the work stored so far", {
         unitsSinceLastCheckpoint: pending,

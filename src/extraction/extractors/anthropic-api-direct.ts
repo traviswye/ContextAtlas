@@ -55,7 +55,7 @@ export class AnthropicAPIDirectExtractor implements Extractor {
         authToken: null,
         maxRetries: 0,
       });
-      client = createExtractionClient({ anthropic });
+      client = createExtractionClient({ anthropic, model: context.config.index.model });
     }
 
     const pipelineResult = await runExtractionPipeline({
@@ -67,6 +67,7 @@ export class AnthropicAPIDirectExtractor implements Extractor {
       adapters: context.adapters,
       contextatlasVersion: context.contextatlasVersion,
       contextatlasCommitSha: context.contextatlasCommitSha,
+      extractionModel: context.config.index.model,
       // v1.2 Phase 2: `extraction.streams` (default: all three). The
       // pipeline's own default stays prose-only for library callers.
       streams: resolveExtractionStreams(context.config),

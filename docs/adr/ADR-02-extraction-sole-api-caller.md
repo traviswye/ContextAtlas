@@ -1639,3 +1639,36 @@ historical record per v0.5 + v0.6 + v0.7 inheritance discipline.
   expected to track platform billing. The `index` cost
   preview and `cost_usd` carry no "~3x lower" wording. See the
   CLAUDE.md "Extraction cost framing" correction dated 2026-09-25.
+
+- **2026-10-14** — v1.2 Phase 7: frozen prompt + calibrated model set
+  (Travis, 2026-09-24 scope decision). The invariant that froze the
+  extraction *model* becomes: the prompt texts (`EXTRACTION_PROMPT`,
+  `GENERATE_ADRS_PROMPT`), severity taxonomy and output schema stay
+  frozen, and each model role may use only a model in its calibrated
+  allowlist (`src/config/models.ts`).
+  - Roles: `extraction` and `generation`. Both allowlists hold only
+    `claude-opus-4-7` today, which stays the default.
+  - A model joins a role only with Step-9-style evidence against the
+    frozen prompt (JSON parse, severity discipline, claim agreement with
+    the baseline), archived under `docs/adr/incremental-model-calibration/`.
+  - The Tier 1 (`/refresh-atlas`) outcome is decided by D-3. A cheaper
+    model may be admitted for Tier 1 only; Tier 2 (`contextatlas
+    index`, `/index-atlas`) stays on the calibrated baseline unless its
+    own evidence says otherwise.
+  - Selection:
+    - `index.model` (`.contextatlas.yml`) selects the CLI extraction
+      model. The parser rejects any value outside the allowlist, with
+      the calibrated list and the evidence path in the error.
+    - `generator.extraction_model` records the model a run used, and
+      cost uses that model's list price (`MODEL_PRICES`; every
+      allowlisted model needs one).
+    - The Skill paths run on their SKILL.md `model:` pin. A skill's pin
+      wins over the session model and over `claude -p --model` (Phase 7
+      probe, Claude Code 2.1.299), so changing Tier 1's model means
+      shipping a new pin. `contextatlas doctor`
+      (`extraction.skill_models_calibrated`) warns when an installed
+      pin is missing or uncalibrated.
+    - Generation has no config key: it has a single calibrated model.
+  - The `EXTRACTION_MODEL` and `GENERATION_MODEL` constants stay in the
+    frozen prompt files as the defaults; a test pins them to
+    `DEFAULT_MODELS`.

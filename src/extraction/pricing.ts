@@ -16,6 +16,8 @@
  * `prompt.ts`.
  */
 
+import { DEFAULT_MODELS, priceOf } from "../config/models.js";
+
 export const OPUS_47_INPUT_USD_PER_MTOKEN = 5.0;
 export const OPUS_47_OUTPUT_USD_PER_MTOKEN = 25.0;
 
@@ -53,10 +55,11 @@ export function addUsage(a: UsageInfo, b: UsageInfo): UsageInfo {
  * Returns full precision; formatting (e.g., toFixed(2)) is the
  * caller's responsibility.
  */
-export function computeCostUsd(usage: UsageInfo): number {
+export function computeCostUsd(usage: UsageInfo, model: string = DEFAULT_MODELS.extraction): number {
+  const price = priceOf(model);
   return (
-    (usage.inputTokens / 1_000_000) * OPUS_47_INPUT_USD_PER_MTOKEN +
-    (usage.outputTokens / 1_000_000) * OPUS_47_OUTPUT_USD_PER_MTOKEN
+    (usage.inputTokens / 1_000_000) * price.inputUsdPerMTok +
+    (usage.outputTokens / 1_000_000) * price.outputUsdPerMTok
   );
 }
 
