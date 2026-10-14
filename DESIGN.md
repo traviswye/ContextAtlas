@@ -696,7 +696,10 @@ Every `contextatlas index` run:
   failed, or whose language is not configured.
 - **Keeps orphaned claims.** Pruning removes the claim-symbol links; a
   claim left with no link stays in the atlas and is reported as
-  orphaned.
+  orphaned. Since v1.2 Phase 3 a claim with no link is first re-linked
+  from its stored `symbol_candidates` when they resolve in the fresh
+  inventory (a symbol that moved files, or one added after the claim
+  was extracted); no model call (`claims_relinked`).
 
 A run that prunes or deletes anything re-exports `atlas.json`; a run
 that changes nothing leaves it byte-identical. `contextatlas

@@ -1488,6 +1488,21 @@ write either file logs a warning and never fails the run. A disabled
 stream queues nothing. Summary key `pending_sources` is appended after
 `line_ending_keys_migrated`.
 
+
+**8. Orphaned claims re-link from stored candidates.** Stage 6b first
+links every claim that has no `claim_symbols` link and whose stored
+`symbol_candidates` (F-7) resolve in the run's inventory, by the CLI
+streams' exact-name rule (`relinkUnlinkedClaims`, `claim-relink.ts`).
+It covers claims the prune just orphaned whose symbol moved files,
+claims an interrupted run left orphaned in a checkpoint, and claims
+extracted before the symbol they name existed. A re-link counts as a
+modification (Stage 7). Summary key `claims_relinked` is appended
+after `pending_sources`. The orphan report then counts what is left.
+Orphans that do not re-link are not queued: re-extracting an unchanged
+source yields the same candidates, so the call would change nothing,
+and a changed source is already pending. This settles the scope's
+"re-link or queue" item on the re-link side.
+
 ### Consequences
 
 - Tier 0 is free and quick. On this repository it ran in about two

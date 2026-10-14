@@ -668,6 +668,7 @@ function printSummary(
       // v1.2 Phase 3 — appended per the ADR-12 additive-keys contract.
       line_ending_keys_migrated: result.lineEndingKeysMigrated,
       pending_sources: result.pendingUnits.length,
+      claims_relinked: result.claimsRelinked,
     };
     writeStdout(JSON.stringify(payload, null, 2) + "\n");
     return;
@@ -709,6 +710,7 @@ function printSummary(
     // v1.2 Phase 3 — appended per the ADR-12 additive-keys contract.
     `line_ending_keys_migrated=${result.lineEndingKeysMigrated}`,
     `pending_sources=${result.pendingUnits.length}`,
+    `claims_relinked=${result.claimsRelinked}`,
   ];
   writeStdout(lines.join("\n") + "\n");
 }

@@ -82,6 +82,7 @@ import {
   DEFAULT_CHECKPOINT_INTERVAL_MS,
   finalizeAtlas,
 } from "./atlas-export-stage.js";
+import { relinkUnlinkedClaims } from "./claim-relink.js";
 import { buildCostPreview } from "./cost-preview.js";
 import {
   collectPendingUnits,
@@ -540,9 +541,18 @@ export async function runExtractionPipeline(
     hasCommitKey: (sha) => hasCommitKey(db, sha),
   });
 
-  // --- Stage 6b: orphaned-claim report (v1.2 Phase 1) ------------------
-  // Counted after Stages 5-6d so claims those stages deleted or
-  // re-extracted are not reported.
+  // --- Stage 6b: re-link, then the orphaned-claim report ----------------
+  // Re-link (v1.2 Phase 3) every claim with no link whose stored
+  // candidates resolve in the fresh inventory (claim-relink.ts). The
+  // report (v1.2 Phase 1) then counts what is still orphaned, after
+  // Stages 5-6d so claims those stages deleted or re-extracted are not
+  // reported.
+  const claimsRelinked = relinkUnlinkedClaims(db, inventory);
+  if (claimsRelinked > 0) {
+    log.info("pipeline: re-linked claims from their stored symbol candidates", {
+      claimsRelinked,
+    });
+  }
   const orphans = summarizeOrphanedClaims(db, prune.affectedClaimIds);
   warnOrphanedClaims(orphans);
 
@@ -563,6 +573,7 @@ export async function runExtractionPipeline(
     gitChanged ||
     prune.symbolsPruned > 0 ||
     symbolsChanged ||
+    claimsRelinked > 0 ||
     staleDocstring.length > 0 ||
     commitKeys.shasNormalized > 0 ||
     lineEndingKeys.length > 0 ||
@@ -629,6 +640,7 @@ export async function runExtractionPipeline(
     commitKeysMigrated: commitKeys.shasNormalized,
     lineEndingKeysMigrated: lineEndingKeys.length,
     pendingUnits,
+    claimsRelinked,
     failedStreams,
   };
 }

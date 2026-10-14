@@ -258,15 +258,17 @@ export function summarizeOrphanedClaims(
 
 /**
  * Warn about newly orphaned claims, listing their sources. The claims
- * stay in the atlas but no longer reach any symbol bundle; v1.2
- * Phase 3 enqueues these sources for Tier 1 re-extraction.
+ * stay in the atlas but no longer reach any symbol bundle. Stage 6b
+ * re-links those whose stored candidates still resolve before this
+ * runs (claim-relink.ts); the rest have no candidate that resolves.
  */
 export function warnOrphanedClaims(summary: OrphanedClaimsSummary): void {
   if (summary.claimsOrphaned === 0) return;
   log.warn(
     `symbol prune: ${summary.claimsOrphaned} claim(s) lost their last symbol ` +
-      "link and are now orphaned (kept, not deleted). Re-extract their " +
-      "sources to re-attach them.",
+      "link and are now orphaned (kept, not deleted); their stored symbol " +
+      "candidates, if any, name no current symbol. Update those sources to " +
+      "name current symbols; their next extraction re-attaches them.",
     {
       claimsOrphaned: summary.claimsOrphaned,
       sources: summary.bySource.map((s) => `${s.source} (${s.count})`),

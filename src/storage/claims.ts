@@ -283,6 +283,49 @@ export function listUnlinkedClaims(
 }
 
 /**
+ * Claims with no `claim_symbols` link and a non-empty stored
+ * `symbol_candidates` list, by id (v1.2 Phase 3 re-link). Lists that
+ * are not JSON arrays are skipped, as in {@link listClaimSymbolCandidates}.
+ */
+export function listUnlinkedClaimCandidates(
+  db: DatabaseInstance,
+): Array<{ id: number; candidates: string[] }> {
+  const rows = db
+    .prepare(
+      `SELECT c.id, c.symbol_candidates FROM claims c
+       WHERE c.symbol_candidates IS NOT NULL
+         AND NOT EXISTS (SELECT 1 FROM claim_symbols cs WHERE cs.claim_id = c.id)
+       ORDER BY c.id`,
+    )
+    .all() as { id: number; symbol_candidates: string }[];
+  const out: Array<{ id: number; candidates: string[] }> = [];
+  for (const row of rows) {
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(row.symbol_candidates);
+    } catch {
+      continue;
+    }
+    if (!Array.isArray(parsed)) continue;
+    const candidates = parsed.filter((c): c is string => typeof c === "string");
+    if (candidates.length > 0) out.push({ id: row.id, candidates });
+  }
+  return out;
+}
+
+/** Add `claim_symbols` links for one claim (existing links are kept). */
+export function linkClaimToSymbols(
+  db: DatabaseInstance,
+  claimId: number,
+  symbolIds: readonly SymbolId[],
+): void {
+  const insert = db.prepare(
+    "INSERT OR IGNORE INTO claim_symbols (claim_id, symbol_id) VALUES (?, ?)",
+  );
+  for (const id of symbolIds) insert.run(claimId, id);
+}
+
+/**
  * Distinct `(source_path, source)` pairs across all claims. v1.2
  * Phase 1: the primary signal for classifying source_shas keys into
  * prose / docstring / commit streams.

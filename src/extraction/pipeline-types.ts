@@ -337,6 +337,11 @@ export interface ExtractionPipelineResult {
    */
   pendingUnits: PendingUnit[];
   /**
+   * Claims with no symbol link re-linked from their stored candidates
+   * (Stage 6b, v1.2 Phase 3; no model call).
+   */
+  claimsRelinked: number;
+  /**
    * Docstring / commit streams in which every attempted call failed
    * (L-10 ii). Not a summary key: `contextatlas index` exits 1 on it.
    */

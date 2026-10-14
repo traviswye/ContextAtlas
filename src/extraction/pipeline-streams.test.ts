@@ -950,6 +950,45 @@ describe("runExtractionPipeline — v1.2 Phase 2 streams", () => {
       expect(adrOnly.pendingUnits).toEqual([]);
     });
 
+    it("re-links a claim orphaned by a symbol move, and a claim whose symbol appears later, from stored candidates", async () => {
+      write("docs/adr/ADR-01.md", "ADR\n");
+      write("src/a.ts", "export function Foo() {}\n");
+      const listing: Record<string, AtlasSymbol[]> = { "src/a.ts": [tsSym("src/a.ts", "Foo")] };
+      const adapter = streamAdapter(tmp, listing);
+      await run(adapter, recordingClient((b) =>
+        b === "ADR\n"
+          ? { claims: [...oneClaim("uses Foo", ["Foo"]).claims, ...oneClaim("uses Later", ["Later"]).claims] }
+          : { claims: [] },
+      ).client);
+      const linksOf = (text: string) => listAllClaims(db).find((c) => c.claim === text)!.symbolIds;
+      expect(linksOf("uses Foo")).toEqual(["sym:ts:src/a.ts:Foo"]);
+      expect(linksOf("uses Later")).toEqual([]);
+
+      // Foo moves to b.ts; Later appears in l.ts.
+      write("src/a.ts", "export {};\n");
+      write("src/b.ts", "export function Foo() {}\n");
+      write("src/l.ts", "export function Later() {}\n");
+      listing["src/a.ts"] = [];
+      listing["src/b.ts"] = [tsSym("src/b.ts", "Foo")];
+      listing["src/l.ts"] = [tsSym("src/l.ts", "Later")];
+      freshDb();
+      const result = await run(adapter, recordingClient(() => "throw").client, { structural: true });
+
+      expect(result.apiCalls).toBe(0);
+      expect(result.claimsRelinked).toBe(2);
+      expect(result.claimsOrphaned).toBe(0);
+      expect(linksOf("uses Foo")).toEqual(["sym:ts:src/b.ts:Foo"]);
+      expect(linksOf("uses Later")).toEqual(["sym:ts:src/l.ts:Later"]);
+      expect(readAtlas().claims.find((c) => c.claim === "uses Later")?.symbol_ids).toEqual([
+        "sym:ts:src/l.ts:Later",
+      ]);
+
+      freshDb();
+      const again = await run(adapter, recordingClient(() => "throw").client, { structural: true });
+      expect(again.claimsRelinked).toBe(0);
+      expect(again.atlasExported).toBe(false);
+    });
+
     it("rejects structural together with skipShaDiff (--full)", async () => {
       await expect(
         run(streamAdapter(tmp, {}), recordingClient(() => "throw").client, {
