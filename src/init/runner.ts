@@ -51,6 +51,7 @@ import {
   copyPromptArtifacts,
   type PromptArtifactCopyResult,
 } from "./prompt-artifact-copy.js";
+import { offerGitHooks } from "./hooks-offer.js";
 import { decideRoute, type Route } from "./routing.js";
 import {
   copySkillArtifacts,
@@ -129,6 +130,12 @@ export interface InitRunOptions {
    * import.meta.url. Per v1.1.2 cohort-UX hotfix.
    */
   readonly skillPackageRootOverride?: string;
+  /** `--yes` (v1.2 Phase 5): install the git hooks without asking. */
+  readonly yes?: boolean;
+  /** Test seam: answer the git-hooks question (null = cannot ask). */
+  readonly askHooksOverride?: (question: string) => Promise<boolean | null>;
+  /** Test seam: the entry script installed hooks run. */
+  readonly hooksEntryOverride?: string;
 }
 
 export interface InitRunResult {
@@ -302,6 +309,17 @@ export async function runInitSubcommand(
       { err: String(err) },
     );
   }
+
+  // v1.2 Phase 5: offer the Tier 0 git hooks (opt-in; hooks-offer.ts).
+  await offerGitHooks({
+    configRoot: options.configRoot,
+    configFile: options.configFile ?? null,
+    ...(options.yes !== undefined ? { yes: options.yes } : {}),
+    ...(options.json !== undefined ? { json: options.json } : {}),
+    writeStderr: options.writeStderr ?? ((c: string) => void process.stderr.write(c)),
+    ...(options.askHooksOverride !== undefined ? { ask: options.askHooksOverride } : {}),
+    ...(options.hooksEntryOverride !== undefined ? { entryOverride: options.hooksEntryOverride } : {}),
+  });
 
   // FO-3 fix (v0.7 Step 2.1.a): differentiate created vs preserved log
   // payloads. `languages` here is the filesystem-detected list — it

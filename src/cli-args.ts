@@ -119,7 +119,12 @@ export type Subcommand =
   | "validate-atlas"
   | "validate-adrs"
   | "list-extraction-sources"
-  | "validate-extraction";
+  | "validate-extraction"
+  | "hooks";
+
+/** `contextatlas hooks <action>` (v1.2 Phase 5). */
+export type HooksAction = "install" | "uninstall" | "status";
+const HOOKS_ACTIONS: readonly HooksAction[] = ["install", "uninstall", "status"];
 
 export interface ParsedArgs {
   /**
@@ -161,6 +166,8 @@ export interface ParsedArgs {
   structural: boolean;
   /** True when `--no-export` was passed (only with `index --structural`). */
   noExport: boolean;
+  /** The action of `contextatlas hooks <action>`; null for other subcommands. */
+  hooksAction: HooksAction | null;
   /**
    * True when `--json` was passed alongside `index`. Switches the
    * completion summary from `key=value` lines to a single JSON
@@ -259,6 +266,7 @@ export const KNOWN_SUBCOMMANDS: readonly Subcommand[] = [
   "validate-adrs",
   "list-extraction-sources",
   "validate-extraction",
+  "hooks",
 ];
 
 /**
@@ -292,6 +300,8 @@ Subcommands:
   resolve-symbols       Enrich Skill-produced atlas with LSP-resolved symbol IDs (no API key needed)
   validate-atlas        Validate atlas.json against canonical schema (no API key needed)
   validate-adrs         Validate docs/adr/*.md against canonical depth-floor invariants (no API key needed)
+  hooks <install|uninstall|status>
+                        Manage git hooks that refresh the local cache after commit/merge/checkout (no API calls)
   list-extraction-sources
                         Walk ADRs + source-symbols + filtered commits; emit JSON manifest for Skill consumption (no API key needed)
   validate-extraction   Validate atlas.json against extraction-quality invariants (per-ADR depth + source coverage; no API key needed)
@@ -348,6 +358,7 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
   let full = false;
   let structural = false;
   let noExport = false;
+  let hooksAction: HooksAction | null = null;
   let json = false;
   let budgetWarn: number | null = null;
   let verbose = false;
@@ -369,6 +380,16 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
     // Subcommand detection — any non-flag positional that matches the
     // known table. The first one wins; a second one throws.
     if (!arg.startsWith("-")) {
+      if (subcommand === "hooks" && hooksAction === null) {
+        if (!(HOOKS_ACTIONS as readonly string[]).includes(arg)) {
+          throw new Error(
+            `Unknown hooks action '${arg}'. Use one of: ${HOOKS_ACTIONS.join(", ")}.`,
+          );
+        }
+        hooksAction = arg as HooksAction;
+        i += 1;
+        continue;
+      }
       if (subcommandSeen) {
         throw new Error(
           `Unexpected positional argument '${arg}'. Only one subcommand is allowed. ${USAGE}`,
@@ -693,6 +714,7 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
       full,
       structural,
       noExport,
+      hooksAction,
       json,
       budgetWarn,
       verbose,
@@ -723,6 +745,11 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
   if (structural && subcommand !== "index") {
     throw new Error(
       `Flag --structural is only accepted with the 'index' subcommand. ${USAGE}`,
+    );
+  }
+  if (subcommand === "hooks" && hooksAction === null) {
+    throw new Error(
+      `The hooks subcommand needs an action: contextatlas hooks <${HOOKS_ACTIONS.join("|")}>.`,
     );
   }
   if (noExport && (subcommand !== "index" || !structural)) {
@@ -787,9 +814,9 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
       `Flag --output is only accepted with the 'list-extraction-sources' subcommand. ${USAGE}`,
     );
   }
-  if (yes && subcommand !== "generate-adrs") {
+  if (yes && subcommand !== "generate-adrs" && subcommand !== "init") {
     throw new Error(
-      `Flag --yes / --no-confirm is only accepted with the 'generate-adrs' subcommand. ${USAGE}`,
+      `Flag --yes / --no-confirm is only accepted with the 'generate-adrs' or 'init' subcommand. ${USAGE}`,
     );
   }
 
@@ -801,6 +828,7 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
     full,
     structural,
     noExport,
+    hooksAction,
     json,
     budgetWarn,
     verbose,

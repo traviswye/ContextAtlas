@@ -521,6 +521,25 @@ The extraction pipeline produces structured claims from any prose
 source pointed at via config — existing substrate doesn't go unused.
 See [Configuration](#configuration) below for full schema.
 
+### Keeping the atlas fresh
+
+```bash
+contextatlas hooks install      # once per clone (init offers it; --yes accepts)
+contextatlas hooks status       # hooks, run in progress, pending sources, last run
+contextatlas index --structural # by hand: refresh symbols + git signal, no model calls
+contextatlas index              # extract the pending sources (paid; preview first)
+```
+
+The hooks run `contextatlas index --structural --no-export` in the
+background after each commit, merge and branch checkout. That keeps
+the local cache's symbols, line numbers and git signal current with
+no model calls and without modifying `atlas.json`. Sources that
+changed are listed in `.contextatlas/local/pending.json` (never
+committed) until a model-calling `index` extracts them. A running
+MCP server serves the refreshed cache immediately, and reloads
+`atlas.json` by itself when a pull or an `index` run changes it
+(`atlas.committed: true`).
+
 ### MCP server registration
 
 Configure ContextAtlas as an MCP server in your Claude Code settings.

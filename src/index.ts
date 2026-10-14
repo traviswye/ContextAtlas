@@ -45,6 +45,7 @@ import { runValidateAtlasSubcommand } from "./extraction/cli-validate-atlas.js";
 import { runValidateExtractionSubcommand } from "./extraction/cli-validate-extraction.js";
 import { runGenerateAdrsSubcommand } from "./generation/cli-runner.js";
 import { runValidateAdrsSubcommand } from "./generation/cli-validate-adrs.js";
+import { runHooksSubcommand } from "./hooks/cli.js";
 import { runInitSubcommand } from "./init/runner.js";
 import { liveRunLock } from "./extraction/run-lock.js";
 import { AtlasReloader, RequestGate } from "./mcp/atlas-reload.js";
@@ -231,6 +232,16 @@ export async function main(): Promise<void> {
 
   // v0.4 Stream B Step 8 — Doctor subcommand reports diagnostic-only
   // self-check on ContextAtlas configuration + state.
+  // v1.2 Phase 5 — git hooks for Tier 0 structural refresh.
+  if (subcommand === "hooks" && parsed.hooksAction !== null) {
+    const result = await runHooksSubcommand({
+      configRoot,
+      configFile: configFileArg,
+      action: parsed.hooksAction,
+    });
+    process.exit(result.exitCode);
+  }
+
   if (subcommand === "doctor") {
     const result = await runDoctorSubcommand({
       repoRoot: configRoot,
@@ -250,6 +261,7 @@ export async function main(): Promise<void> {
       ccOnly: parsed.ccOnly,
       observe: parsed.observe,
       json: parsed.json,
+      yes: parsed.yes,
     });
     process.exit(result.exitCode);
   }

@@ -16,6 +16,7 @@ const EMPTY: ParsedArgs = {
   full: false,
   structural: false,
   noExport: false,
+  hooksAction: null,
   json: false,
   budgetWarn: null,
   verbose: false,
@@ -930,10 +931,23 @@ describe("--yes / --no-confirm flag (v0.7 Step 2.2.a.2 Lock 3 confirmation bypas
     });
   });
 
-  it("rejects --yes when combined with non-generate-adrs subcommand", () => {
+  it("rejects --yes outside generate-adrs and init (init: install git hooks, v1.2 Phase 5)", () => {
     expect(() => parseArgs(["index", "--yes"])).toThrow(
-      /only accepted with the 'generate-adrs' subcommand/,
+      /only accepted with the 'generate-adrs' or 'init' subcommand/,
     );
+    expect(parseArgs(["init", "--yes"]).yes).toBe(true);
+  });
+
+  it("`hooks <action>` parses the action and requires one", () => {
+    expect(parseArgs(["hooks", "install"]).hooksAction).toBe("install");
+    expect(parseArgs(["hooks", "status", "--config-root", "/r"])).toMatchObject({
+      subcommand: "hooks",
+      hooksAction: "status",
+      configRoot: "/r",
+    });
+    expect(() => parseArgs(["hooks"])).toThrow(/needs an action/);
+    expect(() => parseArgs(["hooks", "enable"])).toThrow(/Unknown hooks action 'enable'/);
+    expect(() => parseArgs(["index", "--no-export"])).toThrow(/only accepted with `index --structural`/);
   });
 
   it("rejects --yes specified more than once", () => {

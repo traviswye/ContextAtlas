@@ -757,6 +757,27 @@ own `.gitignore` (`*`) and is never committed (ADR-06). Library
 callers of `runExtractionPipeline` get the units in
 `result.pendingUnits` and no files.
 
+**Git hooks and the run lock (v1.2 Phase 5).** `contextatlas hooks
+install` adds a marked block to post-commit, post-merge and
+post-checkout (branch checkouts only), in the directory `git rev-parse
+--git-path hooks` names (so `core.hooksPath` and worktrees are
+honoured). The block goes right after the shebang, keeping existing
+hook content, and starts `contextatlas index --structural --no-export`
+in the background. `--no-export` skips Stage 7: atlas.json and
+`atlas_meta` stay untouched (lead decision L-21), so hook runs never
+dirty the working tree or block a branch switch. They also never make
+the MCP server reload. The server reads the refreshed cache directly;
+the next run's Stage 0 import rebuilds the same state from atlas.json
+plus the tree.
+
+Every `index` run takes `.contextatlas/local/index.lock`. A
+model-calling run refuses to start while another run holds it. A
+structural run takes the single waiter slot (`index.next`) and runs
+once the lock frees; further structural runs exit, since the waiter
+reads the tree when it starts. A lock whose process is gone, or that
+is older than six hours, is stale. The MCP server defers atlas reloads
+while a live run holds the lock.
+
 ### Two-paths extraction architecture (v0.7+)
 
 The extraction pipeline above describes the canonical pipeline as a

@@ -1514,3 +1514,58 @@ and a changed source is already pending. This settles the scope's
 - A structural export on a commit leaves `atlas.json` modified in the
   working tree when HEAD moved (the git signal is part of the atlas).
   Phase 5 decides how hooks treat that edit.
+
+## Amendment (2026-10-14, v1.2 Phase 5): `hooks` subcommand, `index --no-export`, the run lock
+
+Lead decisions L-21 and L-22 (`docs/cycles/v1_2/v1.2-SCOPE.md` §5).
+
+### Decision
+
+1. **`index --structural --no-export`.** Accepted only together with
+   `--structural`, which the parser and the pipeline both enforce: a
+   run that extracts must export, or the next run's Stage 0 import
+   would discard its paid work. It skips Stage 7, so atlas.json and
+   `atlas_meta` are untouched and the refresh lives in the local cache
+   only. The git hooks run this (L-21).
+2. **The run lock.** Every `index` run takes
+   `.contextatlas/local/index.lock` (`wx` create; pid, host, mode,
+   start time). A held lock refuses a model-calling run with exit 2
+   and an actionable message. A structural run instead takes the
+   single waiter slot `index.next` and waits (stderr says so); later
+   structural runs exit 0 at once. A lock is stale when its process on
+   this host is gone, it is older than six hours, or it cannot be read.
+   `liveRunLock` lets the MCP server defer atlas reloads during a run
+   (ADR-06 2026-10-14 amendment).
+3. **`contextatlas hooks <install|uninstall|status>`.** A new
+   subcommand with a required action. It accepts `--config-root` and
+   `--config`. Exit 0 on success, 2 on a setup error (not a git
+   repository; for `install`, no usable config or a path the hook
+   script cannot quote).
+   - `install` writes a marked block to post-commit, post-merge and
+     post-checkout in `git rev-parse --git-path hooks`. The block goes
+     after the shebang, so it runs even when existing content exits;
+     reinstalling replaces it. It names node and the entry script by
+     absolute path, and starts `index --structural --no-export
+     --config-root <root>` with `nohup ... &`, output to
+     `.contextatlas/local/hook-last.log`. post-checkout runs only on
+     branch checkouts. When the hooks directory is outside `.git`
+     (`core.hooksPath`), install notes that the edit may be tracked.
+   - `uninstall` removes the block and deletes a file left with only a
+     shebang.
+   - `status` lists each hook (flagging a block whose entry script is
+     gone), the run in progress, the pending-queue summary and the last
+     run from `runs.jsonl`.
+   - The pre-push hook arrives with Phase 6 (L-22).
+4. **`init --yes`.** `--yes` is now also accepted by `init`, where it
+   installs the hooks. Without it, `init` asks on an interactive
+   terminal (default no). Otherwise (no TTY, or `--json`) it prints how
+   to install them.
+
+### Consequences
+
+- Hooks never modify tracked files and never block a branch switch.
+  Committing atlas.json stays an explicit act.
+- The structural state is rebuilt on each hook run from atlas.json
+  plus the working tree. Between hook runs, the cache can be ahead of
+  atlas.json; a server restart reads it as current because
+  `generated_at` is unchanged.
